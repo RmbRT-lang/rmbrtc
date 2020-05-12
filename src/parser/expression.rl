@@ -86,24 +86,6 @@ INCLUDE "type.rl"
 			:= OperatorExpression::parse(p);
 	}
 
-	SymbolExpression -> Expression
-	{
-		# FINAL type() ExpressionType := ExpressionType::symbol;
-
-		Symbol: parser::Symbol;
-
-		parse(p: Parser &) bool := Symbol.parse(p);
-	}
-
-	SymbolChildExpression -> Expression
-	{
-		# FINAL type() ExpressionType := ExpressionType::symbolChild;
-
-		Child: Symbol::Child;
-
-		parse(p: Parser &) bool := Child.parse(p);
-	}
-
 	NumberExpression -> Expression
 	{
 		# FINAL type() ExpressionType := ExpressionType::symbolChild;
@@ -284,7 +266,12 @@ INCLUDE "type.rl"
 
 		STATIC parse(p: Parser&) Expression *
 		{
-			RETURN NULL;
+			{
+				v: NumberExpression;
+				IF(v.parse(p))
+					RETURN ::[TYPE(v)]new(__cpp_std::move(v));
+			}
+			RETURN parse_binary(p);
 		}
 
 		STATIC parse_binary(
@@ -295,6 +282,9 @@ INCLUDE "type.rl"
 			lhs: Expression *,
 			level: uint) Expression *
 		{
+			IF(level == 0)
+				RETURN lhs;
+
 			group ::= &detail::k_groups[level-1];
 			FOR(i ::= 0; i < group->Size; i++)
 			{
@@ -310,8 +300,8 @@ INCLUDE "type.rl"
 						// a + b + c
 						// (a + b) + c
 						rhs ::= level
-							? parse_prefix(p)
-							: parse_binary(p, level-1);
+							? parse_binary(p, level-1)
+							: parse_prefix(p);
 						ret->Operands.push_back(rhs);
 						RETURN parse_binary_rhs(p, ret, level);
 					} ELSE
@@ -319,8 +309,8 @@ INCLUDE "type.rl"
 						// a := b := c
 						// a := (b := c)
 						rhs ::= level
-							? parse_prefix(p)
-							: parse_binary(p, level);
+							? parse_binary(p, level)
+							: parse_prefix(p);
 						IF(!rhs)
 							p.fail();
 
@@ -338,8 +328,8 @@ INCLUDE "type.rl"
 			level: uint) Expression *
 		{
 			lhs ::= level
-				? parse_prefix(p)
-				: parse_binary(p, level-1);
+				? parse_binary(p, level-1)
+				: parse_prefix(p);
 			IF(!lhs)
 				RETURN NULL;
 
