@@ -51,9 +51,17 @@ INCLUDE 'std/pair'
 		}
 
 		expect(type: Type) VOID
-			:= expect(type, NULL);
+			:= expect(type, <Token *>(NULL));
 
 		expect(type: Type, out: Token *) VOID
+		{
+			IF(!consume(type, out))
+			{
+				error();
+			}
+		}
+
+		expect(type: Type, out: src::String \) VOID
 		{
 			IF(!consume(type, out))
 			{
@@ -77,7 +85,7 @@ INCLUDE 'std/pair'
 			RETURN Buffer[BufferIndex^1].Type == type;
 		}
 
-		consume(out: Token \) bool
+		consume(out: Token *) bool
 		{
 			IF(!BufferSize)
 				RETURN FALSE;
@@ -207,7 +215,7 @@ INCLUDE 'std/pair'
 			FOR(i ::= 0; i < Read; i++)
 				IF(content.at(i) == '\n')
 				{
-					++line;
+					++*line;
 					lineStart := i;
 				}
 			*column := Read - lineStart;
