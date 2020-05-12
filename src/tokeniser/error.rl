@@ -4,7 +4,7 @@ INCLUDE 'std/string'
 
 ::rlc::tok Error -> std::Error
 {
-	File: src::File #\;
+	File: std::Utf8;
 	Line: uint;
 	Column: uint;
 
@@ -12,7 +12,7 @@ INCLUDE 'std/string'
 		File: src::File #\,
 		Line: uint,
 		Column: uint):
-		File(File),
+		File(File->Name),
 		Line(Line),
 		Column(Column);
 
@@ -26,7 +26,7 @@ INCLUDE 'std/string'
 	OVERRIDE print(
 		o: std::io::OStream &) VOID
 	{
-		o.write(File->Name.content());
+		o.write(File.content());
 		o.write(":");
 		o.write(itoa(Line));
 		o.write(":");

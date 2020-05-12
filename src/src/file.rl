@@ -14,6 +14,8 @@ INCLUDE 'std/io/file'
 			Start(start),
 			Length(length);
 
+		STATIC empty: String#(0,0);
+
 		Start: Index;
 		Length: Size;
 	}
