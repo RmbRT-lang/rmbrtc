@@ -88,7 +88,7 @@ INCLUDE "expression.rl"
 			Indirection: Type::Indirection;
 			Qualifier: Type::Qualifier;
 			IsArray: bool;
-			ArraySize: Expression *;
+			ArraySize: std::[std::[Expression]Dynamic]Vector;
 
 			parse(
 				p: Parser&) bool
@@ -99,8 +99,19 @@ INCLUDE "expression.rl"
 
 				IF(IsArray := p.consume(tok::Type::bracketOpen))
 				{
-					ArraySize := NULL;
-					p.expect(tok::Type::bracketClose);
+					IF(!p.consume(tok::Type::bracketClose))
+					{
+
+						DO()
+						{
+							bounds ::= Expression::parse(p);
+							IF(!bounds)
+								p.fail();
+							ArraySize.push_back(bounds);
+						} WHILE(p.consume(tok::Type::comma))
+
+						p.expect(tok::Type::bracketClose);
+					}
 				}
 
 				RETURN p.progress() != start;
@@ -198,6 +209,7 @@ INCLUDE "expression.rl"
 		{
 			IF(!p.consume(tok::Type::void))
 				RETURN FALSE;
+			printf("VOID\n");
 			parse_generic_part(p);
 			RETURN TRUE;
 		}
