@@ -7,6 +7,8 @@ INCLUDE 'std/vector'
 {
 	Entries: std::[std::[ScopeEntry]Dynamic]Vector;
 
+	# FINAL type() ScopeEntryType := ScopeEntryType::namespace;
+
 	parse(
 		p: Parser &) bool
 	{
@@ -15,6 +17,7 @@ INCLUDE 'std/vector'
 
 		name: tok::Token;
 		p.expect(tok::Type::identifier, &name);
+		Name := name.Content;
 
 		IF(p.consume(tok::Type::braceOpen))
 		{
