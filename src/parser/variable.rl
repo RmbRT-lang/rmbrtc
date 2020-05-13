@@ -16,6 +16,8 @@ INCLUDE 'std/vector'
 		InitValues: std::[std::[Expression]Dynamic]Vector;
 		TypeQualifier: Type::Qualifier;
 
+		# FINAL type() ScopeEntryType := ScopeEntryType::variable;
+
 		parse(p: Parser&,
 			needs_name: bool,
 			allow_initialiser: bool,
@@ -42,7 +44,7 @@ INCLUDE 'std/vector'
 
 			found ::= FALSE;
 			FOR(i ::= 0; i < ::size(k_needed_ahead); i++)
-				IF(!(needs_name && !k_needed_ahead[i].Second)
+				IF((!needs_name || k_needed_ahead[i].Second)
 				&& p.match_ahead(k_needed_ahead[i].First))
 				{
 					found := TRUE;
