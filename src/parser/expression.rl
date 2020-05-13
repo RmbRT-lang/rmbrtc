@@ -254,7 +254,7 @@ INCLUDE "type.rl"
 			BinOpDesc(k_log_or, TRUE),
 			BinOpDesc(k_assign, FALSE));
 
-		PrecedenceGroups: std::Size# := ::size(k_groups);
+		precedenceGroups: std::Size# := ::size(k_groups);
 	}
 
 	OperatorExpression -> Expression
@@ -264,18 +264,8 @@ INCLUDE "type.rl"
 		Operands: std::[std::[Expression]Dynamic]Vector;
 		Op: Operator;
 
-		STATIC parse(p: Parser&) Expression *
-		{
-			{
-				v: NumberExpression;
-				IF(v.parse(p))
-					RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-			}
-			RETURN parse_binary(p);
-		}
-
-		STATIC parse_binary(
-			p: Parser&) INLINE Expression * := parse_binary(p, detail::PrecedenceGroups);
+		STATIC parse(p: Parser&) INLINE Expression *
+			:= parse_binary(p, detail::precedenceGroups);
 
 		STATIC parse_binary_rhs(
 			p: Parser&,
@@ -299,18 +289,16 @@ INCLUDE "type.rl"
 					{
 						// a + b + c
 						// (a + b) + c
-						rhs ::= level
-							? parse_binary(p, level-1)
-							: parse_prefix(p);
+						rhs ::= parse_binary(p, level-1);
+						IF(!rhs)
+							p.fail();
 						ret->Operands.push_back(rhs);
 						RETURN parse_binary_rhs(p, ret, level);
 					} ELSE
 					{
 						// a := b := c
 						// a := (b := c)
-						rhs ::= level
-							? parse_binary(p, level)
-							: parse_prefix(p);
+						rhs ::= parse_binary(p, level);
 						IF(!rhs)
 							p.fail();
 
