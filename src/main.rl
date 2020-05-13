@@ -1,6 +1,9 @@
 INCLUDE "parser/file.rl"
-INCLUDE "parser/namespace.rl"
+INCLUDE "parser/variable.rl"
+INCLUDE "parser/typedef.rl"
 INCLUDE "parser/type.rl"
+INCLUDE "parser/function.rl"
+INCLUDE "parser/namespace.rl"
 INCLUDE 'std/io/file'
 
 ::namespace {}
@@ -18,9 +21,16 @@ main(
 		RETURN 1;
 	}
 
-	f: rlc::parser::File(std::Utf8(argv[1], std::cstring));
-
-	std::io::OStream::from(&std::io::out).write("success\n");
+	out ::= std::io::OStream::from(&std::io::out);
+	TRY
+	{
+		f: rlc::parser::File(std::Utf8(argv[1], std::cstring));
+		out.write("success\n");
+	} CATCH(e: std::Error&)
+	{
+		e.print(out);
+		printf("\n");
+	}
 
 	RETURN 0;
 }
