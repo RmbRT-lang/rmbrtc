@@ -1,9 +1,15 @@
 INCLUDE "parser.rl"
+(/INCLUDE "namespace.rl"
+INCLUDE "typedef.rl"
+INCLUDE "variable.rl"
+INCLUDE "function.rl"/)
 
 ::rlc::parser ENUM ScopeEntryType
 {
 	namespace,
-	typedef
+	typedef,
+	function,
+	variable
 }
 
 ::rlc::parser ScopeEntry
@@ -22,6 +28,19 @@ INCLUDE "parser.rl"
 		{
 			v: Typedef;
 			IF(v.parse(p))
+				RETURN ::[TYPE(v)]new(__cpp_std::move(v));
+		}
+		{
+			v: Variable;
+			IF(v.parse(p, TRUE, TRUE, TRUE))
+			{
+				p.expect(tok::Type::semicolon);
+				RETURN ::[TYPE(v)]new(__cpp_std::move(v));
+			}
+		}
+		{
+			v: Function;
+			IF(v.parse(p, TRUE))
 				RETURN ::[TYPE(v)]new(__cpp_std::move(v));
 		}
 
