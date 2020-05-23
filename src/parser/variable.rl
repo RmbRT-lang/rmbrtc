@@ -1,29 +1,40 @@
 INCLUDE "parser.rl"
 INCLUDE "type.rl"
 INCLUDE "symbol.rl"
-INCLUDE "scopeentry.rl"
+INCLUDE "global.rl"
+INCLUDE "member.rl"
 
 INCLUDE 'std/memory'
 INCLUDE 'std/vector'
 
 ::rlc::parser
 {
-	Variable -> ScopeEntry
+	Variable -> VIRTUAL ScopeItem
 	{
+		Name: src::String;
 		HasType: bool;
 		Type: std::[parser::Type]Dynamic;
 		HasInitialiser: bool;
 		InitValues: std::[std::[Expression]Dynamic]Vector;
 		TypeQualifier: Type::Qualifier;
 
-		# FINAL type() ScopeEntryType := ScopeEntryType::variable;
+		# FINAL name() src::String#& := Name;
+
+		parse_fn_arg(p: Parser&) bool
+			:= parse(p, FALSE, TRUE, FALSE);
+		parse_var_decl(p: Parser &) bool
+			:= parse(p, TRUE, TRUE, FALSE);
 
 		parse(p: Parser&,
 			needs_name: bool,
 			allow_initialiser: bool,
 			force_initialiser: bool) bool
 		{
-			STATIC k_needed_ahead: std::[tok::Type, bool]Pair#[](
+			STATIC k_needed_without_name: tok::Type#[](
+				tok::Type::bracketOpen,
+				tok::Type::doubleColon);
+
+			STATIC k_needed_after_name: std::[tok::Type, bool]Pair#[](
 				std::pair(tok::Type::colon, TRUE),
 				std::pair(tok::Type::colonEqual, TRUE),
 				std::pair(tok::Type::doubleColonEqual, TRUE),
@@ -42,17 +53,31 @@ INCLUDE 'std/vector'
 				std::pair(tok::Type::comma, FALSE),
 				std::pair(tok::Type::parentheseClose, FALSE));
 
-			found ::= FALSE;
-			FOR(i ::= 0; i < ::size(k_needed_ahead); i++)
-				IF((!needs_name || k_needed_ahead[i].Second)
-				&& p.match_ahead(k_needed_ahead[i].First))
-				{
-					found := TRUE;
-					BREAK;
-				}
-
-			IF(!found)
+			IF(needs_name
+			&& !p.match(tok::Type::identifier))
 				RETURN FALSE;
+
+			{
+				found ::= FALSE;
+				IF(p.match(tok::Type::identifier))
+					FOR(i ::= 0; i < ::size(k_needed_after_name); i++)
+						IF((!needs_name || k_needed_after_name[i].Second)
+						&& p.match_ahead(k_needed_after_name[i].First))
+						{
+							found := TRUE;
+							BREAK;
+						}
+				ELSE
+					FOR(i ::= 0; i < ::size(k_needed_without_name); i++)
+						IF(p.match(k_needed_without_name[i]))
+						{
+							found := TRUE;
+							BREAK;
+						}
+
+				IF(!found)
+					RETURN FALSE;
+			}
 
 			needs_type ::= TRUE;
 			has_name ::= FALSE;
@@ -106,14 +131,14 @@ INCLUDE 'std/vector'
 			{
 				init ::= Expression::parse(p);
 				IF(!init)
-					p.fail();
+					p.fail("expected expression");
 				InitValues.push_back(init);
 			} ELSE
 			{
 				IF(!(Type := parser::Type::parse(p)).Ptr)
 				{
 					IF(needs_name)
-						p.fail();
+						p.fail("expected name");
 					ELSE
 						RETURN FALSE;
 				}
@@ -134,7 +159,7 @@ INCLUDE 'std/vector'
 							{
 								arg ::= Expression::parse(p);
 								IF(!arg)
-									p.fail();
+									p.fail("expected expression");
 								InitValues.push_back(arg);
 							} WHILE(isParenthese && p.consume(tok::Type::comma))
 
@@ -143,13 +168,24 @@ INCLUDE 'std/vector'
 						}
 					} ELSE IF(force_initialiser)
 					{
-						//  "expected ':=' or '('"
-						p.fail();
+						p.fail("expected ':=' or '('");
 					}
 				}
 			}
 
 			RETURN TRUE;
 		}
+	}
+
+	GlobalVariable -> Global, Variable
+	{
+		# FINAL type() Global::Type := Global::Type::variable;
+		parse(p: Parser&) INLINE ::= Variable::parse_var_decl(p);
+	}
+
+	MemberVariable -> Member, Variable
+	{
+		# FINAL type() Member::Type := Member::Type::variable;
+		parse(p: Parser&) INLINE ::= Variable::parse_var_decl(p);
 	}
 }
