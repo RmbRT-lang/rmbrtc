@@ -10,7 +10,34 @@ INCLUDE "error.rl"
 			Tokeniser(file),
 			Ctx(NULL);
 
-		fail() VOID { error(); }
+		fail(reason: char#\) VOID
+		{
+			line: uint;
+			column: uint;
+			IF(BufferSize)
+			{
+				File->position(
+					Buffer[BufferIndex].Content.Start,
+					&line,
+					&column);
+			} ELSE
+				position(&line, &column);
+			
+			THROW Error(
+				File,
+				line,
+				column,
+				Buffer,
+				BufferIndex,
+				BufferSize,
+				*THIS,
+				reason);
+		}
+
+		# context() char #\
+			:= Ctx
+				? Ctx->Name
+				: "<unknown context>";
 
 		Ctx: Trace *;
 	}

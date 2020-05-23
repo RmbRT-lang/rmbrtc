@@ -7,26 +7,38 @@ INCLUDE 'std/string'
 	Line: uint;
 	Column: uint;
 	Tokens: tok::Token[2];
+	TokenContent: std::[char]Buffer[2];
 	TokenCount: uint;
 	Context: std::Utf8;
+	Reason: char #\;
 
 	CONSTRUCTOR(
-		file: std::Utf8&&,
+		file: src::File #\,
 		line: uint,
 		column: uint,
 		tokens: tok::Token#[2]&,
 		tokenIndex: uint,
 		tokenCount: uint,
-		p: Parser#&):
-		File(__cpp_std::move(file)),
+		p: Parser#&,
+		reason: char#\):
+		File(std::Utf8(file->Name)),
 		Line(line),
 		Column(column),
-		TokenCount(tokenCount)
+		TokenCount(tokenCount),
+		Context(p.context()),
+		Reason(reason)
 	{
 		IF(tokenCount)
+		{
 			Tokens[0] := tokens[tokenIndex];
+			TokenContent[0] := std::clone(file->content(tokens[0].Content));
+		}
 		IF(tokenCount == 2)
+		{
 			Tokens[1] := tokens[tokenIndex^1];
+			TokenContent[1] := std::clone(file->content(tokens[1].Content));
+
+		}
 	}
 
 	PRIVATE STATIC itoa(i: int) char#\
@@ -46,18 +58,20 @@ INCLUDE 'std/string'
 		o.write(": unexpected ");
 		IF(TokenCount)
 		{
-			o.write(Tokens[0].Type.NAME());
-		}
-		IF(TokenCount > 1)
-		{
-			o.write(" ");
-			o.write(Tokens[1].Type.NAME());
-		}
-		IF(!TokenCount)
+			o.write(TokenContent[0]);
+			IF(TokenCount > 1)
+			{
+				o.write(" ");
+				o.write(TokenContent[1]);
+			}
+		} ELSE
 			o.write("end of file");
 
 		o.write(" in ");
-
+		o.write(Context.content());
+		o.write(": ");
+		o.write(Reason);
+		o.write(".\n");
 	}
 }
 

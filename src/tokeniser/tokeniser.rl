@@ -57,7 +57,21 @@ INCLUDE 'std/pair'
 		{
 			IF(!consume(type, out))
 			{
-				error();
+				line: uint;
+				column: uint;
+				IF(BufferSize)
+				{
+					File->position(
+						Buffer[BufferIndex].Content.Start,
+						&line,
+						&column);
+					THROW ExpectedToken(File, line, column, &Buffer[BufferIndex], type);
+				}
+				ELSE
+				{
+					position(&line, &column);
+					THROW ExpectedToken(File, line, column, NULL, type);
+				}
 			}
 		}
 
@@ -103,11 +117,10 @@ INCLUDE 'std/pair'
 		}
 
 		# eof() bool := Read == File->Contents.size();
-
 		# progress() uint := Progress;
 
 
-	PRIVATE:
+	PROTECTED:
 		File: src::File #\; // The source file.
 		Read: src::Index; // The current reading position in the file.
 		Buffer: Token[2]; // Lookahead buffer.
@@ -186,7 +199,7 @@ INCLUDE 'std/pair'
 			RETURN TRUE;
 		}
 
-		PUBLIC # error() VOID
+		# error() VOID
 		{
 			line: uint;
 			column: uint;
@@ -209,16 +222,7 @@ INCLUDE 'std/pair'
 			line: uint \,
 			column: uint \) VOID
 		{
-			*line := 1;
-			lineStart ::= 0;
-			content ::= File->Contents.content();
-			FOR(i ::= 0; i < Read; i++)
-				IF(content.at(i) == '\n')
-				{
-					++*line;
-					lineStart := i;
-				}
-			*column := Read - lineStart;
+			File->position(Read, line, column);
 		}
 
 		comment() bool

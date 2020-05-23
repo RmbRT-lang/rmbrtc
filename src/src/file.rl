@@ -18,13 +18,15 @@ INCLUDE 'std/io/file'
 
 		Start: Index;
 		Length: Size;
+
+		# exists() INLINE ::= Length != 0;
 	}
 
 	(// Source file. /)
 	File
 	{
 		Name: std::Utf8;
-		Contents: std::Utf8;
+		PUBLIC Contents: std::Utf8;
 
 		CONSTRUCTOR(name: std::Utf8): Name(name)
 		{
@@ -39,5 +41,22 @@ INCLUDE 'std/io/file'
 
 		#content(str: String #&) std::[char#]Buffer
 			:= Contents.substring(str.Start, str.Length);
+
+		# position(
+			index: Index,
+			line: uint \,
+			column: uint \) VOID
+		{
+			*line := 1;
+			lineStart ::= 0;
+			content ::= Contents.content();
+			FOR(i ::= 0; i < index; i++)
+				IF(content.at(i) == '\n')
+				{
+					++*line;
+					lineStart := i;
+				}
+			*column := index - lineStart;
+		}
 	}
 }
