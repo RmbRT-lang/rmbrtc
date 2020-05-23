@@ -32,7 +32,7 @@ INCLUDE "parser.rl"
 			ELSE IF(p.consume(tok::Type::stringBacktick, &Token))
 				Type := IncludeType::remote;
 			ELSE
-				p.fail();
+				p.fail("expected ', \", or `");
 
 			RETURN TRUE;
 		}

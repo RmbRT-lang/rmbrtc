@@ -1,5 +1,5 @@
 INCLUDE "include.rl"
-INCLUDE "scopeentry.rl"
+INCLUDE "global.rl"
 
 INCLUDE "../src/file.rl"
 
@@ -11,7 +11,7 @@ INCLUDE 'std/io/stream'
 {
 	Src: src::File;
 	Includes: std::[Include]Vector;
-	RootScope: std::[std::[ScopeEntry]Dynamic]Vector;
+	RootScope: std::[std::[Global]Dynamic]Vector;
 	
 	# name() std::Utf8#& := Src.Name;
 
@@ -28,10 +28,10 @@ INCLUDE 'std/io/stream'
 			Includes.push_back(inc);
 		}
 
-		WHILE(entry ::= ScopeEntry::parse(p))
+		WHILE(entry ::= Global::parse(p))
 		{
 			printf("::");
-			out.write(Src.content(entry->Name));
+			out.write(Src.content(entry->name()));
 			printf("\n");
 
 			RootScope.push_back(__cpp_std::move(entry));

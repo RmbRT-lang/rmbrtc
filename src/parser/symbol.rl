@@ -63,11 +63,11 @@ INCLUDE 'std/vector'
 						IF(tArg.IsExpr := p.consume(tok::Type::hash))
 						{
 							IF(!(tArg.Value.Expression := Expression::parse(p)))
-								p.fail();
+								p.fail("expected expression");
 						} ELSE
 						{
 							IF(!(tArg.Value.Type := Type::parse(p)))
-								p.fail();
+								p.fail("expected type");
 						}
 						Templates.push_back(__cpp_std::move(tArg));
 					} WHILE(p.consume(tok::Type::comma))
@@ -97,7 +97,7 @@ INCLUDE 'std/vector'
 				IF(!child.parse(p))
 				{
 					IF(expect)
-						p.fail();
+						p.fail("expected symbol child");
 					RETURN FALSE;
 				}
 

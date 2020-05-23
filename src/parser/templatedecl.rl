@@ -52,7 +52,7 @@ INCLUDE 'std/vector'
 					ELSE IF((c.TypeName := Type::parse(p)).Ptr)
 						c.Type := TemplateDeclType::value;
 					ELSE
-						p.fail();
+						p.fail("expected 'TYPE', 'NUMBER', or type");
 
 					Children.push_back(__cpp_std::move(c));
 				} WHILE(!p.consume(tok::Type::comma))

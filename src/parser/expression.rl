@@ -291,7 +291,7 @@ INCLUDE "type.rl"
 						// (a + b) + c
 						rhs ::= parse_binary(p, level-1);
 						IF(!rhs)
-							p.fail();
+							p.fail("expected expression");
 						ret->Operands.push_back(rhs);
 						RETURN parse_binary_rhs(p, ret, level);
 					} ELSE
@@ -300,7 +300,7 @@ INCLUDE "type.rl"
 						// a := (b := c)
 						rhs ::= parse_binary(p, level);
 						IF(!rhs)
-							p.fail();
+							p.fail("expected expression");
 
 						ret->Operands.push_back(rhs);
 						RETURN ret;
@@ -332,7 +332,8 @@ INCLUDE "type.rl"
 				std::pair(tok::Type::doublePlus, Operator::preIncrement),
 				std::pair(tok::Type::doubleMinus, Operator::preDecrement),
 				std::pair(tok::Type::tildeColon, Operator::bitNotAssign),
-				std::pair(tok::Type::exclamationMarkColon, Operator::logNotAssign));
+				std::pair(tok::Type::exclamationMarkColon, Operator::logNotAssign),
+				std::pair(tok::Type::and, Operator::address));
 
 			FOR(i ::= 0; i < ::size(prefix); i++)
 				IF(p.consume(prefix[i].First))
@@ -411,7 +412,7 @@ INCLUDE "type.rl"
 					{
 						rhs ::= Expression::parse(p);
 						IF(!rhs)
-							p.fail();
+							p.fail("expected expression");
 						sub->Operands.push_back(rhs);
 					} WHILE(p.consume(tok::Type::comma))
 					p.expect(tok::Type::bracketClose);
@@ -430,7 +431,7 @@ INCLUDE "type.rl"
 					{
 						rhs ::= Expression::parse(p);
 						IF(!rhs)
-							p.fail();
+							p.fail("expected expression");
 						call->Operands.push_back(rhs);
 					} WHILE(p.consume(tok::Type::comma))
 					p.expect(tok::Type::parentheseClose);
@@ -445,7 +446,7 @@ INCLUDE "type.rl"
 					{
 						member: SymbolChildExpression;
 						IF(!member.parse(p))
-							p.fail();
+							p.fail("expected member name");
 
 						lhs := make_binary(
 							memberAccess[i].Second,
@@ -486,7 +487,7 @@ INCLUDE "type.rl"
 
 			type ::= Type::parse(p);
 			IF(!type)
-				p.fail();
+				p.fail("expected type");
 			Type := type;
 
 			p.expect(tok::Type::greater);
@@ -494,7 +495,7 @@ INCLUDE "type.rl"
 
 			value ::= Expression::parse(p);
 			IF(!value)
-				p.fail();
+				p.fail("expected expression");
 			Value := value;
 
 			p.expect(tok::Type::parentheseClose);
@@ -556,11 +557,11 @@ INCLUDE "type.rl"
 			IF(IsExpr := p.consume(tok::Type::hash))
 			{
 				IF(!(Term.Expression := Expression::parse(p)))
-					p.fail();
+					p.fail("expected expression");
 			} ELSE
 			{
 				IF(!(Term.Type := Type::parse(p)))
-					p.fail();
+					p.fail("expected type");
 			}
 
 			p.expect(tok::Type::parentheseClose);

@@ -106,7 +106,7 @@ INCLUDE "expression.rl"
 						{
 							bounds ::= Expression::parse(p);
 							IF(!bounds)
-								p.fail();
+								p.fail("expected expression");
 							ArraySize.push_back(bounds);
 						} WHILE(p.consume(tok::Type::comma))
 
@@ -183,14 +183,14 @@ INCLUDE "expression.rl"
 					IF(arg := Type::parse(p))
 						Args.push_back(std::[Type]Dynamic(arg));
 					ELSE
-						p.fail();
+						p.fail("expected type");
 				} WHILE(p.consume(tok::Type::comma))
 				p.expect(tok::Type::parentheseClose);
 			}
 
 			type ::= Type::parse(p);
 			IF(!type)
-				p.fail();
+				p.fail("expected type");
 			Ret := type;
 
 			p.expect(tok::Type::parentheseClose);
@@ -209,7 +209,6 @@ INCLUDE "expression.rl"
 		{
 			IF(!p.consume(tok::Type::void))
 				RETURN FALSE;
-			printf("VOID\n");
 			parse_generic_part(p);
 			RETURN TRUE;
 		}

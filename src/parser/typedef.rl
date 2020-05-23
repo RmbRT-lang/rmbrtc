@@ -1,16 +1,20 @@
 INCLUDE "type.rl"
-INCLUDE "scopeentry.rl"
+INCLUDE "scopeitem.rl"
+INCLUDE "global.rl"
+INCLUDE "member.rl"
 
-::rlc::parser Typedef -> ScopeEntry
+::rlc::parser Typedef -> VIRTUAL ScopeItem
 {
 	Type: std::[parser::Type]Dynamic;
+	Name: src::String;
 
-	# FINAL type() ScopeEntryType := ScopeEntryType::typedef;
+	# FINAL name() src::String#& := Name;
 
 	parse(p: Parser&) bool
 	{
 		IF(!p.consume(tok::Type::type))
 			RETURN FALSE;
+		t: Trace(&p, "typedef");
 
 		name: tok::Token;
 		p.expect(tok::Type::identifier, &name);
@@ -19,12 +23,23 @@ INCLUDE "scopeentry.rl"
 
 		printf("typedef: type\n");
 		Type ::= parser::Type::parse(p);
-		printf("typedef: after type\n");
 		IF(!Type)
-			p.fail();
+			p.fail("expected type");
 
 		p.expect(tok::Type::semicolon);
 
 		RETURN TRUE;
 	}
+}
+
+::rlc::parser GlobalTypedef -> Global, Typedef
+{
+	# FINAL type() Global::Type := Global::Type::typedef;
+	parse(p: Parser&) INLINE ::= Typedef::parse(p);
+}
+
+::rlc::parser MemberTypedef -> Member, Typedef
+{
+	# FINAL type() Member::Type := Member::Type::typedef;
+	parse(p: Parser&) INLINE ::= Typedef::parse(p);
 }

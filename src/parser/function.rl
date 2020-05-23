@@ -1,5 +1,6 @@
 INCLUDE "parser.rl"
-INCLUDE "scopeentry.rl"
+INCLUDE "global.rl"
+INCLUDE "member.rl"
 INCLUDE "variable.rl"
 INCLUDE "templatedecl.rl"
 
@@ -9,15 +10,18 @@ INCLUDE "templatedecl.rl"
 	Statement: int*;
 }
 
-::rlc::parser Function -> ScopeEntry
+::rlc::parser Function -> VIRTUAL ScopeItem
 {
 	Templates: TemplateDecl;
-	Arguments: std::[Variable]Vector;
+	Arguments: std::[GlobalVariable]Vector;
 	Return: std::[Type]Dynamic;
 	IsShortBody: bool;
 	Body: ExprOrStmt;
 	IsInline: bool;
 	IsCoroutine: bool;
+	Name: src::String;
+
+	# FINAL name() src::String#& := Name;
 
 	CONSTRUCTOR():
 		IsShortBody(FALSE)
@@ -55,8 +59,6 @@ INCLUDE "templatedecl.rl"
 
 	}
 
-	# FINAL type() ScopeEntryType := ScopeEntryType::function;
-
 	parse(
 		p: Parser &,
 		allow_body: bool) bool
@@ -66,16 +68,16 @@ INCLUDE "templatedecl.rl"
 		|| !p.consume(tok::Type::identifier, &name))
 			RETURN FALSE;
 
+		t: Trace(&p, "function");
 		Name := name.Content;
 		p.consume(NULL);
 
 		IF(!p.consume(tok::Type::parentheseClose))
 		{
-			DO(arg: Variable)
+			DO(arg: GlobalVariable)
 			{
-				printf("parsing argument %d\n", <int>(Arguments.size()));
-				IF(!arg.parse(p, FALSE, TRUE, FALSE))
-					p.fail();
+				IF(!arg.parse_fn_arg(p))
+					p.fail("expected argument");
 				Arguments.push_back(__cpp_std::move(arg));
 			} WHILE(p.consume(tok::Type::comma))
 			p.expect(tok::Type::parentheseClose);
@@ -87,7 +89,7 @@ INCLUDE "templatedecl.rl"
 		Return := Type::parse(p);
 		IF(!allow_body)
 			IF(!Return.Ptr)
-				p.fail();
+				p.fail("expected return type");
 			ELSE
 			{
 				p.expect(tok::Type::semicolon);
@@ -109,4 +111,15 @@ INCLUDE "templatedecl.rl"
 
 		RETURN TRUE;
 	}
+}
+
+::rlc::parser GlobalFunction -> Global, Function
+{
+	# FINAL type() Global::Type := Global::Type::function;
+	parse(p: Parser&) INLINE bool := Function::parse(p, TRUE);
+}
+
+::rlc::parser MemberFunction -> Member, Function
+{
+	# FINAL type() Member::Type := Member::Type::function;
 }
