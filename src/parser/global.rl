@@ -1,24 +1,23 @@
 INCLUDE "parser.rl"
+INCLUDE "scopeitem.rl"
 (/INCLUDE "namespace.rl"
 INCLUDE "typedef.rl"
 INCLUDE "variable.rl"
 INCLUDE "function.rl"/)
 
-::rlc::parser ENUM ScopeEntryType
+::rlc::parser Global -> VIRTUAL ScopeItem
 {
-	namespace,
-	typedef,
-	function,
-	variable
-}
+	ENUM Type
+	{
+		namespace,
+		typedef,
+		function,
+		variable
+	}
+	# ABSTRACT type() Global::Type;
+	# FINAL category() ScopeItem::Category := ScopeItem::Category::global;
 
-::rlc::parser ScopeEntry
-{
-	Name: src::String;
-
-	# ABSTRACT type() ScopeEntryType;
-
-	STATIC parse(p: Parser &) ScopeEntry *
+	STATIC parse(p: Parser &) Global *
 	{
 		{
 			v: Namespace;
@@ -26,21 +25,21 @@ INCLUDE "function.rl"/)
 				RETURN ::[TYPE(v)]new(__cpp_std::move(v));
 		}
 		{
-			v: Typedef;
+			v: GlobalTypedef;
 			IF(v.parse(p))
 				RETURN ::[TYPE(v)]new(__cpp_std::move(v));
 		}
 		{
-			v: Variable;
-			IF(v.parse(p, TRUE, TRUE, TRUE))
+			v: GlobalVariable;
+			IF(v.parse_var_decl(p))
 			{
 				p.expect(tok::Type::semicolon);
 				RETURN ::[TYPE(v)]new(__cpp_std::move(v));
 			}
 		}
 		{
-			v: Function;
-			IF(v.parse(p, TRUE))
+			v: GlobalFunction;
+			IF(v.parse(p))
 				RETURN ::[TYPE(v)]new(__cpp_std::move(v));
 		}
 
