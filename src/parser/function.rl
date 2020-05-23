@@ -3,11 +3,12 @@ INCLUDE "global.rl"
 INCLUDE "member.rl"
 INCLUDE "variable.rl"
 INCLUDE "templatedecl.rl"
+INCLUDE "statement.rl"
 
 ::rlc::parser UNION ExprOrStmt
 {
 	Expression: parser::Expression *;
-	Statement: int*;
+	Statement: parser::Statement *;
 }
 
 ::rlc::parser Function -> VIRTUAL ScopeItem
@@ -96,8 +97,13 @@ INCLUDE "templatedecl.rl"
 				RETURN TRUE;
 			}
 
-		// TODO: parse body statement.
-		IsShortBody := TRUE;
+		body: BlockStatement;
+		IF(body.parse(p))
+		{
+			Body.Statement := [TYPE(body)]new(__cpp_std::move(body));
+			IsShortBody := FALSE;
+		} ELSE
+			IsShortBody := TRUE;
 
 		IF(IsShortBody)
 		{
