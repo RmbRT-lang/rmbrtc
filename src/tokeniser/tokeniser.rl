@@ -11,138 +11,21 @@ INCLUDE 'std/pair'
 			file: src::File #\):
 			File(file),
 			Read(0),
-			BufferIndex(0),
-			BufferSize(0),
-			Progress(0)
-		{
-			IF(!parse_next(&Buffer[0]))
-				RETURN;
-			IF(parse_next(&Buffer[1]))
-				BufferSize := 2;
-			ELSE
-				BufferSize := 1;
-		}
-
-		consume(type: Type) bool
-			:= consume(type, <Token*>(NULL));
-
-		consume(
-			type: Type,
-			out: Token *) bool
-		{
-			IF(match(type))
-			{
-				consume(out);
-				RETURN TRUE;
-			}
-
-			RETURN FALSE;
-		}
-
-		consume(type: Type, out: src::String \) bool
-		{
-			token: Token;
-			IF(consume(type, &token))
-			{
-				*out := token.Content;
-				RETURN TRUE;
-			}
-			RETURN FALSE;
-		}
-
-		expect(type: Type) VOID
-			:= expect(type, <Token *>(NULL));
-
-		expect(type: Type, out: Token *) VOID
-		{
-			IF(!consume(type, out))
-			{
-				line: uint;
-				column: uint;
-				IF(BufferSize)
-				{
-					File->position(
-						Buffer[BufferIndex].Content.Start,
-						&line,
-						&column);
-					THROW ExpectedToken(File, line, column, &Buffer[BufferIndex], type);
-				}
-				ELSE
-				{
-					position(&line, &column);
-					THROW ExpectedToken(File, line, column, NULL, type);
-				}
-			}
-		}
-
-		expect(type: Type, out: src::String \) VOID
-		{
-			IF(!consume(type, out))
-			{
-				error();
-			}
-		}
-
-		match(type: Type) bool
-		{
-			IF(!BufferSize)
-				RETURN FALSE;
-
-			RETURN Buffer[BufferIndex].Type == type;
-		}
-
-		match_ahead(type: Type) bool
-		{
-			IF(BufferSize != 2)
-				RETURN FALSE;
-
-			RETURN Buffer[BufferIndex^1].Type == type;
-		}
-
-		consume(out: Token *) bool
-		{
-			IF(!BufferSize)
-				RETURN FALSE;
-
-			IF(out)
-				*out := Buffer[BufferIndex];
-
-			IF(!parse_next(&Buffer[BufferIndex]))
-				--BufferSize;
-
-			++Progress;
-			BufferIndex := BufferIndex ^ 1;
-
-			RETURN TRUE;
-		}
+			Start(0);
 
 		# eof() bool := Read == File->Contents.size();
-		# progress() uint := Progress;
-
-
-	PROTECTED:
-		File: src::File #\; // The source file.
-		Read: src::Index; // The current reading position in the file.
-		Buffer: Token[2]; // Lookahead buffer.
-		BufferIndex: ushort;
-		BufferSize: ushort;
-		Progress: uint;
-
-		STATIC is_idfc(c: char) bool :=
-			(c >='a' && c<='z')
-			|| (c >='A' && c <= 'Z')
-			|| (c == '_');
-		STATIC is_digit(c: char) bool :=
-			(c >= '0' && c <= '9');
-		STATIC is_alnum(c: char) bool :=
-			is_digit(c)
-			|| is_idfc(c);
+		# position(
+			line: uint \,
+			column: uint \) VOID
+		{
+			File->position(Read, line, column);
+		}
 
 		parse_next(out: Token \) bool
 		{
 			FOR(skipws(); comment(); skipws()){;}
 
-			out->Content.Start := Read;
+			out->Content.Start := Start := Read;
 			IF(identifier(out)
 			|| number_literal(out)
 			|| string(out)
@@ -155,11 +38,26 @@ INCLUDE 'std/pair'
 			RETURN FALSE;
 		}
 
+	PROTECTED:
+		File: src::File #\; // The source file.
+		Read: src::Index; // The current reading position in the file.
+		Start: src::Index; // Start of the current token.
+
+		STATIC is_idfc(c: char) bool :=
+			(c >='a' && c<='z')
+			|| (c >='A' && c <= 'Z')
+			|| (c == '_');
+		STATIC is_digit(c: char) bool :=
+			(c >= '0' && c <= '9');
+		STATIC is_alnum(c: char) bool :=
+			is_digit(c)
+			|| is_idfc(c);
+
 		# tok_str() std::[char#]Buffer
 			:= File->content(
 				src::String(
-					Buffer[BufferIndex].Content.Start,
-					Read - Buffer[BufferIndex].Content.Start));
+					Start,
+					Read - Start));
 
 		PUBLIC # look() char := look(0);
 		# look(ahead: uint) char
@@ -216,13 +114,6 @@ INCLUDE 'std/pair'
 					line,
 					column,
 					look());
-		}
-
-		# position(
-			line: uint \,
-			column: uint \) VOID
-		{
-			File->position(Read, line, column);
 		}
 
 		comment() bool

@@ -82,42 +82,4 @@ INCLUDE 'std/string'
 	}
 }
 
-::rlc::tok ExpectedToken -> Error
-{
-	Eof: bool;
-	Actual: std::[char]Buffer;
-	Expected: Type;
-
-	CONSTRUCTOR(
-		file: src::File #\,
-		line: uint,
-		column: uint,
-		actual: Token #*,
-		expected: Type):
-		Error(file, line, column),
-		Eof(actual == NULL),
-		Expected(expected)
-	{
-		IF(!Eof)
-			Actual := std::clone(file->content(actual->Content));
-	}
-
-	# OVERRIDE reason(
-		o: std::io::OStream &) VOID
-	{
-		o.write("unexpected ");
-		IF(Eof)
-			o.write("end of file");
-		ELSE
-		{
-			o.write("'");
-			o.write(Actual);
-			o.write("'");
-		}
-		o.write(": expected ");
-		o.write(Expected.NAME());
-	}
-}
-
-
 ::libc::itoa EXTERN sprintf(char \, char #\, int) int;

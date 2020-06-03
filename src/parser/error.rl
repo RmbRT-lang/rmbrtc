@@ -10,7 +10,6 @@ INCLUDE 'std/string'
 	TokenContent: std::[char]Buffer[2];
 	TokenCount: uint;
 	Context: std::Utf8;
-	Reason: char #\;
 
 	CONSTRUCTOR(
 		file: src::File #\,
@@ -19,14 +18,12 @@ INCLUDE 'std/string'
 		tokens: tok::Token#[2]&,
 		tokenIndex: uint,
 		tokenCount: uint,
-		p: Parser#&,
-		reason: char#\):
+		p: Parser#&):
 		File(std::Utf8(file->Name)),
 		Line(line),
 		Column(column),
 		TokenCount(tokenCount),
-		Context(p.context()),
-		Reason(reason)
+		Context(p.context())
 	{
 		IF(tokenCount)
 		{
@@ -40,6 +37,8 @@ INCLUDE 'std/string'
 
 		}
 	}
+
+	# ABSTRACT reason(std::io::OStream &) VOID;
 
 	PRIVATE STATIC itoa(i: int) char#\
 	{
@@ -70,8 +69,53 @@ INCLUDE 'std/string'
 		o.write(" in ");
 		o.write(Context.content());
 		o.write(": ");
-		o.write(Reason);
+		reason(o);
 		o.write(".\n");
+	}
+}
+
+::rlc::parser ReasonError -> Error
+{
+	Reason: std::Utf8;
+
+	CONSTRUCTOR(
+		file: src::File #\,
+		line: uint,
+		column: uint,
+		tokens: tok::Token#[2]&,
+		tokenIndex: uint,
+		tokenCount: uint,
+		p: Parser#&,
+		reason: char #\):
+		Error(file, line, column, tokens, tokenIndex, tokenCount, p),
+		Reason(reason, std::cstring);
+
+	# FINAL reason(o: std::io::OStream &) VOID
+	{
+		o.write(Reason.content());
+	}
+}
+::rlc::parser ExpectedToken -> Error
+{
+	Expected: tok::Type;
+
+	CONSTRUCTOR(
+		file: src::File #\,
+		line: uint,
+		column: uint,
+		tokens: tok::Token#[2]&,
+		tokenIndex: uint,
+		tokenCount: uint,
+		p: Parser#&,
+		expected: tok::Type):
+		Error(file, line, column, tokens, tokenIndex, tokenCount, p),
+		Expected(expected);
+
+	# OVERRIDE reason(
+		o: std::io::OStream &) VOID
+	{
+		o.write("expected ");
+		o.write(Expected.NAME());
 	}
 }
 
