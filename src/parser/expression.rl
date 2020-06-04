@@ -121,7 +121,7 @@ INCLUDE "type.rl"
 
 		Char: src::String;
 
-		parse(p: Parser &) bool := p.consume(tok::Type::numberLiteral, &Char);
+		parse(p: Parser &) bool := p.consume(tok::Type::stringApostrophe, &Char);
 	}
 
 	StringExpression -> Expression
@@ -130,7 +130,7 @@ INCLUDE "type.rl"
 
 		String: src::String;
 
-		parse(p: Parser &) bool := p.consume(tok::Type::numberLiteral, &String);
+		parse(p: Parser &) bool := p.consume(tok::Type::stringQuote, &String);
 	}
 
 	ENUM Operator
