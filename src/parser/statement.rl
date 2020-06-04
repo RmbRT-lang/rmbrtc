@@ -11,6 +11,7 @@ INCLUDE 'std/memory'
 	{
 		block,
 		if,
+		variable,
 		expression,
 		return
 	}
@@ -29,6 +30,12 @@ INCLUDE 'std/memory'
 
 			{
 				v: IfStatement;
+				IF(v.parse(p))
+					RETURN std::dup(__cpp_std::move(v));
+			}
+
+			{
+				v: VariableStatement;
 				IF(v.parse(p))
 					RETURN std::dup(__cpp_std::move(v));
 			}
@@ -177,6 +184,22 @@ INCLUDE 'std/memory'
 					p.fail("expected statement");
 			}
 
+			RETURN TRUE;
+		}
+	}
+
+	VariableStatement -> Statement
+	{
+		Variable: LocalVariable;
+
+		# FINAL type() StatementType := StatementType::variable;
+
+		parse(p: Parser &) bool
+		{
+			IF(!Variable.parse(p))
+				RETURN FALSE;
+
+			p.expect(tok::Type::semicolon);
 			RETURN TRUE;
 		}
 	}
