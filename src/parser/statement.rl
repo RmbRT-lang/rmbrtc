@@ -11,7 +11,8 @@ INCLUDE 'std/memory'
 	{
 		block,
 		if,
-		expression
+		expression,
+		return
 	}
 
 	Statement
@@ -34,6 +35,12 @@ INCLUDE 'std/memory'
 
 			{
 				v: ExpressionStatement;
+				IF(v.parse(p))
+					RETURN std::dup(__cpp_std::move(v));
+			}
+
+			{
+				v: ReturnStatement;
 				IF(v.parse(p))
 					RETURN std::dup(__cpp_std::move(v));
 			}
@@ -186,6 +193,27 @@ INCLUDE 'std/memory'
 				RETURN FALSE;
 
 			p.expect(tok::Type::semicolon);
+			RETURN TRUE;
+		}
+	}
+
+	ReturnStatement -> Statement
+	{
+		Expression: std::[parser::Expression]Dynamic;
+
+		# FINAL type() StatementType := StatementType::return;
+
+		# is_void() INLINE bool := Expression.Ptr == NULL;
+
+		parse(p: Parser &) bool
+		{
+			IF(!p.consume(tok::Type::return))
+				RETURN FALSE;
+
+			Expression := parser::Expression::parse(p);
+
+			p.expect(tok::Type::semicolon);
+
 			RETURN TRUE;
 		}
 	}
