@@ -28,12 +28,12 @@ INCLUDE 'std/string'
 		IF(tokenCount)
 		{
 			Tokens[0] := tokens[tokenIndex];
-			TokenContent[0] := std::clone(file->content(tokens[0].Content));
+			TokenContent[0] := std::clone(file->content(Tokens[0].Content));
 		}
 		IF(tokenCount == 2)
 		{
 			Tokens[1] := tokens[tokenIndex^1];
-			TokenContent[1] := std::clone(file->content(tokens[1].Content));
+			TokenContent[1] := std::clone(file->content(Tokens[1].Content));
 
 		}
 	}
