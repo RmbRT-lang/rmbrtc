@@ -38,7 +38,8 @@ INCLUDE "statement.rl"
 		IsShortBody(move.IsShortBody),
 		Body(move.Body),
 		IsInline(move.IsInline),
-		IsCoroutine(move.IsCoroutine)
+		IsCoroutine(move.IsCoroutine),
+		Name(move.Name)
 	{
 		IF(move.IsShortBody)
 			move.Body.Expression := NULL;
@@ -64,14 +65,12 @@ INCLUDE "statement.rl"
 		p: Parser &,
 		allow_body: bool) bool
 	{
-		name: tok::Token;
 		IF(!p.match_ahead(tok::Type::parentheseOpen)
-		|| !p.consume(tok::Type::identifier, &name))
+		|| !p.consume(tok::Type::identifier, &Name))
 			RETURN FALSE;
 
 		t: Trace(&p, "function");
-		Name := name.Content;
-		p.consume(NULL);
+		p.expect(tok::Type::parentheseOpen);
 
 		IF(!p.consume(tok::Type::parentheseClose))
 		{
@@ -100,7 +99,7 @@ INCLUDE "statement.rl"
 		body: BlockStatement;
 		IF(body.parse(p))
 		{
-			Body.Statement := [TYPE(body)]new(__cpp_std::move(body));
+			Body.Statement := std::dup(__cpp_std::move(body));
 			IsShortBody := FALSE;
 		} ELSE
 			IsShortBody := TRUE;
