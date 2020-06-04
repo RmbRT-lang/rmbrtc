@@ -13,7 +13,9 @@ INCLUDE 'std/memory'
 		if,
 		variable,
 		expression,
-		return
+		return,
+		try,
+		catch
 	}
 
 	Statement
@@ -48,6 +50,12 @@ INCLUDE 'std/memory'
 
 			{
 				v: ReturnStatement;
+				IF(v.parse(p))
+					RETURN std::dup(__cpp_std::move(v));
+			}
+
+			{
+				v: TryStatement;
 				IF(v.parse(p))
 					RETURN std::dup(__cpp_std::move(v));
 			}
@@ -236,6 +244,74 @@ INCLUDE 'std/memory'
 			Expression := parser::Expression::parse(p);
 
 			p.expect(tok::Type::semicolon);
+
+			RETURN TRUE;
+		}
+	}
+
+	TryStatement -> Statement
+	{
+		Body: std::[Statement]Dynamic;
+		Catches: std::[CatchStatement]Vector;
+		Finally: std::[Statement]Dynamic;
+
+		# FINAL type() StatementType := StatementType::try;
+
+		# has_finally() INLINE bool := Finally.Ptr != NULL;
+
+		parse(p: Parser &) bool
+		{
+			IF(!p.consume(tok::Type::try))
+				RETURN FALSE;
+
+			IF(!(Body := Statement::parse(p)).Ptr)
+				RETURN FALSE;
+
+			FOR(catch: CatchStatement; catch.parse(p);)
+				Catches.push_back(__cpp_std::move(catch));
+
+			IF(p.consume(tok::Type::finally))
+				IF(!(Finally := parser::Statement::parse(p)).Ptr)
+					p.fail("expected statement");
+			ELSE
+				Finally := NULL;
+
+			RETURN TRUE;
+		}
+	}
+
+	CatchStatement -> Statement
+	{
+		IsVoid: bool;
+		Exception: LocalVariable;
+		Body: std::[Statement]Dynamic;
+
+		# FINAL type() StatementType := StatementType::catch;
+
+		parse(p: Parser &) bool
+		{
+			IF(!p.consume(tok::Type::catch))
+				RETURN FALSE;
+
+			t: Trace(&p, "catch clause");
+
+			p.expect(tok::Type::parentheseOpen);
+			IF(p.match(tok::Type::parentheseClose)
+			|| (p.match(tok::Type::void)
+				&& p.match_ahead(tok::Type::parentheseClose)))
+			{
+				IsVoid := TRUE;
+			} ELSE
+			{
+				IsVoid := FALSE;
+
+				IF(!Exception.parse(p))
+					p.fail("expected variable");
+			}
+			p.expect(tok::Type::parentheseClose);
+
+			IF(!(Body := Statement::parse(p)).Ptr)
+				p.fail("expected statement");
 
 			RETURN TRUE;
 		}
