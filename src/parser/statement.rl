@@ -10,7 +10,8 @@ INCLUDE 'std/memory'
 	ENUM StatementType
 	{
 		block,
-		if
+		if,
+		expression
 	}
 
 	Statement
@@ -27,6 +28,12 @@ INCLUDE 'std/memory'
 
 			{
 				v: IfStatement;
+				IF(v.parse(p))
+					RETURN std::dup(__cpp_std::move(v));
+			}
+
+			{
+				v: ExpressionStatement;
 				IF(v.parse(p))
 					RETURN std::dup(__cpp_std::move(v));
 			}
@@ -163,6 +170,22 @@ INCLUDE 'std/memory'
 					p.fail("expected statement");
 			}
 
+			RETURN TRUE;
+		}
+	}
+
+	ExpressionStatement -> Statement
+	{
+		Expression: std::[parser::Expression]Dynamic;
+
+		# FINAL type() StatementType := StatementType::expression;
+
+		parse(p: Parser &) bool
+		{
+			IF(!(Expression := parser::Expression::parse(p)).Ptr)
+				RETURN FALSE;
+
+			p.expect(tok::Type::semicolon);
 			RETURN TRUE;
 		}
 	}
