@@ -6,11 +6,6 @@ INCLUDE "parser/function.rl"
 INCLUDE "parser/namespace.rl"
 INCLUDE 'std/io/file'
 
-::namespace {}
-
-a: VOID* := &b;
-b: VOID* := &a;
-
 main(
 	argc: int,
 	argv: char **) int
