@@ -15,7 +15,8 @@ INCLUDE 'std/memory'
 		expression,
 		return,
 		try,
-		catch
+		catch,
+		loop
 	}
 
 	Statement
@@ -56,6 +57,12 @@ INCLUDE 'std/memory'
 
 			{
 				v: TryStatement;
+				IF(v.parse(p))
+					RETURN std::dup(__cpp_std::move(v));
+			}
+
+			{
+				v: LoopStatement;
 				IF(v.parse(p))
 					RETURN std::dup(__cpp_std::move(v));
 			}
@@ -314,6 +321,110 @@ INCLUDE 'std/memory'
 				p.fail("expected statement");
 
 			RETURN TRUE;
+		}
+	}
+
+	LoopStatement -> Statement
+	{
+		IsPostCondition: bool;
+		IsVariableCondition: bool;
+		IsVariableInitial: bool;
+		Initial: VarOrExp;
+		Condition: VarOrExp;
+		Body: std::[Statement]Dynamic;
+		PostLoop: std::[Expression]Dynamic;
+
+		# FINAL type() StatementType := StatementType::loop;
+
+		parse(p: Parser &) bool
+		{
+			IF(!p.match(tok::Type::do)
+			&& !p.match(tok::Type::for)
+			&& !p.match(tok::Type::while))
+				RETURN FALSE;
+
+			parse_loop_head(p);
+
+			RETURN TRUE;
+		}
+
+	PRIVATE:
+		parse_loop_head(p: Parser &) VOID
+		{
+			IsPostCondition := FALSE;
+			IF(!parse_do_head(p)
+			&& !parse_for_head(p)
+			&& !parse_while_head(p))
+				p.fail("expected loop head");
+		}
+
+		parse_do_head(p: Parser &) bool
+		{
+			IF(!p.consume(tok::Type::do))
+				RETURN FALSE;
+
+			IsPostCondition := TRUE;
+			p.expect(tok::Type::parentheseOpen);
+			parse_initial(p);
+			p.expect(tok::Type::parentheseClose);
+
+			RETURN TRUE;
+		}
+
+		parse_for_head(p: Parser &) bool
+		{
+			IF(!p.consume(tok::Type::for))
+				RETURN FALSE;
+
+			p.expect(tok::Type::parentheseOpen);
+
+			IF(!IsPostCondition)
+			{
+				parse_initial(p);
+				p.expect(tok::Type::semicolon);
+			}
+
+			IF(!p.consume(tok::Type::semicolon))
+			{
+				parse_condition(p);
+				p.expect(tok::Type::semicolon);
+			}
+
+			PostLoop := Expression::parse(p);
+
+			p.expect(tok::Type::parentheseClose);
+			RETURN TRUE;
+		}
+
+		parse_while_head(p: Parser &) bool
+		{
+			IF(!p.consume(tok::Type::while))
+				RETURN FALSE;
+
+			p.expect(tok::Type::parentheseOpen);
+
+			v: VarOrExp;
+			v.parse(p);
+			IF(p.consume(tok::Type::semicolon))
+			{
+				Initial := __cpp_std::move(v);
+				v.parse(p);
+			}
+
+			Condition := __cpp_std::move(v);
+
+			p.expect(tok::Type::parentheseClose);
+			RETURN TRUE;
+		}
+
+		parse_initial(p: Parser &) VOID
+		{
+			Initial.parse(p);
+		}
+
+		parse_condition(p: Parser &) VOID
+		{
+			Condition.parse(p);
 		}
 	}
 }
