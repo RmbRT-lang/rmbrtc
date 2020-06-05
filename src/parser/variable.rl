@@ -188,4 +188,6 @@ INCLUDE 'std/vector'
 		# FINAL type() Member::Type := Member::Type::variable;
 		parse(p: Parser&) INLINE ::= Variable::parse_var_decl(p);
 	}
+
+	TYPE LocalVariable := GlobalVariable;
 }
