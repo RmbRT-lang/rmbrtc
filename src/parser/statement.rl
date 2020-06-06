@@ -16,6 +16,7 @@ INCLUDE 'std/memory'
 		return,
 		try,
 		catch,
+		throw,
 		loop
 	}
 
@@ -57,6 +58,12 @@ INCLUDE 'std/memory'
 
 			{
 				v: TryStatement;
+				IF(v.parse(p))
+					RETURN std::dup(__cpp_std::move(v));
+			}
+
+			{
+				v: ThrowStatement;
 				IF(v.parse(p))
 					RETURN std::dup(__cpp_std::move(v));
 			}
@@ -319,6 +326,41 @@ INCLUDE 'std/memory'
 
 			IF(!(Body := Statement::parse(p)).Ptr)
 				p.fail("expected statement");
+
+			RETURN TRUE;
+		}
+	}
+
+	ThrowStatement -> Statement
+	{
+		ENUM Type
+		{
+			rethrow,
+			void,
+			value
+		}
+
+		ValueType: Type;
+		Value: std::[Expression]Dynamic;
+
+		# FINAL type() StatementType := StatementType::throw;
+
+		parse(p: Parser &) bool
+		{
+			IF(!p.consume(tok::Type::throw))
+				RETURN FALSE;
+
+			IF(p.consume(tok::Type::tripleDot))
+				ValueType := Type::rethrow;
+			ELSE IF(p.match(tok::Type::semicolon))
+				ValueType := Type::void;
+			ELSE
+				IF((Value := Expression::parse(p)).Ptr)
+					ValueType := Type::value;
+				ELSE
+					p.fail("expected expression");
+
+			p.expect(tok::Type::semicolon);
 
 			RETURN TRUE;
 		}
