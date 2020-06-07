@@ -1,10 +1,14 @@
 INCLUDE "../tokeniser/tokeniser.rl"
 INCLUDE "error.rl"
+INCLUDE 'std/tags'
 
 ::rlc::parser
 {
 	Parser
 	{
+		std::NoCopy;
+		std::NoMove;
+
 		CONSTRUCTOR(
 			file: src::File #\):
 			File(file),
