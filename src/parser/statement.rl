@@ -17,7 +17,9 @@ INCLUDE 'std/memory'
 		try,
 		catch,
 		throw,
-		loop
+		loop,
+		switch,
+		case
 	}
 
 	Statement
@@ -481,6 +483,72 @@ INCLUDE 'std/memory'
 		parse_condition(p: Parser &) VOID
 		{
 			Condition.parse(p);
+		}
+	}
+
+	SwitchStatement -> Statement
+	{
+		Initial: VarOrExp;
+		Value: VarOrExp;
+		Cases: std::[CaseStatement]Vector;
+
+		# FINAL type() StatementType := StatementType::switch;
+
+		parse(p: Parser &) bool
+		{
+			IF(!p.consume(tok::Type::switch))
+				RETURN FALSE;
+
+			p.expect(tok::Type::parentheseOpen);
+
+			val: VarOrExp;
+			val.parse(p);
+
+			IF(p.consume(tok::Type::semicolon))
+			{
+				Initial := __cpp_std::move(val);
+				Value.parse(p);
+			} ELSE
+				Value := __cpp_std::move(val);
+
+			p.expect(tok::Type::parentheseClose);
+			p.expect(tok::Type::braceOpen);
+
+			case: CaseStatement;
+			WHILE(case.parse(p))
+				Cases.push_back(__cpp_std::move(case));
+
+			p.expect(tok::Type::braceClose);
+
+			RETURN TRUE;
+		}
+	}
+
+	CaseStatement -> Statement
+	{
+		Values: std::[std::[Expression]Dynamic]Vector;
+		Body: std::[Statement]Dynamic;
+
+		# FINAL type() StatementType := StatementType::case;
+		# is_default() bool := Values.empty();
+
+		parse(p: Parser &) bool
+		{
+			IF(p.consume(tok::Type::case))
+			{
+				DO(value: Expression *)
+				{
+					IF(!(value := Expression::parse(p)))
+						p.fail("expected expression");
+					Values.push_back(value);
+				} WHILE(p.consume(tok::Type::comma))
+			} ELSE
+				IF(!p.consume(tok::Type::default))
+					RETURN FALSE;
+
+			p.expect(tok::Type::colon);
+
+			RETURN TRUE;
 		}
 	}
 }
