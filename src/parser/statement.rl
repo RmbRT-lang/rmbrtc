@@ -19,64 +19,46 @@ INCLUDE 'std/memory'
 		throw,
 		loop,
 		switch,
-		case
+		case,
+		break,
+		continue
 	}
 
 	Statement
 	{
 		# ABSTRACT type() StatementType;
 
+		[T: TYPE]
+		PRIVATE STATIC parse_impl(p: Parser &, out: Statement * &) bool
+		{
+			v: T;
+			IF(v.parse(p))
+			{
+				out := std::dup(__cpp_std::move(v));
+				RETURN TRUE;
+			}
+			RETURN FALSE;
+		}
+
 		STATIC parse(p: Parser&) Statement *
 		{
-			{
-				v: BlockStatement;
-				IF(v.parse(p))
-					RETURN std::dup(__cpp_std::move(v));
-			}
-
-			{
-				v: IfStatement;
-				IF(v.parse(p))
-					RETURN std::dup(__cpp_std::move(v));
-			}
-
-			{
-				v: VariableStatement;
-				IF(v.parse(p))
-					RETURN std::dup(__cpp_std::move(v));
-			}
-
-			{
-				v: ExpressionStatement;
-				IF(v.parse(p))
-					RETURN std::dup(__cpp_std::move(v));
-			}
-
-			{
-				v: ReturnStatement;
-				IF(v.parse(p))
-					RETURN std::dup(__cpp_std::move(v));
-			}
-
-			{
-				v: TryStatement;
-				IF(v.parse(p))
-					RETURN std::dup(__cpp_std::move(v));
-			}
-
-			{
-				v: ThrowStatement;
-				IF(v.parse(p))
-					RETURN std::dup(__cpp_std::move(v));
-			}
-
-			{
-				v: LoopStatement;
-				IF(v.parse(p))
-					RETURN std::dup(__cpp_std::move(v));
-			}
-
-			RETURN NULL;
+			ret: Statement *;
+			IF([BlockStatement]parse_impl(p, ret)
+			|| [IfStatement]parse_impl(p, ret)
+			|| [VariableStatement]parse_impl(p, ret)
+			|| [ExpressionStatement]parse_impl(p, ret)
+			|| [ReturnStatement]parse_impl(p, ret)
+			|| [TryStatement]parse_impl(p, ret)
+			|| [CatchStatement]parse_impl(p, ret)
+			|| [ThrowStatement]parse_impl(p, ret)
+			|| [LoopStatement]parse_impl(p, ret)
+			|| [SwitchStatement]parse_impl(p, ret)
+			|| [CaseStatement]parse_impl(p, ret)
+			|| [BreakStatement]parse_impl(p, ret)
+			|| [ContinueStatement]parse_impl(p, ret))
+				RETURN ret;
+			ELSE
+				RETURN NULL;
 		}
 	}
 
@@ -548,6 +530,34 @@ INCLUDE 'std/memory'
 
 			p.expect(tok::Type::colon);
 
+			RETURN TRUE;
+		}
+	}
+
+	BreakStatement -> Statement
+	{
+		# FINAL type() StatementType := StatementType::break;
+
+		parse(p: Parser &) bool
+		{
+			IF(!p.consume(tok::Type::break))
+				RETURN FALSE;
+
+			p.expect(tok::Type::semicolon);
+			RETURN TRUE;
+		}
+	}
+
+	ContinueStatement -> Statement
+	{
+		# FINAL type() StatementType := StatementType::continue;
+
+		parse(p: Parser &) bool
+		{
+			IF(!p.consume(tok::Type::continue))
+				RETURN FALSE;
+
+			p.expect(tok::Type::semicolon);
 			RETURN TRUE;
 		}
 	}
