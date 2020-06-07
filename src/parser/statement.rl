@@ -369,8 +369,6 @@ INCLUDE 'std/memory'
 	LoopStatement -> Statement
 	{
 		IsPostCondition: bool;
-		IsVariableCondition: bool;
-		IsVariableInitial: bool;
 		Initial: VarOrExp;
 		Condition: VarOrExp;
 		Body: std::[Statement]Dynamic;
@@ -386,6 +384,14 @@ INCLUDE 'std/memory'
 				RETURN FALSE;
 
 			parse_loop_head(p);
+
+			IF(!(Body := Statement::parse(p)).Ptr)
+				p.fail("expected statement");
+
+			IF(IsPostCondition)
+				IF(!parse_for_head(p)
+				&& !parse_while_head(p))
+					p.fail("expected 'FOR' or 'WHILE'");
 
 			RETURN TRUE;
 		}
@@ -445,15 +451,23 @@ INCLUDE 'std/memory'
 
 			p.expect(tok::Type::parentheseOpen);
 
-			v: VarOrExp;
-			v.parse(p);
-			IF(p.consume(tok::Type::semicolon))
+			IF(!IsPostCondition)
 			{
-				Initial := __cpp_std::move(v);
+				v: VarOrExp;
 				v.parse(p);
-			}
+				IF(p.consume(tok::Type::semicolon))
+				{
+					Initial := __cpp_std::move(v);
+					v.parse(p);
+				}
 
-			Condition := __cpp_std::move(v);
+				Condition := __cpp_std::move(v);
+			} ELSE
+			{
+				Condition.IsVariable := FALSE;
+				IF(!(Condition.Value.Expression := Expression::parse(p)))
+					p.fail("expected expression");
+			}
 
 			p.expect(tok::Type::parentheseClose);
 			RETURN TRUE;
