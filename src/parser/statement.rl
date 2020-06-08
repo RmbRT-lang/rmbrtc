@@ -49,11 +49,29 @@ INCLUDE 'std/memory'
 			|| [ExpressionStatement]parse_impl(p, ret)
 			|| [ReturnStatement]parse_impl(p, ret)
 			|| [TryStatement]parse_impl(p, ret)
-			|| [CatchStatement]parse_impl(p, ret)
 			|| [ThrowStatement]parse_impl(p, ret)
 			|| [LoopStatement]parse_impl(p, ret)
 			|| [SwitchStatement]parse_impl(p, ret)
 			|| [CaseStatement]parse_impl(p, ret)
+			|| [BreakStatement]parse_impl(p, ret)
+			|| [ContinueStatement]parse_impl(p, ret))
+				RETURN ret;
+			ELSE
+				RETURN NULL;
+		}
+
+		(// A single statement, such as a loop's body or an if/else clause. /)
+		STATIC parse_body(p: Parser &) Statement *
+		{
+			ret: Statement *;
+			IF([BlockStatement]parse_impl(p, ret)
+			|| [IfStatement]parse_impl(p, ret)
+			|| [ExpressionStatement]parse_impl(p, ret)
+			|| [ReturnStatement]parse_impl(p, ret)
+			|| [TryStatement]parse_impl(p, ret)
+			|| [ThrowStatement]parse_impl(p, ret)
+			|| [LoopStatement]parse_impl(p, ret)
+			|| [SwitchStatement]parse_impl(p, ret)
 			|| [BreakStatement]parse_impl(p, ret)
 			|| [ContinueStatement]parse_impl(p, ret))
 				RETURN ret;
@@ -181,12 +199,12 @@ INCLUDE 'std/memory'
 
 			p.expect(tok::Type::parentheseClose);
 
-			IF(!(Then := Statement::parse(p)).Ptr)
+			IF(!(Then := Statement::parse_body(p)).Ptr)
 				p.fail("expected statement");
 
 			IF(p.consume(tok::Type::else))
 			{
-				IF(!(Else := Statement::parse(p)).Ptr)
+				IF(!(Else := Statement::parse_body(p)).Ptr)
 					p.fail("expected statement");
 			}
 
@@ -262,14 +280,14 @@ INCLUDE 'std/memory'
 			IF(!p.consume(tok::Type::try))
 				RETURN FALSE;
 
-			IF(!(Body := Statement::parse(p)).Ptr)
+			IF(!(Body := Statement::parse_body(p)).Ptr)
 				RETURN FALSE;
 
 			FOR(catch: CatchStatement; catch.parse(p);)
 				Catches.push_back(__cpp_std::move(catch));
 
 			IF(p.consume(tok::Type::finally))
-				IF(!(Finally := parser::Statement::parse(p)).Ptr)
+				IF(!(Finally := parser::Statement::parse_body(p)).Ptr)
 					p.fail("expected statement");
 			ELSE
 				Finally := NULL;
@@ -308,7 +326,7 @@ INCLUDE 'std/memory'
 			}
 			p.expect(tok::Type::parentheseClose);
 
-			IF(!(Body := Statement::parse(p)).Ptr)
+			IF(!(Body := Statement::parse_body(p)).Ptr)
 				p.fail("expected statement");
 
 			RETURN TRUE;
@@ -369,7 +387,7 @@ INCLUDE 'std/memory'
 
 			parse_loop_head(p);
 
-			IF(!(Body := Statement::parse(p)).Ptr)
+			IF(!(Body := Statement::parse_body(p)).Ptr)
 				p.fail("expected statement");
 
 			IF(IsPostCondition)
@@ -529,6 +547,8 @@ INCLUDE 'std/memory'
 					RETURN FALSE;
 
 			p.expect(tok::Type::colon);
+
+			Body := Statement::parse_body(p);
 
 			RETURN TRUE;
 		}
