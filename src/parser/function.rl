@@ -127,4 +127,5 @@ INCLUDE "statement.rl"
 ::rlc::parser MemberFunction -> Member, Function
 {
 	# FINAL type() Member::Type := Member::Type::function;
+	parse(p: Parser&) INLINE bool := Function::parse(p, TRUE);
 }
