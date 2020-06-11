@@ -4,6 +4,7 @@ INCLUDE "parser/typedef.rl"
 INCLUDE "parser/type.rl"
 INCLUDE "parser/function.rl"
 INCLUDE "parser/namespace.rl"
+INCLUDE "parser/class.rl"
 INCLUDE 'std/io/file'
 
 main(

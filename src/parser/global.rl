@@ -12,7 +12,8 @@ INCLUDE "function.rl"/)
 		namespace,
 		typedef,
 		function,
-		variable
+		variable,
+		class
 	}
 	# ABSTRACT type() Global::Type;
 	# FINAL category() ScopeItem::Category := ScopeItem::Category::global;
