@@ -26,13 +26,18 @@
 	) Member *
 	{
 		visibility ::= parse_visibility(p, default_visibility);
+		templates: TemplateDecl;
+		templates.parse(p);
 		ret: Member * := NULL;
 
 		IF([MemberTypedef]parse_impl(p, ret)
 		|| [MemberFunction]parse_impl(p, ret)
 		|| [MemberVariable]parse_impl(p, ret)
 		|| [MemberClass]parse_impl(p, ret))
+		{
 			ret->Visibility := visibility;
+			ret->Templates := __cpp_std::move(templates);
+		}
 
 		RETURN ret;
 	}
@@ -43,12 +48,17 @@
 	) Member *
 	{
 		visibility ::= parse_visibility(p, default_visibility);
+		templates: TemplateDecl;
+		templates.parse(p);
 		ret: Member * := NULL;
 
 		IF([MemberTypedef]parse_impl(p, ret)
 		|| [MemberFunction]parse_impl(p, ret)
 		|| [MemberClass]parse_impl(p, ret))
+		{
 			ret->Visibility := visibility;
+			ret->Templates := __cpp_std::move(templates);
+		}
 
 		RETURN ret;
 	}
