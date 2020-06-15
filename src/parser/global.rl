@@ -13,7 +13,8 @@ INCLUDE "function.rl"/)
 		typedef,
 		function,
 		variable,
-		class
+		class,
+		rawtype
 	}
 	# ABSTRACT type() Global::Type;
 	# FINAL category() ScopeItem::Category := ScopeItem::Category::global;
@@ -28,7 +29,8 @@ INCLUDE "function.rl"/)
 		|| [GlobalTypedef]parse_impl(p, ret)
 		|| [GlobalFunction]parse_impl(p, ret)
 		|| [GlobalVariable]parse_impl(p, ret)
-		|| [GlobalClass]parse_impl(p, ret))
+		|| [GlobalClass]parse_impl(p, ret)
+		|| [GlobalRawtype]parse_impl(p, ret))
 		{
 			ret->Templates := __cpp_std::move(templates);
 		}

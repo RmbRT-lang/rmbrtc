@@ -15,7 +15,8 @@
 		typedef,
 		function,
 		variable,
-		class
+		class,
+		rawtype
 	}
 
 	# ABSTRACT type() Member::Type;
@@ -34,7 +35,8 @@
 		IF([MemberTypedef]parse_impl(p, ret)
 		|| [MemberFunction]parse_impl(p, ret)
 		|| [MemberVariable]parse_impl(p, ret)
-		|| [MemberClass]parse_impl(p, ret))
+		|| [MemberClass]parse_impl(p, ret)
+		|| [MemberRawtype]parse_impl(p, ret))
 		{
 			ret->Visibility := visibility;
 			ret->Templates := __cpp_std::move(templates);
@@ -56,7 +58,8 @@
 
 		IF([MemberTypedef]parse_impl(p, ret)
 		|| [MemberFunction]parse_impl(p, ret)
-		|| [MemberClass]parse_impl(p, ret))
+		|| [MemberClass]parse_impl(p, ret)
+		|| [MemberRawtype]parse_impl(p, ret))
 		{
 			ret->Visibility := visibility;
 			ret->Templates := __cpp_std::move(templates);
