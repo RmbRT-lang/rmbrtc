@@ -25,9 +25,10 @@
 		default_visibility: rlc::Visibility &
 	) Member *
 	{
-		visibility ::= parse_visibility(p, default_visibility);
+		parse_visibility(p, default_visibility, TRUE);
 		templates: TemplateDecl;
 		templates.parse(p);
+		visibility ::= parse_visibility(p, default_visibility, FALSE);
 		ret: Member * := NULL;
 
 		IF([MemberTypedef]parse_impl(p, ret)
@@ -47,9 +48,10 @@
 		default_visibility: rlc::Visibility &
 	) Member *
 	{
-		visibility ::= parse_visibility(p, default_visibility);
+		parse_visibility(p, default_visibility, TRUE);
 		templates: TemplateDecl;
 		templates.parse(p);
+		visibility ::= parse_visibility(p, default_visibility, FALSE);
 		ret: Member * := NULL;
 
 		IF([MemberTypedef]parse_impl(p, ret)
@@ -76,9 +78,11 @@ PRIVATE:
 		RETURN FALSE;
 	}
 
+
 	STATIC parse_visibility(
 		p: Parser&,
-		default_visibility: rlc::Visibility &
+		default_visibility: rlc::Visibility &,
+		global: bool
 	) rlc::Visibility
 	{
 		STATIC lookup: std::[tok::Type, rlc::Visibility]Pair#[](
@@ -87,6 +91,9 @@ PRIVATE:
 			std::pair(tok::Type::private, Visibility::private));
 
 		visibility ::= default_visibility;
+
+		IF(global != p.match_ahead(tok::Type::colon))
+			RETURN visibility;
 
 		DO(found ::= FALSE)
 		{
