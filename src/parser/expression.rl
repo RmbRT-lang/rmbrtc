@@ -1,6 +1,7 @@
 INCLUDE "symbol.rl"
 INCLUDE "parser.rl"
 INCLUDE "type.rl"
+INCLUDE 'std/vector'
 
 ::rlc::parser
 {

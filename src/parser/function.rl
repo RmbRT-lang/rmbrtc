@@ -5,61 +5,55 @@ INCLUDE "variable.rl"
 INCLUDE "templatedecl.rl"
 INCLUDE "statement.rl"
 
-::rlc::parser UNION ExprOrStmt
+INCLUDE 'std/tags'
+
+::rlc::parser::detail UNION ExprOrStmt
 {
 	Expression: parser::Expression *;
 	Statement: parser::Statement *;
 }
 
+::rlc::parser ExprOrStmt -> ::std::[ExprOrStmt]AutoMoveAssign
+{
+	Value: detail::ExprOrStmt;
+	IsStmt: bool;
+
+	std::NoCopy;
+
+	CONSTRUCTOR():
+		IsStmt(FALSE)
+	{
+		Value.Expression := NULL;
+	}
+	CONSTRUCTOR(move: ExprOrStmt &&):
+		Value(move.Value),
+		IsStmt(move.IsStmt)
+	{
+		move.CONSTRUCTOR();
+	}
+
+	DESTRUCTOR
+	{
+		IF(IsStmt)
+		{
+			IF(Value.Statement)
+				::delete(Value.Statement);
+		} ELSE
+			IF(Value.Expression)
+				::delete(Value.Expression);
+	}
+}
+
 ::rlc::parser Function -> VIRTUAL ScopeItem
 {
-	Templates: TemplateDecl;
 	Arguments: std::[GlobalVariable]Vector;
 	Return: std::[Type]Dynamic;
-	IsShortBody: bool;
 	Body: ExprOrStmt;
 	IsInline: bool;
 	IsCoroutine: bool;
 	Name: src::String;
 
 	# FINAL name() src::String#& := Name;
-
-	CONSTRUCTOR():
-		IsShortBody(FALSE)
-	{
-		Body.Statement := NULL;
-	}
-
-	CONSTRUCTOR(
-		move: Function&&):
-		Templates(__cpp_std::move(move.Templates)),
-		Arguments(__cpp_std::move(move.Arguments)),
-		Return(__cpp_std::move(move.Return)),
-		IsShortBody(move.IsShortBody),
-		Body(move.Body),
-		IsInline(move.IsInline),
-		IsCoroutine(move.IsCoroutine),
-		Name(move.Name)
-	{
-		IF(move.IsShortBody)
-			move.Body.Expression := NULL;
-		ELSE
-			move.Body.Statement := NULL;
-	}
-
-	DESTRUCTOR
-	{
-		IF(IsShortBody)
-		{
-			IF(Body.Expression)
-				::delete(Body.Expression);
-		} ELSE
-		{
-			IF(Body.Statement)
-				::delete(Body.Statement);
-		}
-
-	}
 
 	parse(
 		p: Parser &,
@@ -97,20 +91,16 @@ INCLUDE "statement.rl"
 			}
 
 		body: BlockStatement;
-		IF(body.parse(p))
+		IF(Body.IsStmt := body.parse(p))
 		{
-			Body.Statement := std::dup(__cpp_std::move(body));
-			IsShortBody := FALSE;
+			Body.Value.Statement := std::dup(__cpp_std::move(body));
 		} ELSE
-			IsShortBody := TRUE;
-
-		IF(IsShortBody)
 		{
 			p.expect(Return.Ptr
 				? tok::Type::colonEqual
 				: tok::Type::doubleColonEqual);
 
-			Body.Expression := Expression::parse(p);
+			Body.Value.Expression := Expression::parse(p);
 			p.expect(tok::Type::semicolon);
 		}
 
