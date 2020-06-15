@@ -20,30 +20,32 @@ INCLUDE "function.rl"/)
 
 	STATIC parse(p: Parser &) Global *
 	{
+		templates: TemplateDecl;
+		templates.parse(p);
+
+		ret: Global * := NULL;
+		IF([Namespace]parse_impl(p, ret)
+		|| [GlobalTypedef]parse_impl(p, ret)
+		|| [GlobalFunction]parse_impl(p, ret)
+		|| [GlobalVariable]parse_impl(p, ret)
+		|| [GlobalClass]parse_impl(p, ret))
 		{
-			v: Namespace;
-			IF(v.parse(p))
-				RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-		}
-		{
-			v: GlobalTypedef;
-			IF(v.parse(p))
-				RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-		}
-		{
-			v: GlobalVariable;
-			IF(v.parse_var_decl(p))
-			{
-				p.expect(tok::Type::semicolon);
-				RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-			}
-		}
-		{
-			v: GlobalFunction;
-			IF(v.parse(p))
-				RETURN ::[TYPE(v)]new(__cpp_std::move(v));
+			ret->Templates := __cpp_std::move(templates);
 		}
 
-		RETURN NULL;
+		RETURN ret;
+	}
+
+PRIVATE:
+	[T: TYPE]
+	STATIC parse_impl(p: Parser &, ret: Global * &) bool
+	{
+		v: T;
+		IF(v.parse(p))
+		{
+			ret := ::std::dup(__cpp_std::move(v));
+			RETURN TRUE;
+		}
+		RETURN FALSE;
 	}
 }
