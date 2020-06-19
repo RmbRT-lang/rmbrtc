@@ -5,7 +5,7 @@ INCLUDE "variable.rl"
 INCLUDE "templatedecl.rl"
 INCLUDE "statement.rl"
 
-INCLUDE 'std/tags'
+INCLUDE 'std/help'
 
 ::rlc::parser::detail UNION ExprOrStmt
 {
@@ -13,7 +13,7 @@ INCLUDE 'std/tags'
 	Statement: parser::Statement *;
 }
 
-::rlc::parser ExprOrStmt -> ::std::[ExprOrStmt]AutoMoveAssign
+::rlc::parser ExprOrStmt
 {
 	Value: detail::ExprOrStmt;
 	IsStmt: bool;
@@ -31,6 +31,9 @@ INCLUDE 'std/tags'
 	{
 		move.CONSTRUCTOR();
 	}
+
+	ASSIGN(move: ExprOrStmt &&) ExprOrStmt &
+		:= std::help::move_assign(*THIS, move);
 
 	DESTRUCTOR
 	{
