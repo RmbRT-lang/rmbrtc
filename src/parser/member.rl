@@ -17,7 +17,9 @@
 		variable,
 		class,
 		rawtype,
-		union
+		union,
+		enum,
+		enumConstant
 	}
 
 	# ABSTRACT type() Member::Type;
@@ -38,7 +40,8 @@
 		|| [MemberVariable]parse_impl(p, ret)
 		|| [MemberClass]parse_impl(p, ret)
 		|| [MemberRawtype]parse_impl(p, ret)
-		|| [MemberUnion]parse_impl(p, ret))
+		|| [MemberUnion]parse_impl(p, ret)
+		|| [MemberEnum]parse_impl(p, ret))
 		{
 			ret->Visibility := visibility;
 			ret->Templates := __cpp_std::move(templates);

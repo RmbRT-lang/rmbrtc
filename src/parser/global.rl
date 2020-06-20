@@ -15,7 +15,8 @@ INCLUDE "function.rl"/)
 		variable,
 		class,
 		rawtype,
-		union
+		union,
+		enum
 	}
 	# ABSTRACT type() Global::Type;
 	# FINAL category() ScopeItem::Category := ScopeItem::Category::global;
@@ -31,7 +32,8 @@ INCLUDE "function.rl"/)
 		|| [GlobalFunction]parse_impl(p, ret)
 		|| [GlobalVariable]parse_impl(p, ret)
 		|| [GlobalClass]parse_impl(p, ret)
-		|| [GlobalRawtype]parse_impl(p, ret))
+		|| [GlobalRawtype]parse_impl(p, ret)
+		|| [GlobalEnum]parse_impl(p, ret))
 		{
 			ret->Templates := __cpp_std::move(templates);
 		}
