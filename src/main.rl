@@ -6,6 +6,7 @@ INCLUDE "parser/function.rl"
 INCLUDE "parser/namespace.rl"
 INCLUDE "parser/class.rl"
 INCLUDE "parser/rawtype.rl"
+INCLUDE "parser/union.rl"
 INCLUDE 'std/io/file'
 
 main(

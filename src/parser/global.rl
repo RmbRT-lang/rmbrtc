@@ -14,7 +14,8 @@ INCLUDE "function.rl"/)
 		function,
 		variable,
 		class,
-		rawtype
+		rawtype,
+		union
 	}
 	# ABSTRACT type() Global::Type;
 	# FINAL category() ScopeItem::Category := ScopeItem::Category::global;

@@ -16,7 +16,8 @@
 		function,
 		variable,
 		class,
-		rawtype
+		rawtype,
+		union
 	}
 
 	# ABSTRACT type() Member::Type;
@@ -36,7 +37,8 @@
 		|| [MemberFunction]parse_impl(p, ret)
 		|| [MemberVariable]parse_impl(p, ret)
 		|| [MemberClass]parse_impl(p, ret)
-		|| [MemberRawtype]parse_impl(p, ret))
+		|| [MemberRawtype]parse_impl(p, ret)
+		|| [MemberUnion]parse_impl(p, ret))
 		{
 			ret->Visibility := visibility;
 			ret->Templates := __cpp_std::move(templates);
