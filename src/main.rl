@@ -8,6 +8,7 @@ INCLUDE "parser/class.rl"
 INCLUDE "parser/rawtype.rl"
 INCLUDE "parser/union.rl"
 INCLUDE "parser/enum.rl"
+INCLUDE "parser/extern.rl"
 INCLUDE 'std/io/file'
 
 main(

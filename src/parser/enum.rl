@@ -3,8 +3,6 @@ INCLUDE "parser.rl"
 INCLUDE "../src/file.rl"
 
 INCLUDE 'std/vector'
-INCLUDE 'std/memory'
-INCLUDE 'std/pair'
 
 ::rlc::parser Enum -> VIRTUAL ScopeItem
 {
