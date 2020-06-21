@@ -1,6 +1,7 @@
 INCLUDE "parser.rl"
 INCLUDE "expression.rl"
 INCLUDE "variable.rl"
+INCLUDE "controllabel.rl"
 
 INCLUDE 'std/vector'
 INCLUDE 'std/memory'
@@ -170,6 +171,8 @@ INCLUDE 'std/memory'
 
 	IfStatement -> Statement
 	{
+		Label: ControlLabel;
+
 		Init: VarOrExp;
 		Condition: VarOrExp;
 
@@ -184,6 +187,7 @@ INCLUDE 'std/memory'
 				RETURN FALSE;
 
 			t: Trace(&p, "if statement");
+			Label.parse(p);
 			p.expect(tok::Type::parentheseOpen);
 
 			val: VarOrExp;
@@ -375,6 +379,7 @@ INCLUDE 'std/memory'
 		Condition: VarOrExp;
 		Body: std::[Statement]Dynamic;
 		PostLoop: std::[Expression]Dynamic;
+		Label: ControlLabel;
 
 		# FINAL type() StatementType := StatementType::loop;
 
@@ -414,6 +419,8 @@ INCLUDE 'std/memory'
 				RETURN FALSE;
 
 			IsPostCondition := TRUE;
+
+			Label.parse(p);
 			p.expect(tok::Type::parentheseOpen);
 			parse_initial(p);
 			p.expect(tok::Type::parentheseClose);
@@ -426,6 +433,8 @@ INCLUDE 'std/memory'
 			IF(!p.consume(tok::Type::for))
 				RETURN FALSE;
 
+			IF(!IsPostCondition)
+				Label.parse(p);
 			p.expect(tok::Type::parentheseOpen);
 
 			IF(!IsPostCondition)
@@ -451,6 +460,8 @@ INCLUDE 'std/memory'
 			IF(!p.consume(tok::Type::while))
 				RETURN FALSE;
 
+			IF(!IsPostCondition)
+				Label.parse(p);
 			p.expect(tok::Type::parentheseOpen);
 
 			IF(!IsPostCondition)
@@ -491,6 +502,7 @@ INCLUDE 'std/memory'
 		Initial: VarOrExp;
 		Value: VarOrExp;
 		Cases: std::[CaseStatement]Vector;
+		Label: ControlLabel;
 
 		# FINAL type() StatementType := StatementType::switch;
 
@@ -499,6 +511,7 @@ INCLUDE 'std/memory'
 			IF(!p.consume(tok::Type::switch))
 				RETURN FALSE;
 
+			Label.parse(p);
 			p.expect(tok::Type::parentheseOpen);
 
 			val: VarOrExp;
@@ -556,6 +569,7 @@ INCLUDE 'std/memory'
 
 	BreakStatement -> Statement
 	{
+		Label: ControlLabel;
 		# FINAL type() StatementType := StatementType::break;
 
 		parse(p: Parser &) bool
@@ -563,6 +577,7 @@ INCLUDE 'std/memory'
 			IF(!p.consume(tok::Type::break))
 				RETURN FALSE;
 
+			Label.parse(p);
 			p.expect(tok::Type::semicolon);
 			RETURN TRUE;
 		}
@@ -570,6 +585,7 @@ INCLUDE 'std/memory'
 
 	ContinueStatement -> Statement
 	{
+		Label: ControlLabel;
 		# FINAL type() StatementType := StatementType::continue;
 
 		parse(p: Parser &) bool
@@ -577,6 +593,7 @@ INCLUDE 'std/memory'
 			IF(!p.consume(tok::Type::continue))
 				RETURN FALSE;
 
+			Label.parse(p);
 			p.expect(tok::Type::semicolon);
 			RETURN TRUE;
 		}
