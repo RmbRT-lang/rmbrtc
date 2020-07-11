@@ -19,7 +19,9 @@
 		rawtype,
 		union,
 		enum,
-		enumConstant
+		enumConstant,
+		constructor,
+		destructor
 	}
 
 	# ABSTRACT type() Member::Type;
@@ -41,7 +43,9 @@
 		|| [MemberClass]parse_impl(p, ret)
 		|| [MemberRawtype]parse_impl(p, ret)
 		|| [MemberUnion]parse_impl(p, ret)
-		|| [MemberEnum]parse_impl(p, ret))
+		|| [MemberEnum]parse_impl(p, ret)
+		|| [Constructor]parse_impl(p, ret)
+		|| [Destructor]parse_impl(p, ret))
 		{
 			ret->Visibility := visibility;
 			ret->Templates := __cpp_std::move(templates);
@@ -64,7 +68,11 @@
 		IF([MemberTypedef]parse_impl(p, ret)
 		|| [MemberFunction]parse_impl(p, ret)
 		|| [MemberClass]parse_impl(p, ret)
-		|| [MemberRawtype]parse_impl(p, ret))
+		|| [MemberRawtype]parse_impl(p, ret)
+		|| [MemberUnion]parse_impl(p, ret)
+		|| [MemberEnum]parse_impl(p, ret)
+		|| [Constructor]parse_impl(p, ret)
+		|| [Destructor]parse_impl(p, ret))
 		{
 			ret->Visibility := visibility;
 			ret->Templates := __cpp_std::move(templates);
