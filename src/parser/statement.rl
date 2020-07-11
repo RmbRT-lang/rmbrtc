@@ -16,7 +16,6 @@ INCLUDE 'std/memory'
 		expression,
 		return,
 		try,
-		catch,
 		throw,
 		loop,
 		switch,
@@ -300,13 +299,11 @@ INCLUDE 'std/memory'
 		}
 	}
 
-	CatchStatement -> Statement
+	CatchStatement
 	{
 		IsVoid: bool;
 		Exception: LocalVariable;
 		Body: std::[Statement]Dynamic;
-
-		# FINAL type() StatementType := StatementType::catch;
 
 		parse(p: Parser &) bool
 		{
