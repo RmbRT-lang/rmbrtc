@@ -1,14 +1,4 @@
-INCLUDE "parser/file.rl"
-INCLUDE "parser/variable.rl"
-INCLUDE "parser/typedef.rl"
-INCLUDE "parser/type.rl"
-INCLUDE "parser/function.rl"
-INCLUDE "parser/namespace.rl"
-INCLUDE "parser/class.rl"
-INCLUDE "parser/rawtype.rl"
-INCLUDE "parser/union.rl"
-INCLUDE "parser/enum.rl"
-INCLUDE "parser/extern.rl"
+INCLUDE "parser/fileregistry.rl"
 INCLUDE 'std/io/file'
 
 main(
