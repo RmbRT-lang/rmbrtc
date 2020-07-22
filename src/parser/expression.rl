@@ -34,50 +34,18 @@ INCLUDE 'std/vector'
 				p.expect(tok::Type::parentheseClose);
 			}
 
+			ret: Expression *;
+			IF([SymbolExpression]parse_impl(p, ret)
+			|| [SymbolChildExpression]parse_impl(p, ret)
+			|| [NumberExpression]parse_impl(p, ret)
+			|| [BoolExpression]parse_impl(p, ret)
+			|| [CharExpression]parse_impl(p, ret)
+			|| [StringExpression]parse_impl(p, ret)
+			|| [ThisExpression]parse_impl(p, ret)
+			|| [CastExpression]parse_impl(p, ret)
+			|| [SizeofExpression]parse_impl(p, ret))
 			{
-				v: SymbolExpression;
-				IF(v.parse(p))
-					RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-			}
-			{
-				v: SymbolChildExpression;
-				IF(v.parse(p))
-					RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-			}
-			{
-				v: NumberExpression;
-				IF(v.parse(p))
-					RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-			}
-			{
-				v: BoolExpression;
-				IF(v.parse(p))
-					RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-			}
-			{
-				v: CharExpression;
-				IF(v.parse(p))
-					RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-			}
-			{
-				v: StringExpression;
-				IF(v.parse(p))
-					RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-			}
-			{
-				v: ThisExpression;
-				IF(v.parse(p))
-					RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-			}
-			{
-				v: CastExpression;
-				IF(v.parse(p))
-					RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-			}
-			{
-				v: SizeofExpression;
-				IF(v.parse(p))
-					RETURN ::[TYPE(v)]new(__cpp_std::move(v));
+				RETURN ret;
 			}
 
 			RETURN NULL;
@@ -85,6 +53,18 @@ INCLUDE 'std/vector'
 
 		STATIC parse(p: Parser &) INLINE Expression *
 			:= OperatorExpression::parse(p);
+
+		[T:TYPE]
+		PRIVATE STATIC parse_impl(p: Parser &, ret: Expression * &) bool
+		{
+			v: T;
+			IF(v.parse(p))
+			{
+				ret := std::dup(__cpp_std::move(v));
+				RETURN TRUE;
+			}
+			RETURN FALSE;
+		}
 	}
 
 	NumberExpression -> Expression
