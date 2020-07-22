@@ -316,6 +316,21 @@ INCLUDE 'std/pair'
 
 		string(out: Token \) bool
 		{
+			IF(eatString("´"))
+			{
+				out->Type := Type::stringTick;
+				WHILE(!eatString("´"))
+				{
+					c ::= getc();
+					IF(!c)
+						error();
+					IF(c == '\'')
+						IF(!getc())
+							error();
+				}
+				RETURN TRUE;
+			}
+
 			delim #::= look();
 			IF(delim != '\'' && delim != '"' && delim != '`')
 				RETURN FALSE;
@@ -324,8 +339,9 @@ INCLUDE 'std/pair'
 			c: char;
 			WHILE((c := getc()) != delim)
 			{
+				IF(!c) error();
 				IF(c == '\'')
-					++Read;
+					IF(!getc()) error();
 			}
 			SWITCH(delim)
 			{

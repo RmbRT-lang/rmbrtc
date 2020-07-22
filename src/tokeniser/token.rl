@@ -9,6 +9,7 @@ INCLUDE "../src/file.rl"
 		stringApostrophe,
 		stringQuote,
 		stringBacktick,
+		stringTick,
 
 		// Keywords.
 		abstract,
