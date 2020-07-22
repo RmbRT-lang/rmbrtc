@@ -39,7 +39,7 @@ INCLUDE 'std/io/file'
 			}
 		}
 
-		#content(str: String #&) std::[char#]Buffer
+		# content(str: String #&) std::[char#]Buffer
 			:= Contents.substring(str.Start, str.Length);
 
 		# position(
