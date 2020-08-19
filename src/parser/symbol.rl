@@ -8,39 +8,7 @@ INCLUDE 'std/vector'
 
 ::rlc::parser
 {
-	TemplateArg
-	{
-		CONSTRUCTOR():
-			IsExpr(FALSE)
-		{
-			Value.Type := NULL;
-		}
-
-		CONSTRUCTOR(move: TemplateArg&&):
-			IsExpr(move.IsExpr),
-			Value(move.Value)
-		{
-			move.IsExpr := FALSE;
-			move.Value.Type := NULL;
-		}
-
-		DESTRUCTOR
-		{
-			IF(IsExpr)
-			{
-				IF(Value.Expression)
-					::delete(Value.Expression);
-			} ELSE
-			{
-				IF(Value.Type)
-					::delete(Value.Type);
-			}
-		}
-
-		IsExpr: bool;
-		Value: TypeOrExpr;
-	}
-
+	TYPE TemplateArg := TypeOrExpr;
 
 	// std::[T]Vector
 	Symbol
@@ -60,13 +28,13 @@ INCLUDE 'std/vector'
 					DO()
 					{
 						tArg: TemplateArg;
-						IF(tArg.IsExpr := p.consume(tok::Type::hash))
+						IF(p.consume(tok::Type::hash))
 						{
-							IF(!(tArg.Value.Expression := Expression::parse(p)))
+							IF(!(tArg := Expression::parse(p)))
 								p.fail("expected expression");
 						} ELSE
 						{
-							IF(!(tArg.Value.Type := Type::parse(p)))
+							IF(!(tArg := Type::parse(p)))
 								p.fail("expected type");
 						}
 						Templates.push_back(__cpp_std::move(tArg));

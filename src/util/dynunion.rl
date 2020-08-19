@@ -48,6 +48,9 @@ PUBLIC:
 	# is_second() INLINE bool := IsB && Ptr.Second;
 	# is_empty() INLINE bool := !Ptr.Check;
 
+	# LOG_NOT() INLINE bool := !Ptr.Check;
+	# CONVERT(bool) NOTYPE! := Ptr.Check;
+
 	# first() A! \
 	{
 		IF(!is_first()) THROW;

@@ -89,7 +89,7 @@ INCLUDE 'std/pair'
 		}
 
 		eatString(str: char#\) bool {
-			buf# ::= std::strbuf(str);
+			buf# ::= std::str::buf(str);
 			FOR(i ::= 0; i < buf.Size; i++)
 				IF(look(i) != buf.Data[i])
 					RETURN FALSE;
@@ -289,11 +289,11 @@ INCLUDE 'std/pair'
 
 			str ::= tok_str();
 			static_assert(__cpp_std::[TYPE(str), std::[char#]Buffer]is_same::value);
-			static_assert(__cpp_std::[TYPE(std::strbuf(keywords[0].First)), std::[char#]Buffer]is_same::value);
+			static_assert(__cpp_std::[TYPE(std::str::buf(keywords[0].First)), std::[char#]Buffer]is_same::value);
 			FOR(i: std::Size := 0; i < ::size(keywords); i++)
-				IF(!std::[]strcmp(
+				IF(!std::str::cmp(
 					str,
-					std::strbuf(keywords[i].First)))
+					std::str::buf(keywords[i].First)))
 				{
 					out->Type := keywords[i].Second;
 					RETURN TRUE;

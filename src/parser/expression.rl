@@ -1,6 +1,9 @@
 INCLUDE "symbol.rl"
 INCLUDE "parser.rl"
 INCLUDE "type.rl"
+
+INCLUDE "../util/dynunion.rl"
+
 INCLUDE 'std/vector'
 
 ::rlc::parser
@@ -485,47 +488,31 @@ INCLUDE 'std/vector'
 		}
 	}
 
-	UNION TypeOrExpr
+	TypeOrExpr
 	{
-		Type: parser::Type *;
-		Expression: parser::Expression *;
+		PRIVATE V: util::[Expression, Type]DynUnion;
+
+		CONSTRUCTOR();
+		CONSTRUCTOR(v: Expression \): V(v);
+		CONSTRUCTOR(v: Type \): V(v);
+		
+		# is_type() INLINE bool := V.is_second();
+		# type() Type \ := V.second();
+		# is_expression() INLINE bool := V.is_first();
+		# expression() INLINE bool := V.first();
+
+		# CONVERT(bool) INLINE NOTYPE! := V;
+		# LOG_NOT() INLINE bool := !V;
 	}
 
 	SizeofExpression -> Expression
 	{
 		# FINAL type() ExpressionType := ExpressionType::sizeof;
 
-		CONSTRUCTOR():
-			IsExpr(FALSE)
-		{
-			Term.Type := NULL;
-		}
-
-		CONSTRUCTOR(move: SizeofExpression&&):
-			IsExpr(move.IsExpr),
-			Term(move.Term)
-		{
-			IF(move.IsExpr)
-				move.Term.Expression := NULL;
-			ELSE
-				move.Term.Type := NULL;
-		}
-
-		IsExpr: bool;
 		Term: TypeOrExpr;
 
-		DESTRUCTOR
-		{
-			IF(IsExpr)
-			{
-				IF(Term.Expression)
-					::delete(Term.Expression);
-			} ELSE
-			{
-				IF(Term.Type)
-					::delete(Term.Type);
-			}
-		}
+		# is_expression() INLINE bool := Term.is_expression();
+		# is_type() INLINE bool := Term.is_type();
 
 		parse(p: Parser&) bool
 		{
@@ -535,13 +522,13 @@ INCLUDE 'std/vector'
 			t: Trace(&p, "sizeof expression");
 
 			p.expect(tok::Type::parentheseOpen);
-			IF(IsExpr := p.consume(tok::Type::hash))
+			IF(p.consume(tok::Type::hash))
 			{
-				IF(!(Term.Expression := Expression::parse(p)))
+				IF(!(Term := Expression::parse(p)))
 					p.fail("expected expression");
 			} ELSE
 			{
-				IF(!(Term.Type := Type::parse(p)))
+				IF(!(Term := Type::parse(p)))
 					p.fail("expected type");
 			}
 
