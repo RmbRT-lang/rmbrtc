@@ -64,13 +64,13 @@ INCLUDE 'std/pair'
 		{
 			IF(Read+ahead >= File->Contents.size())
 				RETURN 0;
-			RETURN File->Contents.at(Read+ahead);
+			RETURN File->Contents[Read+ahead];
 		}
 		getc() char
 		{
 			IF(Read == File->Contents.size())
 				RETURN 0;
-			RETURN File->Contents.at(Read++);
+			RETURN File->Contents[Read++];
 		}
 
 		skipws() VOID
@@ -290,7 +290,7 @@ INCLUDE 'std/pair'
 			str ::= tok_str();
 			static_assert(__cpp_std::[TYPE(str), std::[char#]Buffer]is_same::value);
 			static_assert(__cpp_std::[TYPE(std::str::buf(keywords[0].First)), std::[char#]Buffer]is_same::value);
-			FOR(i: std::Size := 0; i < ::size(keywords); i++)
+			FOR(i: UM := 0; i < ::size(keywords); i++)
 				IF(!std::str::cmp(
 					str,
 					std::str::buf(keywords[i].First)))

@@ -1,16 +1,4 @@
 INCLUDE "file.rl"
-INCLUDE "variable.rl"
-INCLUDE "typedef.rl"
-INCLUDE "type.rl"
-INCLUDE "function.rl"
-INCLUDE "namespace.rl"
-INCLUDE "class.rl"
-INCLUDE "constructor.rl"
-INCLUDE "destructor.rl"
-INCLUDE "rawtype.rl"
-INCLUDE "union.rl"
-INCLUDE "enum.rl"
-INCLUDE "extern.rl"
 
 INCLUDE 'std/string'
 INCLUDE 'std/map'

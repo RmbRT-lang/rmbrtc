@@ -1,5 +1,6 @@
 INCLUDE "include.rl"
-INCLUDE "global.rl"
+INCLUDE "detail/member.rl"
+INCLUDE "detail/global.rl"
 
 INCLUDE "../src/file.rl"
 

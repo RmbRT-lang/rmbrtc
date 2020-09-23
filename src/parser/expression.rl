@@ -158,7 +158,7 @@ INCLUDE 'std/vector'
 				LeftAssoc(leftAssoc);
 
 			Table: std::[tok::Type, Operator]Pair# \;
-			Size: std::Size;
+			Size: UM;
 			LeftAssoc: bool;
 		}
 
@@ -238,7 +238,7 @@ INCLUDE 'std/vector'
 			BinOpDesc(k_log_or, TRUE),
 			BinOpDesc(k_assign, FALSE));
 
-		precedenceGroups: std::Size# := ::size(k_groups);
+		precedenceGroups: UM# := ::size(k_groups);
 	}
 
 	OperatorExpression -> Expression

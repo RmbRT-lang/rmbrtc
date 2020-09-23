@@ -51,7 +51,7 @@ INCLUDE 'std/io/file'
 			lineStart ::= 0;
 			content ::= Contents.content();
 			FOR(i ::= 0; i < index; i++)
-				IF(content.at(i) == '\n')
+				IF(content[i] == '\n')
 				{
 					++*line;
 					lineStart := i;
