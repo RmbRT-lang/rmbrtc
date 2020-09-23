@@ -11,7 +11,7 @@ main(
 		RETURN 1;
 	}
 
-	out ::= std::io::OStream::from(&std::io::out);
+	out ::= std::io::OStream::FROM(&std::io::out);
 	TRY
 	{
 		f: rlc::parser::File(std::Utf8(argv[1], std::cstring));

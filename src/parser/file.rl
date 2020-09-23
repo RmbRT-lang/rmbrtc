@@ -18,7 +18,7 @@ INCLUDE 'std/io/stream'
 
 	CONSTRUCTOR(name: std::Utf8): Src(name)
 	{
-		out ::= std::io::OStream::from(&std::io::out);
+		out ::= std::io::OStream::FROM(&std::io::out);
 		p: Parser(&Src);
 		inc: Include;
 		WHILE(inc.parse(p))
