@@ -317,7 +317,8 @@ INCLUDE 'std/vector'
 				std::pair(tok::Type::doubleMinus, Operator::preDecrement),
 				std::pair(tok::Type::tildeColon, Operator::bitNotAssign),
 				std::pair(tok::Type::exclamationMarkColon, Operator::logNotAssign),
-				std::pair(tok::Type::and, Operator::address));
+				std::pair(tok::Type::and, Operator::address),
+				std::pair(tok::Type::asterisk, Operator::dereference));
 
 			FOR(i ::= 0; i < ::size(prefix); i++)
 				IF(p.consume(prefix[i].First))
