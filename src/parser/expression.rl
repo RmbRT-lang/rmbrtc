@@ -72,7 +72,7 @@ INCLUDE 'std/vector'
 
 	NumberExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::symbolChild;
+		# FINAL type() ExpressionType := ExpressionType::number;
 
 		Number: src::String;
 
@@ -305,7 +305,21 @@ INCLUDE 'std/vector'
 			IF(!lhs)
 				RETURN NULL;
 
-			RETURN parse_binary_rhs(p, lhs, level);
+			IF(level == detail::precedenceGroups
+			&& p.consume(tok::Type::questionMark))
+			{
+				then ::= Expression::parse(p);
+				p.expect(tok::Type::colon);
+				else ::= Expression::parse(p);
+
+				ret ::= [OperatorExpression]new();
+				ret->Op := Operator::conditional;
+				ret->Operands.push_back(lhs);
+				ret->Operands.push_back(then);
+				ret->Operands.push_back(else);
+				RETURN ret;
+			} ELSE
+				RETURN parse_binary_rhs(p, lhs, level);
 		}
 
 		STATIC parse_prefix(p: Parser&) Expression *
@@ -316,6 +330,7 @@ INCLUDE 'std/vector'
 				std::pair(tok::Type::doublePlus, Operator::preIncrement),
 				std::pair(tok::Type::doubleMinus, Operator::preDecrement),
 				std::pair(tok::Type::tildeColon, Operator::bitNotAssign),
+				std::pair(tok::Type::exclamationMark, Operator::logNot),
 				std::pair(tok::Type::exclamationMarkColon, Operator::logNotAssign),
 				std::pair(tok::Type::and, Operator::address),
 				std::pair(tok::Type::asterisk, Operator::dereference));
