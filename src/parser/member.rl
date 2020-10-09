@@ -8,10 +8,19 @@ INCLUDE "parser.rl"
 	private
 }
 
+::rlc ENUM MemberAttribute
+{
+	none,
+	isolated,
+	static
+}
+
 ::rlc::parser Member -> VIRTUAL ScopeItem
 {
 	# FINAL category() ScopeItem::Category := ScopeItem::Category::member;
+
 	Visibility: rlc::Visibility;
+	Attribute: rlc::MemberAttribute;
 
 	ENUM Type
 	{

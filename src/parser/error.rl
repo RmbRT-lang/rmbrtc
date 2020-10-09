@@ -1,5 +1,6 @@
 INCLUDE 'std/error'
 INCLUDE 'std/string'
+INCLUDE 'std/io/format'
 
 ::rlc::parser Error -> std::Error
 {
@@ -40,20 +41,13 @@ INCLUDE 'std/string'
 
 	# ABSTRACT reason(std::io::OStream &) VOID;
 
-	PRIVATE STATIC itoa(i: int) char#\
-	{
-		STATIC buffer: char[32]("");
-		libc::itoa::sprintf(buffer, "%d", i);
-		RETURN buffer;
-	}
-
-	FINAL print(o: std::io::OStream &) VOID
+	# FINAL print(o: std::io::OStream &) VOID
 	{
 		o.write(File.content());
 		o.write(":");
-		o.write(itoa(Line));
+		std::io::format::dec(o, Line);
 		o.write(":");
-		o.write(itoa(Column));
+		std::io::format::dec(o, Column);
 		o.write(": unexpected ");
 		IF(TokenCount)
 		{

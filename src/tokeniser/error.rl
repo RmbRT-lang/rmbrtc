@@ -23,7 +23,7 @@ INCLUDE 'std/string'
 		RETURN buffer;
 	}
 
-	OVERRIDE print(
+	# OVERRIDE print(
 		o: std::io::OStream &) VOID
 	{
 		o.write(File.content());

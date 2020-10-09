@@ -13,6 +13,12 @@ INCLUDE "../tokeniser/token.rl"
 
 	parse(p: Parser &) VOID
 	{
-		Exists := p.consume(tok::Type::stringBacktick, &Name);
+		IF(Exists := p.consume(tok::Type::bracketOpen))
+		{
+			IF(!p.consume(tok::Type::stringBacktick, &Name)
+			&& !p.consume(tok::Type::stringQuote, &Name))
+				p.fail("expected \"\" or `` string");
+			p.expect(tok::Type::bracketClose);
+		}
 	}
 }

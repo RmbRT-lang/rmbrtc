@@ -6,6 +6,8 @@ INCLUDE "controllabel.rl"
 INCLUDE 'std/vector'
 INCLUDE 'std/memory'
 
+INCLUDE "../util/dynunion.rl"
+
 ::rlc::parser
 {
 	ENUM StatementType
@@ -19,7 +21,6 @@ INCLUDE 'std/memory'
 		throw,
 		loop,
 		switch,
-		case,
 		break,
 		continue
 	}
@@ -31,10 +32,10 @@ INCLUDE 'std/memory'
 		[T: TYPE]
 		PRIVATE STATIC parse_impl(p: Parser &, out: Statement * &) bool
 		{
-			v: T;
-			IF(v.parse(p))
+			v: std::[T]Dynamic := [T]new();
+			IF(v->parse(p))
 			{
-				out := std::dup(__cpp_std::move(v));
+				out := v.release();
 				RETURN TRUE;
 			}
 			RETURN FALSE;
@@ -52,7 +53,6 @@ INCLUDE 'std/memory'
 			|| [ThrowStatement]parse_impl(p, ret)
 			|| [LoopStatement]parse_impl(p, ret)
 			|| [SwitchStatement]parse_impl(p, ret)
-			|| [CaseStatement]parse_impl(p, ret)
 			|| [BreakStatement]parse_impl(p, ret)
 			|| [ContinueStatement]parse_impl(p, ret))
 				RETURN ret;
@@ -80,63 +80,39 @@ INCLUDE 'std/memory'
 		}
 	}
 
-	::detail UNION VarOrExp
-	{
-		Variable: parser::LocalVariable *;
-		Expression: parser::Expression *;
-		# exists() INLINE bool := Variable != NULL;
-	}
 	VarOrExp
 	{
-		Value: detail::VarOrExp;
-		IsVariable: bool;
+		PRIVATE V: util::[LocalVariable, Expression]DynUnion;
 
-		CONSTRUCTOR():
-			IsVariable(FALSE)
-		{
-			Value.Expression := NULL;
-		}
+		CONSTRUCTOR();
+		CONSTRUCTOR(v: LocalVariable \): V(v);
+		CONSTRUCTOR(v: Expression \): V(v);
 
-		CONSTRUCTOR(move: VarOrExp &&):
-			IsVariable(move.IsVariable),
-			Value(move.Value)
-		{
-			move.CONSTRUCTOR();
-		}
+		# is_variable() INLINE bool := V.is_first();
+		# variable() INLINE LocalVariable \ := V.first();
+		# is_expression() INLINE bool := V.is_second();
+		# expression() INLINE Expression \ := V.second();
+		# CONVERT(bool) INLINE NOTYPE! := V;
 
-		ASSIGN(move: VarOrExp &&) VarOrExp &
-		{
-			IF(&move != THIS)
-			{
-				THIS->DESTRUCTOR();
-				THIS->CONSTRUCTOR(__cpp_std::move(move));
-			}
-			RETURN *THIS;
-		}
-
-		DESTRUCTOR
-		{
-			IF(IsVariable)
-			{
-				IF(Value.Variable)
-					::delete(Value.Variable);
-			} ELSE
-				IF(Value.Expression)
-					::delete(Value.Expression);
-		}
+		[T:TYPE] ASSIGN(v: T! &&) VarOrExp &
+			:= std::help::custom_assign(*THIS, __cpp_std::[T!]forward(v));
 
 		parse(p: Parser &) VOID
 		{
-			v: LocalVariable;
-			IF(IsVariable := v.parse_var_decl(p))
-				Value.Variable := std::dup(__cpp_std::move(v));
-			ELSE IF(exp ::= Expression::parse(p))
-				Value.Expression := exp;
-			ELSE
+			IF(!parse_opt(p))
 				p.fail("expected variable or expression");
 		}
 
-		# exists() INLINE bool := Value.exists();
+		parse_opt(p: Parser &) bool
+		{
+			v: std::[LocalVariable]Dynamic := [LocalVariable]new();
+			IF(v->parse_var_decl(p))
+				V := v.release();
+			ELSE IF(exp ::= Expression::parse(p))
+				V := exp;
+
+			RETURN V;
+		}
 	}
 
 	BlockStatement -> Statement
@@ -218,16 +194,18 @@ INCLUDE 'std/memory'
 	VariableStatement -> Statement
 	{
 		Variable: LocalVariable;
+		Static: bool;
 
 		# FINAL type() StatementType := StatementType::variable;
 
 		parse(p: Parser &) bool
 		{
-			IF(!Variable.parse(p))
-				RETURN FALSE;
-
-			p.expect(tok::Type::semicolon);
-			RETURN TRUE;
+			Static := p.consume(tok::Type::static);
+			IF(Variable.parse(p, TRUE))
+				RETURN TRUE;
+			IF(Static)
+				p.fail("expected variable");
+			RETURN FALSE;
 		}
 	}
 
@@ -253,7 +231,7 @@ INCLUDE 'std/memory'
 
 		# FINAL type() StatementType := StatementType::return;
 
-		# is_void() INLINE bool := Expression.Ptr == NULL;
+		# is_void() INLINE bool := !Expression;
 
 		parse(p: Parser &) bool
 		{
@@ -276,7 +254,7 @@ INCLUDE 'std/memory'
 
 		# FINAL type() StatementType := StatementType::try;
 
-		# has_finally() INLINE bool := Finally.Ptr != NULL;
+		# has_finally() INLINE bool := Finally;
 
 		parse(p: Parser &) bool
 		{
@@ -322,7 +300,7 @@ INCLUDE 'std/memory'
 			{
 				IsVoid := FALSE;
 
-				IF(!Exception.parse(p))
+				IF(!Exception.parse(p, FALSE))
 					p.fail("expected variable");
 			}
 			p.expect(tok::Type::parentheseClose);
@@ -474,8 +452,7 @@ INCLUDE 'std/memory'
 				Condition := __cpp_std::move(v);
 			} ELSE
 			{
-				Condition.IsVariable := FALSE;
-				IF(!(Condition.Value.Expression := Expression::parse(p)))
+				IF(!(Condition := Expression::parse(p)))
 					p.fail("expected expression");
 			}
 
@@ -485,7 +462,7 @@ INCLUDE 'std/memory'
 
 		parse_initial(p: Parser &) VOID
 		{
-			Initial.parse(p);
+			Initial.parse_opt(p);
 		}
 
 		parse_condition(p: Parser &) VOID
@@ -524,23 +501,24 @@ INCLUDE 'std/memory'
 			p.expect(tok::Type::parentheseClose);
 			p.expect(tok::Type::braceOpen);
 
-			case: CaseStatement;
-			WHILE(case.parse(p))
-				Cases.push_back(__cpp_std::move(case));
+			DO(case: CaseStatement)
+			{
+				IF(!case.parse(p))
+					p.fail("expected case");
 
-			p.expect(tok::Type::braceClose);
+				Cases.push_back(__cpp_std::move(case));
+			} WHILE(!p.consume(tok::Type::braceClose))
 
 			RETURN TRUE;
 		}
 	}
 
-	CaseStatement -> Statement
+	CaseStatement
 	{
 		Values: std::[std::[Expression]Dynamic]Vector;
 		Body: std::[Statement]Dynamic;
 
-		# FINAL type() StatementType := StatementType::case;
-		# is_default() bool := Values.empty();
+		# is_default() INLINE bool := Values.empty();
 
 		parse(p: Parser &) bool
 		{

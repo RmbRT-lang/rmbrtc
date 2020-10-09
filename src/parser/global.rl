@@ -10,6 +10,7 @@ INCLUDE "scopeitem.rl"
 		function,
 		variable,
 		class,
+		concept,
 		rawtype,
 		union,
 		enum,

@@ -18,6 +18,7 @@ INCLUDE "../src/file.rl"
 		case,
 		catch,
 		char,
+		concept,
 		constructor,
 		continue,
 		default,
@@ -146,5 +147,12 @@ INCLUDE "../src/file.rl"
 	{
 		Type: tok::Type;
 		Content: src::String;
+
+		CONSTRUCTOR() INLINE;
+		CONSTRUCTOR(
+			type: tok::Type,
+			content: src::String#&
+		):	Type(type),
+			Content(content);
 	}
 }

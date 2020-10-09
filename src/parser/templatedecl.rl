@@ -55,7 +55,7 @@ INCLUDE 'std/vector'
 						p.fail("expected 'TYPE', 'NUMBER', or type");
 
 					Children.push_back(__cpp_std::move(c));
-				} WHILE(!p.consume(tok::Type::comma))
+				} WHILE(p.consume(tok::Type::comma))
 
 				p.expect(tok::Type::bracketClose);
 			}

@@ -1,4 +1,5 @@
-INCLUDE "parser/fileregistry.rl"
+INCLUDE "scoper/fileregistry.rl"
+INCLUDE "util/file.rl"
 INCLUDE 'std/io/file'
 
 main(
@@ -12,9 +13,13 @@ main(
 	}
 
 	out ::= std::io::OStream::FROM(&std::io::out);
+
+	registry: rlc::scoper::FileRegistry;
+
 	TRY
 	{
-		f: rlc::parser::File(std::Utf8(argv[1], std::cstring));
+		absolute ::= rlc::util::absolute_file(std::str::buf(argv[1]));
+		registry.get(std::Utf8(absolute, std::cstring).content());
 		out.write("success\n");
 	} CATCH(e: std::Error&)
 	{

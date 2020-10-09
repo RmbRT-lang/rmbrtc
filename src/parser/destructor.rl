@@ -11,7 +11,7 @@ INCLUDE "statement.rl"
 
 	parse(p: Parser&) bool
 	{
-		IF(!p.consume(tok::Type::destructor))
+		IF(!p.consume(tok::Type::destructor, &Name))
 			RETURN FALSE;
 
 		Inline := p.consume(tok::Type::inline);

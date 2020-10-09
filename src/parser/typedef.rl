@@ -21,8 +21,7 @@ INCLUDE "member.rl"
 		Name := name.Content;
 		p.expect(tok::Type::colonEqual);
 
-		printf("typedef: type\n");
-		Type ::= parser::Type::parse(p);
+		Type := parser::Type::parse(p);
 		IF(!Type)
 			p.fail("expected type");
 

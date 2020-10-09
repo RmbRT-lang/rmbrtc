@@ -9,12 +9,12 @@ INCLUDE "expression.rl"
 		signature,
 		void,
 		name,
+		expression,
 		builtin
 	}
 
-	Type
+	Type VIRTUAL
 	{
-		CONSTRUCTOR();
 		# ABSTRACT type() TypeType;
 
 		ENUM ReferenceType
@@ -74,12 +74,32 @@ INCLUDE "expression.rl"
 			parse(
 				p: Parser&) bool
 			{
+				start ::= p.progress();
 				IF((Const := p.consume(tok::Type::hash)))
-					RETURN Volatile := p.consume(tok::Type::dollar);
+					Volatile := p.consume(tok::Type::dollar);
 				ELSE IF((Volatile := p.consume(tok::Type::dollar)))
-					RETURN Const := p.consume(tok::Type::hash);
-				ELSE
-					RETURN FALSE;
+					Const := p.consume(tok::Type::hash);
+				
+				RETURN p.progress() != start;
+			}
+		}
+
+		(// Modifiers to be applied to auto types. /)
+		Auto
+		{
+			Qualifier: Type::Qualifier;
+			Reference: Type::ReferenceType;
+
+			parse(p: Parser &) INLINE VOID { parse(p, TRUE); }
+			parse(
+				p: Parser&,
+				allowReferences: bool) VOID
+			{
+				Qualifier.parse(p);
+				Reference := parse_reference_type(p);
+				IF(!allowReferences
+				&& Reference != ReferenceType::none)
+					p.fail("forbidden reference specifier");
 			}
 		}
 
@@ -101,7 +121,6 @@ INCLUDE "expression.rl"
 				{
 					IF(!p.consume(tok::Type::bracketClose))
 					{
-
 						DO()
 						{
 							bounds ::= Expression::parse(p);
@@ -121,29 +140,29 @@ INCLUDE "expression.rl"
 		Modifiers: std::[Modifier]Vector;
 		Reference: Type::ReferenceType;
 
+		[T:TYPE] PRIVATE STATIC parse_impl(
+			p: Parser &) T! *
+		{
+			v: std::[T!]Dynamic := [T!]new();
+			IF(v->parse(p))
+				RETURN v.release();
+			ELSE
+				RETURN NULL;
+		}
+
 		STATIC parse(
 			p: Parser &) Type! *
 		{
-			{
-				v: Signature;
-				IF(v.parse(p))
-					RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-			}
-			{
-				v: Void;
-				IF(v.parse(p))
-					RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-			}
-			{
-				v: TypeName;
-				IF(v.parse(p))
-					RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-			}
-			{
-				v: BuiltinType;
-				IF(v.parse(p))
-					RETURN ::[TYPE(v)]new(__cpp_std::move(v));
-			}
+			IF(v ::= [TypeOfExpression]parse_impl(p))
+				RETURN v;
+			IF(v ::= [Signature]parse_impl(p))
+				RETURN v;
+			IF(v ::= [Void]parse_impl(p))
+				RETURN v;
+			IF(v ::= [TypeName]parse_impl(p))
+				RETURN v;
+			IF(v ::= [BuiltinType]parse_impl(p))
+				RETURN v;
 
 			RETURN NULL;
 		}
@@ -214,15 +233,36 @@ INCLUDE "expression.rl"
 		}
 	}
 
+	TypeOfExpression -> Type
+	{
+		# FINAL type() TypeType := TypeType::expression;
+
+		Expression: std::[parser::Expression]Dynamic;
+
+		parse(p: Parser &) bool
+		{
+			IF(!p.consume(tok::Type::type))
+				RETURN FALSE;
+			p.expect(tok::Type::parentheseOpen);
+			IF(!(Expression := parser::Expression::parse(p)))
+				p.fail("expected expression");
+			p.expect(tok::Type::parentheseClose);
+
+			RETURN TRUE;
+		}
+	}
+
 	TypeName -> Type
 	{
 		# FINAL type() TypeType := TypeType::name;
 		Name: Symbol;
+		NoDecay: bool;
 
 		parse(p: Parser&) bool
 		{
 			IF(!Name.parse(p))
 				RETURN FALSE;
+			NoDecay := p.consume(tok::Type::exclamationMark);
 			parse_generic_part(p);
 			RETURN TRUE;
 		}

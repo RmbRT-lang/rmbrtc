@@ -6,35 +6,36 @@ INCLUDE "../src/file.rl"
 
 ::rlc::parser ExternSymbol -> Global, VIRTUAL ScopeItem
 {
-	Symbol: util::[parser::Type, GlobalFunction]DynUnion;
-	Name: src::String;
+	Symbol: util::[parser::GlobalVariable, GlobalFunction]DynUnion;
 
-	# FINAL name() src::String #& := Name;
+	# FINAL name() src::String #& := is_variable()
+		? variable()->name()
+		: function()->name();
 	# FINAL type() Global::Type := Global::Type::externSymbol;
+
+	# is_variable() INLINE bool := Symbol.is_first();
+	# variable() INLINE GlobalVariable \ := Symbol.first();
+	# is_function() INLINE bool := Symbol.is_second();
+	# function() INLINE GlobalFunction \ := Symbol.second();
 
 	parse(p: Parser &) bool
 	{
 		IF(!p.consume(tok::Type::extern))
 			RETURN FALSE;
 
-
+		t: Trace(&p, "external symbol");
 		IF(p.match_ahead(tok::Type::colon))
 		{
-			t: Trace(&p, "external variable");
-			p.expect(tok::Type::identifier, &Name);
-			p.expect(tok::Type::colon);
-
-			Symbol := parser::Type::parse(p);
-			IF(Symbol.is_empty())
-				p.fail("expected type");
+			var: std::[GlobalVariable]Dynamic := [GlobalVariable]new();
+			IF(!var->parse_extern(p))
+				p.fail("expected variable");
+			Symbol := var.release();
 		} ELSE
 		{
-			t: Trace(&p, "external function");
-			f: GlobalFunction;
-			IF(!f.parse(p))
+			f: std::[GlobalFunction]Dynamic := [GlobalFunction]new();
+			IF(!f->parse_extern(p))
 				p.fail("expected function");
-			Symbol := ::std::dup(__cpp_std::move(f));
-			Name := Symbol.second()->name();
+			Symbol := f.release();
 		}
 
 		RETURN TRUE;

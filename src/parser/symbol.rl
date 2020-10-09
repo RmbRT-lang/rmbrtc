@@ -16,35 +16,51 @@ INCLUDE 'std/vector'
 		// [T]Vector
 		Child
 		{
+			CONSTRUCTOR();
+			CONSTRUCTOR(m: Symbol::Child &&):
+				Name(m.Name),
+				Templates(__cpp_std::move(m.Templates));
+
 			Name: src::String;
 			Templates: std::[TemplateArg]Vector;
 
+			parse(p: Parser&) bool := parse(p, FALSE);
 			parse(
-				p: Parser &) bool
+				p: Parser &,
+				isValue: bool) bool
 			{
-				IF(p.consume(tok::Type::bracketOpen)
-				&& !p.consume(tok::Type::bracketClose))
+				IF(p.consume(tok::Type::bracketOpen))
 				{
-					DO()
+					IF(!p.consume(tok::Type::bracketClose))
 					{
-						tArg: TemplateArg;
-						IF(p.consume(tok::Type::hash))
+						DO()
 						{
-							IF(!(tArg := Expression::parse(p)))
-								p.fail("expected expression");
-						} ELSE
-						{
-							IF(!(tArg := Type::parse(p)))
-								p.fail("expected type");
-						}
-						Templates.push_back(__cpp_std::move(tArg));
-					} WHILE(p.consume(tok::Type::comma))
-					p.expect(tok::Type::bracketClose);
-					p.expect(tok::Type::identifier, &Name);
+							tArg: TemplateArg;
+							IF(p.consume(tok::Type::hash))
+							{
+								IF(!(tArg := Expression::parse(p)))
+									p.fail("expected expression");
+							} ELSE
+							{
+								IF(!(tArg := Type::parse(p)))
+									p.fail("expected type");
+							}
+							Templates.push_back(__cpp_std::move(tArg));
+						} WHILE(p.consume(tok::Type::comma))
+						p.expect(tok::Type::bracketClose);
+					}
+					IF(!isValue
+					|| (!p.consume(tok::Type::constructor, &Name)
+						&& !p.consume(tok::Type::destructor, &Name)))
+						p.expect(tok::Type::identifier, &Name);
 					RETURN TRUE;
 				} ELSE
 				{
-					RETURN p.consume(tok::Type::identifier, &Name);
+					RETURN p.consume(tok::Type::identifier, &Name)
+						|| (isValue
+							&& (p.consume(tok::Type::constructor, &Name)
+								|| p.consume(tok::Type::destructor, &Name)));
+						
 				}
 			}
 		}
@@ -52,8 +68,10 @@ INCLUDE 'std/vector'
 		Children: std::[Child]Vector;
 		IsRoot: bool;
 
+		parse(p: Parser&) bool := parse(p, FALSE);
 		parse(
-			p: Parser &) bool
+			p: Parser &,
+			isValue: bool) bool
 		{
 			t: Trace(&p, "symbol");
 
@@ -62,7 +80,7 @@ INCLUDE 'std/vector'
 
 			DO(child: Child)
 			{
-				IF(!child.parse(p))
+				IF(!child.parse(p, isValue))
 				{
 					IF(expect)
 						p.fail("expected symbol child");
@@ -70,7 +88,7 @@ INCLUDE 'std/vector'
 				}
 
 				Children.push_back(__cpp_std::move(child));
-			} WHILE(p.consume(tok::Type::doubleColon))
+			} FOR(p.consume(tok::Type::doubleColon); expect := TRUE)
 
 			RETURN TRUE;
 		}
@@ -82,7 +100,7 @@ INCLUDE 'std/vector'
 
 		Child: Symbol::Child;
 
-		parse(p: Parser &) bool := Child.parse(p);
+		parse(p: Parser &) bool := Child.parse(p, TRUE);
 	}
 
 	SymbolExpression -> Expression
@@ -91,6 +109,6 @@ INCLUDE 'std/vector'
 
 		Symbol: parser::Symbol;
 
-		parse(p: Parser &) bool := Symbol.parse(p);
+		parse(p: Parser &) bool := Symbol.parse(p, TRUE);
 	}
 }

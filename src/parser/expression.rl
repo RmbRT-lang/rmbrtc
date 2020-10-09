@@ -6,6 +6,34 @@ INCLUDE "../util/dynunion.rl"
 
 INCLUDE 'std/vector'
 
+::rlc ENUM Operator
+{
+	add, sub, mul, div, mod,
+	equals, notEquals, less, lessEquals, greater, greaterEquals,
+	bitAnd, bitOr, bitXor, bitNot,
+	logAnd, logOr, logNot,
+	shiftLeft, shiftRight, rotateLeft, rotateRight,
+	neg, pos,
+	subscript, call, conditional,
+	memberReference, memberPointer,
+	bindReference, bindPointer,
+	dereference, address,
+	preIncrement, preDecrement,
+	postIncrement, postDecrement,
+
+	async,
+	fullAsync,
+	expectDynamic,
+	maybeDynamic,
+
+	assign,
+	addAssign, subAssign, mulAssign, divAssign, modAssign,
+	bitAndAssign, bitOrAssign, bitXorAssign, bitNotAssign,
+	logAndAssign, logOrAssign, logNotAssign,
+	shiftLeftAssign, shiftRightAssign, rotateLeftAssign, rotateRightAssign,
+	negAssign
+}
+
 ::rlc::parser
 {
 	ENUM ExpressionType
@@ -28,6 +56,9 @@ INCLUDE 'std/vector'
 
 		Range: src::String;
 
+		CONSTRUCTOR();
+		CONSTRUCTOR(e: Expression &&): Range(e.Range);
+
 		STATIC parse_atom(
 			p: Parser &) Expression *
 		{
@@ -35,6 +66,7 @@ INCLUDE 'std/vector'
 			{
 				exp ::= Expression::parse(p);
 				p.expect(tok::Type::parentheseClose);
+				RETURN exp;
 			}
 
 			ret: Expression *;
@@ -60,10 +92,10 @@ INCLUDE 'std/vector'
 		[T:TYPE]
 		PRIVATE STATIC parse_impl(p: Parser &, ret: Expression * &) bool
 		{
-			v: T;
-			IF(v.parse(p))
+			v: std::[T]Dynamic := [T]new();
+			IF(v->parse(p))
 			{
-				ret := std::dup(__cpp_std::move(v));
+				ret := v.release();
 				RETURN TRUE;
 			}
 			RETURN FALSE;
@@ -110,39 +142,11 @@ INCLUDE 'std/vector'
 
 	StringExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::char;
+		# FINAL type() ExpressionType := ExpressionType::string;
 
 		String: src::String;
 
 		parse(p: Parser &) bool := p.consume(tok::Type::stringQuote, &String);
-	}
-
-	ENUM Operator
-	{
-		add, sub, mul, div, mod,
-		equals, notEquals, less, lessEquals, greater, greaterEquals,
-		bitAnd, bitOr, bitXor, bitNot,
-		logAnd, logOr, logNot,
-		shiftLeft, shiftRight, rotateLeft, rotateRight,
-		neg, pos,
-		subscript, call, conditional,
-		memberReference, memberPointer,
-		bindReference, bindPointer,
-		dereference, address,
-		preIncrement, preDecrement,
-		postIncrement, postDecrement,
-
-		async,
-		fullAsync,
-		expectDynamic,
-		maybeDynamic,
-
-		assign,
-		addAssign, subAssign, mulAssign, divAssign, modAssign,
-		bitAndAssign, bitOrAssign, bitXorAssign, bitNotAssign,
-		logAndAssign, logOrAssign, logNotAssign,
-		shiftLeftAssign, shiftRightAssign, rotateLeftAssign, rotateRightAssign,
-		negAssign
 	}
 
 	::detail
@@ -329,6 +333,7 @@ INCLUDE 'std/vector'
 				std::pair(tok::Type::plus, Operator::pos),
 				std::pair(tok::Type::doublePlus, Operator::preIncrement),
 				std::pair(tok::Type::doubleMinus, Operator::preDecrement),
+				std::pair(tok::Type::tilde, Operator::bitNot),
 				std::pair(tok::Type::tildeColon, Operator::bitNotAssign),
 				std::pair(tok::Type::exclamationMark, Operator::logNot),
 				std::pair(tok::Type::exclamationMarkColon, Operator::logNotAssign),
@@ -338,18 +343,11 @@ INCLUDE 'std/vector'
 			FOR(i ::= 0; i < ::size(prefix); i++)
 				IF(p.consume(prefix[i].First))
 				{
-					xp: OperatorExpression;
-					xp.Operands.push_back(parse_prefix(p));
-					RETURN [TYPE(xp)]new(__cpp_std::move(xp));
+					xp ::= [OperatorExpression]new();
+					xp->Op := prefix[i].Second;
+					xp->Operands.push_back(parse_prefix(p));
+					RETURN xp;
 				}
-
-
-			IF(p.consume(tok::Type::parentheseOpen))
-			{
-				xp ::= Expression::parse(p);
-				p.expect(tok::Type::parentheseClose);
-				RETURN xp;
-			}
 
 			RETURN parse_postfix(p);
 		}
@@ -427,14 +425,17 @@ INCLUDE 'std/vector'
 					call->Op := Operator::call;
 					call->Operands.push_back(lhs);
 
-					DO()
+					FOR(comma ::= FALSE;
+						!p.consume(tok::Type::parentheseClose);
+						comma := TRUE)
 					{
-						rhs ::= Expression::parse(p);
-						IF(!rhs)
+						IF(comma)
+							p.expect(tok::Type::comma);
+						IF(rhs ::= Expression::parse(p))
+							call->Operands.push_back(rhs);
+						ELSE
 							p.fail("expected expression");
-						call->Operands.push_back(rhs);
-					} WHILE(p.consume(tok::Type::comma))
-					p.expect(tok::Type::parentheseClose);
+					}
 
 					lhs := call;
 					CONTINUE["outer"];
@@ -485,10 +486,8 @@ INCLUDE 'std/vector'
 
 			t: Trace(&p, "cast expression");
 
-			type ::= Type::parse(p);
-			IF(!type)
+			IF(!(Type := parser::Type::parse(p)))
 				p.fail("expected type");
-			Type := type;
 
 			p.expect(tok::Type::greater);
 			p.expect(tok::Type::parentheseOpen);
@@ -511,14 +510,18 @@ INCLUDE 'std/vector'
 		CONSTRUCTOR();
 		CONSTRUCTOR(v: Expression \): V(v);
 		CONSTRUCTOR(v: Type \): V(v);
+		CONSTRUCTOR(v: TypeOrExpr &&): V(__cpp_std::move(v.V));
 		
 		# is_type() INLINE bool := V.is_second();
 		# type() Type \ := V.second();
 		# is_expression() INLINE bool := V.is_first();
-		# expression() INLINE bool := V.first();
+		# expression() INLINE Expression \ := V.first();
 
 		# CONVERT(bool) INLINE NOTYPE! := V;
 		# LOG_NOT() INLINE bool := !V;
+
+		[T:TYPE] ASSIGN(v: T! &&) TypeOrExpr &
+			:= std::help::custom_assign(*THIS, __cpp_std::[T!]forward(v));
 	}
 
 	SizeofExpression -> Expression

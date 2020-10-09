@@ -249,10 +249,11 @@ INCLUDE 'std/pair'
 				std::pair("CASE", Type::case),
 				std::pair("CATCH", Type::catch),
 				std::pair("CHAR", Type::char),
+				std::pair("CONCEPT", Type::concept),
 				std::pair("CONSTRUCTOR", Type::constructor),
 				std::pair("CONTINUE", Type::continue),
 				std::pair("DEFAULT", Type::default),
-				std::pair("DESTRUCTORr", Type::destructor),
+				std::pair("DESTRUCTOR", Type::destructor),
 				std::pair("DO", Type::do),
 				std::pair("ELSE", Type::else),
 				std::pair("ENUM", Type::enum),
@@ -304,6 +305,24 @@ INCLUDE 'std/pair'
 
 		number_literal(out: Token \) bool
 		{
+			IF(eatString("0x")
+			|| eatString("0X"))
+			{
+				out->Type := Type::numberLiteral;
+				FOR(i ::= 0;; i++)
+				{
+					c ::= look();
+					IF(c >= '0' && c <= '9'
+					|| c >= 'a' && c <= 'f'
+					|| c >= 'A' && c <= 'F')
+						getc();
+					ELSE IF(!i)
+						error();
+					ELSE
+						RETURN TRUE;
+				}
+			}
+
 			IF(!is_digit(look()))
 				RETURN FALSE;
 			++Read;
@@ -324,7 +343,7 @@ INCLUDE 'std/pair'
 					c ::= getc();
 					IF(!c)
 						error();
-					IF(c == '\'')
+					IF(c == '\\')
 						IF(!getc())
 							error();
 				}
@@ -340,7 +359,7 @@ INCLUDE 'std/pair'
 			WHILE((c := getc()) != delim)
 			{
 				IF(!c) error();
-				IF(c == '\'')
+				IF(c == '\\')
 					IF(!getc()) error();
 			}
 			SWITCH(delim)

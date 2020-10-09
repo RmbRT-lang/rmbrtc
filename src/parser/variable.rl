@@ -7,23 +7,44 @@ INCLUDE "member.rl"
 INCLUDE 'std/memory'
 INCLUDE 'std/vector'
 
+INCLUDE "../util/dynunion.rl"
+
 ::rlc::parser
 {
+	VariableType
+	{
+		PRIVATE V: util::[Type, Type::Auto]DynUnion;
+
+		CONSTRUCTOR();
+		CONSTRUCTOR(t: Type \): V(t);
+		CONSTRUCTOR(t: Type::Auto \): V(t);
+
+		# is_type() INLINE bool := V.is_first();
+		# type() INLINE Type \ := V.first();
+		# is_auto() INLINE bool := V.is_second();
+		# auto() INLINE Type::Auto \ := V.second();
+
+		# CONVERT(bool!) INLINE NOTYPE! := V;
+
+		[T:TYPE] ASSIGN(v: T!&&) VariableType &
+			:= std::help::custom_assign(*THIS, __cpp_std::[T!]forward(v));
+	}
+
 	Variable -> VIRTUAL ScopeItem
 	{
 		Name: src::String;
-		HasType: bool;
-		Type: std::[parser::Type]Dynamic;
+		Type: VariableType;
 		HasInitialiser: bool;
 		InitValues: std::[std::[Expression]Dynamic]Vector;
-		TypeQualifier: Type::Qualifier;
 
 		# FINAL name() src::String#& := Name;
 
 		parse_fn_arg(p: Parser&) bool
-			:= parse(p, FALSE, TRUE, FALSE);
+			:= parse(p, FALSE, FALSE, FALSE);
 		parse_var_decl(p: Parser &) bool
 			:= parse(p, TRUE, TRUE, FALSE);
+		parse_extern(p: Parser&) bool
+			:= parse(p, TRUE, FALSE, FALSE);
 
 		parse(p: Parser&,
 			needs_name: bool,
@@ -32,7 +53,8 @@ INCLUDE 'std/vector'
 		{
 			STATIC k_needed_without_name: tok::Type#[](
 				tok::Type::bracketOpen,
-				tok::Type::doubleColon);
+				tok::Type::doubleColon,
+				tok::Type::void);
 
 			STATIC k_needed_after_name: std::[tok::Type, bool]Pair#[](
 				std::pair(tok::Type::colon, TRUE),
@@ -40,6 +62,7 @@ INCLUDE 'std/vector'
 				std::pair(tok::Type::doubleColonEqual, TRUE),
 				std::pair(tok::Type::hash, TRUE),
 				std::pair(tok::Type::dollar, TRUE),
+				std::pair(tok::Type::exclamationMark, FALSE),
 				std::pair(tok::Type::and, FALSE),
 				std::pair(tok::Type::doubleAnd, FALSE),
 				std::pair(tok::Type::asterisk, FALSE),
@@ -60,6 +83,7 @@ INCLUDE 'std/vector'
 			{
 				found ::= FALSE;
 				IF(p.match(tok::Type::identifier))
+				{
 					FOR(i ::= 0; i < ::size(k_needed_after_name); i++)
 						IF((!needs_name || k_needed_after_name[i].Second)
 						&& p.match_ahead(k_needed_after_name[i].First))
@@ -67,6 +91,7 @@ INCLUDE 'std/vector'
 							found := TRUE;
 							BREAK;
 						}
+				}
 				ELSE
 					FOR(i ::= 0; i < ::size(k_needed_without_name); i++)
 						IF(p.match(k_needed_without_name[i]))
@@ -106,14 +131,14 @@ INCLUDE 'std/vector'
 						{
 							p.expect(tok::Type::identifier, &name);
 
-							TypeQualifier.parse(p);
+							Type := ::[Type::Auto]new();
+							Type.auto()->Qualifier.parse(p);
 
 							// "name ::=" style variable?
 							p.expect(tok::Type::doubleColonEqual);
 
 							has_name := TRUE;
 							needs_type := FALSE;
-							HasType := FALSE;
 							BREAK;
 						}
 					}
@@ -135,15 +160,13 @@ INCLUDE 'std/vector'
 				InitValues.push_back(init);
 			} ELSE
 			{
-				IF(!(Type := parser::Type::parse(p)).Ptr)
+				IF(!(Type := parser::Type::parse(p)))
 				{
 					IF(needs_name)
 						p.fail("expected name");
 					ELSE
 						RETURN FALSE;
 				}
-
-				HasType := TRUE;
 
 				IF(allow_initialiser)
 				{
@@ -180,14 +203,57 @@ INCLUDE 'std/vector'
 	GlobalVariable -> Global, Variable
 	{
 		# FINAL type() Global::Type := Global::Type::variable;
-		parse(p: Parser&) INLINE ::= Variable::parse_var_decl(p);
+		parse(p: Parser&) bool
+		{
+			IF(!parse_var_decl(p))
+				RETURN FALSE;
+			p.expect(tok::Type::semicolon);
+			RETURN TRUE;
+		}
+
+		parse_extern(p: Parser&) bool
+		{
+			IF(!Variable::parse_extern(p))
+				RETURN FALSE;
+			p.expect(tok::Type::semicolon);
+			RETURN TRUE;
+		}
 	}
 
 	MemberVariable -> Member, Variable
 	{
 		# FINAL type() Member::Type := Member::Type::variable;
-		parse(p: Parser&) INLINE ::= Variable::parse_var_decl(p);
+		parse(p: Parser&, static: bool) bool
+		{
+			IF(static)
+			{
+				IF(!parse_var_decl(p))
+					RETURN FALSE;
+			}
+			ELSE
+			{
+				IF(!parse_fn_arg(p))
+					RETURN FALSE;
+			}
+			p.expect(tok::Type::semicolon);
+			RETURN TRUE;
+		}
 	}
 
-	TYPE LocalVariable := GlobalVariable;
+	Local -> VIRTUAL ScopeItem
+	{
+		# FINAL category() ScopeItem::Category := ScopeItem::Category::local;
+	}
+
+	LocalVariable -> Local, Variable
+	{
+		parse(p: Parser &, expect_semicolon: bool) bool
+		{
+			IF(!Variable::parse_var_decl(p))
+				RETURN FALSE;
+			IF(expect_semicolon)
+				p.expect(tok::Type::semicolon);
+			RETURN TRUE;
+		}
+	}
 }

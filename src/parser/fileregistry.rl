@@ -1,7 +1,9 @@
+INCLUDE "detail/global.rl"
+INCLUDE "detail/member.rl"
 INCLUDE "file.rl"
 
 INCLUDE 'std/string'
-INCLUDE 'std/map'
+INCLUDE 'std/set'
 
 ::rlc::parser FileRegistry
 {
@@ -10,21 +12,20 @@ PRIVATE:
 	{
 		STATIC cmp(
 			a: std::Utf8 #&,
-			b: std::Utf8 #&
+			b: File # \
 		) INLINE int
-			:= a.cmp(b);
+			:= a.cmp(b->name());
 	}
 
-	TYPE FileMap := std::[std::Utf8, std::[File]Dynamic, Utf8Cmp]TreeMap;
-	Files: FileMap;
+	Files: std::[std::[File]Dynamic, Utf8Cmp]VectorSet;
 
 PUBLIC:
 	get(file: std::Utf8 #&) File *
 	{
-		entry ::= &Files.get(file);
-		IF(entry->Ptr)
-			RETURN entry->Ptr;
+		loc: std::[std::[File]Dynamic, Utf8Cmp]VectorSet::Location;
+		IF(entry ::= Files.find(file, &loc))
+			RETURN *entry;
 		ELSE
-			RETURN (*entry := ::[File]new(file)).Ptr;
+			RETURN Files.emplace_at(loc, ::[File]new(file));
 	}
 }

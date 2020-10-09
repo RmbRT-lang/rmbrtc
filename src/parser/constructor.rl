@@ -32,17 +32,19 @@ INCLUDE 'std/memory'
 
 	parse(p: Parser&) bool
 	{
-		IF(!p.consume(tok::Type::constructor))
+		IF(!p.consume(tok::Type::constructor, &Name))
 			RETURN FALSE;
+		t: Trace(&p, "constructor");
 
 		p.expect(tok::Type::parentheseOpen);
 
-		DO(arg: LocalVariable)
-		{
-			IF(!arg.parse_fn_arg(p))
-				p.fail("expected argument");
-			Arguments.push_back(__cpp_std::move(arg));
-		} WHILE(p.consume(tok::Type::comma))
+		IF(!p.match(tok::Type::parentheseClose))
+			DO(arg: LocalVariable)
+			{
+				IF(!arg.parse_fn_arg(p))
+					p.fail("expected argument");
+				Arguments.push_back(__cpp_std::move(arg));
+			} WHILE(p.consume(tok::Type::comma))
 
 		p.expect(tok::Type::parentheseClose);
 
@@ -79,7 +81,7 @@ INCLUDE 'std/memory'
 				p.expect(tok::Type::parentheseClose);
 			} WHILE(p.consume(tok::Type::comma))
 
-		IF(p.consume(tok::Type::semicolon))
+		IF(!p.consume(tok::Type::semicolon))
 		{
 			body: BlockStatement;
 			IF(!body.parse(p))

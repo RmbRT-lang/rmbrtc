@@ -39,6 +39,7 @@ INCLUDE 'std/pair'
 	}
 
 	Name: src::String;
+	Virtual: bool;
 	Members: std::[std::[Member]Dynamic]Vector;
 	Inheritances: std::[Inheritance]Vector;
 
@@ -47,11 +48,16 @@ INCLUDE 'std/pair'
 	parse(p: Parser &) bool
 	{
 		IF(!p.match(tok::Type::identifier)
-		|| !p.match_ahead(tok::Type::braceOpen)
-		&& !p.match_ahead(tok::Type::minusGreater))
+		|| (!p.match_ahead(tok::Type::braceOpen)
+			&& !p.match_ahead(tok::Type::minusGreater)
+			&& !p.match_ahead(tok::Type::virtual)))
 			RETURN FALSE;
 
+		t: Trace(&p, "class");
+
 		p.expect(tok::Type::identifier, &Name);
+
+		Virtual := p.consume(tok::Type::virtual);
 
 		IF(p.consume(tok::Type::minusGreater))
 			DO(i: Inheritance)

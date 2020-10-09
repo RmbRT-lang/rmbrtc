@@ -5,7 +5,8 @@ INCLUDE "templatedecl.rl"
 	ENUM Category
 	{
 		global,
-		member
+		member,
+		local
 	}
 
 	Templates: TemplateDecl;
