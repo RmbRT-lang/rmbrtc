@@ -15,7 +15,7 @@ INCLUDE "parser.rl"
 	static
 }
 
-::rlc::parser Member -> VIRTUAL ScopeItem
+::rlc::parser Member VIRTUAL -> VIRTUAL ScopeItem
 {
 	# FINAL category() ScopeItem::Category := ScopeItem::Category::member;
 

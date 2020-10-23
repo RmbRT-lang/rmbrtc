@@ -1,7 +1,7 @@
 INCLUDE "parser.rl"
 INCLUDE "scopeitem.rl"
 
-::rlc::parser Global -> VIRTUAL ScopeItem
+::rlc::parser Global VIRTUAL -> VIRTUAL ScopeItem
 {
 	ENUM Type
 	{

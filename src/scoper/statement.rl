@@ -12,7 +12,7 @@ INCLUDE "../util/dynunion.rl"
 {
 	TYPE StatementType := parser::StatementType;
 
-	Statement -> ScopeOwner
+	Statement VIRTUAL -> ScopeOwner
 	{
 		# FINAL owner_type() OwnerType := OwnerType::statement;
 

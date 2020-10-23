@@ -1,7 +1,7 @@
 INCLUDE "../parser/member.rl"
 INCLUDE "scopeitem.rl"
 
-::rlc::scoper Member -> VIRTUAL ScopeItem
+::rlc::scoper Member VIRTUAL -> VIRTUAL ScopeItem
 {
 	Visibility: rlc::Visibility;
 	Attribute: rlc::MemberAttribute;

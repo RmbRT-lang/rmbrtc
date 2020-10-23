@@ -25,7 +25,7 @@ INCLUDE "../util/dynunion.rl"
 		continue
 	}
 
-	Statement
+	Statement VIRTUAL
 	{
 		# ABSTRACT type() StatementType;
 

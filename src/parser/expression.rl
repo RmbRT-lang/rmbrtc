@@ -50,7 +50,7 @@ INCLUDE 'std/vector'
 		sizeof
 	}
 
-	Expression
+	Expression VIRTUAL
 	{
 		# ABSTRACT type() ExpressionType;
 

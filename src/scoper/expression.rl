@@ -2,7 +2,7 @@ INCLUDE "../parser/expression.rl"
 
 ::rlc::scoper TYPE ExpressionType := parser::ExpressionType;
 
-::rlc::scoper Expression
+::rlc::scoper Expression VIRTUAL
 {
 	# ABSTRACT type() ExpressionType;
 
