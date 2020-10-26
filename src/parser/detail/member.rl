@@ -127,10 +127,10 @@ INCLUDE "../destructor.rl"
 
 	[T:TYPE] parse_member_impl(p: Parser &, ret: Member * &) bool
 	{
-		v: std::[T]Dynamic := [T]new();
-		IF(v->parse(p))
+		v: T;
+		IF(v.parse(p))
 		{
-			ret := v.release();
+			ret := std::dup_mv(v);
 			RETURN TRUE;
 		}
 		RETURN FALSE;

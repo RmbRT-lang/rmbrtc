@@ -31,10 +31,10 @@ INCLUDE "../function.rl"
 
 	[T: TYPE] parse_global_impl(p: Parser &, ret: Global * &) bool
 	{
-		v: std::[T]Dynamic := [T]new();
-		IF(v->parse(p))
+		v: T;
+		IF(v.parse(p))
 		{
-			ret := v.release();
+			ret := std::dup_mv(v);
 			RETURN TRUE;
 		}
 		RETURN FALSE;

@@ -137,15 +137,21 @@ INCLUDE "expression.rl"
 			}
 		}
 
+
+		CONSTRUCTOR();
+		CONSTRUCTOR(t: Type &&):
+			Modifiers(__cpp_std::move(t.Modifiers)),
+			Reference(t.Reference);
+
 		Modifiers: std::[Modifier]Vector;
 		Reference: Type::ReferenceType;
 
 		[T:TYPE] PRIVATE STATIC parse_impl(
 			p: Parser &) T! *
 		{
-			v: std::[T!]Dynamic := [T!]new();
-			IF(v->parse(p))
-				RETURN v.release();
+			v: T;
+			IF(v.parse(p))
+				RETURN std::dup_mv(v);
 			ELSE
 				RETURN NULL;
 		}

@@ -56,9 +56,6 @@ INCLUDE 'std/vector'
 
 		Range: src::String;
 
-		CONSTRUCTOR();
-		CONSTRUCTOR(e: Expression &&): Range(e.Range);
-
 		STATIC parse_atom(
 			p: Parser &) Expression *
 		{
@@ -92,10 +89,10 @@ INCLUDE 'std/vector'
 		[T:TYPE]
 		PRIVATE STATIC parse_impl(p: Parser &, ret: Expression * &) bool
 		{
-			v: std::[T]Dynamic := [T]new();
-			IF(v->parse(p))
+			v: T;
+			IF(v.parse(p))
 			{
-				ret := v.release();
+				ret := std::dup_mv(v);
 				RETURN TRUE;
 			}
 			RETURN FALSE;

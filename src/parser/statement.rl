@@ -29,13 +29,16 @@ INCLUDE "../util/dynunion.rl"
 	{
 		# ABSTRACT type() StatementType;
 
+		CONSTRUCTOR();
+		CONSTRUCTOR(Statement &&);
+
 		[T: TYPE]
 		PRIVATE STATIC parse_impl(p: Parser &, out: Statement * &) bool
 		{
-			v: std::[T]Dynamic := [T]new();
-			IF(v->parse(p))
+			v: T;
+			IF(v.parse(p))
 			{
-				out := v.release();
+				out := std::dup_mv(v);
 				RETURN TRUE;
 			}
 			RETURN FALSE;
