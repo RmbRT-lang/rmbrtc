@@ -12,6 +12,7 @@ INCLUDE "../util/dynunion.rl"
 {
 	ENUM StatementType
 	{
+		assert,
 		block,
 		if,
 		variable,
@@ -67,7 +68,8 @@ INCLUDE "../util/dynunion.rl"
 		STATIC parse_body(p: Parser &) Statement *
 		{
 			ret: Statement *;
-			IF([BlockStatement]parse_impl(p, ret)
+			IF([AssertStatement]parse_impl(p, ret)
+			|| [BlockStatement]parse_impl(p, ret)
 			|| [IfStatement]parse_impl(p, ret)
 			|| [ExpressionStatement]parse_impl(p, ret)
 			|| [ReturnStatement]parse_impl(p, ret)
@@ -80,6 +82,28 @@ INCLUDE "../util/dynunion.rl"
 				RETURN ret;
 			ELSE
 				RETURN NULL;
+		}
+	}
+
+	AssertStatement -> Statement
+	{
+		Expression: std::[parser::Expression]Dynamic;
+
+		# FINAL type() StatementType := StatementType::assert;
+
+		parse(p: Parser &) bool
+		{
+			IF(!p.consume(tok::Type::assert))
+				RETURN FALSE;
+
+			p.expect(tok::Type::parentheseOpen);
+
+			IF(!(Expression := parser::Expression::parse(p)))
+				p.fail("expected expression");
+
+			p.expect(tok::Type::parentheseClose);
+			p.expect(tok::Type::semicolon);
+			RETURN TRUE;
 		}
 	}
 

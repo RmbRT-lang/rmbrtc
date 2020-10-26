@@ -13,6 +13,7 @@ INCLUDE "../src/file.rl"
 
 		// Keywords.
 		abstract,
+		assert,
 		bool,
 		break,
 		case,

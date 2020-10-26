@@ -244,6 +244,7 @@ INCLUDE 'std/pair'
 
 			STATIC keywords: std::[char#\, Type]Pair#[](
 				std::pair("ABSTRACT", Type::abstract),
+				std::pair("ASSERT", Type::assert),
 				std::pair("BOOL", Type::bool),
 				std::pair("BREAK", Type::break),
 				std::pair("CASE", Type::case),
