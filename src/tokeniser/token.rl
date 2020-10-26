@@ -48,6 +48,7 @@ INCLUDE "../src/file.rl"
 		sizeof,
 		static,
 		switch,
+		test,
 		this,
 		throw,
 		true,

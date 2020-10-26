@@ -277,6 +277,7 @@ INCLUDE 'std/pair'
 				std::pair("SIZEOF", Type::sizeof),
 				std::pair("STATIC", Type::static),
 				std::pair("SWITCH", Type::switch),
+				std::pair("TEST", Type::test),
 				std::pair("THIS", Type::this),
 				std::pair("THROW", Type::throw),
 				std::pair("TRUE", Type::true),

@@ -4,6 +4,7 @@ INCLUDE "../typedef.rl"
 INCLUDE "../concept.rl"
 INCLUDE "../variable.rl"
 INCLUDE "../function.rl"
+INCLUDE "../test.rl"
 
 ::rlc::parser::detail
 {
@@ -21,7 +22,8 @@ INCLUDE "../function.rl"
 		|| [GlobalConcept]parse_global_impl(p, ret)
 		|| [GlobalRawtype]parse_global_impl(p, ret)
 		|| [GlobalEnum]parse_global_impl(p, ret)
-		|| [ExternSymbol]parse_global_impl(p, ret))
+		|| [ExternSymbol]parse_global_impl(p, ret)
+		|| (!templates.exists() && [Test]parse_global_impl(p, ret)))
 		{
 			ret->Templates := __cpp_std::move(templates);
 		}

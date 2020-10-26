@@ -14,7 +14,8 @@ INCLUDE "scopeitem.rl"
 		rawtype,
 		union,
 		enum,
-		externSymbol
+		externSymbol,
+		test
 	}
 	# ABSTRACT type() Global::Type;
 	# FINAL category() ScopeItem::Category := ScopeItem::Category::global;
