@@ -22,20 +22,12 @@ INCLUDE 'std/io/stream'
 		p: Parser(&Src);
 		inc: Include;
 		WHILE(inc.parse(p))
-		{
-			printf("include ");
-			out.write(Src.content(inc.Token.Content));
-			printf("\n");
 			Includes.push_back(inc);
-		}
 
 		WHILE(entry ::= Global::parse(p))
-		{
-			printf("::");
-			out.write(Src.content(entry->name()));
-			printf("\n");
-
 			RootScope.push_back(__cpp_std::move(entry));
-		}
+
+		out.write(THIS->name().content());
+		out.write('\n');
 	}
 }
