@@ -43,6 +43,8 @@ INCLUDE "../parser/global.rl"
 	(// The object owning the scope containing this item, if any. /)
 	# parent() INLINE ScopeOwner * := parent_scope()->Owner;
 
+	# name() INLINE String#& := Group->Name;
+
 	STATIC create(
 		entry: parser::ScopeItem #\,
 		file: src::File#&,
