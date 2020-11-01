@@ -48,7 +48,8 @@ INCLUDE "../util/dynunion.rl"
 		STATIC parse(p: Parser&) Statement *
 		{
 			ret: Statement *;
-			IF([BlockStatement]parse_impl(p, ret)
+			IF([AssertStatement]parse_impl(p, ret)
+			|| [BlockStatement]parse_impl(p, ret)
 			|| [IfStatement]parse_impl(p, ret)
 			|| [VariableStatement]parse_impl(p, ret)
 			|| [ExpressionStatement]parse_impl(p, ret)

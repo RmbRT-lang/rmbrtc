@@ -12,6 +12,12 @@ INCLUDE 'std/err/unimplemented'
 {
 	type ::= parsed->type();
 
+	IF(type == StatementType::assert)
+		RETURN ::[AssertStatement]new(
+			position,
+			<parser::AssertStatement #\>(parsed),
+			file,
+			parentScope);
 	IF(type == StatementType::block)
 		RETURN ::[BlockStatement]new(
 			position,
@@ -146,6 +152,23 @@ INCLUDE 'std/err/unimplemented'
 			RETURN Val.Exp;
 		}
 		# CONVERT(bool) INLINE NOTYPE! := Val.Check;
+	}
+
+	AssertStatement -> Statement
+	{
+		Expression: std::[scoper::Expression]Dynamic;
+
+		# FINAL type() StatementType := StatementType::assert;
+
+		# FINAL variables() UM := 0;
+
+		CONSTRUCTOR(
+			position: UM,
+			parsed: parser::AssertStatement #\,
+			file: src::File#&,
+			parentScope: scoper::Scope \):
+			Statement(position, parentScope),
+			Expression(scoper::Expression::create(parsed->Expression, file));
 	}
 
 	BlockStatement -> Statement
