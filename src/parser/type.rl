@@ -147,11 +147,32 @@ INCLUDE "expression.rl"
 		Reference: Type::ReferenceType;
 
 		[T:TYPE] PRIVATE STATIC parse_impl(
-			p: Parser &) T! *
+			p: Parser &) Type *
 		{
 			v: T;
 			IF(v.parse(p))
-				RETURN std::dup_mv(v);
+			{
+				t: Type \ := std::dup_mv(v);
+				WHILE(p.consume(tok::Type::minus))
+				{
+					STATIC expect: tok::Type#[](
+						tok::Type::doubleColon,
+						tok::Type::bracketOpen,
+						tok::Type::identifier);
+					found ::= FALSE;
+					FOR(i ::= 0; i < ::size(expect); i++)
+						found |= p.match(expect[i]);
+					IF(!found)
+						p.fail("expected symbol");
+
+					next ::= Type::parse(p);
+					ASSERT(next->type() == TypeType::name);
+					
+					<TypeName \>(next)->Name.Children.back().Templates.emplace_back(t);
+					t := next;
+				}
+				RETURN t;
+			}
 			ELSE
 				RETURN NULL;
 		}
