@@ -10,7 +10,7 @@ INCLUDE "exprorstmt.rl"
 
 ::rlc::scoper Function -> VIRTUAL ScopeItem
 {
-	Arguments: std::[GlobalVariable\]Vector;
+	Arguments: std::[LocalVariable\]Vector;
 	Return: std::[Type]Dynamic;
 	Body: ExprOrStmt;
 	Inline: bool;
@@ -29,7 +29,7 @@ INCLUDE "exprorstmt.rl"
 		FOR(i ::= 0; i < parsed->Arguments.size(); i++)
 		{
 			var ::= ArgumentScope.insert(&parsed->Arguments[i], file);
-			Arguments.push_back([GlobalVariable \]dynamic_cast(var));
+			Arguments.push_back([LocalVariable \]dynamic_cast(var));
 		}
 
 		IF(parsed->Return)

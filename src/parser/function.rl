@@ -30,7 +30,7 @@ INCLUDE 'std/help'
 
 ::rlc::parser Function -> VIRTUAL ScopeItem
 {
-	Arguments: std::[GlobalVariable]Vector;
+	Arguments: std::[LocalVariable]Vector;
 	Return: std::[Type]Dynamic;
 	Body: ExprOrStmt;
 	IsInline: bool;
@@ -52,7 +52,7 @@ INCLUDE 'std/help'
 
 		IF(!p.consume(tok::Type::parentheseClose))
 		{
-			DO(arg: GlobalVariable)
+			DO(arg: LocalVariable)
 			{
 				IF(!arg.parse_fn_arg(p))
 					p.fail("expected argument");
