@@ -25,6 +25,10 @@ main(
 	{
 		e.print(out);
 		printf("\n");
+	} CATCH(e: char#\)
+	{
+		out.write(e);
+		out.write("\n");
 	}
 
 	RETURN 0;
