@@ -10,82 +10,83 @@ INCLUDE 'std/err/unimplemented'
 	parentScope: Scope \
 ) Statement \
 {
-	type ::= parsed->type();
-
-	IF(type == StatementType::assert)
+	SWITCH(type ::= parsed->type())
+	{
+	DEFAULT:
+		THROW std::err::Unimplemented(type.NAME());
+	CASE StatementType::assert:
 		RETURN ::[AssertStatement]new(
 			position,
 			<parser::AssertStatement #\>(parsed),
 			file,
 			parentScope);
-	IF(type == StatementType::block)
+	CASE StatementType::block:
 		RETURN ::[BlockStatement]new(
 			position,
 			<parser::BlockStatement #\>(parsed),
 			file,
 			parentScope);
-	IF(type == StatementType::if)
+	CASE StatementType::if:
 		RETURN ::[IfStatement]new(
 			position,
 			<parser::IfStatement #\>(parsed),
 			file,
 			parentScope);
-	IF(type == StatementType::variable)
+	CASE StatementType::variable:
 		RETURN ::[VariableStatement]new(
 			position,
 			<parser::VariableStatement #\>(parsed),
 			file,
 			parentScope);
-	IF(type == StatementType::expression)
+	CASE StatementType::expression:
 		RETURN ::[ExpressionStatement]new(
 			position,
 			<parser::ExpressionStatement #\>(parsed),
 			file,
 			parentScope);
-	IF(type == StatementType::return)
+	CASE StatementType::return:
 		RETURN ::[ReturnStatement]new(
 			position,
 			<parser::ReturnStatement #\>(parsed),
 			file,
 			parentScope);
-	IF(type == StatementType::try)
+	CASE StatementType::try:
 		RETURN ::[TryStatement]new(
 			position,
 			<parser::TryStatement #\>(parsed),
 			file,
 			parentScope);
-	IF(type == StatementType::throw)
+	CASE StatementType::throw:
 		RETURN ::[ThrowStatement]new(
 			position,
 			<parser::ThrowStatement #\>(parsed),
 			file,
 			parentScope);
-	IF(type == StatementType::loop)
+	CASE StatementType::loop:
 		RETURN ::[LoopStatement]new(
 			position,
 			<parser::LoopStatement #\>(parsed),
 			file,
 			parentScope);
-	IF(type == StatementType::switch)
+	CASE StatementType::switch:
 		RETURN ::[SwitchStatement]new(
 			position,
 			<parser::SwitchStatement #\>(parsed),
 			file,
 			parentScope);
-	IF(type == StatementType::break)
+	CASE StatementType::break:
 		RETURN ::[BreakStatement]new(
 			position,
 			<parser::BreakStatement #\>(parsed),
 			file,
 			parentScope);
-	IF(type == StatementType::continue)
+	CASE StatementType::continue:
 		RETURN ::[ContinueStatement]new(
 			position,
 			<parser::ContinueStatement #\>(parsed),
 			file,
 			parentScope);
-
-	THROW std::err::Unimplemented(type.NAME());
+	}
 }
 
 ::rlc::scoper

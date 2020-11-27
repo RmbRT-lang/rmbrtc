@@ -11,30 +11,31 @@ INCLUDE 'std/err/unimplemented'
 	file: src::File#&
 ) Expression \
 {
-	type ::= parsed->type();
-
-	IF(type == ExpressionType::symbol)
+	SWITCH(type ::= parsed->type())
+	{
+	DEFAULT:
+		THROW std::err::Unimplemented(type.NAME());
+	CASE ExpressionType::symbol:
 		RETURN ::[SymbolExpression]new(<parser::SymbolExpression #\>(parsed), file);
-	IF(type == ExpressionType::symbolChild)
+	CASE ExpressionType::symbolChild:
 		RETURN ::[SymbolChildExpression]new(<parser::SymbolChildExpression #\>(parsed), file);
-	IF(type == ExpressionType::number)
+	CASE ExpressionType::number:
 		RETURN ::[NumberExpression]new(<parser::NumberExpression #\>(parsed), file);
-	IF(type == ExpressionType::bool)
+	CASE ExpressionType::bool:
 		RETURN ::[BoolExpression]new(<parser::BoolExpression #\>(parsed));
-	IF(type == ExpressionType::char)
+	CASE ExpressionType::char:
 		RETURN ::[CharExpression]new(<parser::CharExpression #\>(parsed), file);
-	IF(type == ExpressionType::string)
+	CASE ExpressionType::string:
 		RETURN ::[StringExpression]new(<parser::StringExpression #\>(parsed), file);
-	IF(type == ExpressionType::operator)
+	CASE ExpressionType::operator:
 		RETURN ::[OperatorExpression]new(<parser::OperatorExpression #\>(parsed), file);
-	IF(type == ExpressionType::this)
+	CASE ExpressionType::this:
 		RETURN ::[ThisExpression]new();
-	IF(type == ExpressionType::cast)
+	CASE ExpressionType::cast:
 		RETURN ::[CastExpression]new(<parser::CastExpression #\>(parsed), file);
-	IF(type == ExpressionType::sizeof)
+	CASE ExpressionType::sizeof:
 		RETURN ::[SizeofExpression]new(<parser::SizeofExpression #\>(parsed), file);
-
-	THROW std::err::Unimplemented(type.NAME());
+	}
 }
 
 ::rlc::scoper

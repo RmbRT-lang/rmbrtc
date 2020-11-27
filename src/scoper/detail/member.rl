@@ -16,26 +16,27 @@ INCLUDE 'std/err/unimplemented'
 	file: src::File #&,
 	group: detail::ScopeItemGroup \) Member \
 {
-	type ::= parsed->type();
-
-	IF(type == Member::Type::class)
+	SWITCH(type ::= parsed->type())
+	{
+	DEFAULT:
+		THROW std::err::Unimplemented(type.NAME());
+	CASE Member::Type::class:
 		RETURN ::[MemberClass]new(<parser::MemberClass #\>(parsed), file, group);
-	IF(type == Member::Type::enum)
+	CASE Member::Type::enum:
 		RETURN ::[MemberEnum]new(<parser::MemberEnum #\>(parsed), file, group);
-	IF(type == Member::Type::enumConstant)
+	CASE Member::Type::enumConstant:
 		RETURN ::[Enum::Constant]new(<parser::Enum::Constant #\>(parsed), file, group);
-	IF(type == Member::Type::variable)
+	CASE Member::Type::variable:
 		RETURN ::[MemberVariable]new(<parser::MemberVariable #\>(parsed), file, group);
-	IF(type == Member::Type::function)
+	CASE Member::Type::function:
 		RETURN ::[MemberFunction]new(<parser::MemberFunction #\>(parsed), file, group);
-	IF(type == Member::Type::constructor)
+	CASE Member::Type::constructor:
 		RETURN ::[Constructor]new(<parser::Constructor #\>(parsed), file, group);
-	IF(type == Member::Type::destructor)
+	CASE Member::Type::destructor:
 		RETURN ::[Destructor]new(<parser::Destructor #\>(parsed), file, group);
-	IF(type == Member::Type::union)
+	CASE Member::Type::union:
 		RETURN ::[MemberUnion]new(<parser::MemberUnion #\>(parsed), file, group);
-	IF(type == Member::Type::typedef)
+	CASE Member::Type::typedef:
 		RETURN ::[MemberTypedef]new(<parser::MemberTypedef #\>(parsed), file, group);
-
-	THROW std::err::Unimplemented(type.NAME());
+	}
 }

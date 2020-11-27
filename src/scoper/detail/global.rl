@@ -17,26 +17,27 @@ INCLUDE 'std/err/unimplemented'
 	group:  detail::ScopeItemGroup \
 ) Global \
 {
-	type ::= global->type();
-	
-	IF(type == Global::Type::namespace)
+	SWITCH(type ::= global->type())
+	{
+	DEFAULT:
+		THROW std::err::Unimplemented(type.NAME());
+	CASE Global::Type::namespace:
 		RETURN ::[Namespace]new(<parser::Namespace #\>(global), file, group);
-	IF(type == Global::Type::class)
+	CASE Global::Type::class:
 		RETURN ::[GlobalClass]new(<parser::GlobalClass #\>(global), file, group);
-	IF(type == Global::Type::enum)
+	CASE Global::Type::enum:
 		RETURN ::[GlobalEnum]new(<parser::GlobalEnum #\>(global), file, group);
-	IF(type == Global::Type::function)
+	CASE Global::Type::function:
 		RETURN ::[GlobalFunction]new(<parser::GlobalFunction #\>(global), file, group);
-	IF(type == Global::Type::variable)
+	CASE Global::Type::variable:
 		RETURN ::[GlobalVariable]new(<parser::GlobalVariable #\>(global), file, group);
-	IF(type == Global::Type::externSymbol)
+	CASE Global::Type::externSymbol:
 		RETURN ::[ExternSymbol]new(<parser::ExternSymbol #\>(global), file, group);
-	IF(type == Global::Type::typedef)
+	CASE Global::Type::typedef:
 		RETURN ::[GlobalTypedef]new(<parser::GlobalTypedef #\>(global), file, group);
-	IF(type == Global::Type::union)
+	CASE Global::Type::union:
 		RETURN ::[GlobalUnion]new(<parser::GlobalUnion #\>(global), file, group);
-	IF(type == Global::Type::concept)
+	CASE Global::Type::concept:
 		RETURN ::[GlobalConcept]new(<parser::GlobalConcept #\>(global), file, group);
-
-	THROW std::err::Unimplemented(type.NAME());
+	}
 }
