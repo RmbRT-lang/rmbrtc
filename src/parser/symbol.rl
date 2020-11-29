@@ -16,11 +16,6 @@ INCLUDE 'std/vector'
 		// [T]Vector
 		Child
 		{
-			CONSTRUCTOR();
-			CONSTRUCTOR(m: Symbol::Child &&):
-				Name(m.Name),
-				Templates(__cpp_std::move(m.Templates));
-
 			Name: src::String;
 			Templates: std::[TemplateArg]Vector;
 
