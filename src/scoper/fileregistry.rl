@@ -6,6 +6,7 @@ INCLUDE "detail/global.rl"
 INCLUDE "detail/member.rl"
 INCLUDE "detail/expression.rl"
 INCLUDE "detail/statement.rl"
+INCLUDE "detail/type.rl"
 
 INCLUDE 'std/memory'
 INCLUDE 'std/set'
