@@ -15,7 +15,7 @@ INCLUDE "../destructor.rl"
 {
 	parse_member(
 		p: Parser&,
-		default_visibility: rlc::Visibility &
+		default_visibility: Visibility &
 	) Member *
 	{
 		templates: TemplateDecl;
@@ -44,8 +44,8 @@ INCLUDE "../destructor.rl"
 
 	parse_member_intro(
 		p: Parser &,
-		default_visibility: rlc::Visibility &,
-		visibility: rlc::Visibility &,
+		default_visibility: Visibility &,
+		visibility: Visibility &,
 		templates: TemplateDecl &,
 		attribute: MemberAttribute &) VOID
 	{
@@ -58,7 +58,7 @@ INCLUDE "../destructor.rl"
 
 	parse_member_no_vars(
 		p: Parser &,
-		default_visibility: rlc::Visibility &) Member *
+		default_visibility: Visibility &) Member *
 	{
 		templates: TemplateDecl;
 		visibility: Visibility;
@@ -87,7 +87,7 @@ INCLUDE "../destructor.rl"
 
 	parse_concept_member(
 		p: Parser &,
-		default_visibility: rlc::Visibility &) Member *
+		default_visibility: Visibility &) Member *
 	{
 		templates: TemplateDecl;
 		visibility: Visibility;
@@ -138,11 +138,11 @@ INCLUDE "../destructor.rl"
 
 	parse_visibility(
 		p: Parser&,
-		default_visibility: rlc::Visibility &,
+		default_visibility: Visibility &,
 		global: bool
-	) rlc::Visibility
+	) Visibility
 	{
-		STATIC lookup: std::[tok::Type, rlc::Visibility]Pair#[](
+		STATIC lookup: std::[tok::Type, Visibility]Pair#[](
 			std::pair(tok::Type::public, Visibility::public),
 			std::pair(tok::Type::protected, Visibility::protected),
 			std::pair(tok::Type::private, Visibility::private));
