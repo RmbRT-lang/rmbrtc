@@ -7,10 +7,10 @@ INCLUDE 'std/err/filenotfound'
 {
 	absolute_file(name: std::[char#]Buffer #&) std::Utf8
 	{
-		n: std::Utf8(name, std::cstring);
+		n: std::Utf8(name, :cstring);
 
 		IF(real ::= detail::realpath(n.data(), &detail::path_buf[0]))
-			RETURN std::Utf8(real, std::cstring);
+			RETURN std::Utf8(real, :cstring);
 
 		THROW std::io::FileNotFound(name);
 	}
@@ -42,6 +42,6 @@ INCLUDE 'std/err/filenotfound'
 
 ::rlc::util::detail
 {
-	path_buf: std::[char]Vector(std::pass::move, std::[char]alloc(4097));
+	path_buf: std::[char]Vector(:move, std::[char]alloc(4097));
 	EXTERN realpath(char #\, char \) char #*;
 }

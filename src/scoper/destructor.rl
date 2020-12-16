@@ -7,10 +7,10 @@ INCLUDE "../parser/destructor.rl"
 
 	# FINAL type() Member::Type := Member::Type::destructor;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::Destructor #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		Member(parsed),
 		ScopeItem(group, parsed, file),
 		Body(0, &parsed->Body, file, group->Scope),

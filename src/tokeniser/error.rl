@@ -8,10 +8,10 @@ INCLUDE 'std/string'
 	Line: uint;
 	Column: uint;
 
-	CONSTRUCTOR(
+	{
 		File: src::File #\,
 		Line: uint,
-		Column: uint):
+		Column: uint}:
 		File(File->Name),
 		Line(Line),
 		Column(Column);
@@ -44,11 +44,11 @@ INCLUDE 'std/string'
 ::rlc::tok UnexpectedChar -> Error
 {
 	Char: char;
-	CONSTRUCTOR(
+	{
 		File: src::File #\,
 		Line: uint,
 		Column: uint,
-		Char: char):
+		Char: char}:
 		Error(File, Line, Column),
 		Char(Char);
 
@@ -69,10 +69,10 @@ INCLUDE 'std/string'
 
 ::rlc::tok UnexpectedEOF -> Error
 {
-	CONSTRUCTOR(
+	{
 		File: src::File #\,
 		Line: uint,
-		Column: uint):
+		Column: uint}:
 		Error(File, Line, Column);
 
 	# OVERRIDE reason(

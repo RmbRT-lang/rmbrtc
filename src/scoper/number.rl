@@ -11,13 +11,13 @@ INCLUDE "types.rl"
 	TYPE Num := std::S8;
 	Value: Num;
 
-	CONSTRUCTOR(v: Num): Value(v);
-	CONSTRUCTOR(
+	{v: Num}: Value(v);
+	{
 		str: src::String #&,
 		file: src::File #&
-	):	Number(file.content(str));
+	}:	Number(file.content(str));
 
-	CONSTRUCTOR(str: String #&)
+	{str: String #&}
 	{
 		IF(str.Size >= 2 && (str[1] == 'x' || str[1] == 'X'))
 			std::io::scan::hex(str, Value);

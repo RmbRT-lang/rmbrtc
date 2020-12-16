@@ -31,11 +31,11 @@ INCLUDE "../parser/global.rl"
 	TYPE Category := parser::ScopeItem::Category;
 	# ABSTRACT category() ScopeItem::Category;
 
-	CONSTRUCTOR(
+	{
 		group: detail::ScopeItemGroup \,
 		item: parser::ScopeItem #\,
 		file: src::File#&
-	):	Group(group),
+	}:	Group(group),
 		Templates(item->Templates, file);
 
 	(// The scope this item is contained in. /)

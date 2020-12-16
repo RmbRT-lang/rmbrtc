@@ -17,9 +17,9 @@ INCLUDE 'std/string'
 	Includes: std::[File \, File]VectorSet;
 	IncludedBy: std::[File \, File]VectorSet;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::File #&,
-		registry: FileRegistry &):
+		registry: FileRegistry &}:
 		Scope(NULL, NULL),
 		Source(&parsed.Src)
 	{

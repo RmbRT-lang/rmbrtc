@@ -13,18 +13,18 @@ INCLUDE "symbol.rl"
 		IsVirtual: bool;
 		Type: Symbol;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::Class::Inheritance #&,
-			file: src::File #&):
+			file: src::File #&}:
 			Visibility(parsed.Visibility),
 			IsVirtual(parsed.IsVirtual),
 			Type(parsed.Type, file);
 	}
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::Class #\,
 		file: src::File #&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		Scope(THIS, group->Scope),
 		Virtual(parsed->Virtual)
 	{
@@ -43,10 +43,10 @@ INCLUDE "symbol.rl"
 {
 	# FINAL type() Global::Type := Global::Type::class;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::GlobalClass #\,
 		file: src::File #&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		ScopeItem(group, parsed, file),
 		Class(parsed, file, group);
 }
@@ -55,10 +55,10 @@ INCLUDE "symbol.rl"
 {
 	# FINAL type() Member::Type := Member::Type::class;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::MemberClass #\,
 		file: src::File #&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		ScopeItem(group, parsed, file),
 		Member(parsed),
 		Class(parsed, file, group);

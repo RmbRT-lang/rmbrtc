@@ -7,9 +7,9 @@ INCLUDE "types.rl"
 	Exists: bool;
 	Label: String;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::ControlLabel#&,
-		file: src::File#&):
+		file: src::File#&}:
 		Exists(parsed.Exists)
 	{
 		IF(Exists)

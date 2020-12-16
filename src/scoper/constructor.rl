@@ -10,9 +10,9 @@ INCLUDE "detail/statement.rl"
 	{
 		Base: Symbol;
 		Arguments: std::[std::[Expression]Dynamic]Vector;
-		CONSTRUCTOR(
+		{
 			parsed: parser::Constructor::BaseInit #&,
-			file: src::File#&):
+			file: src::File#&}:
 			Base(parsed.Base, file)
 		{
 			FOR(i ::= 0; i < parsed.Arguments.size(); i++)
@@ -26,9 +26,9 @@ INCLUDE "detail/statement.rl"
 		Member: String;
 		Arguments: std::[std::[Expression]Dynamic]Vector;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::Constructor::MemberInit #&,
-			file: src::File#&):
+			file: src::File#&}:
 			Member(file.content(parsed.Member))
 		{
 			FOR(i ::= 0; i < parsed.Arguments.size(); i++)
@@ -46,10 +46,10 @@ INCLUDE "detail/statement.rl"
 
 	# FINAL type() Member::Type := Member::Type::constructor;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::Constructor #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		Member(parsed),
 		ScopeItem(group, parsed, file),
 		ArgScope(THIS, group->Scope),

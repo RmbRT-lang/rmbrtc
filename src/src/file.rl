@@ -9,8 +9,8 @@ INCLUDE 'std/io/file'
 	(// String inside a source file. /)
 	String
 	{
-		CONSTRUCTOR();
-		CONSTRUCTOR(start: Index, length: Size):
+		{};
+		{start: Index, length: Size}:
 			Start(start),
 			Length(length);
 
@@ -28,7 +28,7 @@ INCLUDE 'std/io/file'
 		Name: std::Utf8;
 		PUBLIC Contents: std::Utf8;
 
-		CONSTRUCTOR(name: std::Utf8): Name(name, std::cstring)
+		{name: std::Utf8}: Name(name, :cstring)
 		{
 			f: std::io::File(Name.data(), "r");
 			buf: char[1024];

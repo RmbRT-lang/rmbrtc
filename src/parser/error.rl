@@ -12,14 +12,14 @@ INCLUDE 'std/io/format'
 	TokenCount: uint;
 	Context: std::Utf8;
 
-	CONSTRUCTOR(
+	{
 		file: src::File #\,
 		line: uint,
 		column: uint,
 		tokens: tok::Token#[2]&,
 		tokenIndex: uint,
 		tokenCount: uint,
-		p: Parser#&):
+		p: Parser#&}:
 		File(std::Utf8(file->Name)),
 		Line(line),
 		Column(column),
@@ -72,7 +72,7 @@ INCLUDE 'std/io/format'
 {
 	Reason: std::Utf8;
 
-	CONSTRUCTOR(
+	{
 		file: src::File #\,
 		line: uint,
 		column: uint,
@@ -80,9 +80,9 @@ INCLUDE 'std/io/format'
 		tokenIndex: uint,
 		tokenCount: uint,
 		p: Parser#&,
-		reason: char #\):
+		reason: char #\}:
 		Error(file, line, column, tokens, tokenIndex, tokenCount, p),
-		Reason(reason, std::cstring);
+		Reason(reason, :cstring);
 
 	# FINAL reason(o: std::io::OStream &) VOID
 	{
@@ -93,7 +93,7 @@ INCLUDE 'std/io/format'
 {
 	Expected: tok::Type;
 
-	CONSTRUCTOR(
+	{
 		file: src::File #\,
 		line: uint,
 		column: uint,
@@ -101,7 +101,7 @@ INCLUDE 'std/io/format'
 		tokenIndex: uint,
 		tokenCount: uint,
 		p: Parser#&,
-		expected: tok::Type):
+		expected: tok::Type}:
 		Error(file, line, column, tokens, tokenIndex, tokenCount, p),
 		Expected(expected);
 

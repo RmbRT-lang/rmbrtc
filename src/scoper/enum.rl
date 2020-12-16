@@ -10,10 +10,10 @@ INCLUDE "../parser/enum.rl"
 
 		# FINAL type() Member::Type := Member::Type::enumConstant;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::Enum::Constant #\,
 			file: src::File#&,
-			group: detail::ScopeItemGroup \):
+			group: detail::ScopeItemGroup \}:
 			ScopeItem(group, parsed, file),
 			Member(parsed),
 			Value(parsed->Value);
@@ -22,10 +22,10 @@ INCLUDE "../parser/enum.rl"
 	Constants: std::[Constant \]Vector;
 	Size: src::Size;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::Enum #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		Scope(THIS, group->Scope),
 		Size(parsed->Constants.back().Value+1)
 	{
@@ -41,10 +41,10 @@ INCLUDE "../parser/enum.rl"
 {
 	# FINAL type() Global::Type := Global::Type::enum;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::GlobalEnum #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		ScopeItem(group, parsed, file),
 		Enum(parsed, file, group);
 }
@@ -53,10 +53,10 @@ INCLUDE "../parser/enum.rl"
 {
 	# FINAL type() Member::Type := Member::Type::enum;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::MemberEnum #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		ScopeItem(group, parsed, file),
 		Member(parsed),
 		Enum(parsed, file, group);

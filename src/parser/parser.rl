@@ -9,8 +9,8 @@ INCLUDE 'std/tags'
 		std::NoCopy;
 		std::NoMove;
 
-		CONSTRUCTOR(
-			file: src::File #\):
+		{
+			file: src::File #\}:
 			File(file),
 			Tokeniser(file),
 			Ctx(NULL),
@@ -161,9 +161,9 @@ INCLUDE 'std/tags'
 
 	Trace
 	{
-		CONSTRUCTOR(
+		{
 			p: Parser \,
-			name: char#\):
+			name: char#\}:
 			P(p),
 			Name(name),
 			Prev(p->Ctx)

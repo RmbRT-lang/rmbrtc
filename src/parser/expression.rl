@@ -151,9 +151,9 @@ INCLUDE 'std/vector'
 		BinOpDesc
 		{
 			[N: NUMBER]
-			CONSTRUCTOR(
+			{
 				table: std::[tok::Type, Operator]Pair#[N] &,
-				leftAssoc: bool):
+				leftAssoc: bool}:
 				Table(table),
 				Size(N),
 				LeftAssoc(leftAssoc);
@@ -504,17 +504,17 @@ INCLUDE 'std/vector'
 	{
 		PRIVATE V: util::[Expression, Type]DynUnion;
 
-		CONSTRUCTOR();
-		CONSTRUCTOR(v: Expression \): V(v);
-		CONSTRUCTOR(v: Type \): V(v);
-		CONSTRUCTOR(v: TypeOrExpr &&): V(__cpp_std::move(v.V));
+		{};
+		{v: Expression \}: V(v);
+		{v: Type \}: V(v);
+		{v: TypeOrExpr &&}: V(__cpp_std::move(v.V));
 		
 		# is_type() INLINE bool := V.is_second();
 		# type() Type \ := V.second();
 		# is_expression() INLINE bool := V.is_first();
 		# expression() INLINE Expression \ := V.first();
 
-		# CONVERT(bool) INLINE NOTYPE! := V;
+		# CONVERT(bool) INLINE := V;
 		# LOG_NOT() INLINE bool := !V;
 
 		[T:TYPE] ASSIGN(v: T! &&) TypeOrExpr &

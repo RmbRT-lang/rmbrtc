@@ -11,7 +11,7 @@ INCLUDE "scopeitem.rl"
 	# ABSTRACT type() Member::Type;
 	# FINAL category() ScopeItem::Category := ScopeItem::Category::member;
 
-	CONSTRUCTOR(parsed: parser::Member #\):
+	{parsed: parser::Member #\}:
 		Visibility(parsed->Visibility),
 		Attribute(parsed->Attribute);
 

@@ -9,10 +9,10 @@ INCLUDE "scopeitem.rl"
 	(// The member functions required by the concept. /)
 	Functions: std::[MemberFunction \]Vector;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::Concept #\,
 		file: src::File #&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		Scope(THIS, group->Scope)
 	{
 		FOR(i ::= 0; i < parsed->Members.size(); i++)
@@ -29,10 +29,10 @@ INCLUDE "scopeitem.rl"
 {
 	# FINAL type() Global::Type := Global::Type::concept;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::GlobalConcept #\,
 		file: src::File #&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		ScopeItem(group, parsed, file),
 		Concept(parsed, file, group);
 }

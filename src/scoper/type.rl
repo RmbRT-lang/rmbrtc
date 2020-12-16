@@ -17,11 +17,11 @@ INCLUDE "symbol.rl"
 		{
 			Const: bool;
 			Volatile: bool;
-			CONSTRUCTOR(): Const(FALSE), Volatile(FALSE);
-			CONSTRUCTOR(c: bool, v: bool): Const(c), Volatile(v);
-			CONSTRUCTOR(
+			{}: Const(FALSE), Volatile(FALSE);
+			{c: bool, v: bool}: Const(c), Volatile(v);
+			{
 				cpy: parser::Type::Qualifier#&
-			):	Const(cpy.Const),
+			}:	Const(cpy.Const),
 				Volatile(cpy.Volatile);
 		}
 
@@ -32,10 +32,10 @@ INCLUDE "symbol.rl"
 			IsArray: bool;
 			ArraySize: std::[std::[Expression]Dynamic]Vector;
 
-			CONSTRUCTOR(
+			{
 				parsed: parser::Type::Modifier#&,
 				file: src::File#&
-			):	Indirection(parsed.Indirection),
+			}:	Indirection(parsed.Indirection),
 				Qualifier(parsed.Qualifier),
 				IsArray(parsed.IsArray)
 			{
@@ -49,8 +49,8 @@ INCLUDE "symbol.rl"
 			Qualifier: Type::Qualifier;
 			Reference: Type::ReferenceType;
 
-			CONSTRUCTOR(): Reference(ReferenceType::none);
-			CONSTRUCTOR(a: parser::Type::Auto#&):
+			{}: Reference(ReferenceType::none);
+			{a: parser::Type::Auto#&}:
 				Qualifier(a.Qualifier.Const, a.Qualifier.Volatile),
 				Reference(a.Reference);
 
@@ -59,9 +59,9 @@ INCLUDE "symbol.rl"
 		Modifiers: std::[Modifier]Vector;
 		Reference: Type::ReferenceType;
 
-		PROTECTED CONSTRUCTOR(
+		PROTECTED {
 			parsed: parser::Type #\,
-			file: src::File#&):
+			file: src::File#&}:
 			Reference(parsed->Reference)
 		{
 			FOR(i ::= 0; i < parsed->Modifiers.size(); i++)

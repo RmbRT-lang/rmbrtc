@@ -46,10 +46,10 @@ INCLUDE 'std/err/unimplemented'
 
 		Symbol: scoper::Symbol;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::SymbolExpression #\,
 			file: src::File#&
-		):	Symbol(parsed->Symbol, file);
+		}:	Symbol(parsed->Symbol, file);
 	}
 
 	SymbolChildExpression -> Expression
@@ -58,10 +58,10 @@ INCLUDE 'std/err/unimplemented'
 
 		Child: Symbol::Child;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::SymbolChildExpression #\,
 			file: src::File#&
-		):	Child(parsed->Child, file);
+		}:	Child(parsed->Child, file);
 	}
 
 	NumberExpression -> Expression
@@ -70,10 +70,10 @@ INCLUDE 'std/err/unimplemented'
 
 		Number: scoper::Number;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::NumberExpression #\,
 			file: src::File#&
-		):	Number(parsed->Number, file);
+		}:	Number(parsed->Number, file);
 	}
 
 	BoolExpression -> Expression
@@ -82,9 +82,9 @@ INCLUDE 'std/err/unimplemented'
 
 		Value: bool;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::BoolExpression #\
-		):	Value(parsed->Value);
+		}:	Value(parsed->Value);
 	}
 
 	CharExpression -> Expression
@@ -92,10 +92,10 @@ INCLUDE 'std/err/unimplemented'
 		# FINAL type() ExpressionType := ExpressionType::char;
 		Char: Text;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::CharExpression #\,
 			file: src::File#&
-		):	Char(tok::Token(tok::Type::stringApostrophe, parsed->Char), file);
+		}:	Char(tok::Token(tok::Type::stringApostrophe, parsed->Char), file);
 	}
 
 	StringExpression -> Expression
@@ -103,10 +103,10 @@ INCLUDE 'std/err/unimplemented'
 		# FINAL type() ExpressionType := ExpressionType::string;
 		String: Text;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::StringExpression #\,
 			file: src::File#&
-		):	String(tok::Token(tok::Type::stringQuote, parsed->String), file);
+		}:	String(tok::Token(tok::Type::stringQuote, parsed->String), file);
 	}
 
 	OperatorExpression -> Expression
@@ -116,10 +116,10 @@ INCLUDE 'std/err/unimplemented'
 		Operands: std::[std::[Expression]Dynamic]Vector;
 		Op: Operator;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::OperatorExpression #\,
 			file: src::File#&
-		):	Op(parsed->Op)
+		}:	Op(parsed->Op)
 		{
 			FOR(i ::= 0; i < parsed->Operands.size(); i++)
 				Operands.push_back(Expression::create(parsed->Operands[i], file));
@@ -138,10 +138,10 @@ INCLUDE 'std/err/unimplemented'
 		Type: std::[scoper::Type]Dynamic;
 		Value: std::[Expression]Dynamic;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::CastExpression #\,
 			file: src::File#&
-		):	Type(Type::create(parsed->Type, file)),
+		}:	Type(Type::create(parsed->Type, file)),
 			Value(Expression::create(parsed->Value, file));
 	}
 
@@ -151,9 +151,9 @@ INCLUDE 'std/err/unimplemented'
 
 		Term: util::[Type, Expression]DynUnion;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::SizeofExpression #\,
-			file: src::File #&)
+			file: src::File #&}
 		{
 			IF(parsed->Term.is_type())
 				Term := Type::create(parsed->Term.type(), file);

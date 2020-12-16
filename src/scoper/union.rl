@@ -8,10 +8,10 @@ INCLUDE "member.rl"
 {
 	Fields: std::[MemberVariable \]Vector;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::Union #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		Scope(THIS, group->Scope)
 	{
 		FOR(i ::= 0; i < parsed->Members.size(); i++)
@@ -28,10 +28,10 @@ INCLUDE "member.rl"
 {
 	# type() Global::Type := Global::Type::union;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::GlobalUnion #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		ScopeItem(group, parsed, file),
 		Union(parsed, file, group);
 }
@@ -40,10 +40,10 @@ INCLUDE "member.rl"
 {
 	# type() Member::Type := Member::Type::union;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::MemberUnion #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		ScopeItem(group, parsed, file),
 		Member(parsed),
 		Union(parsed, file, group);

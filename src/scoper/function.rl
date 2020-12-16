@@ -18,10 +18,10 @@ INCLUDE "exprorstmt.rl"
 
 	ArgumentScope: Scope;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::Function #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		Inline(parsed->IsInline),
 		Coroutine(parsed->IsCoroutine),
 		ArgumentScope(THIS, group->Scope)
@@ -46,10 +46,10 @@ INCLUDE "exprorstmt.rl"
 {
 	# FINAL type() Global::Type := Global::Type::function;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::GlobalFunction #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		ScopeItem(group, parsed, file),
 		Function(parsed, file, group);
 }
@@ -58,10 +58,10 @@ INCLUDE "exprorstmt.rl"
 {
 	# FINAL type() Member::Type := Member::Type::function;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::MemberFunction #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		ScopeItem(group, parsed, file),
 		Function(parsed, file, group),
 		Member(parsed);

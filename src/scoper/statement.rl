@@ -22,9 +22,9 @@ INCLUDE "../util/dynunion.rl"
 		Position: UM;
 		ParentScope: Scope \;
 
-		CONSTRUCTOR(
+		{
 			position: UM,
-			parentScope: Scope \):
+			parentScope: Scope \}:
 			Position(position),
 			ParentScope(parentScope);
 

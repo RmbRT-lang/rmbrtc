@@ -12,9 +12,9 @@ INCLUDE 'std/vector'
 		Name: String;
 		Templates: TypeOrExpr - std::Vector;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::Symbol::Child #&,
-			file: src::File #&):
+			file: src::File #&}:
 			Name(file.content(parsed.Name))
 		{
 			FOR(i ::= 0; i < parsed.Templates.size(); i++)
@@ -28,9 +28,9 @@ INCLUDE 'std/vector'
 	Children: std::[Child]Vector;
 	IsRoot: bool;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::Symbol #&,
-		file: src::File #&):
+		file: src::File #&}:
 		IsRoot(parsed.IsRoot)
 	{
 		FOR(i ::= 0; i < parsed.Children.size(); i++)

@@ -33,9 +33,9 @@ INCLUDE 'std/err/unimplemented'
 		Arguments: std::[std::[Type]Dynamic]Vector;
 		Return: std::[Type]Dynamic;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::Signature #\,
-			file: src::File #&):
+			file: src::File #&}:
 			Type(parsed, file),
 			Return(Type::create(parsed->Ret, file))
 		{
@@ -48,9 +48,9 @@ INCLUDE 'std/err/unimplemented'
 	{
 		# FINAL type() TypeType := TypeType::void;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::Void #\,
-			file: src::File#&):
+			file: src::File#&}:
 			Type(parsed, file);
 	}
 
@@ -60,9 +60,9 @@ INCLUDE 'std/err/unimplemented'
 
 		Name: Symbol;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::TypeName #\,
-			file: src::File#&):
+			file: src::File#&}:
 			Type(parsed, file),
 			Name(parsed->Name, file);
 	}
@@ -74,9 +74,9 @@ INCLUDE 'std/err/unimplemented'
 		TYPE Primitive := parser::BuiltinType::Primitive;
 		Kind: Primitive;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::BuiltinType #\,
-			file: src::File#&):
+			file: src::File#&}:
 			Type(parsed, file),
 			Kind(parsed->Kind);
 	}

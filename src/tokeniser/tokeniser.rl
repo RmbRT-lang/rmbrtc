@@ -7,8 +7,8 @@ INCLUDE 'std/pair'
 	(// Lazy tokeniser. /)
 	Tokeniser
 	{
-		CONSTRUCTOR(
-			file: src::File #\):
+		{
+			file: src::File #\}:
 			File(file),
 			Read(0),
 			Start(0);

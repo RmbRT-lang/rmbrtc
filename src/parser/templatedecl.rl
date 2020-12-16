@@ -16,10 +16,10 @@ INCLUDE 'std/vector'
 	{
 		Child
 		{
-			CONSTRUCTOR();
-			CONSTRUCTOR(
+			{};
+			{
 				type: TemplateDeclType,
-				name: src::String #&):
+				name: src::String #&}:
 				Type(type),
 				Name(name);
 

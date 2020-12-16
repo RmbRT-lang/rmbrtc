@@ -30,8 +30,8 @@ INCLUDE "../util/dynunion.rl"
 	{
 		# ABSTRACT type() StatementType;
 
-		CONSTRUCTOR();
-		CONSTRUCTOR(Statement &&);
+		{};
+		{Statement &&};
 
 		[T: TYPE]
 		PRIVATE STATIC parse_impl(p: Parser &, out: Statement * &) bool
@@ -112,15 +112,15 @@ INCLUDE "../util/dynunion.rl"
 	{
 		PRIVATE V: util::[LocalVariable, Expression]DynUnion;
 
-		CONSTRUCTOR();
-		CONSTRUCTOR(v: LocalVariable \): V(v);
-		CONSTRUCTOR(v: Expression \): V(v);
+		{};
+		{v: LocalVariable \}: V(v);
+		{v: Expression \}: V(v);
 
 		# is_variable() INLINE bool := V.is_first();
 		# variable() INLINE LocalVariable \ := V.first();
 		# is_expression() INLINE bool := V.is_second();
 		# expression() INLINE Expression \ := V.second();
-		# CONVERT(bool) INLINE NOTYPE! := V;
+		# CONVERT(bool) INLINE := V;
 
 		[T:TYPE] ASSIGN(v: T! &&) VarOrExp &
 			:= std::help::custom_assign(*THIS, __cpp_std::[T!]forward(v));

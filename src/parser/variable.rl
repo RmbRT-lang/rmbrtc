@@ -15,16 +15,16 @@ INCLUDE "../util/dynunion.rl"
 	{
 		PRIVATE V: util::[Type, Type::Auto]DynUnion;
 
-		CONSTRUCTOR();
-		CONSTRUCTOR(t: Type \): V(t);
-		CONSTRUCTOR(t: Type::Auto \): V(t);
+		{};
+		{t: Type \}: V(t);
+		{t: Type::Auto \}: V(t);
 
 		# is_type() INLINE bool := V.is_first();
 		# type() INLINE Type \ := V.first();
 		# is_auto() INLINE bool := V.is_second();
 		# auto() INLINE Type::Auto \ := V.second();
 
-		# CONVERT(bool!) INLINE NOTYPE! := V;
+		# CONVERT(bool!) INLINE := V;
 
 		[T:TYPE] ASSIGN(v: T!&&) VariableType &
 			:= std::help::custom_assign(*THIS, __cpp_std::[T!]forward(v));

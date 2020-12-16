@@ -16,7 +16,7 @@ INCLUDE 'std/io/stream'
 	
 	# name() std::Utf8#& := Src.Name;
 
-	CONSTRUCTOR(name: std::Utf8): Src(name)
+	{name: std::Utf8}: Src(name)
 	{
 		out ::= std::io::OStream::FROM(&std::io::out);
 		p: Parser(&Src);

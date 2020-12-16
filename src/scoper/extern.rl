@@ -14,10 +14,10 @@ INCLUDE "../util/dynunion.rl"
 	# is_function() INLINE bool := Symbol.is_second();
 	# function() INLINE GlobalFunction \ := Symbol.second();
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::ExternSymbol #\,
 		file: src::File #&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		ScopeItem(group, parsed, file)
 	{
 		IF(parsed->is_variable())

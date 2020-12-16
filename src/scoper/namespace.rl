@@ -5,10 +5,10 @@ INCLUDE "scopeitem.rl"
 
 ::rlc::scoper Namespace -> VIRTUAL ScopeItem, Global, Scope
 {
-	CONSTRUCTOR(
+	{
 		parsed: parser::Namespace #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \):
+		group: detail::ScopeItemGroup \}:
 		ScopeItem(group, parsed, file),
 		Scope(THIS, group->Scope)
 	{

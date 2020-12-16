@@ -13,27 +13,27 @@ PRIVATE:
 	Ptr: Union;
 	IsB: bool;
 PUBLIC:
-	CONSTRUCTOR(): IsB(FALSE)
+	{}: IsB(FALSE)
 	{
 		Ptr.First := NULL;
 	}
 
-	CONSTRUCTOR(p: A! *):
+	{p: A! *}:
 		IsB(FALSE)
 	{
 		Ptr.First := p;
 	}
-	CONSTRUCTOR(p: B! *):
+	{p: B! *}:
 		IsB(TRUE)
 	{
 		Ptr.Second := p;
 	}
 
-	CONSTRUCTOR(move: [A!,B!]DynUnion &&):
+	{move: [A!,B!]DynUnion &&}:
 		Ptr(move.Ptr),
 		IsB(move.IsB)
 	{
-		move.CONSTRUCTOR();
+		move.{};
 	}
 
 	DESTRUCTOR
@@ -49,7 +49,7 @@ PUBLIC:
 	# is_empty() INLINE bool := !Ptr.Check;
 
 	# LOG_NOT() INLINE bool := !Ptr.Check;
-	# CONVERT(bool) NOTYPE! := Ptr.Check;
+	# CONVERT(bool) := Ptr.Check;
 
 	# first() A! \
 	{

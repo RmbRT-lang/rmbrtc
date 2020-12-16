@@ -11,16 +11,16 @@ INCLUDE "../util/dynunion.rl"
 ::rlc::scoper VariableType
 {
 	PRIVATE V: util::[Type, Type::Auto]DynUnion;
-	CONSTRUCTOR();
-	CONSTRUCTOR(t: Type \): V(t);
-	CONSTRUCTOR(t: Type::Auto \): V(t);
+	{};
+	{t: Type \}: V(t);
+	{t: Type::Auto \}: V(t);
 
 	# is_type() INLINE bool := V.is_first();
 	# type() INLINE Type \ := V.first();
 	# is_auto() INLINE bool := V.is_second();
 	# auto() Type::Auto \ := V.second();
 
-	# CONVERT(bool) INLINE NOTYPE! := V;
+	# CONVERT(bool) INLINE := V;
 
 	[T:TYPE] ASSIGN(v: T!&&) VariableType &
 		:= std::help::custom_assign(*THIS, __cpp_std::[T!]forward(v));
@@ -32,9 +32,9 @@ INCLUDE "../util/dynunion.rl"
 	HasInitialiser: bool;
 	InitValues: std::[std::[Expression]Dynamic]Vector;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::Variable #\,
-		file: src::File#&):
+		file: src::File#&}:
 		HasInitialiser(parsed->HasInitialiser)
 	{
 		IF(parsed->Type.is_type())
@@ -51,11 +51,11 @@ INCLUDE "../util/dynunion.rl"
 {
 	# FINAL type() Global::Type := Global::Type::variable;
 	
-	CONSTRUCTOR(
+	{
 		parsed: parser::GlobalVariable #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	):	ScopeItem(group, parsed, file),
+	}:	ScopeItem(group, parsed, file),
 		Variable(parsed, file);
 }
 
@@ -63,11 +63,11 @@ INCLUDE "../util/dynunion.rl"
 {
 	# FINAL type() Member::Type := Member::Type::variable;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::MemberVariable #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	):	ScopeItem(group, parsed, file),
+	}:	ScopeItem(group, parsed, file),
 		Member(parsed),
 		Variable(parsed, file);
 }
@@ -78,10 +78,10 @@ INCLUDE "../util/dynunion.rl"
 
 	# FINAL category() ScopeItem::Category := ScopeItem::Category::local;
 
-	CONSTRUCTOR(
+	{
 		parsed: parser::LocalVariable #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	):	ScopeItem(group, parsed, file),
+	}:	ScopeItem(group, parsed, file),
 		Variable(parsed, file);
 }

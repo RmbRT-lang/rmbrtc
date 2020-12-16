@@ -20,7 +20,7 @@ INCLUDE 'std/set'
 	IncludeDirs: std::[std::Utf8]Vector;
 
 
-	CONSTRUCTOR()
+	{}
 	{
 		load_include_dirs();
 	}

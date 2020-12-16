@@ -12,7 +12,7 @@ INCLUDE "types.rl"
 		Name: String;
 		Type: TemplateDeclType;
 
-		CONSTRUCTOR(name: String#&, type: TemplateDeclType):
+		{name: String#&, type: TemplateDeclType}:
 			Name(name), Type(type);
 	}
 
@@ -21,9 +21,9 @@ INCLUDE "types.rl"
 	{
 		Templates: std::[TemplateDecl]Vector;
 
-		CONSTRUCTOR(
+		{
 			parsed: parser::TemplateDecl #&,
-			file: src::File #&)
+			file: src::File #&}
 		{
 			FOR(i ::= 0; i < parsed.Children.size(); i++)
 				Templates.emplace_back(

@@ -150,11 +150,11 @@ INCLUDE "../src/file.rl"
 		Type: tok::Type;
 		Content: src::String;
 
-		CONSTRUCTOR() INLINE;
-		CONSTRUCTOR(
+		{} INLINE;
+		{
 			type: tok::Type,
 			content: src::String#&
-		):	Type(type),
+		}:	Type(type),
 			Content(content);
 	}
 }

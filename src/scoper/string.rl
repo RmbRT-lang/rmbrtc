@@ -21,7 +21,7 @@ INCLUDE 'std/unicode'
 	Type: TextType;
 	Codes: std::Char-std::Vector;
 
-	CONSTRUCTOR(token: tok::Token #&, file: src::File #&)
+	{token: tok::Token #&, file: src::File #&}
 	{
 		IF(token.Type == tok::Type::stringApostrophe)
 			Type := TextType::stringApostrophe;
@@ -83,5 +83,5 @@ INCLUDE 'std/unicode'
 		RETURN ret;
 	}
 
-	# c_str() std::Utf8 := std::String(utf8(), std::cstring);
+	# c_str() std::Utf8 := std::String(utf8(), :cstring);
 }

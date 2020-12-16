@@ -19,7 +19,7 @@ main(
 	TRY
 	{
 		absolute ::= rlc::util::absolute_file(std::str::buf(argv[1]));
-		registry.get(std::Utf8(absolute, std::cstring).content());
+		registry.get(std::Utf8(absolute, :cstring).content());
 		out.write("success\n");
 	} CATCH(e: std::Error&)
 	{

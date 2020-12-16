@@ -138,8 +138,8 @@ INCLUDE "expression.rl"
 		}
 
 
-		CONSTRUCTOR();
-		CONSTRUCTOR(t: Type &&):
+		{};
+		{t: Type &&}:
 			Modifiers(__cpp_std::move(t.Modifiers)),
 			Reference(t.Reference);
 
@@ -208,7 +208,7 @@ INCLUDE "expression.rl"
 	Signature -> Type
 	{
 		# FINAL type() TypeType := TypeType::signature;
-		CONSTRUCTOR();
+		{};
 
 		Args: std::[std::[Type]Dynamic]Vector;
 		Ret: std::[Type]Dynamic;

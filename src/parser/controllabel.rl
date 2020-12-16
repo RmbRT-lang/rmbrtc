@@ -4,7 +4,7 @@ INCLUDE "../tokeniser/token.rl"
 
 ::rlc::parser ControlLabel
 {
-	CONSTRUCTOR():
+	{}:
 		Exists(FALSE);
 
 	Exists: bool;

@@ -7,16 +7,16 @@ INCLUDE "../util/dynunion.rl"
 {
 	PRIVATE V: util::[Expression, Type]DynUnion;
 
-	CONSTRUCTOR();
-	CONSTRUCTOR(v: Expression \): V(v);
-	CONSTRUCTOR(v: Type \): V(v);
+	{};
+	{v: Expression \}: V(v);
+	{v: Type \}: V(v);
 	
 	# is_type() INLINE bool := V.is_second();
 	# type() Type \ := V.second();
 	# is_expression() INLINE bool := V.is_first();
 	# expression() INLINE bool := V.first();
 
-	# CONVERT(bool) INLINE NOTYPE! := V;
+	# CONVERT(bool) INLINE := V;
 	# LOG_NOT() INLINE bool := !V;
 
 	[T:TYPE] ASSIGN(v: T!&&) TypeOrExpr &

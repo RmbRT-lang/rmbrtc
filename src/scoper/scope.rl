@@ -17,10 +17,10 @@ INCLUDE 'std/io/stream'
 	Parent: Scope *;
 	Items: detail::ScopeItemGroupSet;
 
-	CONSTRUCTOR(
+	{
 		owner: ScopeOwner *,
 		parent: Scope *
-	):	Owner(owner),
+	}:	Owner(owner),
 		Parent(parent);
 
 	# root() Scope #\
@@ -94,7 +94,7 @@ INCLUDE 'std/io/stream'
 		Name: String;
 		Items: std::[std::[ScopeItem]Dynamic]Vector;
 
-		CONSTRUCTOR(name: String#&, scope: scoper::Scope \):
+		{name: String#&, scope: scoper::Scope \}:
 			Scope(scope),
 			Name(name);
 

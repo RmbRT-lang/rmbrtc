@@ -102,14 +102,14 @@ INCLUDE 'std/err/unimplemented'
 		PRIVATE IsVar: bool;
 		PRIVATE Val: Value;
 
-		CONSTRUCTOR(): IsVar(FALSE) { Val.Exp := NULL; }
-		CONSTRUCTOR(v: LocalVariable \): IsVar(TRUE) { Val.Var := v; }
-		CONSTRUCTOR(v: Expression \): IsVar(FALSE) { Val.Exp := v; }
-		CONSTRUCTOR(
+		{}: IsVar(FALSE) { Val.Exp := NULL; }
+		{v: LocalVariable \}: IsVar(TRUE) { Val.Var := v; }
+		{v: Expression \}: IsVar(FALSE) { Val.Exp := v; }
+		{
 			position: UM \,
 			parsed: parser::VarOrExp#&,
 			file: src::File#&,
-			scope: Scope \):
+			scope: Scope \}:
 			IsVar(TRUE)
 		{
 			IF(parsed.is_variable())
@@ -123,8 +123,8 @@ INCLUDE 'std/err/unimplemented'
 			ELSE
 				Val.Check := NULL;
 		}
-		CONSTRUCTOR(mv: VarOrExp &&): IsVar(mv.IsVar), Val(mv.Val)
-		{ mv.CONSTRUCTOR(); }
+		{mv: VarOrExp &&}: IsVar(mv.IsVar), Val(mv.Val)
+		{ mv.{}; }
 
 		ASSIGN(move: VarOrExp&&) VarOrExp&
 			:= std::help::move_assign(*THIS, move);
@@ -152,7 +152,7 @@ INCLUDE 'std/err/unimplemented'
 			IF(!is_expression()) THROW;
 			RETURN Val.Exp;
 		}
-		# CONVERT(bool) INLINE NOTYPE! := Val.Check;
+		# CONVERT(bool) INLINE := Val.Check;
 	}
 
 	AssertStatement -> Statement
@@ -163,11 +163,11 @@ INCLUDE 'std/err/unimplemented'
 
 		# FINAL variables() UM := 0;
 
-		CONSTRUCTOR(
+		{
 			position: UM,
 			parsed: parser::AssertStatement #\,
 			file: src::File#&,
-			parentScope: scoper::Scope \):
+			parentScope: scoper::Scope \}:
 			Statement(position, parentScope),
 			Expression(scoper::Expression::create(parsed->Expression, file));
 	}
@@ -183,11 +183,11 @@ INCLUDE 'std/err/unimplemented'
 			? 0
 			: Statements.back().Ptr->Position + Statements.back().Ptr->variables();
 
-		CONSTRUCTOR(
+		{
 			position: UM,
 			parsed: parser::BlockStatement #\,
 			file: src::File#&,
-			parentScope: scoper::Scope \):
+			parentScope: scoper::Scope \}:
 			Statement(position, parentScope),
 			Scope(THIS, parentScope)
 		{
@@ -218,11 +218,11 @@ INCLUDE 'std/err/unimplemented'
 			? Else->Position + Else->variables() - Position
 			: Then->Position + Then->variables() - Position;
 
-		CONSTRUCTOR(
+		{
 			position: UM,
 			parsed: parser::IfStatement #\,
 			file: src::File#&,
-			parentScope: Scope \):
+			parentScope: Scope \}:
 			Statement(position, parentScope),
 			InitScope(THIS, parentScope),
 			CondScope(THIS, &InitScope),
@@ -244,11 +244,11 @@ INCLUDE 'std/err/unimplemented'
 		# FINAL type() StatementType := StatementType::variable;
 		# FINAL variables() UM := 1;
 
-		CONSTRUCTOR(
+		{
 			position: UM,
 			parsed: parser::VariableStatement #\,
 			file: src::File#&,
-			parentScope: Scope \):
+			parentScope: Scope \}:
 			Statement(position, parentScope),
 			Static(parsed->Static)
 		{
@@ -265,11 +265,11 @@ INCLUDE 'std/err/unimplemented'
 		# FINAL type() StatementType := StatementType::expression;
 		# FINAL variables() UM := 0;
 
-		CONSTRUCTOR(
+		{
 			position: UM,
 			parsed: parser::ExpressionStatement #\,
 			file: src::File#&,
-			parentScope: Scope \):
+			parentScope: Scope \}:
 			Statement(position, parentScope),
 			Expression(scoper::Expression::create(parsed->Expression, file));
 	}
@@ -283,11 +283,11 @@ INCLUDE 'std/err/unimplemented'
 
 		# is_void() INLINE bool := !Expression;
 
-		CONSTRUCTOR(
+		{
 			position: UM,
 			parsed: parser::ReturnStatement #\,
 			file: src::File#&,
-			parentScope: Scope \):
+			parentScope: Scope \}:
 			Statement(position, parentScope),
 			Expression(parsed->is_void()
 				? NULL
@@ -313,11 +313,11 @@ INCLUDE 'std/err/unimplemented'
 
 		# has_finally() INLINE bool := Finally;
 
-		CONSTRUCTOR(
+		{
 			position: UM,
 			parsed: parser::TryStatement #\,
 			file: src::File#&,
-			parentScope: Scope \):
+			parentScope: Scope \}:
 			Statement(position, parentScope),
 			Body(Statement::create(position, parsed->Body, file, parentScope))
 		{
@@ -341,11 +341,11 @@ INCLUDE 'std/err/unimplemented'
 		# is_void() INLINE bool := !Exception;
 		# variables() UM := (Exception ? 1 : 0) + Body->variables();
 
-		CONSTRUCTOR(
+		{
 			position: UM,
 			try: TryStatement \,
 			parsed: parser::CatchStatement #&,
-			file: src::File#&):
+			file: src::File#&}:
 			ExceptionScope(try, try->ParentScope),
 			Exception([LocalVariable \]dynamic_cast(
 				ExceptionScope.insert(&parsed.Exception, file))),
@@ -363,11 +363,11 @@ INCLUDE 'std/err/unimplemented'
 		# FINAL type() StatementType := StatementType::throw;
 		# FINAL variables() UM := 0;
 
-		CONSTRUCTOR(
+		{
 			position: UM,
 			parsed: parser::ThrowStatement #\,
 			file: src::File#&,
-			parentScope: Scope \):
+			parentScope: Scope \}:
 			Statement(position, parentScope),
 			ValueType(parsed->ValueType),
 			Value(parsed->Value
@@ -396,11 +396,11 @@ INCLUDE 'std/err/unimplemented'
 			RETURN vars;
 		}
 
-		CONSTRUCTOR(
+		{
 			position: UM,
 			parsed: parser::LoopStatement #\,
 			file: src::File#&,
-			parentScope: Scope \):
+			parentScope: Scope \}:
 			Statement(position, parentScope),
 			InitScope(THIS, parentScope),
 			ConditionScope(THIS, &InitScope),
@@ -433,11 +433,11 @@ INCLUDE 'std/err/unimplemented'
 		# FINAL variables() UM
 			:= Cases.back().position() + Cases.back().variables() - Position;
 
-		CONSTRUCTOR(
+		{
 			position: UM,
 			parsed: parser::SwitchStatement #\,
 			file: src::File#&,
-			parentScope: Scope \):
+			parentScope: Scope \}:
 			Statement(position, parentScope),
 			InitScope(THIS, parentScope),
 			ValueScope(THIS, &InitScope),
@@ -462,11 +462,11 @@ INCLUDE 'std/err/unimplemented'
 		# variables() UM := Body->variables();
 		# position() UM := Body->Position;
 
-		CONSTRUCTOR(
+		{
 			position: UM,
 			parsed: parser::CaseStatement#&,
 			file: src::File#&,
-			parentScope: Scope \):
+			parentScope: Scope \}:
 			Body(Statement::create(position, parsed.Body, file, parentScope))
 		{
 			FOR(i ::= 0; i < parsed.Values.size(); i++)
@@ -481,11 +481,11 @@ INCLUDE 'std/err/unimplemented'
 		# FINAL type() StatementType := StatementType::break;
 		# FINAL variables() UM := 0;
 
-		CONSTRUCTOR(
+		{
 			position: UM,
 			parsed: parser::BreakStatement #\,
 			file: src::File#&,
-			parentScope: Scope \):
+			parentScope: Scope \}:
 			Statement(position, parentScope),
 			Label(parsed->Label, file);
 	}
@@ -497,11 +497,11 @@ INCLUDE 'std/err/unimplemented'
 		# FINAL type() StatementType := StatementType::continue;
 		# FINAL variables() UM := 0;
 
-		CONSTRUCTOR(
+		{
 			position: UM,
 			parsed: parser::ContinueStatement #\,
 			file: src::File#&,
-			parentScope: Scope \):
+			parentScope: Scope \}:
 			Statement(position, parentScope),
 			Label(parsed->Label, file);
 	}
