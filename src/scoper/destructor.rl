@@ -5,7 +5,7 @@ INCLUDE "../parser/destructor.rl"
 	Body: BlockStatement;
 	Inline: bool;
 
-	# FINAL type() Member::Type := Member::Type::destructor;
+	# FINAL type() Member::Type := :destructor;
 
 	{
 		parsed: parser::Destructor #\,

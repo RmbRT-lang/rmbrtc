@@ -20,7 +20,6 @@ INCLUDE "../src/file.rl"
 		catch,
 		char,
 		concept,
-		constructor,
 		continue,
 		default,
 		destructor,

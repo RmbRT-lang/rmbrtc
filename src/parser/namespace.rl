@@ -10,32 +10,32 @@ INCLUDE 'std/vector'
 	Name: src::String;
 
 	# FINAL name() src::String#& := Name;
-	# FINAL type() Global::Type := Global::Type::namespace;
+	# FINAL type() Global::Type := :namespace;
 
 	parse(
 		p: Parser &) bool
 	{
-		IF(!p.consume(tok::Type::doubleColon))
+		IF(!p.consume(:doubleColon))
 			RETURN FALSE;
 
 		t: Trace(&p, "namespace");
 		name: tok::Token;
-		p.expect(tok::Type::identifier, &name);
+		p.expect(:identifier, &name);
 		Name := name.Content;
 
-		IF(p.consume(tok::Type::braceOpen))
+		IF(p.consume(:braceOpen))
 		{
 			WHILE(entry ::= Global::parse(p))
-				Entries.push_back(entry);
+				Entries += :gc(entry);
 
-			p.expect(tok::Type::braceClose);
+			p.expect(:braceClose);
 
 			RETURN TRUE;
 		}
 
 		IF(entry ::= Global::parse(p))
 		{
-			Entries.push_back(entry);
+			Entries += :gc(entry);
 			RETURN TRUE;
 		}
 

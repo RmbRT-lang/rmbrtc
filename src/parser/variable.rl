@@ -24,10 +24,10 @@ INCLUDE "../util/dynunion.rl"
 		# is_auto() INLINE bool := V.is_second();
 		# auto() INLINE Type::Auto \ := V.second();
 
-		# CONVERT(bool!) INLINE := V;
+		# <bool!> INLINE := V;
 
-		[T:TYPE] ASSIGN(v: T!&&) VariableType &
-			:= std::help::custom_assign(*THIS, __cpp_std::[T!]forward(v));
+		[T:TYPE] THIS:=(v: T!&&) VariableType &
+			:= std::help::custom_assign(THIS, <T!&&>(v));
 	}
 
 	Variable -> VIRTUAL ScopeItem
@@ -52,41 +52,41 @@ INCLUDE "../util/dynunion.rl"
 			force_initialiser: bool) bool
 		{
 			STATIC k_needed_without_name: tok::Type#[](
-				tok::Type::bracketOpen,
-				tok::Type::doubleColon,
-				tok::Type::void);
+				:bracketOpen,
+				:doubleColon,
+				:void);
 
-			STATIC k_needed_after_name: std::[tok::Type, bool]Pair#[](
-				std::pair(tok::Type::colon, TRUE),
-				std::pair(tok::Type::colonEqual, TRUE),
-				std::pair(tok::Type::doubleColonEqual, TRUE),
-				std::pair(tok::Type::hash, TRUE),
-				std::pair(tok::Type::dollar, TRUE),
-				std::pair(tok::Type::exclamationMark, FALSE),
-				std::pair(tok::Type::and, FALSE),
-				std::pair(tok::Type::doubleAnd, FALSE),
-				std::pair(tok::Type::asterisk, FALSE),
-				std::pair(tok::Type::backslash, FALSE),
-				std::pair(tok::Type::at, FALSE),
-				std::pair(tok::Type::doubleAt, FALSE),
-				std::pair(tok::Type::doubleDotExclamationMark, FALSE),
-				std::pair(tok::Type::doubleDotQuestionMark, FALSE),
-				std::pair(tok::Type::doubleColon, FALSE),
-				std::pair(tok::Type::semicolon, FALSE),
-				std::pair(tok::Type::comma, FALSE),
-				std::pair(tok::Type::parentheseClose, FALSE));
+			STATIC k_needed_after_name: {tok::Type, bool}#[](
+				(:colon, TRUE),
+				(:colonEqual, TRUE),
+				(:doubleColonEqual, TRUE),
+				(:hash, TRUE),
+				(:dollar, TRUE),
+				(:exclamationMark, FALSE),
+				(:and, FALSE),
+				(:doubleAnd, FALSE),
+				(:asterisk, FALSE),
+				(:backslash, FALSE),
+				(:at, FALSE),
+				(:doubleAt, FALSE),
+				(:doubleDotExclamationMark, FALSE),
+				(:doubleDotQuestionMark, FALSE),
+				(:doubleColon, FALSE),
+				(:semicolon, FALSE),
+				(:comma, FALSE),
+				(:parentheseClose, FALSE));
 
 			IF(needs_name
-			&& !p.match(tok::Type::identifier))
+			&& !p.match(:identifier))
 				RETURN FALSE;
 
 			{
 				found ::= FALSE;
-				IF(p.match(tok::Type::identifier))
+				IF(p.match(:identifier))
 				{
 					FOR(i ::= 0; i < ::size(k_needed_after_name); i++)
-						IF((!needs_name || k_needed_after_name[i].Second)
-						&& p.match_ahead(k_needed_after_name[i].First))
+						IF((!needs_name || k_needed_after_name[i].(1))
+						&& p.match_ahead(k_needed_after_name[i].(0)))
 						{
 							found := TRUE;
 							BREAK;
@@ -110,32 +110,32 @@ INCLUDE "../util/dynunion.rl"
 			t: Trace(&p, "variable");
 
 			name: tok::Token;
-			IF(p.match(tok::Type::identifier))
+			IF(p.match(:identifier))
 			{
 				// "name: type" style variable?
-				IF(p.match_ahead(tok::Type::colon))
+				IF(p.match_ahead(:colon))
 				{
 					has_name := TRUE;
-					p.expect(tok::Type::identifier, &name);
+					p.expect(:identifier, &name);
 					p.consume(NULL);
 				} ELSE IF(allow_initialiser)
 				{
 					STATIC k_need_ahead: tok::Type#[](
-						tok::Type::hash,
-						tok::Type::dollar,
-						tok::Type::doubleColonEqual);
+						:hash,
+						:dollar,
+						:doubleColonEqual);
 
 					FOR(i ::= 0; i < ::size(k_need_ahead); i++)
 					{
 						IF(p.match_ahead(k_need_ahead[i]))
 						{
-							p.expect(tok::Type::identifier, &name);
+							p.expect(:identifier, &name);
 
 							Type := ::[Type::Auto]new();
 							Type.auto()->Qualifier.parse(p);
 
 							// "name ::=" style variable?
-							p.expect(tok::Type::doubleColonEqual);
+							p.expect(:doubleColonEqual);
 
 							has_name := TRUE;
 							needs_type := FALSE;
@@ -157,7 +157,7 @@ INCLUDE "../util/dynunion.rl"
 				init ::= Expression::parse(p);
 				IF(!init)
 					p.fail("expected expression");
-				InitValues.push_back(init);
+				InitValues += :gc(init);
 			} ELSE
 			{
 				IF(!(Type := parser::Type::parse(p)))
@@ -171,23 +171,23 @@ INCLUDE "../util/dynunion.rl"
 				IF(allow_initialiser)
 				{
 					isParenthese ::= 0;
-					IF(p.consume(tok::Type::colonEqual)
-					|| (isParenthese := p.consume(tok::Type::parentheseOpen)))
+					IF(p.consume(:colonEqual)
+					|| (isParenthese := p.consume(:parentheseOpen)))
 					{
 						// check for empty initialiser.
 						IF(!isParenthese
-						|| !p.consume(tok::Type::parentheseClose))
+						|| !p.consume(:parentheseClose))
 						{
 							DO()
 							{
 								arg ::= Expression::parse(p);
 								IF(!arg)
 									p.fail("expected expression");
-								InitValues.push_back(arg);
-							} WHILE(isParenthese && p.consume(tok::Type::comma))
+								InitValues += :gc(arg);
+							} WHILE(isParenthese && p.consume(:comma))
 
 							IF(isParenthese)
-								p.expect(tok::Type::parentheseClose);
+								p.expect(:parentheseClose);
 						}
 					} ELSE IF(force_initialiser)
 					{
@@ -202,12 +202,12 @@ INCLUDE "../util/dynunion.rl"
 
 	GlobalVariable -> Global, Variable
 	{
-		# FINAL type() Global::Type := Global::Type::variable;
+		# FINAL type() Global::Type := :variable;
 		parse(p: Parser&) bool
 		{
 			IF(!parse_var_decl(p))
 				RETURN FALSE;
-			p.expect(tok::Type::semicolon);
+			p.expect(:semicolon);
 			RETURN TRUE;
 		}
 
@@ -215,14 +215,14 @@ INCLUDE "../util/dynunion.rl"
 		{
 			IF(!Variable::parse_extern(p))
 				RETURN FALSE;
-			p.expect(tok::Type::semicolon);
+			p.expect(:semicolon);
 			RETURN TRUE;
 		}
 	}
 
 	MemberVariable -> Member, Variable
 	{
-		# FINAL type() Member::Type := Member::Type::variable;
+		# FINAL type() Member::Type := :variable;
 		parse(p: Parser&, static: bool) bool
 		{
 			IF(static)
@@ -235,7 +235,7 @@ INCLUDE "../util/dynunion.rl"
 				IF(!parse_fn_arg(p))
 					RETURN FALSE;
 			}
-			p.expect(tok::Type::semicolon);
+			p.expect(:semicolon);
 			RETURN TRUE;
 		}
 	}
@@ -252,7 +252,7 @@ INCLUDE "../util/dynunion.rl"
 			IF(!Variable::parse_var_decl(p))
 				RETURN FALSE;
 			IF(expect_semicolon)
-				p.expect(tok::Type::semicolon);
+				p.expect(:semicolon);
 			RETURN TRUE;
 		}
 	}

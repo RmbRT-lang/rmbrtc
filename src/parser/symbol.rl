@@ -24,14 +24,14 @@ INCLUDE 'std/vector'
 				p: Parser &,
 				isValue: bool) bool
 			{
-				IF(p.consume(tok::Type::bracketOpen))
+				IF(p.consume(:bracketOpen))
 				{
-					IF(!p.consume(tok::Type::bracketClose))
+					IF(!p.consume(:bracketClose))
 					{
 						DO()
 						{
 							tArg: TemplateArg;
-							IF(p.consume(tok::Type::hash))
+							IF(p.consume(:hash))
 							{
 								IF(!(tArg := Expression::parse(p)))
 									p.fail("expected expression");
@@ -40,21 +40,19 @@ INCLUDE 'std/vector'
 								IF(!(tArg := Type::parse(p)))
 									p.fail("expected type");
 							}
-							Templates.push_back(__cpp_std::move(tArg));
-						} WHILE(p.consume(tok::Type::comma))
-						p.expect(tok::Type::bracketClose);
+							Templates += &&tArg;
+						} WHILE(p.consume(:comma))
+						p.expect(:bracketClose);
 					}
 					IF(!isValue
-					|| (!p.consume(tok::Type::constructor, &Name)
-						&& !p.consume(tok::Type::destructor, &Name)))
-						p.expect(tok::Type::identifier, &Name);
+					|| !p.consume(:destructor, &Name))
+						p.expect(:identifier, &Name);
 					RETURN TRUE;
 				} ELSE
 				{
-					RETURN p.consume(tok::Type::identifier, &Name)
+					RETURN p.consume(:identifier, &Name)
 						|| (isValue
-							&& (p.consume(tok::Type::constructor, &Name)
-								|| p.consume(tok::Type::destructor, &Name)));
+							&& p.consume(:destructor, &Name));
 						
 				}
 			}
@@ -70,7 +68,7 @@ INCLUDE 'std/vector'
 		{
 			t: Trace(&p, "symbol");
 
-			IsRoot := p.consume(tok::Type::doubleColon);
+			IsRoot := p.consume(:doubleColon);
 			expect ::= IsRoot;
 
 			DO(child: Child)
@@ -82,8 +80,8 @@ INCLUDE 'std/vector'
 					RETURN FALSE;
 				}
 
-				Children.push_back(__cpp_std::move(child));
-			} FOR(p.consume(tok::Type::doubleColon); expect := TRUE)
+				Children += &&child;
+			} FOR(p.consume(:doubleColon); expect := TRUE)
 
 			RETURN TRUE;
 		}
@@ -91,7 +89,7 @@ INCLUDE 'std/vector'
 
 	SymbolChildExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::symbolChild;
+		# FINAL type() ExpressionType := :symbolChild;
 
 		Child: Symbol::Child;
 
@@ -100,7 +98,7 @@ INCLUDE 'std/vector'
 
 	SymbolExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::symbol;
+		# FINAL type() ExpressionType := :symbol;
 
 		Symbol: parser::Symbol;
 

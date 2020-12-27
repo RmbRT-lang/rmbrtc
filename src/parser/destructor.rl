@@ -2,7 +2,7 @@ INCLUDE "statement.rl"
 
 ::rlc::parser Destructor -> Member
 {
-	# FINAL type() Member::Type := Member::Type::destructor;
+	# FINAL type() Member::Type := :destructor;
 	# FINAL name() src::String#& := Name;
 
 	Name: src::String; // Always DESTRUCTOR.
@@ -11,10 +11,10 @@ INCLUDE "statement.rl"
 
 	parse(p: Parser&) bool
 	{
-		IF(!p.consume(tok::Type::destructor, &Name))
+		IF(!p.consume(:destructor, &Name))
 			RETURN FALSE;
 
-		Inline := p.consume(tok::Type::inline);
+		Inline := p.consume(:inline);
 
 		IF(!Body.parse(p))
 			p.fail("expected body");

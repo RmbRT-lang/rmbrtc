@@ -37,10 +37,10 @@ INCLUDE 'std/err/unimplemented'
 			parsed: parser::Signature #\,
 			file: src::File #&}:
 			Type(parsed, file),
-			Return(Type::create(parsed->Ret, file))
+			Return(:gc, Type::create(parsed->Ret, file))
 		{
 			FOR(i ::= 0; i < parsed->Args.size(); i++)
-				Arguments.push_back(Type::create(parsed->Args[i], file));
+				Arguments += :gc(Type::create(parsed->Args[i], file));
 		}
 	}
 

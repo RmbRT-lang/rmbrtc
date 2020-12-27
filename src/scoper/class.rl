@@ -25,14 +25,14 @@ INCLUDE "symbol.rl"
 		parsed: parser::Class #\,
 		file: src::File #&,
 		group: detail::ScopeItemGroup \}:
-		Scope(THIS, group->Scope),
+		Scope(&THIS, group->Scope),
 		Virtual(parsed->Virtual)
 	{
 		FOR(i ::= 0; i < parsed->Members.size(); i++)
 			insert(parsed->Members[i], file);
 
 		FOR(i ::= 0; i < parsed->Inheritances.size(); i++)
-			Inheritances.emplace_back(parsed->Inheritances[i], file);
+			Inheritances += (parsed->Inheritances[i], file);
 	}
 
 	Virtual: bool;
@@ -41,7 +41,7 @@ INCLUDE "symbol.rl"
 
 ::rlc::scoper GlobalClass -> Global, Class
 {
-	# FINAL type() Global::Type := Global::Type::class;
+	# FINAL type() Global::Type := :class;
 
 	{
 		parsed: parser::GlobalClass #\,
@@ -53,7 +53,7 @@ INCLUDE "symbol.rl"
 
 ::rlc::scoper MemberClass -> Member, Class
 {
-	# FINAL type() Member::Type := Member::Type::class;
+	# FINAL type() Member::Type := :class;
 
 	{
 		parsed: parser::MemberClass #\,

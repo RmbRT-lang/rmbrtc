@@ -34,7 +34,7 @@ INCLUDE 'std/set'
 
 		IF(!Loading.insert(path))
 			RETURN NULL;
-		f ::= Files.emplace_at(loc, ::[File]new(*ParsedFiles.get(path), *THIS)).Ptr;
+		f:? #& := Files.emplace_at(loc, :gc(::[File]new(*ParsedFiles.get(path), THIS)));
 		IF(!Loading.remove(path))
 			THROW;
 		RETURN f;
@@ -71,7 +71,7 @@ INCLUDE 'std/set'
 					BREAK;
 
 			IF(len)
-				IncludeDirs.emplace_back(incs.cut(len));
+				IncludeDirs += incs.cut(len);
 		} FOR(incs.Size > len; incs := incs.drop_start(len+1))
 	}
 }

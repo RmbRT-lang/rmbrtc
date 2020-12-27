@@ -19,20 +19,20 @@ INCLUDE 'std/memory'
 
 	parse(p: Parser&) bool
 	{
-		IF(!p.consume(tok::Type::concept))
+		IF(!p.consume(:concept))
 			RETURN FALSE;
 
 		t: Trace(&p, "concept");
 
-		p.expect(tok::Type::identifier, &Name);
-		p.expect(tok::Type::braceOpen);
+		p.expect(:identifier, &Name);
+		p.expect(:braceOpen);
 
 		DO(default_visibility: Visibility := Visibility::public)
 			IF(member ::= detail::parse_concept_member(p, default_visibility))
-				Members.emplace_back(member);
+				Members += :gc(member);
 			ELSE
 				p.fail("expected member");
-			WHILE(!p.consume(tok::Type::braceClose))
+			WHILE(!p.consume(:braceClose))
 
 		RETURN TRUE;
 	}
@@ -40,7 +40,7 @@ INCLUDE 'std/memory'
 
 ::rlc::parser GlobalConcept -> Global, Concept
 {
-	# FINAL type() Global::Type := Global::Type::concept;
+	# FINAL type() Global::Type := :concept;
 
 	parse(p: Parser&) bool := Concept::parse(p);
 }

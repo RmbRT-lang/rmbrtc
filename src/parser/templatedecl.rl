@@ -32,32 +32,32 @@ INCLUDE 'std/vector'
 		parse(
 			p: Parser &) bool
 		{
-			IF(!p.consume(tok::Type::bracketOpen))
+			IF(!p.consume(:bracketOpen))
 				RETURN FALSE;
 
-			IF(!p.consume(tok::Type::bracketClose))
+			IF(!p.consume(:bracketClose))
 			{
 				DO()
 				{
 					c: Child;
 					name: tok::Token;
-					p.expect(tok::Type::identifier, &name);
+					p.expect(:identifier, &name);
 					c.Name := name.Content;
-					p.expect(tok::Type::colon);
+					p.expect(:colon);
 
-					IF(p.consume(tok::Type::type))
-						c.Type := TemplateDeclType::type;
-					ELSE IF(p.consume(tok::Type::number))
-						c.Type := TemplateDeclType::number;
-					ELSE IF((c.TypeName := Type::parse(p)).Ptr)
-						c.Type := TemplateDeclType::value;
+					IF(p.consume(:type))
+						c.Type := :type;
+					ELSE IF(p.consume(:number))
+						c.Type := :number;
+					ELSE IF(c.TypeName := :gc(Type::parse(p)))
+						c.Type := :value;
 					ELSE
 						p.fail("expected 'TYPE', 'NUMBER', or type");
 
-					Children.push_back(__cpp_std::move(c));
-				} WHILE(p.consume(tok::Type::comma))
+					Children += &&c;
+				} WHILE(p.consume(:comma))
 
-				p.expect(tok::Type::bracketClose);
+				p.expect(:bracketClose);
 			}
 
 			RETURN TRUE;

@@ -7,7 +7,7 @@ INCLUDE "../util/dynunion.rl"
 {
 	Symbol: util::[GlobalVariable, GlobalFunction]DynUnion;
 
-	# FINAL type() Global::Type := Global::Type::externSymbol;
+	# FINAL type() Global::Type := :externSymbol;
 
 	# is_variable() INLINE bool := Symbol.is_first();
 	# variable() INLINE GlobalVariable \ := Symbol.first();

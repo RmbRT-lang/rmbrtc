@@ -27,30 +27,28 @@ INCLUDE 'std/memory'
 	Body: std::[BlockStatement]Dynamic;
 	Inline: bool;
 
-	# FINAL type() Member::Type := Member::Type::constructor;
+	# FINAL type() Member::Type := :constructor;
 	# FINAL name() src::String#& := Name;
 
 	parse(p: Parser&) bool
 	{
-		IF(!p.consume(tok::Type::constructor, &Name))
+		IF(!p.consume(:braceOpen, &Name))
 			RETURN FALSE;
 		t: Trace(&p, "constructor");
 
-		p.expect(tok::Type::parentheseOpen);
-
-		IF(!p.match(tok::Type::parentheseClose))
+		IF(!p.match(:braceClose))
 			DO(arg: LocalVariable)
 			{
 				IF(!arg.parse_fn_arg(p))
 					p.fail("expected argument");
-				Arguments.push_back(__cpp_std::move(arg));
-			} WHILE(p.consume(tok::Type::comma))
+				Arguments += &&arg;
+			} WHILE(p.consume(:comma))
 
-		p.expect(tok::Type::parentheseClose);
+		p.expect(:braceClose);
 
-		Inline := p.consume(tok::Type::inline);
+		Inline := p.consume(:inline);
 
-		IF(p.consume(tok::Type::minusGreater))
+		IF(p.consume(:minusGreater))
 			DO(init: BaseInit)
 			{
 				IF(!init.Base.parse(p))
@@ -58,35 +56,35 @@ INCLUDE 'std/memory'
 				DO()
 				{
 					IF(exp ::= Expression::parse(p))
-						init.Arguments.push_back(exp);
+						init.Arguments += :gc(exp);
 					ELSE
 						p.fail("expected expression");
-				} WHILE(p.consume(tok::Type::comma))
-				p.expect(tok::Type::parentheseClose);
+				} WHILE(p.consume(:comma))
+				p.expect(:parentheseClose);
 
-			} WHILE(p.consume(tok::Type::comma))
+			} WHILE(p.consume(:comma))
 
-		IF(p.consume(tok::Type::colon))
+		IF(p.consume(:colon))
 			DO(init: MemberInit)
 			{
-				p.expect(tok::Type::identifier, &init.Member);
-				p.expect(tok::Type::parentheseOpen);
+				p.expect(:identifier, &init.Member);
+				p.expect(:parentheseOpen);
 				DO()
 				{
 					IF(exp ::= Expression::parse(p))
-						init.Arguments.push_back(exp);
+						init.Arguments += :gc(exp);
 					ELSE
 						p.fail("expected expression");
-				} WHILE(p.consume(tok::Type::comma))
-				p.expect(tok::Type::parentheseClose);
-			} WHILE(p.consume(tok::Type::comma))
+				} WHILE(p.consume(:comma))
+				p.expect(:parentheseClose);
+			} WHILE(p.consume(:comma))
 
-		IF(!p.consume(tok::Type::semicolon))
+		IF(!p.consume(:semicolon))
 		{
 			body: BlockStatement;
 			IF(!body.parse(p))
 				p.fail("expected constructor body");
-			Body := std::dup(__cpp_std::move(body));
+			Body := :gc(std::dup(&&body));
 		}
 
 		RETURN TRUE;

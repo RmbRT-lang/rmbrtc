@@ -12,20 +12,20 @@ INCLUDE "member.rl"
 
 	parse(p: Parser&) bool
 	{
-		IF(!p.consume(tok::Type::type))
+		IF(!p.consume(:type))
 			RETURN FALSE;
 		t: Trace(&p, "typedef");
 
 		name: tok::Token;
-		p.expect(tok::Type::identifier, &name);
+		p.expect(:identifier, &name);
 		Name := name.Content;
-		p.expect(tok::Type::colonEqual);
+		p.expect(:colonEqual);
 
-		Type := parser::Type::parse(p);
+		Type := :gc(parser::Type::parse(p));
 		IF(!Type)
 			p.fail("expected type");
 
-		p.expect(tok::Type::semicolon);
+		p.expect(:semicolon);
 
 		RETURN TRUE;
 	}
@@ -33,12 +33,12 @@ INCLUDE "member.rl"
 
 ::rlc::parser GlobalTypedef -> Global, Typedef
 {
-	# FINAL type() Global::Type := Global::Type::typedef;
+	# FINAL type() Global::Type := :typedef;
 	parse(p: Parser&) INLINE ::= Typedef::parse(p);
 }
 
 ::rlc::parser MemberTypedef -> Member, Typedef
 {
-	# FINAL type() Member::Type := Member::Type::typedef;
+	# FINAL type() Member::Type := :typedef;
 	parse(p: Parser&) INLINE ::= Typedef::parse(p);
 }

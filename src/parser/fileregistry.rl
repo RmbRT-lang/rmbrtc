@@ -26,6 +26,6 @@ PUBLIC:
 		IF(entry ::= Files.find(file, &loc))
 			RETURN *entry;
 		ELSE
-			RETURN Files.emplace_at(loc, ::[File]new(file));
+			RETURN Files.emplace_at(loc, :gc(::[File]new(file)));
 	}
 }

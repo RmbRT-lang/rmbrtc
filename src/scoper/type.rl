@@ -40,7 +40,7 @@ INCLUDE "symbol.rl"
 				IsArray(parsed.IsArray)
 			{
 				FOR(i ::= 0; i < parsed.ArraySize.size(); i++)
-					ArraySize.push_back(Expression::create(parsed.ArraySize[i], file));
+					ArraySize += :gc(Expression::create(parsed.ArraySize[i], file));
 			}
 		}
 
@@ -65,7 +65,7 @@ INCLUDE "symbol.rl"
 			Reference(parsed->Reference)
 		{
 			FOR(i ::= 0; i < parsed->Modifiers.size(); i++)
-				Modifiers.emplace_back(parsed->Modifiers[i], file);
+				Modifiers += (parsed->Modifiers[i], file);
 		}
 
 		STATIC create(

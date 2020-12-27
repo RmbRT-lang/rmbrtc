@@ -24,16 +24,16 @@ INCLUDE "exprorstmt.rl"
 		group: detail::ScopeItemGroup \}:
 		Inline(parsed->IsInline),
 		Coroutine(parsed->IsCoroutine),
-		ArgumentScope(THIS, group->Scope)
+		ArgumentScope(&THIS, group->Scope)
 	{
 		FOR(i ::= 0; i < parsed->Arguments.size(); i++)
 		{
 			var ::= ArgumentScope.insert(&parsed->Arguments[i], file);
-			Arguments.push_back([LocalVariable \]dynamic_cast(var));
+			Arguments += [LocalVariable \]dynamic_cast(var);
 		}
 
 		IF(parsed->Return)
-			Return := Type::create(parsed->Return, file);
+			Return := :gc(Type::create(parsed->Return, file));
 
 		IF(parsed->Body.is_expression())
 			Body := Expression::create(parsed->Body.expression(), file);
@@ -44,7 +44,7 @@ INCLUDE "exprorstmt.rl"
 
 ::rlc::scoper GlobalFunction -> Global, Function
 {
-	# FINAL type() Global::Type := Global::Type::function;
+	# FINAL type() Global::Type := :function;
 
 	{
 		parsed: parser::GlobalFunction #\,
@@ -56,7 +56,7 @@ INCLUDE "exprorstmt.rl"
 
 ::rlc::scoper MemberFunction -> Member, Function
 {
-	# FINAL type() Member::Type := Member::Type::function;
+	# FINAL type() Member::Type := :function;
 
 	{
 		parsed: parser::MemberFunction #\,

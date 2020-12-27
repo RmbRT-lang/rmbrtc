@@ -20,23 +20,23 @@ INCLUDE 'std/err/unimplemented'
 	{
 	DEFAULT:
 		THROW std::err::Unimplemented(type.NAME());
-	CASE Member::Type::class:
+	CASE :class:
 		RETURN ::[MemberClass]new(<parser::MemberClass #\>(parsed), file, group);
-	CASE Member::Type::enum:
+	CASE :enum:
 		RETURN ::[MemberEnum]new(<parser::MemberEnum #\>(parsed), file, group);
-	CASE Member::Type::enumConstant:
+	CASE :enumConstant:
 		RETURN ::[Enum::Constant]new(<parser::Enum::Constant #\>(parsed), file, group);
-	CASE Member::Type::variable:
+	CASE :variable:
 		RETURN ::[MemberVariable]new(<parser::MemberVariable #\>(parsed), file, group);
-	CASE Member::Type::function:
+	CASE :function:
 		RETURN ::[MemberFunction]new(<parser::MemberFunction #\>(parsed), file, group);
-	CASE Member::Type::constructor:
+	CASE :constructor:
 		RETURN ::[Constructor]new(<parser::Constructor #\>(parsed), file, group);
-	CASE Member::Type::destructor:
+	CASE :destructor:
 		RETURN ::[Destructor]new(<parser::Destructor #\>(parsed), file, group);
-	CASE Member::Type::union:
+	CASE :union:
 		RETURN ::[MemberUnion]new(<parser::MemberUnion #\>(parsed), file, group);
-	CASE Member::Type::typedef:
+	CASE :typedef:
 		RETURN ::[MemberTypedef]new(<parser::MemberTypedef #\>(parsed), file, group);
 	}
 }

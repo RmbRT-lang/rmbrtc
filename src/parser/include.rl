@@ -20,16 +20,16 @@ INCLUDE "parser.rl"
 		parse(
 			p: Parser &) bool
 		{
-			IF(!p.consume(tok::Type::include))
+			IF(!p.consume(:include))
 				RETURN FALSE;
 
 			t: Trace(&p, "include statement");
 
-			IF(p.consume(tok::Type::stringApostrophe, &Token))
+			IF(p.consume(:stringApostrophe, &Token))
 				Type := IncludeType::global;
-			ELSE IF(p.consume(tok::Type::stringQuote, &Token))
+			ELSE IF(p.consume(:stringQuote, &Token))
 				Type := IncludeType::relative;
-			ELSE IF(p.consume(tok::Type::stringBacktick, &Token))
+			ELSE IF(p.consume(:stringBacktick, &Token))
 				Type := IncludeType::remote;
 			ELSE
 				p.fail("expected ', \", or `");

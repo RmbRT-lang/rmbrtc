@@ -13,21 +13,21 @@ INCLUDE "scopeitem.rl"
 		parsed: parser::Concept #\,
 		file: src::File #&,
 		group: detail::ScopeItemGroup \}:
-		Scope(THIS, group->Scope)
+		Scope(&THIS, group->Scope)
 	{
 		FOR(i ::= 0; i < parsed->Members.size(); i++)
 		{
 			member ::= Scope::insert(parsed->Members[i], file);
 			IF(memfn ::= [MemberFunction \]dynamic_cast(member))
 				IF(!memfn->Body)
-					Functions.push_back(memfn);
+					Functions += memfn;
 		}
 	}
 }
 
 ::rlc::scoper GlobalConcept -> Global, Concept
 {
-	# FINAL type() Global::Type := Global::Type::concept;
+	# FINAL type() Global::Type := :concept;
 
 	{
 		parsed: parser::GlobalConcept #\,

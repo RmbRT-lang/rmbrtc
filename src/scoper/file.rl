@@ -46,7 +46,7 @@ INCLUDE 'std/string'
 					Includes.emplace_at(loc, file);
 					file->IncludedBy.insert(file);
 					IncludedBy.insert(file);
-					file->Includes.insert(THIS);
+					file->Includes.insert(&THIS);
 				}
 			}
 		}

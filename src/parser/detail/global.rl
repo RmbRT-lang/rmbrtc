@@ -25,7 +25,7 @@ INCLUDE "../test.rl"
 		|| [ExternSymbol]parse_global_impl(p, ret)
 		|| (!templates.exists() && [Test]parse_global_impl(p, ret)))
 		{
-			ret->Templates := __cpp_std::move(templates);
+			ret->Templates := &&templates;
 		}
 
 		RETURN ret;
@@ -36,7 +36,7 @@ INCLUDE "../test.rl"
 		v: T;
 		IF(v.parse(p))
 		{
-			ret := std::dup_mv(v);
+			ret := std::dup(&&v);
 			RETURN TRUE;
 		}
 		RETURN FALSE;

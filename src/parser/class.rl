@@ -4,7 +4,7 @@ INCLUDE "../src/file.rl"
 
 INCLUDE 'std/vector'
 INCLUDE 'std/memory'
-INCLUDE 'std/pair'
+
 
 ::rlc::parser Class -> VIRTUAL ScopeItem
 {
@@ -16,22 +16,22 @@ INCLUDE 'std/pair'
 
 		parse(p: Parser &) VOID
 		{
-			STATIC lookup: std::[tok::Type, rlc::Visibility]Pair#[](
-				std::pair(tok::Type::public, Visibility::public),
-				std::pair(tok::Type::private, Visibility::private),
-				std::pair(tok::Type::protected, Visibility::protected));
+			STATIC lookup: {tok::Type, rlc::Visibility}#[](
+				(:public, :public),
+				(:private, :private),
+				(:protected, :protected));
 
 			t: Trace(&p, "inheritance");
 
-			Visibility := Visibility::public;
+			Visibility := :public;
 			FOR(i ::= 0; i < ::size(lookup); i++)
-				IF(p.consume(lookup[i].First))
+				IF(p.consume(lookup[i].(0)))
 				{
-					Visibility := lookup[i].Second;
+					Visibility := lookup[i].(1);
 					BREAK;
 				}
 
-			IsVirtual := p.consume(tok::Type::virtual);
+			IsVirtual := p.consume(:virtual);
 
 			IF(!Type.parse(p))
 				p.fail("expected type");
@@ -47,32 +47,32 @@ INCLUDE 'std/pair'
 
 	parse(p: Parser &) bool
 	{
-		IF(!p.match(tok::Type::identifier)
-		|| (!p.match_ahead(tok::Type::braceOpen)
-			&& !p.match_ahead(tok::Type::minusGreater)
-			&& !p.match_ahead(tok::Type::virtual)))
+		IF(!p.match(:identifier)
+		|| (!p.match_ahead(:braceOpen)
+			&& !p.match_ahead(:minusGreater)
+			&& !p.match_ahead(:virtual)))
 			RETURN FALSE;
 
 		t: Trace(&p, "class");
 
-		p.expect(tok::Type::identifier, &Name);
+		p.expect(:identifier, &Name);
 
-		Virtual := p.consume(tok::Type::virtual);
+		Virtual := p.consume(:virtual);
 
-		IF(p.consume(tok::Type::minusGreater))
+		IF(p.consume(:minusGreater))
 			DO(i: Inheritance)
 			{
 				i.parse(p);
-				Inheritances.push_back(__cpp_std::move(i));
-			} WHILE(p.consume(tok::Type::comma))
+				Inheritances += &&i;
+			} WHILE(p.consume(:comma))
 
-		p.expect(tok::Type::braceOpen);
+		p.expect(:braceOpen);
 
 		default ::= Visibility::public;
 		WHILE(member ::= Member::parse(p, default))
-			Members.push_back(member);
+			Members += :gc(member);
 
-		p.expect(tok::Type::braceClose);
+		p.expect(:braceClose);
 
 		RETURN TRUE;
 	}
@@ -80,11 +80,11 @@ INCLUDE 'std/pair'
 
 ::rlc::parser GlobalClass -> Global, Class
 {
-	# FINAL type() Global::Type := Global::Type::class;
+	# FINAL type() Global::Type := :class;
 	parse(p: Parser &) INLINE bool := Class::parse(p);
 }
 ::rlc::parser MemberClass -> Member, Class
 {
-	# FINAL type() Member::Type := Member::Type::class;
+	# FINAL type() Member::Type := :class;
 	parse(p: Parser &) INLINE bool := Class::parse(p);
 }

@@ -8,7 +8,7 @@ INCLUDE "../parser/enum.rl"
 
 		# enum() Enum #\ := [Enum \]dynamic_cast(parent());
 
-		# FINAL type() Member::Type := Member::Type::enumConstant;
+		# FINAL type() Member::Type := :enumConstant;
 
 		{
 			parsed: parser::Enum::Constant #\,
@@ -26,20 +26,20 @@ INCLUDE "../parser/enum.rl"
 		parsed: parser::Enum #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \}:
-		Scope(THIS, group->Scope),
+		Scope(&THIS, group->Scope),
 		Size(parsed->Constants.back().Value+1)
 	{
 		FOR(i ::= 0; i < parsed->Constants.size(); i++)
 		{
 			c ::= Scope::insert(&parsed->Constants[i], file);
-			Constants.push_back([Constant \]dynamic_cast(c));
+			Constants += [Constant \]dynamic_cast(c);
 		}
 	}
 }
 
 ::rlc::scoper GlobalEnum -> Global, Enum
 {
-	# FINAL type() Global::Type := Global::Type::enum;
+	# FINAL type() Global::Type := :enum;
 
 	{
 		parsed: parser::GlobalEnum #\,
@@ -51,7 +51,7 @@ INCLUDE "../parser/enum.rl"
 
 ::rlc::scoper MemberEnum -> Member, Enum
 {
-	# FINAL type() Member::Type := Member::Type::enum;
+	# FINAL type() Member::Type := :enum;
 
 	{
 		parsed: parser::MemberEnum #\,

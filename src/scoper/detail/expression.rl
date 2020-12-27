@@ -15,25 +15,25 @@ INCLUDE 'std/err/unimplemented'
 	{
 	DEFAULT:
 		THROW std::err::Unimplemented(type.NAME());
-	CASE ExpressionType::symbol:
+	CASE :symbol:
 		RETURN ::[SymbolExpression]new(<parser::SymbolExpression #\>(parsed), file);
-	CASE ExpressionType::symbolChild:
+	CASE :symbolChild:
 		RETURN ::[SymbolChildExpression]new(<parser::SymbolChildExpression #\>(parsed), file);
-	CASE ExpressionType::number:
+	CASE :number:
 		RETURN ::[NumberExpression]new(<parser::NumberExpression #\>(parsed), file);
-	CASE ExpressionType::bool:
+	CASE :bool:
 		RETURN ::[BoolExpression]new(<parser::BoolExpression #\>(parsed));
-	CASE ExpressionType::char:
+	CASE :char:
 		RETURN ::[CharExpression]new(<parser::CharExpression #\>(parsed), file);
-	CASE ExpressionType::string:
+	CASE :string:
 		RETURN ::[StringExpression]new(<parser::StringExpression #\>(parsed), file);
-	CASE ExpressionType::operator:
+	CASE :operator:
 		RETURN ::[OperatorExpression]new(<parser::OperatorExpression #\>(parsed), file);
-	CASE ExpressionType::this:
+	CASE :this:
 		RETURN ::[ThisExpression]new();
-	CASE ExpressionType::cast:
+	CASE :cast:
 		RETURN ::[CastExpression]new(<parser::CastExpression #\>(parsed), file);
-	CASE ExpressionType::sizeof:
+	CASE :sizeof:
 		RETURN ::[SizeofExpression]new(<parser::SizeofExpression #\>(parsed), file);
 	}
 }
@@ -42,7 +42,7 @@ INCLUDE 'std/err/unimplemented'
 {
 	SymbolExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::symbol;
+		# FINAL type() ExpressionType := :symbol;
 
 		Symbol: scoper::Symbol;
 
@@ -54,7 +54,7 @@ INCLUDE 'std/err/unimplemented'
 
 	SymbolChildExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::symbolChild;
+		# FINAL type() ExpressionType := :symbolChild;
 
 		Child: Symbol::Child;
 
@@ -66,7 +66,7 @@ INCLUDE 'std/err/unimplemented'
 
 	NumberExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::number;
+		# FINAL type() ExpressionType := :number;
 
 		Number: scoper::Number;
 
@@ -78,7 +78,7 @@ INCLUDE 'std/err/unimplemented'
 
 	BoolExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::bool;
+		# FINAL type() ExpressionType := :bool;
 
 		Value: bool;
 
@@ -89,29 +89,29 @@ INCLUDE 'std/err/unimplemented'
 
 	CharExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::char;
+		# FINAL type() ExpressionType := :char;
 		Char: Text;
 
 		{
 			parsed: parser::CharExpression #\,
 			file: src::File#&
-		}:	Char(tok::Token(tok::Type::stringApostrophe, parsed->Char), file);
+		}:	Char(tok::Token(:stringApostrophe, parsed->Char), file);
 	}
 
 	StringExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::string;
+		# FINAL type() ExpressionType := :string;
 		String: Text;
 
 		{
 			parsed: parser::StringExpression #\,
 			file: src::File#&
-		}:	String(tok::Token(tok::Type::stringQuote, parsed->String), file);
+		}:	String(tok::Token(:stringQuote, parsed->String), file);
 	}
 
 	OperatorExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::operator;
+		# FINAL type() ExpressionType := :operator;
 
 		Operands: std::[std::[Expression]Dynamic]Vector;
 		Op: Operator;
@@ -122,18 +122,18 @@ INCLUDE 'std/err/unimplemented'
 		}:	Op(parsed->Op)
 		{
 			FOR(i ::= 0; i < parsed->Operands.size(); i++)
-				Operands.push_back(Expression::create(parsed->Operands[i], file));
+				Operands += :gc(Expression::create(parsed->Operands[i], file));
 		}
 	}
 
 	ThisExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::this;
+		# FINAL type() ExpressionType := :this;
 	}
 
 	CastExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::cast;
+		# FINAL type() ExpressionType := :cast;
 
 		Type: std::[scoper::Type]Dynamic;
 		Value: std::[Expression]Dynamic;
@@ -141,13 +141,13 @@ INCLUDE 'std/err/unimplemented'
 		{
 			parsed: parser::CastExpression #\,
 			file: src::File#&
-		}:	Type(Type::create(parsed->Type, file)),
-			Value(Expression::create(parsed->Value, file));
+		}:	Type(:gc, Type::create(parsed->Type, file)),
+			Value(:gc, Expression::create(parsed->Value, file));
 	}
 
 	SizeofExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::sizeof;
+		# FINAL type() ExpressionType := :sizeof;
 
 		Term: util::[Type, Expression]DynUnion;
 

@@ -21,23 +21,23 @@ INCLUDE 'std/err/unimplemented'
 	{
 	DEFAULT:
 		THROW std::err::Unimplemented(type.NAME());
-	CASE Global::Type::namespace:
+	CASE :namespace:
 		RETURN ::[Namespace]new(<parser::Namespace #\>(global), file, group);
-	CASE Global::Type::class:
+	CASE :class:
 		RETURN ::[GlobalClass]new(<parser::GlobalClass #\>(global), file, group);
-	CASE Global::Type::enum:
+	CASE :enum:
 		RETURN ::[GlobalEnum]new(<parser::GlobalEnum #\>(global), file, group);
-	CASE Global::Type::function:
+	CASE :function:
 		RETURN ::[GlobalFunction]new(<parser::GlobalFunction #\>(global), file, group);
-	CASE Global::Type::variable:
+	CASE :variable:
 		RETURN ::[GlobalVariable]new(<parser::GlobalVariable #\>(global), file, group);
-	CASE Global::Type::externSymbol:
+	CASE :externSymbol:
 		RETURN ::[ExternSymbol]new(<parser::ExternSymbol #\>(global), file, group);
-	CASE Global::Type::typedef:
+	CASE :typedef:
 		RETURN ::[GlobalTypedef]new(<parser::GlobalTypedef #\>(global), file, group);
-	CASE Global::Type::union:
+	CASE :union:
 		RETURN ::[GlobalUnion]new(<parser::GlobalUnion #\>(global), file, group);
-	CASE Global::Type::concept:
+	CASE :concept:
 		RETURN ::[GlobalConcept]new(<parser::GlobalConcept #\>(global), file, group);
 	}
 }

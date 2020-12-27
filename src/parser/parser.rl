@@ -46,7 +46,7 @@ INCLUDE 'std/tags'
 				Buffer,
 				BufferIndex,
 				BufferSize,
-				*THIS,
+				THIS,
 				reason);
 		}
 
@@ -98,7 +98,7 @@ INCLUDE 'std/tags'
 				{
 					Tokeniser.position(&line, &column);
 				}
-				THROW ExpectedToken(File, line, column, Buffer, BufferIndex, BufferSize, *THIS, type);
+				THROW ExpectedToken(File, line, column, Buffer, BufferIndex, BufferSize, THIS, type);
 			}
 		}
 
@@ -168,7 +168,7 @@ INCLUDE 'std/tags'
 			Name(name),
 			Prev(p->Ctx)
 		{
-			P->Ctx := THIS;
+			P->Ctx := &THIS;
 		}
 
 		DESTRUCTOR

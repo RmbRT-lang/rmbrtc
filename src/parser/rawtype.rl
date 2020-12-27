@@ -17,28 +17,28 @@ INCLUDE 'std/vector'
 
 	parse(p: Parser &) bool
 	{
-		IF(!p.consume(tok::Type::parentheseOpen))
+		IF(!p.consume(:parentheseOpen))
 			RETURN FALSE;
 
 		t: Trace(&p, "rawtype");
 
-		IF(!(Size := Expression::parse(p)).Ptr)
+		IF(!(Size := :gc(Expression::parse(p))))
 			p.fail("expected expression");
 
-		p.expect(tok::Type::parentheseClose);
+		p.expect(:parentheseClose);
 
-		p.expect(tok::Type::identifier, &Name);
+		p.expect(:identifier, &Name);
 
-		IF(p.consume(tok::Type::semicolon))
+		IF(p.consume(:semicolon))
 			RETURN TRUE;
 
-		p.expect(tok::Type::braceOpen);
+		p.expect(:braceOpen);
 
 		visibility ::= Visibility::public;
 		WHILE(member ::= Member::parse(p, visibility))
-			Members.push_back(member);
+			Members += :gc(member);
 
-		p.expect(tok::Type::braceClose);
+		p.expect(:braceClose);
 
 		RETURN TRUE;
 	}
@@ -46,12 +46,12 @@ INCLUDE 'std/vector'
 
 ::rlc::parser GlobalRawtype -> Global, Rawtype
 {
-	# FINAL type() Global::Type := Global::Type::rawtype;
+	# FINAL type() Global::Type := :rawtype;
 	parse(p: Parser &) INLINE bool := Rawtype::parse(p);
 }
 
 ::rlc::parser MemberRawtype -> Member, Rawtype
 {
-	# FINAL type() Member::Type := Member::Type::rawtype;
+	# FINAL type() Member::Type := :rawtype;
 	parse(p: Parser &) INLINE bool := Rawtype::parse(p);
 }

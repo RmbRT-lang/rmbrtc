@@ -23,13 +23,13 @@ INCLUDE 'std/unicode'
 
 	{token: tok::Token #&, file: src::File #&}
 	{
-		IF(token.Type == tok::Type::stringApostrophe)
+		IF(token.Type == :stringApostrophe)
 			Type := TextType::stringApostrophe;
-		ELSE IF(token.Type == tok::Type::stringQuote)
+		ELSE IF(token.Type == :stringQuote)
 			Type := TextType::stringQuote;
-		ELSE IF(token.Type == tok::Type::stringBacktick)
+		ELSE IF(token.Type == :stringBacktick)
 			Type := TextType::stringBacktick;
-		ELSE IF(token.Type == tok::Type::stringTick)
+		ELSE IF(token.Type == :stringTick)
 			Type := TextType::stringTick;
 		ELSE THROW;
 
@@ -67,7 +67,7 @@ INCLUDE 'std/unicode'
 		{
 			size: UM;
 			code ::= std::code::utf8::point(&lit[i], &size);
-			Codes.push_back(code);
+			Codes += code;
 			i += size;
 		}
 	}

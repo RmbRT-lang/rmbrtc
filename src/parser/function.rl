@@ -22,10 +22,10 @@ INCLUDE 'std/help'
 	# is_statement() INLINE bool := V.is_second();
 	# statement() INLINE Statement \ := V.second();
 
-	# CONVERT(bool) INLINE := V;
+	# <bool> INLINE := V;
 
-	[T:TYPE] ASSIGN(v: T! &&) ExprOrStmt &
-		:= std::help::custom_assign(*THIS, __cpp_std::[T!]forward(v));
+	[T:TYPE] THIS:=(v: T! &&) ExprOrStmt &
+		:= std::help::custom_assign(THIS, <T!&&>(v));
 }
 
 ::rlc::parser Function -> VIRTUAL ScopeItem
@@ -43,49 +43,49 @@ INCLUDE 'std/help'
 		p: Parser &,
 		allow_body: bool) bool
 	{
-		IF(!p.match_ahead(tok::Type::parentheseOpen)
-		|| !p.consume(tok::Type::identifier, &Name))
+		IF(!p.match_ahead(:parentheseOpen)
+		|| !p.consume(:identifier, &Name))
 			RETURN FALSE;
 
 		t: Trace(&p, "function");
-		p.expect(tok::Type::parentheseOpen);
+		p.expect(:parentheseOpen);
 
-		IF(!p.consume(tok::Type::parentheseClose))
+		IF(!p.consume(:parentheseClose))
 		{
 			DO(arg: LocalVariable)
 			{
 				IF(!arg.parse_fn_arg(p))
 					p.fail("expected argument");
-				Arguments.push_back(__cpp_std::move(arg));
-			} WHILE(p.consume(tok::Type::comma))
-			p.expect(tok::Type::parentheseClose);
+				Arguments += &&arg;
+			} WHILE(p.consume(:comma))
+			p.expect(:parentheseClose);
 		}
 
-		IsInline := p.consume(tok::Type::inline);
-		IsCoroutine := p.consume(tok::Type::at);
+		IsInline := p.consume(:inline);
+		IsCoroutine := p.consume(:at);
 
-		Return := Type::parse(p);
+		Return := :gc(Type::parse(p));
 		IF(!allow_body)
 			IF(!Return)
 				p.fail("expected return type");
 			ELSE
 			{
-				p.expect(tok::Type::semicolon);
+				p.expect(:semicolon);
 				RETURN TRUE;
 			}
 
 		body: BlockStatement;
 		IF(body.parse(p))
 		{
-			Body := std::dup(__cpp_std::move(body));
-		} ELSE IF(!p.consume(tok::Type::semicolon))
+			Body := std::dup(&&body);
+		} ELSE IF(!p.consume(:semicolon))
 		{
 			p.expect(Return.Ptr
 				? tok::Type::colonEqual
 				: tok::Type::doubleColonEqual);
 
 			Body := Expression::parse(p);
-			p.expect(tok::Type::semicolon);
+			p.expect(:semicolon);
 		}
 
 		RETURN TRUE;
@@ -94,7 +94,7 @@ INCLUDE 'std/help'
 
 ::rlc::parser GlobalFunction -> Global, Function
 {
-	# FINAL type() Global::Type := Global::Type::function;
+	# FINAL type() Global::Type := :function;
 	parse(p: Parser&) INLINE bool := Function::parse(p, TRUE);
 	parse_extern(p: Parser&) INLINE bool := Function::parse(p, FALSE);
 }
@@ -112,27 +112,27 @@ INCLUDE 'std/help'
 {
 	Abstractness: rlc::Abstractness;
 
-	# FINAL type() Member::Type := Member::Type::function;
+	# FINAL type() Member::Type := :function;
 
 	parse(p: Parser&) INLINE bool
 	{
-		STATIC k_lookup: std::[tok::Type, rlc::Abstractness]Pair#[](
-			std::pair(tok::Type::virtual, rlc::Abstractness::virtual),
-			std::pair(tok::Type::abstract, rlc::Abstractness::abstract),
-			std::pair(tok::Type::override, rlc::Abstractness::override),
-			std::pair(tok::Type::final, rlc::Abstractness::final));
+		STATIC k_lookup: {tok::Type, rlc::Abstractness}#[](
+			(:virtual, :virtual),
+			(:abstract, :abstract),
+			(:override, :override),
+			(:final, :final));
 
-		Abstractness := rlc::Abstractness::none;
+		Abstractness := :none;
 		FOR(i ::= 0; i < ::size(k_lookup); i++)
-			IF(p.consume(k_lookup[i].First))
+			IF(p.consume(k_lookup[i].(0)))
 			{
-				Abstractness := k_lookup[i].Second;
+				Abstractness := k_lookup[i].(1);
 				BREAK;
 			}
 
 		IF(!Function::parse(p, TRUE))
 		{
-			IF(Abstractness != rlc::Abstractness::none)
+			IF(Abstractness != :none)
 				p.fail("expected function");
 			RETURN FALSE;
 		}

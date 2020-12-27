@@ -26,7 +26,7 @@ INCLUDE "../destructor.rl"
 
 		IF([MemberTypedef]parse_member_impl(p, ret)
 		|| [MemberFunction]parse_member_impl(p, ret)
-		|| (parse_member_variable(p, ret, attr == MemberAttribute::static))
+		|| (parse_member_variable(p, ret, attr == :static))
 		|| [MemberClass]parse_member_impl(p, ret)
 		|| [MemberRawtype]parse_member_impl(p, ret)
 		|| [MemberUnion]parse_member_impl(p, ret)
@@ -35,7 +35,7 @@ INCLUDE "../destructor.rl"
 		|| [Destructor]parse_member_impl(p, ret))
 		{
 			ret->Visibility := visibility;
-			ret->Templates := __cpp_std::move(templates);
+			ret->Templates := &&templates;
 			ret->Attribute := attr;
 		}
 
@@ -68,7 +68,7 @@ INCLUDE "../destructor.rl"
 
 		IF([MemberTypedef]parse_member_impl(p, ret)
 		|| [MemberFunction]parse_member_impl(p, ret)
-		|| (attr == MemberAttribute::static
+		|| (attr == :static
 			&& parse_member_variable(p, ret, TRUE))
 		|| [MemberClass]parse_member_impl(p, ret)
 		|| [MemberRawtype]parse_member_impl(p, ret)
@@ -78,7 +78,7 @@ INCLUDE "../destructor.rl"
 		|| [Destructor]parse_member_impl(p, ret))
 		{
 			ret->Visibility := visibility;
-			ret->Templates := __cpp_std::move(templates);
+			ret->Templates := &&templates;
 			ret->Attribute := attr;
 		}
 
@@ -96,10 +96,9 @@ INCLUDE "../destructor.rl"
 		ret: Member * := NULL;
 
 		IF([MemberTypedef]parse_member_impl(p, ret)
-		|| (p.match(tok::Type::identifier) // Ignore abstract functions.
+		|| (p.match(:identifier) // Ignore abstract functions.
 			&& [MemberFunction]parse_member_impl(p, ret))
-		|| (attr == MemberAttribute::static
-			&& parse_member_variable(p, ret, TRUE))
+		|| (attr == :static && parse_member_variable(p, ret, TRUE))
 		|| [MemberClass]parse_member_impl(p, ret)
 		|| [MemberRawtype]parse_member_impl(p, ret)
 		|| [MemberUnion]parse_member_impl(p, ret)
@@ -107,7 +106,7 @@ INCLUDE "../destructor.rl"
 		|| [Constructor]parse_member_impl(p, ret))
 		{
 			ret->Visibility := visibility;
-			ret->Templates := __cpp_std::move(templates);
+			ret->Templates := &&templates;
 			ret->Attribute := attr;
 		}
 
@@ -116,7 +115,7 @@ INCLUDE "../destructor.rl"
 
 	parse_member_variable(p: Parser &, ret: Member * &, static: bool) bool
 	{
-		v: std::[MemberVariable]Dynamic := [MemberVariable]new();
+		v: std::[MemberVariable]Dynamic := :gc([MemberVariable]new());
 		IF(v->parse(p, static))
 		{
 			ret := v.release();
@@ -130,7 +129,7 @@ INCLUDE "../destructor.rl"
 		v: T;
 		IF(v.parse(p))
 		{
-			ret := std::dup_mv(v);
+			ret := std::dup(&&v);
 			RETURN TRUE;
 		}
 		RETURN FALSE;
@@ -142,25 +141,25 @@ INCLUDE "../destructor.rl"
 		global: bool
 	) Visibility
 	{
-		STATIC lookup: std::[tok::Type, Visibility]Pair#[](
-			std::pair(tok::Type::public, Visibility::public),
-			std::pair(tok::Type::protected, Visibility::protected),
-			std::pair(tok::Type::private, Visibility::private));
+		STATIC lookup: {tok::Type, Visibility}#[](
+			(:public, :public),
+			(:protected, :protected),
+			(:private, :private));
 
 		visibility ::= default_visibility;
 
-		IF(global != p.match_ahead(tok::Type::colon))
+		IF(global != p.match_ahead(:colon))
 			RETURN visibility;
 
 		DO(found ::= FALSE)
 		{
 			FOR(i ::= 0; i < ::size(lookup); i++)
-				IF(found := p.consume(lookup[i].First))
+				IF(found := p.consume(lookup[i].(0)))
 				{
-					visibility := lookup[i].Second;
+					visibility := lookup[i].(1);
 					BREAK;
 				}
-		} FOR(found && p.consume(tok::Type::colon);
+		} FOR(found && p.consume(:colon);
 			default_visibility := visibility)
 
 		RETURN visibility;
@@ -169,14 +168,14 @@ INCLUDE "../destructor.rl"
 	parse_attribute(
 		p: Parser &) MemberAttribute
 	{
-		STATIC lookup: std::[tok::Type, MemberAttribute]Pair#[](
-			std::pair(tok::Type::static, MemberAttribute::static),
-			std::pair(tok::Type::hash, MemberAttribute::isolated));
+		STATIC lookup: {tok::Type, MemberAttribute}#[](
+			(:static, :static),
+			(:hash, :isolated));
 
 		FOR(i ::= 0; i < ::size(lookup); i++)
-			IF(p.consume(lookup[i].First))
-				RETURN lookup[i].Second;
+			IF(p.consume(lookup[i].(0)))
+				RETURN lookup[i].(1);
 
-		RETURN MemberAttribute::none;
+		RETURN :none;
 	}
 }

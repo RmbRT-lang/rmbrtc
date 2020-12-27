@@ -26,7 +26,7 @@ INCLUDE "types.rl"
 			file: src::File #&}
 		{
 			FOR(i ::= 0; i < parsed.Children.size(); i++)
-				Templates.emplace_back(
+				Templates += (
 					file.content(parsed.Children[i].Name),
 					parsed.Children[i].Type);
 		}

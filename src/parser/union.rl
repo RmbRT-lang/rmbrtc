@@ -11,18 +11,18 @@ INCLUDE "member.rl"
 
 	parse(p: Parser &) bool
 	{
-		IF(!p.consume(tok::Type::union))
+		IF(!p.consume(:union))
 			RETURN FALSE;
 
-		p.expect(tok::Type::identifier, &Name);
+		p.expect(:identifier, &Name);
 
-		p.expect(tok::Type::braceOpen);
+		p.expect(:braceOpen);
 
 		visibility ::= Visibility::public;
 		WHILE(member ::= Member::parse(p, visibility))
-			Members.push_back(member);
+			Members += :gc(member);
 
-		p.expect(tok::Type::braceClose);
+		p.expect(:braceClose);
 
 		RETURN TRUE;
 	}
@@ -30,13 +30,13 @@ INCLUDE "member.rl"
 
 ::rlc::parser GlobalUnion -> Global, Union
 {
-	# FINAL type() Global::Type := Global::Type::union;
+	# FINAL type() Global::Type := :union;
 
 	parse(p: Parser &) INLINE bool := Union::parse(p);
 }
 
 ::rlc::parser MemberUnion -> Member, Union
 {
-	# FINAL type() Member::Type := Member::Type::union;
+	# FINAL type() Member::Type := :union;
 	parse(p: Parser &) INLINE bool := Union::parse(p);
 }

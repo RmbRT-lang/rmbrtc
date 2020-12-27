@@ -12,21 +12,21 @@ INCLUDE "member.rl"
 		parsed: parser::Union #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \}:
-		Scope(THIS, group->Scope)
+		Scope(&THIS, group->Scope)
 	{
 		FOR(i ::= 0; i < parsed->Members.size(); i++)
 		{
 			member ::= Scope::insert(parsed->Members[i], file);
 			IF(var ::= [MemberVariable \]dynamic_cast(member))
 				IF(var->Attribute != MemberAttribute::static)
-					Fields.push_back(var);
+					Fields += var;
 		}
 	}
 }
 
 ::rlc::scoper GlobalUnion -> Global, Union
 {
-	# type() Global::Type := Global::Type::union;
+	# type() Global::Type := :union;
 
 	{
 		parsed: parser::GlobalUnion #\,
@@ -38,7 +38,7 @@ INCLUDE "member.rl"
 
 ::rlc::scoper MemberUnion -> Member, Union
 {
-	# type() Member::Type := Member::Type::union;
+	# type() Member::Type := :union;
 
 	{
 		parsed: parser::MemberUnion #\,

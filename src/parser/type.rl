@@ -27,13 +27,13 @@ INCLUDE "expression.rl"
 		PRIVATE STATIC parse_reference_type(
 			p: Parser&) Type::ReferenceType
 		{
-			STATIC table: std::[tok::Type, ReferenceType]Pair#[](
-				std::pair(tok::Type::and, ReferenceType::reference),
-				std::pair(tok::Type::doubleAnd, ReferenceType::tempReference));
+			STATIC table: {tok::Type, ReferenceType}#[](
+				(:and, ReferenceType::reference),
+				(:doubleAnd, ReferenceType::tempReference));
 
 			FOR(i ::= 0; i < ::size(table); i++)
-				IF(p.consume(table[i].First))
-					RETURN table[i].Second;
+				IF(p.consume(table[i].(0)))
+					RETURN table[i].(1);
 
 			RETURN ReferenceType::none;
 		}
@@ -51,16 +51,16 @@ INCLUDE "expression.rl"
 		PRIVATE STATIC parse_indirection(
 			p: Parser&) Type::Indirection
 		{
-			STATIC table: std::[tok::Type, Indirection]Pair#[](
-				std::pair(tok::Type::asterisk, Indirection::pointer),
-				std::pair(tok::Type::backslash, Indirection::nonnull),
-				std::pair(tok::Type::doubleDotExclamationMark, Indirection::expectDynamic),
-				std::pair(tok::Type::doubleDotQuestionMark, Indirection::maybeDynamic),
-				std::pair(tok::Type::at, Indirection::future));
+			STATIC table: {tok::Type, Indirection}#[](
+				(:asterisk, Indirection::pointer),
+				(:backslash, Indirection::nonnull),
+				(:doubleDotExclamationMark, Indirection::expectDynamic),
+				(:doubleDotQuestionMark, Indirection::maybeDynamic),
+				(:at, Indirection::future));
 
 			FOR(i ::= 0; i < ::size(table); i++)
-				IF(p.consume(table[i].First))
-					RETURN table[i].Second;
+				IF(p.consume(table[i].(0)))
+					RETURN table[i].(1);
 
 			RETURN Indirection::plain;
 		}
@@ -75,10 +75,10 @@ INCLUDE "expression.rl"
 				p: Parser&) bool
 			{
 				start ::= p.progress();
-				IF((Const := p.consume(tok::Type::hash)))
-					Volatile := p.consume(tok::Type::dollar);
-				ELSE IF((Volatile := p.consume(tok::Type::dollar)))
-					Const := p.consume(tok::Type::hash);
+				IF((Const := p.consume(:hash)))
+					Volatile := p.consume(:dollar);
+				ELSE IF((Volatile := p.consume(:dollar)))
+					Const := p.consume(:hash);
 				
 				RETURN p.progress() != start;
 			}
@@ -117,19 +117,19 @@ INCLUDE "expression.rl"
 				Indirection := Type::parse_indirection(p);
 				Qualifier.parse(p);
 
-				IF(IsArray := p.consume(tok::Type::bracketOpen))
+				IF(IsArray := p.consume(:bracketOpen))
 				{
-					IF(!p.consume(tok::Type::bracketClose))
+					IF(!p.consume(:bracketClose))
 					{
 						DO()
 						{
 							bounds ::= Expression::parse(p);
 							IF(!bounds)
 								p.fail("expected expression");
-							ArraySize.push_back(bounds);
-						} WHILE(p.consume(tok::Type::comma))
+							ArraySize += :gc(bounds);
+						} WHILE(p.consume(:comma))
 
-						p.expect(tok::Type::bracketClose);
+						p.expect(:bracketClose);
 					}
 				}
 
@@ -140,7 +140,7 @@ INCLUDE "expression.rl"
 
 		{};
 		{t: Type &&}:
-			Modifiers(__cpp_std::move(t.Modifiers)),
+			Modifiers(&&t.Modifiers),
 			Reference(t.Reference);
 
 		Modifiers: std::[Modifier]Vector;
@@ -152,13 +152,13 @@ INCLUDE "expression.rl"
 			v: T;
 			IF(v.parse(p))
 			{
-				t: Type \ := std::dup_mv(v);
-				WHILE(p.consume(tok::Type::minus))
+				t: Type \ := std::dup(&&v);
+				WHILE(p.consume(:minus))
 				{
 					STATIC expect: tok::Type#[](
-						tok::Type::doubleColon,
-						tok::Type::bracketOpen,
-						tok::Type::identifier);
+						:doubleColon,
+						:bracketOpen,
+						:identifier);
 					found ::= FALSE;
 					FOR(i ::= 0; i < ::size(expect); i++)
 						found |= p.match(expect[i]);
@@ -168,7 +168,7 @@ INCLUDE "expression.rl"
 					next ::= Type::parse(p);
 					ASSERT(next->type() == TypeType::name);
 					
-					<TypeName \>(next)->Name.Children.back().Templates.emplace_back(t);
+					<TypeName \>(next)->Name.Children.back().Templates += t;
 					t := next;
 				}
 				RETURN t;
@@ -199,7 +199,7 @@ INCLUDE "expression.rl"
 		{
 			mod: Modifier;
 			WHILE(mod.parse(p))
-				Modifiers.push_back(__cpp_std::move(mod));
+				Modifiers += &&mod;
 
 			Reference := parse_reference_type(p);
 		}
@@ -217,29 +217,29 @@ INCLUDE "expression.rl"
 		{
 			t: Trace(&p, "signature");
 			// ((T1, T2) Ret)
-			IF(!p.consume(tok::Type::parentheseOpen))
+			IF(!p.consume(:parentheseOpen))
 				RETURN FALSE;
 
-			p.expect(tok::Type::parentheseOpen);
+			p.expect(:parentheseOpen);
 
-			IF(!p.consume(tok::Type::parentheseClose))
+			IF(!p.consume(:parentheseClose))
 			{
 				DO(arg: Type *)
 				{
 					IF(arg := Type::parse(p))
-						Args.push_back(std::[Type]Dynamic(arg));
+						Args += :gc(arg);
 					ELSE
 						p.fail("expected type");
-				} WHILE(p.consume(tok::Type::comma))
-				p.expect(tok::Type::parentheseClose);
+				} WHILE(p.consume(:comma))
+				p.expect(:parentheseClose);
 			}
 
 			type ::= Type::parse(p);
 			IF(!type)
 				p.fail("expected type");
-			Ret := type;
+			Ret := :gc(type);
 
-			p.expect(tok::Type::parentheseClose);
+			p.expect(:parentheseClose);
 
 			parse_generic_part(p);
 
@@ -253,7 +253,7 @@ INCLUDE "expression.rl"
 
 		parse(p: Parser&) bool
 		{
-			IF(!p.consume(tok::Type::void))
+			IF(!p.consume(:void))
 				RETURN FALSE;
 			parse_generic_part(p);
 			RETURN TRUE;
@@ -268,12 +268,12 @@ INCLUDE "expression.rl"
 
 		parse(p: Parser &) bool
 		{
-			IF(!p.consume(tok::Type::type))
+			IF(!p.consume(:type))
 				RETURN FALSE;
-			p.expect(tok::Type::parentheseOpen);
-			IF(!(Expression := parser::Expression::parse(p)))
+			p.expect(:parentheseOpen);
+			IF(!(Expression := :gc(parser::Expression::parse(p))))
 				p.fail("expected expression");
-			p.expect(tok::Type::parentheseClose);
+			p.expect(:parentheseClose);
 
 			RETURN TRUE;
 		}
@@ -289,7 +289,7 @@ INCLUDE "expression.rl"
 		{
 			IF(!Name.parse(p))
 				RETURN FALSE;
-			NoDecay := p.consume(tok::Type::exclamationMark);
+			NoDecay := p.consume(:exclamationMark);
 			parse_generic_part(p);
 			RETURN TRUE;
 		}
@@ -311,16 +311,16 @@ INCLUDE "expression.rl"
 
 		parse(p: Parser&) bool
 		{
-			STATIC table: std::[tok::Type, Primitive]Pair#[](
-				std::pair(tok::Type::bool, Primitive::bool),
-				std::pair(tok::Type::char, Primitive::char),
-				std::pair(tok::Type::int, Primitive::int),
-				std::pair(tok::Type::uint, Primitive::uint));
+			STATIC table: {tok::Type, Primitive}#[](
+				(:bool, Primitive::bool),
+				(:char, Primitive::char),
+				(:int, Primitive::int),
+				(:uint, Primitive::uint));
 
 			FOR(i ::= 0; i < ::size(table); i++)
-				IF(p.consume(table[i].First))
+				IF(p.consume(table[i].(0)))
 				{
-					Kind := table[i].Second;
+					Kind := table[i].(1);
 					parse_generic_part(p);
 					RETURN TRUE;
 				}

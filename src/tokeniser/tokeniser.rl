@@ -1,6 +1,5 @@
 INCLUDE "token.rl"
 INCLUDE "error.rl"
-INCLUDE 'std/pair'
 
 ::rlc::tok
 {
@@ -140,95 +139,95 @@ INCLUDE 'std/pair'
 
 		special(out: Token \) bool
 		{
-			STATIC specials: std::[char#\, Type]Pair#[](
-				std::pair("+=", Type::plusEqual),
-				std::pair("++", Type::doublePlus),
-				std::pair("+", Type::plus),
+			STATIC specials: {char#\, Type}#[](
+				("+=", :plusEqual),
+				("++", :doublePlus),
+				("+", :plus),
 
-				std::pair("-=", Type::minusEqual),
-				std::pair("-:", Type::minusColon),
-				std::pair("--", Type::doubleMinus),
-				std::pair("->*", Type::minusGreaterAsterisk),
-				std::pair("->", Type::minusGreater),
-				std::pair("-", Type::minus),
+				("-=", :minusEqual),
+				("-:", :minusColon),
+				("--", :doubleMinus),
+				("->*", :minusGreaterAsterisk),
+				("->", :minusGreater),
+				("-", :minus),
 
-				std::pair("*=", Type::asteriskEqual),
-				std::pair("*", Type::asterisk),
+				("*=", :asteriskEqual),
+				("*", :asterisk),
 
-				std::pair("\\", Type::backslash),
+				("\\", :backslash),
 
-				std::pair("/=", Type::forwardSlashEqual),
-				std::pair("/", Type::forwardSlash),
+				("/=", :forwardSlashEqual),
+				("/", :forwardSlash),
 
-				std::pair("%=", Type::percentEqual),
-				std::pair("%", Type::percent),
+				("%=", :percentEqual),
+				("%", :percent),
 
-				std::pair("!=", Type::exclamationMarkEqual),
-				std::pair("!:", Type::exclamationMarkColon),
-				std::pair("!", Type::exclamationMark),
+				("!=", :exclamationMarkEqual),
+				("!:", :exclamationMarkColon),
+				("!", :exclamationMark),
 
-				std::pair("^=", Type::circumflexEqual),
-				std::pair("^", Type::circumflex),
+				("^=", :circumflexEqual),
+				("^", :circumflex),
 
-				std::pair("~:", Type::tildeColon),
-				std::pair("~", Type::tilde),
+				("~:", :tildeColon),
+				("~", :tilde),
 
-				std::pair("&&=", Type::doubleAndEqual),
-				std::pair("&&", Type::doubleAnd),
-				std::pair("&=", Type::andEqual),
-				std::pair("&", Type::and),
+				("&&=", :doubleAndEqual),
+				("&&", :doubleAnd),
+				("&=", :andEqual),
+				("&", :and),
 
-				std::pair("||=", Type::doublePipeEqual),
-				std::pair("||", Type::doublePipe),
-				std::pair("|=", Type::pipeEqual),
-				std::pair("|", Type::pipe),
+				("||=", :doublePipeEqual),
+				("||", :doublePipe),
+				("|=", :pipeEqual),
+				("|", :pipe),
 
-				std::pair("?", Type::questionMark),
+				("?", :questionMark),
 
-				std::pair("::=", Type::doubleColonEqual),
-				std::pair(":=", Type::colonEqual),
-				std::pair("::", Type::doubleColon),
-				std::pair(":", Type::colon),
-				std::pair("@@", Type::doubleAt),
-				std::pair("@", Type::at),
-				std::pair("...", Type::tripleDot),
-				std::pair("..!", Type::doubleDotExclamationMark),
-				std::pair("..?", Type::doubleDotQuestionMark),
-				std::pair(".*", Type::dotAsterisk),
-				std::pair(".", Type::dot),
-				std::pair(",", Type::comma),
-				std::pair(";", Type::semicolon),
-				std::pair("==", Type::doubleEqual),
+				("::=", :doubleColonEqual),
+				(":=", :colonEqual),
+				("::", :doubleColon),
+				(":", :colon),
+				("@@", :doubleAt),
+				("@", :at),
+				("...", :tripleDot),
+				("..!", :doubleDotExclamationMark),
+				("..?", :doubleDotQuestionMark),
+				(".*", :dotAsterisk),
+				(".", :dot),
+				(",", :comma),
+				(";", :semicolon),
+				("==", :doubleEqual),
 
-				std::pair("[", Type::bracketOpen),
-				std::pair("]", Type::bracketClose),
-				std::pair("{", Type::braceOpen),
-				std::pair("}", Type::braceClose),
-				std::pair("(", Type::parentheseOpen),
-				std::pair(")", Type::parentheseClose),
+				("[", :bracketOpen),
+				("]", :bracketClose),
+				("{", :braceOpen),
+				("}", :braceClose),
+				("(", :parentheseOpen),
+				(")", :parentheseClose),
 
-				std::pair("<<<=", Type::tripleLessEqual),
-				std::pair("<<<", Type::tripleLess),
-				std::pair("<<=", Type::doubleLessEqual),
-				std::pair("<<", Type::doubleLess),
-				std::pair("<=", Type::lessEqual),
-				std::pair("<", Type::less),
+				("<<<=", :tripleLessEqual),
+				("<<<", :tripleLess),
+				("<<=", :doubleLessEqual),
+				("<<", :doubleLess),
+				("<=", :lessEqual),
+				("<", :less),
 
-				std::pair(">>>=", Type::tripleGreaterEqual),
-				std::pair(">>>", Type::tripleGreater),
-				std::pair(">>=", Type::doubleGreaterEqual),
-				std::pair(">>", Type::doubleGreater),
-				std::pair(">=", Type::greaterEqual),
-				std::pair(">", Type::greater),
+				(">>>=", :tripleGreaterEqual),
+				(">>>", :tripleGreater),
+				(">>=", :doubleGreaterEqual),
+				(">>", :doubleGreater),
+				(">=", :greaterEqual),
+				(">", :greater),
 
-				std::pair("$", Type::dollar),
-				std::pair("#", Type::hash)
+				("$", :dollar),
+				("#", :hash)
 			);
 
 			FOR(i ::= 0; i < ::size(specials); i++)
-				IF(eatString(specials[i].First))
+				IF(eatString(specials[i].(0)))
 				{
-					out->Type := specials[i].Second;
+					out->Type := specials[i].(1);
 					RETURN TRUE;
 				}
 
@@ -242,66 +241,65 @@ INCLUDE 'std/pair'
 			++Read;
 			WHILE(is_alnum(look())) ++Read;
 
-			STATIC keywords: std::[char#\, Type]Pair#[](
-				std::pair("ABSTRACT", Type::abstract),
-				std::pair("ASSERT", Type::assert),
-				std::pair("BOOL", Type::bool),
-				std::pair("BREAK", Type::break),
-				std::pair("CASE", Type::case),
-				std::pair("CATCH", Type::catch),
-				std::pair("CHAR", Type::char),
-				std::pair("CONCEPT", Type::concept),
-				std::pair("CONSTRUCTOR", Type::constructor),
-				std::pair("CONTINUE", Type::continue),
-				std::pair("DEFAULT", Type::default),
-				std::pair("DESTRUCTOR", Type::destructor),
-				std::pair("DO", Type::do),
-				std::pair("ELSE", Type::else),
-				std::pair("ENUM", Type::enum),
-				std::pair("EXTERN", Type::extern),
-				std::pair("FALSE", Type::false),
-				std::pair("FINAL", Type::final),
-				std::pair("FINALLY", Type::finally),
-				std::pair("FOR", Type::for),
-				std::pair("IF", Type::if),
-				std::pair("INCLUDE", Type::include),
-				std::pair("INLINE", Type::inline),
-				std::pair("INT", Type::int),
-				std::pair("NUMBER", Type::number),
-				std::pair("OPERATOR", Type::operator),
-				std::pair("OVERRIDE", Type::override),
-				std::pair("PRIVATE", Type::private),
-				std::pair("PROTECTED", Type::protected),
-				std::pair("PUBLIC", Type::public),
-				std::pair("RETURN", Type::return),
-				std::pair("SIZEOF", Type::sizeof),
-				std::pair("STATIC", Type::static),
-				std::pair("SWITCH", Type::switch),
-				std::pair("TEST", Type::test),
-				std::pair("THIS", Type::this),
-				std::pair("THROW", Type::throw),
-				std::pair("TRUE", Type::true),
-				std::pair("TRY", Type::try),
-				std::pair("TYPE", Type::type),
-				std::pair("UINT", Type::uint),
-				std::pair("UNION", Type::union),
-				std::pair("VIRTUAL", Type::virtual),
-				std::pair("VOID", Type::void),
-				std::pair("WHILE", Type::while)
+			STATIC keywords: {char#\, Type}#[](
+				("ABSTRACT", :abstract),
+				("ASSERT", :assert),
+				("BOOL", :bool),
+				("BREAK", :break),
+				("CASE", :case),
+				("CATCH", :catch),
+				("CHAR", :char),
+				("CONCEPT", :concept),
+				("CONTINUE", :continue),
+				("DEFAULT", :default),
+				("DESTRUCTOR", :destructor),
+				("DO", :do),
+				("ELSE", :else),
+				("ENUM", :enum),
+				("EXTERN", :extern),
+				("FALSE", :false),
+				("FINAL", :final),
+				("FINALLY", :finally),
+				("FOR", :for),
+				("IF", :if),
+				("INCLUDE", :include),
+				("INLINE", :inline),
+				("INT", :int),
+				("NUMBER", :number),
+				("OPERATOR", :operator),
+				("OVERRIDE", :override),
+				("PRIVATE", :private),
+				("PROTECTED", :protected),
+				("PUBLIC", :public),
+				("RETURN", :return),
+				("SIZEOF", :sizeof),
+				("STATIC", :static),
+				("SWITCH", :switch),
+				("TEST", :test),
+				("THIS", :this),
+				("THROW", :throw),
+				("TRUE", :true),
+				("TRY", :try),
+				("TYPE", :type),
+				("UINT", :uint),
+				("UNION", :union),
+				("VIRTUAL", :virtual),
+				("VOID", :void),
+				("WHILE", :while)
 			);
 
 			str ::= tok_str();
 			static_assert(__cpp_std::[TYPE(str), std::[char#]Buffer]is_same::value);
-			static_assert(__cpp_std::[TYPE(std::str::buf(keywords[0].First)), std::[char#]Buffer]is_same::value);
+			static_assert(__cpp_std::[TYPE(std::str::buf(keywords[0].(0))), std::[char#]Buffer]is_same::value);
 			FOR(i: UM := 0; i < ::size(keywords); i++)
 				IF(!std::str::cmp(
 					str,
-					std::str::buf(keywords[i].First)))
+					std::str::buf(keywords[i].(0))))
 				{
-					out->Type := keywords[i].Second;
+					out->Type := keywords[i].(1);
 					RETURN TRUE;
 				}
-			out->Type := Type::identifier;
+			out->Type := :identifier;
 			RETURN TRUE;
 		}
 
@@ -310,7 +308,7 @@ INCLUDE 'std/pair'
 			IF(eatString("0x")
 			|| eatString("0X"))
 			{
-				out->Type := Type::numberLiteral;
+				out->Type := :numberLiteral;
 				FOR(i ::= 0;; i++)
 				{
 					c ::= look();
@@ -331,7 +329,7 @@ INCLUDE 'std/pair'
 			WHILE(is_digit(look()))
 				++Read;
 
-			out->Type := Type::numberLiteral;
+			out->Type := :numberLiteral;
 			RETURN TRUE;
 		}
 
@@ -339,7 +337,7 @@ INCLUDE 'std/pair'
 		{
 			IF(eatString("´"))
 			{
-				out->Type := Type::stringTick;
+				out->Type := :stringTick;
 				WHILE(!eatString("´"))
 				{
 					c ::= getc();
@@ -368,17 +366,17 @@ INCLUDE 'std/pair'
 			{
 			CASE '\'':
 				{
-					out->Type := Type::stringApostrophe;
+					out->Type := :stringApostrophe;
 					BREAK;
 				}
 			CASE '"':
 				{
-					out->Type := Type::stringQuote;
+					out->Type := :stringQuote;
 					BREAK;
 				}
 			CASE '`':
 				{
-					out->Type := Type::stringBacktick;
+					out->Type := :stringBacktick;
 					BREAK;
 				}
 			}

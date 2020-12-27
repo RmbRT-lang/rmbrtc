@@ -59,10 +59,10 @@ INCLUDE 'std/vector'
 		STATIC parse_atom(
 			p: Parser &) Expression *
 		{
-			IF(p.consume(tok::Type::parentheseOpen))
+			IF(p.consume(:parentheseOpen))
 			{
 				exp ::= Expression::parse(p);
-				p.expect(tok::Type::parentheseClose);
+				p.expect(:parentheseClose);
 				RETURN exp;
 			}
 
@@ -92,7 +92,7 @@ INCLUDE 'std/vector'
 			v: T;
 			IF(v.parse(p))
 			{
-				ret := std::dup_mv(v);
+				ret := std::dup(&&v);
 				RETURN TRUE;
 			}
 			RETURN FALSE;
@@ -101,25 +101,25 @@ INCLUDE 'std/vector'
 
 	NumberExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::number;
+		# FINAL type() ExpressionType := :number;
 
 		Number: src::String;
 
-		parse(p: Parser &) bool := p.consume(tok::Type::numberLiteral, &Number);
+		parse(p: Parser &) bool := p.consume(:numberLiteral, &Number);
 	}
 
 	BoolExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::bool;
+		# FINAL type() ExpressionType := :bool;
 
 		Value: bool;
 
 		parse(p: Parser&) bool
 		{
-			IF(p.consume(tok::Type::true))
+			IF(p.consume(:true))
 			{
 				Value := TRUE;
-			} ELSE IF(p.consume(tok::Type::false))
+			} ELSE IF(p.consume(:false))
 			{
 				Value := FALSE;
 			} ELSE
@@ -130,20 +130,20 @@ INCLUDE 'std/vector'
 
 	CharExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::char;
+		# FINAL type() ExpressionType := :char;
 
 		Char: src::String;
 
-		parse(p: Parser &) bool := p.consume(tok::Type::stringApostrophe, &Char);
+		parse(p: Parser &) bool := p.consume(:stringApostrophe, &Char);
 	}
 
 	StringExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::string;
+		# FINAL type() ExpressionType := :string;
 
 		String: src::String;
 
-		parse(p: Parser &) bool := p.consume(tok::Type::stringQuote, &String);
+		parse(p: Parser &) bool := p.consume(:stringQuote, &String);
 	}
 
 	::detail
@@ -152,99 +152,100 @@ INCLUDE 'std/vector'
 		{
 			[N: NUMBER]
 			{
-				table: std::[tok::Type, Operator]Pair#[N] &,
-				leftAssoc: bool}:
+				table: {tok::Type, Operator}#[N] &,
+				leftAssoc: bool
+			}:
 				Table(table),
 				Size(N),
 				LeftAssoc(leftAssoc);
 
-			Table: std::[tok::Type, Operator]Pair# \;
+			Table: {tok::Type, Operator}# \;
 			Size: UM;
 			LeftAssoc: bool;
 		}
 
-		k_bind: std::[tok::Type, Operator]Pair#[](
+		k_bind: {tok::Type, Operator}#[](
 			// bind operators.
-			std::pair(tok::Type::dotAsterisk, Operator::bindReference),
-			std::pair(tok::Type::minusGreaterAsterisk, Operator::bindPointer));
+			(:dotAsterisk, :bindReference),
+			(:minusGreaterAsterisk, :bindPointer));
 
-		k_mul: std::[tok::Type, Operator]Pair#[](
+		k_mul: {tok::Type, Operator}#[](
 			// multiplicative operators.
-			std::pair(tok::Type::percent, Operator::mod),
-			std::pair(tok::Type::forwardSlash, Operator::div),
-			std::pair(tok::Type::asterisk, Operator::mul));
+			(:percent, :mod),
+			(:forwardSlash, :div),
+			(:asterisk, :mul));
 
-		k_add: std::[tok::Type, Operator]Pair#[](
+		k_add: {tok::Type, Operator}#[](
 			// additive operators.
-			std::pair(tok::Type::minus, Operator::sub),
-			std::pair(tok::Type::plus, Operator::add));
+			(:minus, :sub),
+			(:plus, :add));
 
-		k_shift: std::[tok::Type, Operator]Pair#[](
+		k_shift: {tok::Type, Operator}#[](
 			// bit shift operators.
-			std::pair(tok::Type::doubleLess, Operator::shiftLeft),
-			std::pair(tok::Type::doubleGreater, Operator::shiftRight),
-			std::pair(tok::Type::tripleLess, Operator::rotateLeft),
-			std::pair(tok::Type::tripleGreater, Operator::rotateRight));
+			(:doubleLess, :shiftLeft),
+			(:doubleGreater, :shiftRight),
+			(:tripleLess, :rotateLeft),
+			(:tripleGreater, :rotateRight));
 
-		k_bit: std::[tok::Type, Operator]Pair#[](
+		k_bit: {tok::Type, Operator}#[](
 			// bit arithmetic operators.
-			std::pair(tok::Type::and, Operator::bitAnd),
-			std::pair(tok::Type::circumflex, Operator::bitXor),
-			std::pair(tok::Type::pipe, Operator::bitOr));
+			(:and, :bitAnd),
+			(:circumflex, :bitXor),
+			(:pipe, :bitOr));
 
-		k_cmp: std::[tok::Type, Operator]Pair#[](
+		k_cmp: {tok::Type, Operator}#[](
 			// numeric comparisons.
-			std::pair(tok::Type::less, Operator::less),
-			std::pair(tok::Type::lessEqual, Operator::lessEquals),
-			std::pair(tok::Type::greater, Operator::greater),
-			std::pair(tok::Type::greaterEqual, Operator::greaterEquals),
-			std::pair(tok::Type::doubleEqual, Operator::equals),
-			std::pair(tok::Type::exclamationMarkEqual, Operator::notEquals));
+			(:less, :less),
+			(:lessEqual, :lessEquals),
+			(:greater, :greater),
+			(:greaterEqual, :greaterEquals),
+			(:doubleEqual, :equals),
+			(:exclamationMarkEqual, :notEquals));
 
-		k_log_and: std::[tok::Type, Operator]Pair#[](
+		k_log_and: {tok::Type, Operator}#[](
 			// boolean arithmetic.
-			std::pair(tok::Type::doubleAnd, Operator::logAnd),
-			std::pair(tok::Type::doubleAnd, Operator::logAnd));
+			(:doubleAnd, :logAnd),
+			(:doubleAnd, :logAnd));
 
-		k_log_or: std::[tok::Type, Operator]Pair#[](
-			std::pair(tok::Type::doublePipe, Operator::logOr),
-			std::pair(tok::Type::doublePipe, Operator::logOr));
+		k_log_or: {tok::Type, Operator}#[](
+			(:doublePipe, :logOr),
+			(:doublePipe, :logOr));
 
-		k_assign: std::[tok::Type, Operator]Pair#[](
+		k_assign: {tok::Type, Operator}#[](
 			// assignments.
-			std::pair(tok::Type::colonEqual, Operator::assign),
-			std::pair(tok::Type::plusEqual, Operator::addAssign),
-			std::pair(tok::Type::minusEqual, Operator::subAssign),
-			std::pair(tok::Type::asteriskEqual, Operator::mulAssign),
-			std::pair(tok::Type::forwardSlashEqual, Operator::divAssign),
-			std::pair(tok::Type::percentEqual, Operator::modAssign),
-			std::pair(tok::Type::andEqual, Operator::bitAndAssign),
-			std::pair(tok::Type::pipeEqual, Operator::bitOrAssign),
-			std::pair(tok::Type::circumflexEqual, Operator::bitXorAssign),
-			std::pair(tok::Type::doubleAndEqual, Operator::logAndAssign),
-			std::pair(tok::Type::doublePipeEqual, Operator::logOrAssign),
-			std::pair(tok::Type::doubleLessEqual, Operator::shiftLeftAssign),
-			std::pair(tok::Type::doubleGreaterEqual, Operator::shiftRightAssign),
-			std::pair(tok::Type::tripleLessEqual, Operator::rotateLeftAssign),
-			std::pair(tok::Type::tripleGreaterEqual, Operator::rotateRightAssign));
+			(:colonEqual, :assign),
+			(:plusEqual, :addAssign),
+			(:minusEqual, :subAssign),
+			(:asteriskEqual, :mulAssign),
+			(:forwardSlashEqual, :divAssign),
+			(:percentEqual, :modAssign),
+			(:andEqual, :bitAndAssign),
+			(:pipeEqual, :bitOrAssign),
+			(:circumflexEqual, :bitXorAssign),
+			(:doubleAndEqual, :logAndAssign),
+			(:doublePipeEqual, :logOrAssign),
+			(:doubleLessEqual, :shiftLeftAssign),
+			(:doubleGreaterEqual, :shiftRightAssign),
+			(:tripleLessEqual, :rotateLeftAssign),
+			(:tripleGreaterEqual, :rotateRightAssign));
 
 		k_groups: BinOpDesc#[](
-			BinOpDesc(k_bind, TRUE),
-			BinOpDesc(k_mul, TRUE),
-			BinOpDesc(k_add, TRUE),
-			BinOpDesc(k_shift, TRUE),
-			BinOpDesc(k_bit, TRUE),
-			BinOpDesc(k_cmp, TRUE),
-			BinOpDesc(k_log_and, TRUE),
-			BinOpDesc(k_log_or, TRUE),
-			BinOpDesc(k_assign, FALSE));
+			(k_bind, TRUE),
+			(k_mul, TRUE),
+			(k_add, TRUE),
+			(k_shift, TRUE),
+			(k_bit, TRUE),
+			(k_cmp, TRUE),
+			(k_log_and, TRUE),
+			(k_log_or, TRUE),
+			(k_assign, FALSE));
 
 		precedenceGroups: UM# := ::size(k_groups);
 	}
 
 	OperatorExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::operator;
+		# FINAL type() ExpressionType := :operator;
 
 		Operands: std::[std::[Expression]Dynamic]Vector;
 		Op: Operator;
@@ -263,12 +264,12 @@ INCLUDE 'std/vector'
 			group ::= &detail::k_groups[level-1];
 			FOR(i ::= 0; i < group->Size; i++)
 			{
-				IF(p.consume(group->Table[i].First))
+				IF(p.consume(group->Table[i].(0)))
 				{
-					op ::= group->Table[i].Second;
+					op ::= group->Table[i].(1);
 					ret ::= ::[OperatorExpression]new();
 					ret->Op := op;
-					ret->Operands.push_back(lhs);
+					ret->Operands += :gc(lhs);
 
 					IF(group->LeftAssoc)
 					{
@@ -277,7 +278,7 @@ INCLUDE 'std/vector'
 						rhs ::= parse_binary(p, level-1);
 						IF(!rhs)
 							p.fail("expected expression");
-						ret->Operands.push_back(rhs);
+						ret->Operands += :gc(rhs);
 						RETURN parse_binary_rhs(p, ret, level);
 					} ELSE
 					{
@@ -287,7 +288,7 @@ INCLUDE 'std/vector'
 						IF(!rhs)
 							p.fail("expected expression");
 
-						ret->Operands.push_back(rhs);
+						ret->Operands += :gc(rhs);
 						RETURN ret;
 					}
 				}
@@ -307,17 +308,17 @@ INCLUDE 'std/vector'
 				RETURN NULL;
 
 			IF(level == detail::precedenceGroups
-			&& p.consume(tok::Type::questionMark))
+			&& p.consume(:questionMark))
 			{
 				then ::= Expression::parse(p);
-				p.expect(tok::Type::colon);
+				p.expect(:colon);
 				else ::= Expression::parse(p);
 
 				ret ::= [OperatorExpression]new();
-				ret->Op := Operator::conditional;
-				ret->Operands.push_back(lhs);
-				ret->Operands.push_back(then);
-				ret->Operands.push_back(else);
+				ret->Op := :conditional;
+				ret->Operands += :gc(lhs);
+				ret->Operands += :gc(then);
+				ret->Operands += :gc(else);
 				RETURN ret;
 			} ELSE
 				RETURN parse_binary_rhs(p, lhs, level);
@@ -325,24 +326,24 @@ INCLUDE 'std/vector'
 
 		STATIC parse_prefix(p: Parser&) Expression *
 		{
-			STATIC prefix: std::[tok::Type, Operator]Pair#[](
-				std::pair(tok::Type::minus, Operator::neg),
-				std::pair(tok::Type::plus, Operator::pos),
-				std::pair(tok::Type::doublePlus, Operator::preIncrement),
-				std::pair(tok::Type::doubleMinus, Operator::preDecrement),
-				std::pair(tok::Type::tilde, Operator::bitNot),
-				std::pair(tok::Type::tildeColon, Operator::bitNotAssign),
-				std::pair(tok::Type::exclamationMark, Operator::logNot),
-				std::pair(tok::Type::exclamationMarkColon, Operator::logNotAssign),
-				std::pair(tok::Type::and, Operator::address),
-				std::pair(tok::Type::asterisk, Operator::dereference));
+			STATIC prefix: {tok::Type, Operator}#[](
+				(:minus, :neg),
+				(:plus, :pos),
+				(:doublePlus, :preIncrement),
+				(:doubleMinus, :preDecrement),
+				(:tilde, :bitNot),
+				(:tildeColon, :bitNotAssign),
+				(:exclamationMark, :logNot),
+				(:exclamationMarkColon, :logNotAssign),
+				(:and, :address),
+				(:asterisk, :dereference));
 
 			FOR(i ::= 0; i < ::size(prefix); i++)
-				IF(p.consume(prefix[i].First))
+				IF(p.consume(prefix[i].(0)))
 				{
 					xp ::= [OperatorExpression]new();
-					xp->Op := prefix[i].Second;
-					xp->Operands.push_back(parse_prefix(p));
+					xp->Op := prefix[i].(1);
+					xp->Operands += :gc(parse_prefix(p));
 					RETURN xp;
 				}
 
@@ -355,7 +356,7 @@ INCLUDE 'std/vector'
 		{
 			ret ::= ::[OperatorExpression]new();
 			ret->Op := op;
-			ret->Operands.push_back(lhs);
+			ret->Operands += :gc(lhs);
 			RETURN ret;
 		}
 
@@ -366,8 +367,8 @@ INCLUDE 'std/vector'
 		{
 			ret ::= ::[OperatorExpression]new();
 			ret->Op := op;
-			ret->Operands.push_back(lhs);
-			ret->Operands.push_back(rhs);
+			ret->Operands += :gc(lhs);
+			ret->Operands += :gc(rhs);
 			RETURN ret;
 		}
 
@@ -378,58 +379,58 @@ INCLUDE 'std/vector'
 			IF(!lhs)
 				RETURN NULL;
 
-			STATIC postfix: std::[tok::Type, Operator]Pair#[](
-				std::pair(tok::Type::doublePlus, Operator::postIncrement),
-				std::pair(tok::Type::doubleMinus, Operator::postDecrement));
+			STATIC postfix: {tok::Type, Operator}#[](
+				(:doublePlus, :postIncrement),
+				(:doubleMinus, :postDecrement));
 
-			STATIC memberAccess: std::[tok::Type, Operator]Pair#[](
-				std::pair(tok::Type::dot, Operator::memberReference),
-				std::pair(tok::Type::minusGreater, Operator::memberPointer));
+			STATIC memberAccess: {tok::Type, Operator}#[](
+				(:dot, :memberReference),
+				(:minusGreater, :memberPointer));
 
 			FOR["outer"](;;)
 			{
 				FOR(i ::= 0; i < ::size(postfix); i++)
 				{
-					IF(p.consume(postfix[i].First))
+					IF(p.consume(postfix[i].(0)))
 					{
-						lhs := make_unary(postfix[i].Second, lhs);
+						lhs := make_unary(postfix[i].(1), lhs);
 						CONTINUE["outer"];
 					}
 				}
 
-				IF(p.consume(tok::Type::bracketOpen))
+				IF(p.consume(:bracketOpen))
 				{
 					sub ::= ::[OperatorExpression]new();
-					sub->Op := Operator::subscript;
-					sub->Operands.push_back(lhs);
+					sub->Op := :subscript;
+					sub->Operands += :gc(lhs);
 
 					DO()
 					{
 						rhs ::= Expression::parse(p);
 						IF(!rhs)
 							p.fail("expected expression");
-						sub->Operands.push_back(rhs);
-					} WHILE(p.consume(tok::Type::comma))
-					p.expect(tok::Type::bracketClose);
+						sub->Operands += :gc(rhs);
+					} WHILE(p.consume(:comma))
+					p.expect(:bracketClose);
 
 					lhs := sub;
 					CONTINUE["outer"];
 				}
 
-				IF(p.consume(tok::Type::parentheseOpen))
+				IF(p.consume(:parentheseOpen))
 				{
 					call ::= ::[OperatorExpression]new();
-					call->Op := Operator::call;
-					call->Operands.push_back(lhs);
+					call->Op := :call;
+					call->Operands += :gc(lhs);
 
 					FOR(comma ::= FALSE;
-						!p.consume(tok::Type::parentheseClose);
+						!p.consume(:parentheseClose);
 						comma := TRUE)
 					{
 						IF(comma)
-							p.expect(tok::Type::comma);
+							p.expect(:comma);
 						IF(rhs ::= Expression::parse(p))
-							call->Operands.push_back(rhs);
+							call->Operands += :gc(rhs);
 						ELSE
 							p.fail("expected expression");
 					}
@@ -440,16 +441,16 @@ INCLUDE 'std/vector'
 
 				FOR(i ::= 0; i < ::size(memberAccess); i++)
 				{
-					IF(p.consume(memberAccess[i].First))
+					IF(p.consume(memberAccess[i].(0)))
 					{
 						member: SymbolChildExpression;
 						IF(!member.parse(p))
 							p.fail("expected member name");
 
 						lhs := make_binary(
-							memberAccess[i].Second,
+							memberAccess[i].(1),
 							lhs,
-							::[TYPE(member)]new(__cpp_std::move(member)));
+							::[TYPE(member)]new(&&member));
 						CONTINUE["outer"];
 					}
 				}
@@ -464,37 +465,37 @@ INCLUDE 'std/vector'
 
 	ThisExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::this;
+		# FINAL type() ExpressionType := :this;
 
-		parse(p: Parser&) bool := p.consume(tok::Type::this);
+		parse(p: Parser&) bool := p.consume(:this);
 	}
 
 	CastExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::cast;
+		# FINAL type() ExpressionType := :cast;
 
 		Type: std::[parser::Type]Dynamic;
 		Value: std::[Expression]Dynamic;
 
 		parse(p: Parser&) bool
 		{
-			IF(!p.consume(tok::Type::less))
+			IF(!p.consume(:less))
 				RETURN FALSE;
 
 			t: Trace(&p, "cast expression");
 
-			IF(!(Type := parser::Type::parse(p)))
+			IF(!(Type := :gc(parser::Type::parse(p))))
 				p.fail("expected type");
 
-			p.expect(tok::Type::greater);
-			p.expect(tok::Type::parentheseOpen);
+			p.expect(:greater);
+			p.expect(:parentheseOpen);
 
 			value ::= Expression::parse(p);
 			IF(!value)
 				p.fail("expected expression");
-			Value := value;
+			Value := :gc(value);
 
-			p.expect(tok::Type::parentheseClose);
+			p.expect(:parentheseClose);
 
 			RETURN TRUE;
 		}
@@ -507,23 +508,23 @@ INCLUDE 'std/vector'
 		{};
 		{v: Expression \}: V(v);
 		{v: Type \}: V(v);
-		{v: TypeOrExpr &&}: V(__cpp_std::move(v.V));
+		{v: TypeOrExpr &&}: V(&&v.V);
 		
 		# is_type() INLINE bool := V.is_second();
 		# type() Type \ := V.second();
 		# is_expression() INLINE bool := V.is_first();
 		# expression() INLINE Expression \ := V.first();
 
-		# CONVERT(bool) INLINE := V;
-		# LOG_NOT() INLINE bool := !V;
+		# <bool> INLINE := V;
+		# !THIS INLINE bool := !V;
 
-		[T:TYPE] ASSIGN(v: T! &&) TypeOrExpr &
-			:= std::help::custom_assign(*THIS, __cpp_std::[T!]forward(v));
+		[T:TYPE] THIS:=(v: T! &&) TypeOrExpr &
+			:= std::help::custom_assign(THIS, <T!&&>(v));
 	}
 
 	SizeofExpression -> Expression
 	{
-		# FINAL type() ExpressionType := ExpressionType::sizeof;
+		# FINAL type() ExpressionType := :sizeof;
 
 		Term: TypeOrExpr;
 
@@ -532,13 +533,13 @@ INCLUDE 'std/vector'
 
 		parse(p: Parser&) bool
 		{
-			IF(!p.consume(tok::Type::sizeof))
+			IF(!p.consume(:sizeof))
 				RETURN FALSE;
 
 			t: Trace(&p, "sizeof expression");
 
-			p.expect(tok::Type::parentheseOpen);
-			IF(p.consume(tok::Type::hash))
+			p.expect(:parentheseOpen);
+			IF(p.consume(:hash))
 			{
 				IF(!(Term := Expression::parse(p)))
 					p.fail("expected expression");
@@ -548,7 +549,7 @@ INCLUDE 'std/vector'
 					p.fail("expected type");
 			}
 
-			p.expect(tok::Type::parentheseClose);
+			p.expect(:parentheseClose);
 
 			RETURN TRUE;
 		}

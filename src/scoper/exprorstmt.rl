@@ -18,9 +18,9 @@ INCLUDE "../util/dynunion.rl"
 		# is_statement() INLINE bool := V.is_second();
 		# statement() INLINE Statement \ := V.second();
 
-		# CONVERT(bool) INLINE := V;
+		# <bool> INLINE := V;
 
-		[T:TYPE] ASSIGN(v: T!&&) ExprOrStmt &
-			:= std::help::custom_assign(*THIS, __cpp_std::[T!]forward(v));
+		[T:TYPE] THIS:=(v: T!&&) ExprOrStmt &
+			:= std::help::custom_assign(THIS, <T!&&>(v));
 	}
 }

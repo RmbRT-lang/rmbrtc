@@ -12,7 +12,7 @@ INCLUDE 'std/vector'
 		Value: src::Index;
 
 		# FINAL name() src::String#& := Name;
-		# FINAL type() Member::Type := Member::Type::enumConstant;
+		# FINAL type() Member::Type := :enumConstant;
 	}
 
 	Name: src::String;
@@ -22,35 +22,35 @@ INCLUDE 'std/vector'
 
 	parse(p: Parser &) bool
 	{
-		IF(!p.consume(tok::Type::enum))
+		IF(!p.consume(:enum))
 			RETURN FALSE;
 
 		t: Trace(&p, "enum");
 
-		p.expect(tok::Type::identifier, &Name);
-		p.expect(tok::Type::braceOpen);
+		p.expect(:identifier, &Name);
+		p.expect(:braceOpen);
 
 		DO(c: Constant)
 			DO()
 			{
-				p.expect(tok::Type::identifier, &c.Name);
-				Constants.push_back(__cpp_std::move(c));
-			} WHILE(p.consume(tok::Type::colonEqual))
-		FOR(p.consume(tok::Type::comma); c.Value++)
+				p.expect(:identifier, &c.Name);
+				Constants += &&c;
+			} WHILE(p.consume(:colonEqual))
+		FOR(p.consume(:comma); c.Value++)
 
-		p.expect(tok::Type::braceClose);
+		p.expect(:braceClose);
 		RETURN TRUE;
 	}
 }
 
 ::rlc::parser GlobalEnum -> Global, Enum
 {
-	# FINAL type() Global::Type := Global::Type::enum;
+	# FINAL type() Global::Type := :enum;
 	parse(p: Parser&) bool := Enum::parse(p);
 }
 
 ::rlc::parser MemberEnum -> Member, Enum
 {
-	# FINAL type() Member::Type := Member::Type::enum;
+	# FINAL type() Member::Type := :enum;
 	parse(p: Parser&) bool := Enum::parse(p);
 }

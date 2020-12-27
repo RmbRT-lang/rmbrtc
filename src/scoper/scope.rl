@@ -25,7 +25,7 @@ INCLUDE 'std/io/stream'
 
 	# root() Scope #\
 	{
-		scope ::= THIS;
+		scope ::= &THIS;
 		WHILE(scope->Parent)
 			scope := scope->Parent;
 		RETURN scope;
@@ -58,10 +58,10 @@ INCLUDE 'std/io/stream'
 
 		group ::= it
 			? it->Ptr
-			: Items.insert_at(loc, ::[detail::ScopeItemGroup]new(name, THIS)).Ptr;
+			: Items.insert_at(loc, :gc(::[detail::ScopeItemGroup]new(name, &THIS))).Ptr;
 
 		ret ::= ScopeItem::create(entry, file, group);
-		group->Items.emplace_back(ret);
+		group->Items += :gc(ret);
 		RETURN ret;
 	}
 

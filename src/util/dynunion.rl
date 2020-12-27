@@ -48,8 +48,8 @@ PUBLIC:
 	# is_second() INLINE bool := IsB && Ptr.Second;
 	# is_empty() INLINE bool := !Ptr.Check;
 
-	# LOG_NOT() INLINE bool := !Ptr.Check;
-	# CONVERT(bool) := Ptr.Check;
+	# !THIS INLINE bool := !Ptr.Check;
+	# <bool> INLINE := Ptr.Check;
 
 	# first() A! \
 	{
@@ -63,10 +63,10 @@ PUBLIC:
 		RETURN Ptr.Second;
 	}
 
-	ASSIGN(move: [A!,B!]DynUnion &&) [A!,B!]DynUnion &
-		:= std::help::move_assign(*THIS, move);
-	ASSIGN(p: A! *) [A!,B!]DynUnion &
-		:= std::help::custom_assign(*THIS, p);
-	ASSIGN(p: B! *) [A!,B!]DynUnion &
-		:= std::help::custom_assign(*THIS, p);
+	THIS:=(move: [A!,B!]DynUnion &&) [A!,B!]DynUnion &
+		:= std::help::move_assign(THIS, move);
+	THIS:=(p: A! *) [A!,B!]DynUnion &
+		:= std::help::custom_assign(THIS, p);
+	THIS:=(p: B! *) [A!,B!]DynUnion &
+		:= std::help::custom_assign(THIS, p);
 }

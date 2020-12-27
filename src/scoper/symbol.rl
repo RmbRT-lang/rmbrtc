@@ -19,9 +19,9 @@ INCLUDE 'std/vector'
 		{
 			FOR(i ::= 0; i < parsed.Templates.size(); i++)
 				IF(parsed.Templates[i].is_type())
-					Templates.emplace_back(Type::create(parsed.Templates[i].type(), file));
+					Templates += Type::create(parsed.Templates[i].type(), file);
 				ELSE
-					Templates.emplace_back(Expression::create(parsed.Templates[i].expression(), file));
+					Templates += Expression::create(parsed.Templates[i].expression(), file);
 		}
 	}
 
@@ -34,6 +34,6 @@ INCLUDE 'std/vector'
 		IsRoot(parsed.IsRoot)
 	{
 		FOR(i ::= 0; i < parsed.Children.size(); i++)
-			Children.emplace_back(parsed.Children[i], file);
+			Children += (parsed.Children[i], file);
 	}
 }

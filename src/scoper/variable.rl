@@ -20,10 +20,10 @@ INCLUDE "../util/dynunion.rl"
 	# is_auto() INLINE bool := V.is_second();
 	# auto() Type::Auto \ := V.second();
 
-	# CONVERT(bool) INLINE := V;
+	# <bool> INLINE := V;
 
-	[T:TYPE] ASSIGN(v: T!&&) VariableType &
-		:= std::help::custom_assign(*THIS, __cpp_std::[T!]forward(v));
+	[T:TYPE] THIS:=(v: T!&&) VariableType &
+		:= std::help::custom_assign(THIS, <T!&&>(v));
 }
 
 ::rlc::scoper Variable -> VIRTUAL ScopeItem
@@ -43,13 +43,13 @@ INCLUDE "../util/dynunion.rl"
 			Type := ::[scoper::Type::Auto]new(*parsed->Type.auto());
 
 		FOR(i ::= 0; i < parsed->InitValues.size(); i++)
-			InitValues.push_back(Expression::create(parsed->InitValues[i], file));
+			InitValues += :gc(Expression::create(parsed->InitValues[i], file));
 	}
 }
 
 ::rlc::scoper GlobalVariable -> Global, Variable
 {
-	# FINAL type() Global::Type := Global::Type::variable;
+	# FINAL type() Global::Type := :variable;
 	
 	{
 		parsed: parser::GlobalVariable #\,
@@ -61,7 +61,7 @@ INCLUDE "../util/dynunion.rl"
 
 ::rlc::scoper MemberVariable -> Member, Variable
 {
-	# FINAL type() Member::Type := Member::Type::variable;
+	# FINAL type() Member::Type := :variable;
 
 	{
 		parsed: parser::MemberVariable #\,

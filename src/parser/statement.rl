@@ -39,7 +39,7 @@ INCLUDE "../util/dynunion.rl"
 			v: T;
 			IF(v.parse(p))
 			{
-				out := std::dup_mv(v);
+				out := std::dup(&&v);
 				RETURN TRUE;
 			}
 			RETURN FALSE;
@@ -94,16 +94,16 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser &) bool
 		{
-			IF(!p.consume(tok::Type::assert))
+			IF(!p.consume(:assert))
 				RETURN FALSE;
 
-			p.expect(tok::Type::parentheseOpen);
+			p.expect(:parentheseOpen);
 
-			IF(!(Expression := parser::Expression::parse(p)))
+			IF(!(Expression := :gc(parser::Expression::parse(p))))
 				p.fail("expected expression");
 
-			p.expect(tok::Type::parentheseClose);
-			p.expect(tok::Type::semicolon);
+			p.expect(:parentheseClose);
+			p.expect(:semicolon);
 			RETURN TRUE;
 		}
 	}
@@ -120,10 +120,10 @@ INCLUDE "../util/dynunion.rl"
 		# variable() INLINE LocalVariable \ := V.first();
 		# is_expression() INLINE bool := V.is_second();
 		# expression() INLINE Expression \ := V.second();
-		# CONVERT(bool) INLINE := V;
+		# <bool> INLINE := V;
 
-		[T:TYPE] ASSIGN(v: T! &&) VarOrExp &
-			:= std::help::custom_assign(*THIS, __cpp_std::[T!]forward(v));
+		[T:TYPE] THIS:=(v: T! &&) VarOrExp &
+			:= std::help::custom_assign(THIS, <T!&&>(v));
 
 		parse(p: Parser &) VOID
 		{
@@ -133,7 +133,7 @@ INCLUDE "../util/dynunion.rl"
 
 		parse_opt(p: Parser &) bool
 		{
-			v: std::[LocalVariable]Dynamic := [LocalVariable]new();
+			v: std::[LocalVariable]Dynamic := :gc([LocalVariable]new());
 			IF(v->parse_var_decl(p))
 				V := v.release();
 			ELSE IF(exp ::= Expression::parse(p))
@@ -151,19 +151,19 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser&) bool
 		{
-			IF(!p.consume(tok::Type::braceOpen))
+			IF(!p.consume(:braceOpen))
 				RETURN FALSE;
 
-			IF(p.consume(tok::Type::semicolon))
+			IF(p.consume(:semicolon))
 			{
-				p.expect(tok::Type::braceClose);
+				p.expect(:braceClose);
 				RETURN TRUE;
 			}
 
-			WHILE(!p.consume(tok::Type::braceClose))
+			WHILE(!p.consume(:braceClose))
 			{
 				IF(stmt ::= Statement::parse(p))
-					Statements.push_back(stmt);
+					Statements += :gc(stmt);
 				ELSE
 					p.fail("expected statement or '}'");
 			}
@@ -186,32 +186,32 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser &) bool
 		{
-			IF(!p.consume(tok::Type::if))
+			IF(!p.consume(:if))
 				RETURN FALSE;
 
 			t: Trace(&p, "if statement");
 			Label.parse(p);
-			p.expect(tok::Type::parentheseOpen);
+			p.expect(:parentheseOpen);
 
 			val: VarOrExp;
 			val.parse(p);
 
-			IF(p.consume(tok::Type::semicolon))
+			IF(p.consume(:semicolon))
 			{
-				Init := __cpp_std::move(val);
+				Init := &&val;
 				val.parse(p);
 			}
 
-			Condition := __cpp_std::move(val);
+			Condition := &&val;
 
-			p.expect(tok::Type::parentheseClose);
+			p.expect(:parentheseClose);
 
-			IF(!(Then := Statement::parse_body(p)).Ptr)
+			IF(!(Then := :gc(Statement::parse_body(p))))
 				p.fail("expected statement");
 
-			IF(p.consume(tok::Type::else))
+			IF(p.consume(:else))
 			{
-				IF(!(Else := Statement::parse_body(p)).Ptr)
+				IF(!(Else := :gc(Statement::parse_body(p))))
 					p.fail("expected statement");
 			}
 
@@ -228,7 +228,7 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser &) bool
 		{
-			Static := p.consume(tok::Type::static);
+			Static := p.consume(:static);
 			IF(Variable.parse(p, TRUE))
 				RETURN TRUE;
 			IF(Static)
@@ -245,10 +245,10 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser &) bool
 		{
-			IF(!(Expression := parser::Expression::parse(p)).Ptr)
+			IF(!(Expression := :gc(parser::Expression::parse(p))))
 				RETURN FALSE;
 
-			p.expect(tok::Type::semicolon);
+			p.expect(:semicolon);
 			RETURN TRUE;
 		}
 	}
@@ -263,12 +263,12 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser &) bool
 		{
-			IF(!p.consume(tok::Type::return))
+			IF(!p.consume(:return))
 				RETURN FALSE;
 
-			Expression := parser::Expression::parse(p);
+			Expression := :gc(parser::Expression::parse(p));
 
-			p.expect(tok::Type::semicolon);
+			p.expect(:semicolon);
 
 			RETURN TRUE;
 		}
@@ -286,17 +286,17 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser &) bool
 		{
-			IF(!p.consume(tok::Type::try))
+			IF(!p.consume(:try))
 				RETURN FALSE;
 
-			IF(!(Body := Statement::parse_body(p)).Ptr)
+			IF(!(Body := :gc(Statement::parse_body(p))))
 				RETURN FALSE;
 
 			FOR(catch: CatchStatement; catch.parse(p);)
-				Catches.push_back(__cpp_std::move(catch));
+				Catches += &&catch;
 
-			IF(p.consume(tok::Type::finally))
-				IF(!(Finally := parser::Statement::parse_body(p)).Ptr)
+			IF(p.consume(:finally))
+				IF(!(Finally := :gc(parser::Statement::parse_body(p))))
 					p.fail("expected statement");
 			ELSE
 				Finally := NULL;
@@ -313,15 +313,15 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser &) bool
 		{
-			IF(!p.consume(tok::Type::catch))
+			IF(!p.consume(:catch))
 				RETURN FALSE;
 
 			t: Trace(&p, "catch clause");
 
-			p.expect(tok::Type::parentheseOpen);
-			IF(p.match(tok::Type::parentheseClose)
-			|| (p.match(tok::Type::void)
-				&& p.match_ahead(tok::Type::parentheseClose)))
+			p.expect(:parentheseOpen);
+			IF(p.match(:parentheseClose)
+			|| (p.match(:void)
+				&& p.match_ahead(:parentheseClose)))
 			{
 				IsVoid := TRUE;
 			} ELSE
@@ -331,9 +331,9 @@ INCLUDE "../util/dynunion.rl"
 				IF(!Exception.parse(p, FALSE))
 					p.fail("expected variable");
 			}
-			p.expect(tok::Type::parentheseClose);
+			p.expect(:parentheseClose);
 
-			IF(!(Body := Statement::parse_body(p)).Ptr)
+			IF(!(Body := :gc(Statement::parse_body(p))))
 				p.fail("expected statement");
 
 			RETURN TRUE;
@@ -356,20 +356,20 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser &) bool
 		{
-			IF(!p.consume(tok::Type::throw))
+			IF(!p.consume(:throw))
 				RETURN FALSE;
 
-			IF(p.consume(tok::Type::tripleDot))
+			IF(p.consume(:tripleDot))
 				ValueType := Type::rethrow;
-			ELSE IF(p.match(tok::Type::semicolon))
+			ELSE IF(p.match(:semicolon))
 				ValueType := Type::void;
 			ELSE
-				IF((Value := Expression::parse(p)).Ptr)
+				IF(Value := :gc(Expression::parse(p)))
 					ValueType := Type::value;
 				ELSE
 					p.fail("expected expression");
 
-			p.expect(tok::Type::semicolon);
+			p.expect(:semicolon);
 
 			RETURN TRUE;
 		}
@@ -388,14 +388,14 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser &) bool
 		{
-			IF(!p.match(tok::Type::do)
-			&& !p.match(tok::Type::for)
-			&& !p.match(tok::Type::while))
+			IF(!p.match(:do)
+			&& !p.match(:for)
+			&& !p.match(:while))
 				RETURN FALSE;
 
 			parse_loop_head(p);
 
-			IF(!(Body := Statement::parse_body(p)).Ptr)
+			IF(!(Body := :gc(Statement::parse_body(p))))
 				p.fail("expected statement");
 
 			IF(IsPostCondition)
@@ -418,73 +418,73 @@ INCLUDE "../util/dynunion.rl"
 
 		parse_do_head(p: Parser &) bool
 		{
-			IF(!p.consume(tok::Type::do))
+			IF(!p.consume(:do))
 				RETURN FALSE;
 
 			IsPostCondition := TRUE;
 
 			Label.parse(p);
-			p.expect(tok::Type::parentheseOpen);
+			p.expect(:parentheseOpen);
 			parse_initial(p);
-			p.expect(tok::Type::parentheseClose);
+			p.expect(:parentheseClose);
 
 			RETURN TRUE;
 		}
 
 		parse_for_head(p: Parser &) bool
 		{
-			IF(!p.consume(tok::Type::for))
+			IF(!p.consume(:for))
 				RETURN FALSE;
 
 			IF(!IsPostCondition)
 				Label.parse(p);
-			p.expect(tok::Type::parentheseOpen);
+			p.expect(:parentheseOpen);
 
 			IF(!IsPostCondition)
 			{
 				parse_initial(p);
-				p.expect(tok::Type::semicolon);
+				p.expect(:semicolon);
 			}
 
-			IF(!p.consume(tok::Type::semicolon))
+			IF(!p.consume(:semicolon))
 			{
 				parse_condition(p);
-				p.expect(tok::Type::semicolon);
+				p.expect(:semicolon);
 			}
 
-			PostLoop := Expression::parse(p);
+			PostLoop := :gc(Expression::parse(p));
 
-			p.expect(tok::Type::parentheseClose);
+			p.expect(:parentheseClose);
 			RETURN TRUE;
 		}
 
 		parse_while_head(p: Parser &) bool
 		{
-			IF(!p.consume(tok::Type::while))
+			IF(!p.consume(:while))
 				RETURN FALSE;
 
 			IF(!IsPostCondition)
 				Label.parse(p);
-			p.expect(tok::Type::parentheseOpen);
+			p.expect(:parentheseOpen);
 
 			IF(!IsPostCondition)
 			{
 				v: VarOrExp;
 				v.parse(p);
-				IF(p.consume(tok::Type::semicolon))
+				IF(p.consume(:semicolon))
 				{
-					Initial := __cpp_std::move(v);
+					Initial := &&v;
 					v.parse(p);
 				}
 
-				Condition := __cpp_std::move(v);
+				Condition := &&v;
 			} ELSE
 			{
 				IF(!(Condition := Expression::parse(p)))
 					p.fail("expected expression");
 			}
 
-			p.expect(tok::Type::parentheseClose);
+			p.expect(:parentheseClose);
 			RETURN TRUE;
 		}
 
@@ -510,32 +510,32 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser &) bool
 		{
-			IF(!p.consume(tok::Type::switch))
+			IF(!p.consume(:switch))
 				RETURN FALSE;
 
 			Label.parse(p);
-			p.expect(tok::Type::parentheseOpen);
+			p.expect(:parentheseOpen);
 
 			val: VarOrExp;
 			val.parse(p);
 
-			IF(p.consume(tok::Type::semicolon))
+			IF(p.consume(:semicolon))
 			{
-				Initial := __cpp_std::move(val);
+				Initial := &&val;
 				Value.parse(p);
 			} ELSE
-				Value := __cpp_std::move(val);
+				Value := &&val;
 
-			p.expect(tok::Type::parentheseClose);
-			p.expect(tok::Type::braceOpen);
+			p.expect(:parentheseClose);
+			p.expect(:braceOpen);
 
 			DO(case: CaseStatement)
 			{
 				IF(!case.parse(p))
 					p.fail("expected case");
 
-				Cases.push_back(__cpp_std::move(case));
-			} WHILE(!p.consume(tok::Type::braceClose))
+				Cases += &&case;
+			} WHILE(!p.consume(:braceClose))
 
 			RETURN TRUE;
 		}
@@ -550,21 +550,21 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser &) bool
 		{
-			IF(p.consume(tok::Type::case))
+			IF(p.consume(:case))
 			{
 				DO(value: Expression *)
 				{
 					IF(!(value := Expression::parse(p)))
 						p.fail("expected expression");
-					Values.push_back(value);
-				} WHILE(p.consume(tok::Type::comma))
+					Values += :gc(value);
+				} WHILE(p.consume(:comma))
 			} ELSE
-				IF(!p.consume(tok::Type::default))
+				IF(!p.consume(:default))
 					RETURN FALSE;
 
-			p.expect(tok::Type::colon);
+			p.expect(:colon);
 
-			Body := Statement::parse_body(p);
+			Body := :gc(Statement::parse_body(p));
 
 			RETURN TRUE;
 		}
@@ -577,11 +577,11 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser &) bool
 		{
-			IF(!p.consume(tok::Type::break))
+			IF(!p.consume(:break))
 				RETURN FALSE;
 
 			Label.parse(p);
-			p.expect(tok::Type::semicolon);
+			p.expect(:semicolon);
 			RETURN TRUE;
 		}
 	}
@@ -593,11 +593,11 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser &) bool
 		{
-			IF(!p.consume(tok::Type::continue))
+			IF(!p.consume(:continue))
 				RETURN FALSE;
 
 			Label.parse(p);
-			p.expect(tok::Type::semicolon);
+			p.expect(:semicolon);
 			RETURN TRUE;
 		}
 	}

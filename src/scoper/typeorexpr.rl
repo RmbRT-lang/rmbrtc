@@ -16,9 +16,9 @@ INCLUDE "../util/dynunion.rl"
 	# is_expression() INLINE bool := V.is_first();
 	# expression() INLINE bool := V.first();
 
-	# CONVERT(bool) INLINE := V;
-	# LOG_NOT() INLINE bool := !V;
+	# <bool> INLINE := V;
+	# !THIS INLINE bool := !V;
 
-	[T:TYPE] ASSIGN(v: T!&&) TypeOrExpr &
-		:= std::help::custom_assign(*THIS, __cpp_std::[T!]forward(v));
+	[T:TYPE] THIS:=(v: T!&&) TypeOrExpr &
+		:= std::help::custom_assign(THIS, <T!&&>(v));
 }

@@ -11,7 +11,7 @@ INCLUDE "../src/file.rl"
 	# FINAL name() src::String #& := is_variable()
 		? variable()->name()
 		: function()->name();
-	# FINAL type() Global::Type := Global::Type::externSymbol;
+	# FINAL type() Global::Type := :externSymbol;
 
 	# is_variable() INLINE bool := Symbol.is_first();
 	# variable() INLINE GlobalVariable \ := Symbol.first();
@@ -20,19 +20,19 @@ INCLUDE "../src/file.rl"
 
 	parse(p: Parser &) bool
 	{
-		IF(!p.consume(tok::Type::extern))
+		IF(!p.consume(:extern))
 			RETURN FALSE;
 
 		t: Trace(&p, "external symbol");
-		IF(p.match_ahead(tok::Type::colon))
+		IF(p.match_ahead(:colon))
 		{
-			var: std::[GlobalVariable]Dynamic := [GlobalVariable]new();
+			var: std::[GlobalVariable]Dynamic := :gc([GlobalVariable]new());
 			IF(!var->parse_extern(p))
 				p.fail("expected variable");
 			Symbol := var.release();
 		} ELSE
 		{
-			f: std::[GlobalFunction]Dynamic := [GlobalFunction]new();
+			f: std::[GlobalFunction]Dynamic := :gc([GlobalFunction]new());
 			IF(!f->parse_extern(p))
 				p.fail("expected function");
 			Symbol := f.release();
