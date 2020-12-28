@@ -97,10 +97,10 @@ INCLUDE "expression.rl"
 				allowReferences: bool) VOID
 			{
 				Qualifier.parse(p);
-				Reference := parse_reference_type(p);
-				IF(!allowReferences
-				&& Reference != ReferenceType::none)
-					p.fail("forbidden reference specifier");
+				IF(allowReferences)
+					Reference := parse_reference_type(p);
+				ELSE
+					Reference := :none;
 			}
 		}
 

@@ -53,6 +53,7 @@ INCLUDE "../util/dynunion.rl"
 		{
 			STATIC k_needed_without_name: tok::Type#[](
 				:bracketOpen,
+				:braceOpen,
 				:doubleColon,
 				:void);
 
@@ -74,12 +75,13 @@ INCLUDE "../util/dynunion.rl"
 				(:doubleColon, FALSE),
 				(:semicolon, FALSE),
 				(:comma, FALSE),
-				(:parentheseClose, FALSE));
+				(:parentheseClose, FALSE),
+				(:braceClose, FALSE));
 
 			IF(needs_name
 			&& !p.match(:identifier))
 				RETURN FALSE;
-
+			ELSE
 			{
 				found ::= FALSE;
 				IF(p.match(:identifier))
@@ -116,8 +118,17 @@ INCLUDE "../util/dynunion.rl"
 				IF(p.match_ahead(:colon))
 				{
 					has_name := TRUE;
+
 					p.expect(:identifier, &name);
 					p.consume(NULL);
+
+					IF(p.consume(:questionMark))
+					{
+						Type := ::[Type::Auto]new();
+						Type.auto()->parse(p);
+						p.expect(:colonEqual);
+						needs_type := FALSE;
+					}
 				} ELSE IF(allow_initialiser)
 				{
 					STATIC k_need_ahead: tok::Type#[](
@@ -132,7 +143,7 @@ INCLUDE "../util/dynunion.rl"
 							p.expect(:identifier, &name);
 
 							Type := ::[Type::Auto]new();
-							Type.auto()->Qualifier.parse(p);
+							Type.auto()->parse(p, FALSE);
 
 							// "name ::=" style variable?
 							p.expect(:doubleColonEqual);
