@@ -19,6 +19,8 @@ INCLUDE 'std/err/unimplemented'
 		RETURN ::[SymbolExpression]new(<parser::SymbolExpression #\>(parsed), file);
 	CASE :symbolChild:
 		RETURN ::[SymbolChildExpression]new(<parser::SymbolChildExpression #\>(parsed), file);
+	CASE :symbolConstant:
+		RETURN ::[SymbolConstantExpression]new(<parser::SymbolConstantExpression #\>(parsed), file);
 	CASE :number:
 		RETURN ::[NumberExpression]new(<parser::NumberExpression #\>(parsed), file);
 	CASE :bool:
@@ -62,6 +64,18 @@ INCLUDE 'std/err/unimplemented'
 			parsed: parser::SymbolChildExpression #\,
 			file: src::File#&
 		}:	Child(parsed->Child, file);
+	}
+
+	SymbolConstantExpression -> Expression
+	{
+		# FINAL type() ExpressionType := :symbolConstant;
+
+		Child: String;
+
+		{
+			parsed: parser::SymbolConstantExpression #\,
+			file: src::File#&
+		}:	Child(file.content(parsed->Symbol));
 	}
 
 	NumberExpression -> Expression

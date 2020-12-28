@@ -9,6 +9,7 @@ INCLUDE "expression.rl"
 		signature,
 		void,
 		name,
+		symbolConstant,
 		expression,
 		builtin
 	}
@@ -166,7 +167,7 @@ INCLUDE "expression.rl"
 						p.fail("expected symbol");
 
 					next ::= Type::parse(p);
-					ASSERT(next->type() == TypeType::name);
+					ASSERT(next->type() == :name);
 					
 					<TypeName \>(next)->Name.Children.back().Templates += t;
 					t := next;
@@ -207,7 +208,7 @@ INCLUDE "expression.rl"
 
 	Signature -> Type
 	{
-		# FINAL type() TypeType := TypeType::signature;
+		# FINAL type() TypeType := :signature;
 		{};
 
 		Args: std::[std::[Type]Dynamic]Vector;
@@ -249,7 +250,7 @@ INCLUDE "expression.rl"
 
 	Void -> Type
 	{
-		# FINAL type() TypeType := TypeType::void;
+		# FINAL type() TypeType := :void;
 
 		parse(p: Parser&) bool
 		{
@@ -260,9 +261,27 @@ INCLUDE "expression.rl"
 		}
 	}
 
+	SymbolConstantType -> Type
+	{
+		# FINAL type() TypeType := :symbolConstant;
+
+		Name: src::String;
+
+		parse(p: Parser &) bool
+		{
+			IF(!p.consume(:colon))
+				RETURN TRUE;
+			p.expect(:identifier, &Name);
+
+			parse_generic_part(p);
+
+			RETURN TRUE;
+		}
+	}
+
 	TypeOfExpression -> Type
 	{
-		# FINAL type() TypeType := TypeType::expression;
+		# FINAL type() TypeType := :expression;
 
 		Expression: std::[parser::Expression]Dynamic;
 
@@ -275,13 +294,15 @@ INCLUDE "expression.rl"
 				p.fail("expected expression");
 			p.expect(:parentheseClose);
 
+			parse_generic_part(p);
+
 			RETURN TRUE;
 		}
 	}
 
 	TypeName -> Type
 	{
-		# FINAL type() TypeType := TypeType::name;
+		# FINAL type() TypeType := :name;
 		Name: Symbol;
 		NoDecay: bool;
 
@@ -305,7 +326,7 @@ INCLUDE "expression.rl"
 			uint
 		}
 
-		# FINAL type() TypeType := TypeType::builtin;
+		# FINAL type() TypeType := :builtin;
 
 		Kind: Primitive;
 

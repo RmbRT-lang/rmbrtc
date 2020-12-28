@@ -40,6 +40,7 @@ INCLUDE 'std/vector'
 	{
 		symbol,
 		symbolChild,
+		symbolConstant,
 		number,
 		bool,
 		char,
@@ -69,6 +70,7 @@ INCLUDE 'std/vector'
 			ret: Expression *;
 			IF([SymbolExpression]parse_impl(p, ret)
 			|| [SymbolChildExpression]parse_impl(p, ret)
+			|| [SymbolConstantExpression]parse_impl(p, ret)
 			|| [NumberExpression]parse_impl(p, ret)
 			|| [BoolExpression]parse_impl(p, ret)
 			|| [CharExpression]parse_impl(p, ret)
@@ -96,6 +98,21 @@ INCLUDE 'std/vector'
 				RETURN TRUE;
 			}
 			RETURN FALSE;
+		}
+	}
+
+	SymbolConstantExpression -> Expression
+	{
+		# FINAL type() ExpressionType := :symbolConstant;
+
+		Symbol: src::String;
+
+		parse(p: Parser &) bool
+		{
+			IF(!p.consume(:colon))
+				RETURN FALSE;
+			p.expect(:identifier, &Symbol);
+			RETURN TRUE;
 		}
 	}
 

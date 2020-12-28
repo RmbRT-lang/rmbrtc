@@ -13,13 +13,13 @@ INCLUDE 'std/err/unimplemented'
 	{
 	DEFAULT:
 		THROW std::err::Unimplemented(type.NAME());
-	CASE parser::TypeType::signature:
+	CASE :signature:
 		RETURN ::[Signature]new(<parser::Signature #\>(parsed), file);
-	CASE parser::TypeType::void:
+	CASE :void:
 		RETURN ::[Void]new(<parser::Void #\>(parsed), file);
-	CASE parser::TypeType::name:
+	CASE :name:
 		RETURN ::[TypeName]new(<parser::TypeName #\>(parsed), file);
-	CASE parser::TypeType::builtin:
+	CASE :builtin:
 		RETURN ::[BuiltinType]new(<parser::BuiltinType #\>(parsed), file);
 	}
 }
@@ -28,7 +28,7 @@ INCLUDE 'std/err/unimplemented'
 {
 	Signature -> Type
 	{
-		# FINAL type() TypeType := TypeType::signature;
+		# FINAL type() TypeType := :signature;
 
 		Arguments: std::[std::[Type]Dynamic]Vector;
 		Return: std::[Type]Dynamic;
@@ -46,7 +46,7 @@ INCLUDE 'std/err/unimplemented'
 
 	Void -> Type
 	{
-		# FINAL type() TypeType := TypeType::void;
+		# FINAL type() TypeType := :void;
 
 		{
 			parsed: parser::Void #\,
@@ -56,7 +56,7 @@ INCLUDE 'std/err/unimplemented'
 
 	TypeName -> Type
 	{
-		# FINAL type() TypeType := TypeType::name;
+		# FINAL type() TypeType := :name;
 
 		Name: Symbol;
 
@@ -69,7 +69,7 @@ INCLUDE 'std/err/unimplemented'
 
 	BuiltinType -> Type
 	{
-		# FINAL type() TypeType := TypeType::builtin;
+		# FINAL type() TypeType := :builtin;
 
 		TYPE Primitive := parser::BuiltinType::Primitive;
 		Kind: Primitive;
