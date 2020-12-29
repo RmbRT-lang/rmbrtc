@@ -20,7 +20,7 @@ INCLUDE 'std/memory'
 		Arguments: std::[std::[Expression]Dynamic]Vector;
 	}
 
-	Name: src::String; // Always CONSTRUCTOR.
+	Name: src::String; // Always {.
 	Arguments: std::[LocalVariable]Vector;
 	BaseInits: std::[BaseInit]Vector;
 	MemberInits: std::[MemberInit]Vector;

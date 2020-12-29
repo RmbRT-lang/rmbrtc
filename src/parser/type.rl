@@ -191,6 +191,8 @@ INCLUDE "expression.rl"
 				RETURN v;
 			IF(v ::= [BuiltinType]parse_impl(p))
 				RETURN v;
+			IF(v ::= [SymbolConstantType]parse_impl(p))
+				RETURN v;
 
 			RETURN NULL;
 		}

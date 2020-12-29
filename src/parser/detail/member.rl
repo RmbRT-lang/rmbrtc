@@ -26,12 +26,12 @@ INCLUDE "../destructor.rl"
 
 		IF([MemberTypedef]parse_member_impl(p, ret)
 		|| [MemberFunction]parse_member_impl(p, ret)
+		|| [Constructor]parse_member_impl(p, ret)
 		|| (parse_member_variable(p, ret, attr == :static))
 		|| [MemberClass]parse_member_impl(p, ret)
 		|| [MemberRawtype]parse_member_impl(p, ret)
 		|| [MemberUnion]parse_member_impl(p, ret)
 		|| [MemberEnum]parse_member_impl(p, ret)
-		|| [Constructor]parse_member_impl(p, ret)
 		|| [Destructor]parse_member_impl(p, ret))
 		{
 			ret->Visibility := visibility;
@@ -68,13 +68,13 @@ INCLUDE "../destructor.rl"
 
 		IF([MemberTypedef]parse_member_impl(p, ret)
 		|| [MemberFunction]parse_member_impl(p, ret)
+		|| [Constructor]parse_member_impl(p, ret)
 		|| (attr == :static
 			&& parse_member_variable(p, ret, TRUE))
 		|| [MemberClass]parse_member_impl(p, ret)
 		|| [MemberRawtype]parse_member_impl(p, ret)
 		|| [MemberUnion]parse_member_impl(p, ret)
 		|| [MemberEnum]parse_member_impl(p, ret)
-		|| [Constructor]parse_member_impl(p, ret)
 		|| [Destructor]parse_member_impl(p, ret))
 		{
 			ret->Visibility := visibility;

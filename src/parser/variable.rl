@@ -55,6 +55,7 @@ INCLUDE "../util/dynunion.rl"
 				:bracketOpen,
 				:braceOpen,
 				:doubleColon,
+				:colon,
 				:void);
 
 			STATIC k_needed_after_name: {tok::Type, bool}#[](
