@@ -11,7 +11,7 @@ INCLUDE "exprorstmt.rl"
 ::rlc::scoper Function -> VIRTUAL ScopeItem
 {
 	Arguments: std::[LocalVariable\]Vector;
-	Return: std::[Type]Dynamic;
+	Return: VariableType;
 	Body: ExprOrStmt;
 	Inline: bool;
 	Coroutine: bool;
@@ -32,8 +32,11 @@ INCLUDE "exprorstmt.rl"
 			Arguments += [LocalVariable \]dynamic_cast(var);
 		}
 
-		IF(parsed->Return)
-			Return := :gc(Type::create(parsed->Return, file));
+		ASSERT(parsed->Return);
+		IF(parsed->Return.is_type())
+			Return := Type::create(parsed->Return.type(), file);
+		ELSE
+			Return := ::[Type::Auto]new(*parsed->Return.auto());
 
 		IF(parsed->Body.is_expression())
 			Body := Expression::create(parsed->Body.expression(), file);

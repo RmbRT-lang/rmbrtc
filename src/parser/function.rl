@@ -31,11 +31,12 @@ INCLUDE 'std/help'
 ::rlc::parser Function -> VIRTUAL ScopeItem
 {
 	Arguments: std::[LocalVariable]Vector;
-	Return: std::[Type]Dynamic;
+	Return: VariableType;
 	Body: ExprOrStmt;
 	IsInline: bool;
 	IsCoroutine: bool;
 	Name: src::String;
+	Operator: rlc::Operator;
 
 	# FINAL name() src::String#& := Name;
 
@@ -45,26 +46,40 @@ INCLUDE 'std/help'
 	{
 		IF(!p.match_ahead(:parentheseOpen)
 		|| !p.consume(:identifier, &Name))
-			RETURN FALSE;
+		{
+			IF(!p.consume(:less))
+				RETURN FALSE;
+
+			IF(!(Return := Type::parse(p)))
+				p.fail("expected type");
+
+			p.expect(:greater);
+		}
 
 		t: Trace(&p, "function");
-		p.expect(:parentheseOpen);
 
-		IF(!p.consume(:parentheseClose))
+		IF(!Return)
 		{
-			DO(arg: LocalVariable)
+			p.expect(:parentheseOpen);
+
+			IF(!p.consume(:parentheseClose))
 			{
-				IF(!arg.parse_fn_arg(p))
-					p.fail("expected argument");
-				Arguments += &&arg;
-			} WHILE(p.consume(:comma))
-			p.expect(:parentheseClose);
+				DO(arg: LocalVariable)
+				{
+					IF(!arg.parse_fn_arg(p))
+						p.fail("expected argument");
+					Arguments += &&arg;
+				} WHILE(p.consume(:comma))
+				p.expect(:parentheseClose);
+			}
 		}
 
 		IsInline := p.consume(:inline);
 		IsCoroutine := p.consume(:at);
 
-		Return := :gc(Type::parse(p));
+		IF(!Return)
+			Return := Type::parse(p);
+
 		IF(!allow_body)
 			IF(!Return)
 				p.fail("expected return type");
@@ -75,17 +90,35 @@ INCLUDE 'std/help'
 			}
 
 		body: BlockStatement;
-		IF(body.parse(p))
+		IF(!Return)
 		{
-			Body := std::dup(&&body);
+			expectBody ::= p.consume(:questionMark);
+			auto: Type::Auto;
+			auto.parse(p);
+			Return := std::dup(&&auto);
+
+			IF(expectBody)
+			{
+				IF(!body.parse(p))
+					p.fail("expected block statement");
+				Body := std::dup(&&body);
+			} ELSE
+			{
+				p.expect(:doubleColonEqual);
+				Body := Expression::parse(p);
+				p.expect(:semicolon);
+			}
 		} ELSE IF(!p.consume(:semicolon))
 		{
-			p.expect(Return.Ptr
-				? tok::Type::colonEqual
-				: tok::Type::doubleColonEqual);
+			IF(body.parse(p))
+				Body := std::dup(&&body);
+			ELSE
+			{
+				p.expect(tok::Type::colonEqual);
 
-			Body := Expression::parse(p);
-			p.expect(:semicolon);
+				Body := Expression::parse(p);
+				p.expect(:semicolon);
+			}
 		}
 
 		RETURN TRUE;
