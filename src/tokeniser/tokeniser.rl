@@ -211,6 +211,8 @@ INCLUDE "error.rl"
 				("<<=", :doubleLessEqual),
 				("<<", :doubleLess),
 				("<=", :lessEqual),
+				("<>", :lessGreater),
+				("<-", :lessMinus),
 				("<", :less),
 
 				(">>>=", :tripleGreaterEqual),

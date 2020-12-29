@@ -35,6 +35,7 @@ INCLUDE 'std/help'
 	Body: ExprOrStmt;
 	IsInline: bool;
 	IsCoroutine: bool;
+	IsOperator: bool;
 	Name: src::String;
 	Operator: rlc::Operator;
 
@@ -42,35 +43,78 @@ INCLUDE 'std/help'
 
 	parse(
 		p: Parser &,
-		allow_body: bool) bool
+		allow_body: bool,
+		allow_operators: bool) bool
 	{
+		parOpen: tok::Type := :parentheseOpen;
+		parClose: tok::Type := :parentheseClose;
+		allowArgs ::= TRUE;
+		singleArg ::= FALSE;
+
+		IsOperator := FALSE;
 		IF(!p.match_ahead(:parentheseOpen)
 		|| !p.consume(:identifier, &Name))
 		{
-			IF(!p.consume(:less))
+			IF(!allow_operators)
 				RETURN FALSE;
 
-			IF(!(Return := Type::parse(p)))
-				p.fail("expected type");
-
-			p.expect(:greater);
+			IF(p.consume(:this, &Name))
+			{
+				IF(detail::consume_overloadable_binary_operator(p, Operator))
+				{
+					singleArg := TRUE;
+				} ELSE IF(detail::consume_overloadable_postfix_operator(p, Operator))
+				{
+					allowArgs := FALSE;
+				} ELSE IF(p.match(:bracketOpen))
+				{
+					parOpen := :bracketOpen;
+					parClose := :bracketClose;
+				} ELSE IF(p.match(:questionMark))
+				{
+					p.expect(:parentheseOpen);
+					arg: LocalVariable;
+					IF(!arg.parse_fn_arg(p))
+						p.fail("expected argument");
+					Arguments += &&arg;
+					p.expect(:parentheseClose);
+					p.expect(:colon);
+					singleArg := TRUE;
+				} ELSE
+					p.fail("expected operator");
+				IsOperator := TRUE;
+			} ELSE IF(p.match_ahead(:this))
+			{
+				IsOperator := TRUE;
+				IF(!detail::consume_overloadable_prefix_operator(p, Operator))
+					p.fail("expected overloadable prefix operator");
+				p.expect(:this);
+				allowArgs := FALSE;
+			} ELSE IF(p.consume(:less))
+			{
+				allowArgs := FALSE;
+				IF(!(Return := Type::parse(p)))
+					p.fail("expected type");
+				p.expect(:greater);
+			} ELSE
+				RETURN FALSE;
 		}
 
 		t: Trace(&p, "function");
 
-		IF(!Return)
+		IF(!Return && allowArgs)
 		{
-			p.expect(:parentheseOpen);
+			p.expect(parOpen);
 
-			IF(!p.consume(:parentheseClose))
+			IF(singleArg || !p.consume(parClose))
 			{
 				DO(arg: LocalVariable)
 				{
 					IF(!arg.parse_fn_arg(p))
 						p.fail("expected argument");
 					Arguments += &&arg;
-				} WHILE(p.consume(:comma))
-				p.expect(:parentheseClose);
+				} WHILE(!singleArg && p.consume(:comma))
+				p.expect(parClose);
 			}
 		}
 
@@ -128,8 +172,8 @@ INCLUDE 'std/help'
 ::rlc::parser GlobalFunction -> Global, Function
 {
 	# FINAL type() Global::Type := :function;
-	parse(p: Parser&) INLINE bool := Function::parse(p, TRUE);
-	parse_extern(p: Parser&) INLINE bool := Function::parse(p, FALSE);
+	parse(p: Parser&) INLINE bool := Function::parse(p, TRUE, FALSE);
+	parse_extern(p: Parser&) INLINE bool := Function::parse(p, FALSE, FALSE);
 }
 
 ::rlc ENUM Abstractness
@@ -163,7 +207,7 @@ INCLUDE 'std/help'
 				BREAK;
 			}
 
-		IF(!Function::parse(p, TRUE))
+		IF(!Function::parse(p, TRUE, TRUE))
 		{
 			IF(Abstractness != :none)
 				p.fail("expected function");

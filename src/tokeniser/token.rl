@@ -131,6 +131,8 @@ INCLUDE "../src/file.rl"
 		doubleLessEqual,
 		doubleLess,
 		lessEqual,
+		lessGreater,
+		lessMinus,
 		less,
 
 		tripleGreaterEqual,

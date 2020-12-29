@@ -9,7 +9,7 @@ INCLUDE 'std/vector'
 ::rlc ENUM Operator
 {
 	add, sub, mul, div, mod,
-	equals, notEquals, less, lessEquals, greater, greaterEquals,
+	equals, notEquals, less, lessEquals, greater, greaterEquals, cmp,
 	bitAnd, bitOr, bitXor, bitNot,
 	logAnd, logOr, logNot,
 	shiftLeft, shiftRight, rotateLeft, rotateRight,
@@ -23,6 +23,7 @@ INCLUDE 'std/vector'
 
 	async,
 	fullAsync,
+	await,
 	expectDynamic,
 	maybeDynamic,
 
@@ -33,7 +34,8 @@ INCLUDE 'std/vector'
 	shiftLeftAssign, shiftRightAssign, rotateLeftAssign, rotateRightAssign,
 	negAssign,
 
-	tuple
+	tuple,
+	variadicExpand
 }
 
 ::rlc::parser
@@ -189,82 +191,83 @@ INCLUDE 'std/vector'
 		{
 			[N: NUMBER]
 			{
-				table: {tok::Type, Operator}#[N] &,
+				table: {tok::Type, Operator, bool}#[N] &,
 				leftAssoc: bool
 			}:
 				Table(table),
 				Size(N),
 				LeftAssoc(leftAssoc);
 
-			Table: {tok::Type, Operator}# \;
+			Table: {tok::Type, Operator, bool}# \;
 			Size: UM;
 			LeftAssoc: bool;
 		}
 
-		k_bind: {tok::Type, Operator}#[](
+		k_bind: {tok::Type, Operator, bool}#[](
 			// bind operators.
-			(:dotAsterisk, :bindReference),
-			(:minusGreaterAsterisk, :bindPointer));
+			(:dotAsterisk, :bindReference, FALSE),
+			(:minusGreaterAsterisk, :bindPointer, FALSE));
 
-		k_mul: {tok::Type, Operator}#[](
+		k_mul: {tok::Type, Operator, bool}#[](
 			// multiplicative operators.
-			(:percent, :mod),
-			(:forwardSlash, :div),
-			(:asterisk, :mul));
+			(:percent, :mod, TRUE),
+			(:forwardSlash, :div, TRUE),
+			(:asterisk, :mul, TRUE));
 
-		k_add: {tok::Type, Operator}#[](
+		k_add: {tok::Type, Operator, bool}#[](
 			// additive operators.
-			(:minus, :sub),
-			(:plus, :add));
+			(:minus, :sub, TRUE),
+			(:plus, :add, TRUE));
 
-		k_shift: {tok::Type, Operator}#[](
+		k_shift: {tok::Type, Operator, bool}#[](
 			// bit shift operators.
-			(:doubleLess, :shiftLeft),
-			(:doubleGreater, :shiftRight),
-			(:tripleLess, :rotateLeft),
-			(:tripleGreater, :rotateRight));
+			(:doubleLess, :shiftLeft, TRUE),
+			(:doubleGreater, :shiftRight, TRUE),
+			(:tripleLess, :rotateLeft, TRUE),
+			(:tripleGreater, :rotateRight, TRUE));
 
-		k_bit: {tok::Type, Operator}#[](
+		k_bit: {tok::Type, Operator, bool}#[](
 			// bit arithmetic operators.
-			(:and, :bitAnd),
-			(:circumflex, :bitXor),
-			(:pipe, :bitOr));
+			(:and, :bitAnd, TRUE),
+			(:circumflex, :bitXor, TRUE),
+			(:pipe, :bitOr, TRUE));
 
-		k_cmp: {tok::Type, Operator}#[](
+		k_cmp: {tok::Type, Operator, bool}#[](
 			// numeric comparisons.
-			(:less, :less),
-			(:lessEqual, :lessEquals),
-			(:greater, :greater),
-			(:greaterEqual, :greaterEquals),
-			(:doubleEqual, :equals),
-			(:exclamationMarkEqual, :notEquals));
+			(:less, :less, FALSE),
+			(:lessEqual, :lessEquals, FALSE),
+			(:greater, :greater, FALSE),
+			(:greaterEqual, :greaterEquals, FALSE),
+			(:doubleEqual, :equals, FALSE),
+			(:exclamationMarkEqual, :notEquals, FALSE),
+			(:lessGreater, :cmp, TRUE));
 
-		k_log_and: {tok::Type, Operator}#[](
+		k_log_and: {tok::Type, Operator, bool}#[](
 			// boolean arithmetic.
-			(:doubleAnd, :logAnd),
-			(:doubleAnd, :logAnd));
+			(:doubleAnd, :logAnd, TRUE),
+			(:doubleAnd, :logAnd, TRUE));
 
-		k_log_or: {tok::Type, Operator}#[](
-			(:doublePipe, :logOr),
-			(:doublePipe, :logOr));
+		k_log_or: {tok::Type, Operator, bool}#[](
+			(:doublePipe, :logOr, TRUE),
+			(:doublePipe, :logOr, TRUE));
 
-		k_assign: {tok::Type, Operator}#[](
+		k_assign: {tok::Type, Operator, bool}#[](
 			// assignments.
-			(:colonEqual, :assign),
-			(:plusEqual, :addAssign),
-			(:minusEqual, :subAssign),
-			(:asteriskEqual, :mulAssign),
-			(:forwardSlashEqual, :divAssign),
-			(:percentEqual, :modAssign),
-			(:andEqual, :bitAndAssign),
-			(:pipeEqual, :bitOrAssign),
-			(:circumflexEqual, :bitXorAssign),
-			(:doubleAndEqual, :logAndAssign),
-			(:doublePipeEqual, :logOrAssign),
-			(:doubleLessEqual, :shiftLeftAssign),
-			(:doubleGreaterEqual, :shiftRightAssign),
-			(:tripleLessEqual, :rotateLeftAssign),
-			(:tripleGreaterEqual, :rotateRightAssign));
+			(:colonEqual, :assign, TRUE),
+			(:plusEqual, :addAssign, TRUE),
+			(:minusEqual, :subAssign, TRUE),
+			(:asteriskEqual, :mulAssign, TRUE),
+			(:forwardSlashEqual, :divAssign, TRUE),
+			(:percentEqual, :modAssign, TRUE),
+			(:andEqual, :bitAndAssign, TRUE),
+			(:pipeEqual, :bitOrAssign, TRUE),
+			(:circumflexEqual, :bitXorAssign, TRUE),
+			(:doubleAndEqual, :logAndAssign, TRUE),
+			(:doublePipeEqual, :logOrAssign, TRUE),
+			(:doubleLessEqual, :shiftLeftAssign, TRUE),
+			(:doubleGreaterEqual, :shiftRightAssign, TRUE),
+			(:tripleLessEqual, :rotateLeftAssign, TRUE),
+			(:tripleGreaterEqual, :rotateRightAssign, TRUE));
 
 		k_groups: BinOpDesc#[](
 			(k_bind, TRUE),
@@ -278,6 +281,59 @@ INCLUDE 'std/vector'
 			(k_assign, FALSE));
 
 		precedenceGroups: UM# := ::size(k_groups);
+
+		k_prefix_ops: {tok::Type, Operator, bool}#[](
+				(:minus, :neg, TRUE),
+				(:plus, :pos, TRUE),
+				(:doublePlus, :preIncrement, TRUE),
+				(:doubleMinus, :preDecrement, TRUE),
+				(:tilde, :bitNot, TRUE),
+				(:tildeColon, :bitNotAssign, TRUE),
+				(:exclamationMark, :logNot, TRUE),
+				(:exclamationMarkColon, :logNotAssign, TRUE),
+				(:and, :address, FALSE),
+				(:asterisk, :dereference, TRUE),
+				(:lessMinus, :await, TRUE));
+
+		consume_overloadable_binary_operator(p: Parser &, op: Operator &) bool
+		{
+			FOR(i ::= 0; i < ::size(k_groups); i++)
+				FOR(j ::= 0; j < k_groups[i].Size; j++)
+					IF(k_groups[i].Table[j].(2))
+						IF(p.consume(k_groups[i].Table[j].(0)))
+						{
+							op := k_groups[i].Table[j].(1);
+							RETURN TRUE;
+						}
+			RETURN FALSE;
+		}
+
+		consume_overloadable_prefix_operator(p: Parser &, op: Operator &) bool
+		{
+			FOR(i ::= 0; i < ::size(k_prefix_ops); i++)
+				IF(k_prefix_ops[i].(2))
+					IF(p.consume(k_prefix_ops[i].(0)))
+					{
+						op := k_prefix_ops[i].(1);
+						RETURN TRUE;
+					}
+			RETURN FALSE;
+		}
+
+		consume_overloadable_postfix_operator(p: Parser &, op: Operator &) bool
+		{
+			STATIC k_postfix_ops: {tok::Type, Operator}#[](
+				(:doublePlus, :postIncrement),
+				(:doubleMinus, :postDecrement));
+
+			FOR(i ::= 0; i < ::size(k_postfix_ops); i++)
+				IF(p.consume(k_postfix_ops[i].(0)))
+				{
+					op := k_postfix_ops[i].(1);
+					RETURN TRUE;
+				}
+			RETURN FALSE;
+		}
 	}
 
 	OperatorExpression -> Expression
@@ -363,23 +419,11 @@ INCLUDE 'std/vector'
 
 		STATIC parse_prefix(p: Parser&) Expression *
 		{
-			STATIC prefix: {tok::Type, Operator}#[](
-				(:minus, :neg),
-				(:plus, :pos),
-				(:doublePlus, :preIncrement),
-				(:doubleMinus, :preDecrement),
-				(:tilde, :bitNot),
-				(:tildeColon, :bitNotAssign),
-				(:exclamationMark, :logNot),
-				(:exclamationMarkColon, :logNotAssign),
-				(:and, :address),
-				(:asterisk, :dereference));
-
-			FOR(i ::= 0; i < ::size(prefix); i++)
-				IF(p.consume(prefix[i].(0)))
+			FOR(i ::= 0; i < ::size(detail::k_prefix_ops); i++)
+				IF(p.consume(detail::k_prefix_ops[i].(0)))
 				{
 					xp ::= [OperatorExpression]new();
-					xp->Op := prefix[i].(1);
+					xp->Op := detail::k_prefix_ops[i].(1);
 					xp->Operands += :gc(parse_prefix(p));
 					RETURN xp;
 				}
@@ -418,7 +462,8 @@ INCLUDE 'std/vector'
 
 			STATIC postfix: {tok::Type, Operator}#[](
 				(:doublePlus, :postIncrement),
-				(:doubleMinus, :postDecrement));
+				(:doubleMinus, :postDecrement),
+				(:tripleDot, :variadicExpand));
 
 			STATIC memberAccess: {tok::Type, Operator}#[](
 				(:dot, :memberReference),
