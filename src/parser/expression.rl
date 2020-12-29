@@ -31,7 +31,9 @@ INCLUDE 'std/vector'
 	bitAndAssign, bitOrAssign, bitXorAssign, bitNotAssign,
 	logAndAssign, logOrAssign, logNotAssign,
 	shiftLeftAssign, shiftRightAssign, rotateLeftAssign, rotateRightAssign,
-	negAssign
+	negAssign,
+
+	tuple
 }
 
 ::rlc::parser
@@ -63,8 +65,26 @@ INCLUDE 'std/vector'
 			IF(p.consume(:parentheseOpen))
 			{
 				exp ::= Expression::parse(p);
+				IF(!exp)
+					p.fail("expected expression");
+
+				op: OperatorExpression * := NULL;
+				WHILE(p.consume(:comma))
+				{
+					IF(!op)
+					{
+						op := ::[OperatorExpression]new();
+						op->Op := :tuple;
+						op->Operands += :gc(exp);
+					}
+
+					IF(!(exp := Expression::parse(p)))
+						p.fail("expected expression");
+					op->Operands += :gc(exp);
+				}
 				p.expect(:parentheseClose);
-				RETURN exp;
+
+				RETURN op ? op : exp;
 			}
 
 			ret: Expression *;
