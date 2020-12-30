@@ -23,6 +23,8 @@ INCLUDE 'std/err/unimplemented'
 		RETURN ::[TypeName]new(<parser::TypeName #\>(parsed), file);
 	CASE :tuple:
 		RETURN ::[TupleType]new(<parser::TupleType #\>(parsed), file);
+	CASE :expression:
+		RETURN ::[TypeOfExpression]new(<parser::TypeOfExpression #\>(parsed), file);
 	CASE :builtin:
 		RETURN ::[BuiltinType]new(<parser::BuiltinType #\>(parsed), file);
 	}
@@ -98,6 +100,19 @@ INCLUDE 'std/err/unimplemented'
 			FOR(i ::= 0; i < parsed->Types.size(); i++)
 				Types += :gc(Type::create(parsed->Types[i], file));
 		}
+	}
+
+	TypeOfExpression -> Type
+	{
+		# FINAL type() TypeType := :expression;
+
+		Expression: scoper::Expression - std::Dynamic;
+
+		{
+			parsed: parser::TypeOfExpression #\,
+			file: src::File #&
+		}:	Type(parsed, file),
+			Expression(:gc, Expression::create(parsed->Expression, file));
 	}
 
 	BuiltinType -> Type
