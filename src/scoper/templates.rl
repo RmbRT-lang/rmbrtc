@@ -11,9 +11,10 @@ INCLUDE "types.rl"
 	{
 		Name: String;
 		Type: TemplateDeclType;
+		Variadic: bool;
 
-		{name: String#&, type: TemplateDeclType}:
-			Name(name), Type(type);
+		{name: String#&, type: TemplateDeclType, variadic: bool}:
+			Name(name), Type(type), Variadic(variadic);
 	}
 
 	(// A set of template argument declarations. /)
@@ -28,7 +29,8 @@ INCLUDE "types.rl"
 			FOR(i ::= 0; i < parsed.Children.size(); i++)
 				Templates += (
 					file.content(parsed.Children[i].Name),
-					parsed.Children[i].Type);
+					parsed.Children[i].Type,
+					parsed.Children[i].Variadic);
 		}
 
 		# find(name: String #&) TemplateDecl #*

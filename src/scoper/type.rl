@@ -58,11 +58,13 @@ INCLUDE "symbol.rl"
 
 		Modifiers: std::[Modifier]Vector;
 		Reference: Type::ReferenceType;
+		Variadic: bool;
 
 		PROTECTED {
 			parsed: parser::Type #\,
 			file: src::File#&}:
-			Reference(parsed->Reference)
+			Reference(parsed->Reference),
+			Variadic(parsed->Variadic)
 		{
 			FOR(i ::= 0; i < parsed->Modifiers.size(); i++)
 				Modifiers += (parsed->Modifiers[i], file);

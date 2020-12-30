@@ -26,6 +26,7 @@ INCLUDE 'std/vector'
 			Type: TemplateDeclType;
 			TypeName: std::[parser::Type]Dynamic;
 			Name: src::String;
+			Variadic: bool;
 		}
 		Children: std::[Child]Vector;
 
@@ -43,6 +44,7 @@ INCLUDE 'std/vector'
 					name: tok::Token;
 					p.expect(:identifier, &name);
 					c.Name := name.Content;
+					c.Variadic := p.consume(:tripleDot);
 					p.expect(:colon);
 
 					IF(p.consume(:type))

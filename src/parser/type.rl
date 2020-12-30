@@ -147,6 +147,7 @@ INCLUDE "expression.rl"
 
 		Modifiers: std::[Modifier]Vector;
 		Reference: Type::ReferenceType;
+		Variadic: bool;
 
 		[T:TYPE] PRIVATE STATIC parse_impl(
 			p: Parser &) Type *
@@ -208,6 +209,7 @@ INCLUDE "expression.rl"
 				Modifiers += &&mod;
 
 			Reference := parse_reference_type(p);
+			Variadic := p.consume(:tripleDot);
 		}
 	}
 
