@@ -17,7 +17,7 @@ INCLUDE 'std/vector'
 	subscript, call, conditional,
 	memberReference, memberPointer,
 	bindReference, bindPointer,
-	dereference, address,
+	dereference, address, move,
 	preIncrement, preDecrement,
 	postIncrement, postDecrement,
 
@@ -294,6 +294,7 @@ INCLUDE 'std/vector'
 				(:exclamationMark, :logNot, TRUE),
 				(:exclamationMarkColon, :logNotAssign, TRUE),
 				(:and, :address, FALSE),
+				(:doubleAnd, :move, FALSE),
 				(:asterisk, :dereference, TRUE),
 				(:lessMinus, :await, TRUE));
 
