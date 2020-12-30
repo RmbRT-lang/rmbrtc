@@ -272,7 +272,7 @@ INCLUDE "expression.rl"
 		parse(p: Parser &) bool
 		{
 			IF(!p.consume(:colon))
-				RETURN TRUE;
+				RETURN FALSE;
 			p.expect(:identifier, &Name);
 
 			parse_generic_part(p);
