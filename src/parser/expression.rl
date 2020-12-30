@@ -35,7 +35,9 @@ INCLUDE 'std/vector'
 	negAssign,
 
 	tuple,
-	variadicExpand
+	variadicExpand,
+	constructor,
+	pointerConstructor
 }
 
 ::rlc::parser
@@ -465,9 +467,9 @@ INCLUDE 'std/vector'
 				(:doubleMinus, :postDecrement),
 				(:tripleDot, :variadicExpand));
 
-			STATIC memberAccess: {tok::Type, Operator}#[](
-				(:dot, :memberReference),
-				(:minusGreater, :memberPointer));
+			STATIC memberAccess: {tok::Type, Operator, Operator}#[](
+				(:dot, :memberReference, :constructor),
+				(:minusGreater, :memberPointer, :pointerConstructor));
 
 			FOR["outer"](;;)
 			{
@@ -525,14 +527,33 @@ INCLUDE 'std/vector'
 				{
 					IF(p.consume(memberAccess[i].(0)))
 					{
-						member: SymbolChildExpression;
-						IF(!member.parse(p))
-							p.fail("expected member name");
+						IF(p.consume(:braceOpen))
+						{
+							lhs := make_unary(memberAccess[i].(2), lhs);
+							IF(!p.consume(:braceClose))
+							{
+								DO()
+								{
+									IF(arg ::= Expression::parse(p))
+										<OperatorExpression \>(lhs)->Operands += :gc(arg);
+									ELSE
+										p.fail("expected expression");
+								} WHILE(p.consume(:comma))
+								p.expect(:braceClose);
+							}
+							RETURN lhs;
+						}
+						ELSE
+						{
+							member: SymbolChildExpression;
+							IF(!member.parse(p))
+								p.fail("expected member name");
 
-						lhs := make_binary(
-							memberAccess[i].(1),
-							lhs,
-							::[TYPE(member)]new(&&member));
+							lhs := make_binary(
+								memberAccess[i].(1),
+								lhs,
+								::[TYPE(member)]new(&&member));
+						}
 						CONTINUE["outer"];
 					}
 				}
