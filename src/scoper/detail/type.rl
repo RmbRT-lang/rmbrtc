@@ -15,6 +15,8 @@ INCLUDE 'std/err/unimplemented'
 		THROW std::err::Unimplemented(type.NAME());
 	CASE :signature:
 		RETURN ::[Signature]new(<parser::Signature #\>(parsed), file);
+	CASE :symbolConstant:
+		RETURN ::[SymbolConstantType]new(<parser::SymbolConstantType #\>(parsed), file);
 	CASE :void:
 		RETURN ::[Void]new(<parser::Void #\>(parsed), file);
 	CASE :name:
@@ -42,6 +44,19 @@ INCLUDE 'std/err/unimplemented'
 			FOR(i ::= 0; i < parsed->Args.size(); i++)
 				Arguments += :gc(Type::create(parsed->Args[i], file));
 		}
+	}
+
+	SymbolConstantType -> Type
+	{
+		# FINAL type() TypeType := :symbolConstant;
+
+		Name: String;
+
+		{
+			parsed: parser::SymbolConstantType #\,
+			file: src::File #&
+		}:	Type(parsed, file),
+			Name(file.content(parsed->Name));
 	}
 
 	Void -> Type
