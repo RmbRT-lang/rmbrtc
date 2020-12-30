@@ -21,6 +21,8 @@ INCLUDE 'std/err/unimplemented'
 		RETURN ::[Void]new(<parser::Void #\>(parsed), file);
 	CASE :name:
 		RETURN ::[TypeName]new(<parser::TypeName #\>(parsed), file);
+	CASE :tuple:
+		RETURN ::[TupleType]new(<parser::TupleType #\>(parsed), file);
 	CASE :builtin:
 		RETURN ::[BuiltinType]new(<parser::BuiltinType #\>(parsed), file);
 	}
@@ -80,6 +82,22 @@ INCLUDE 'std/err/unimplemented'
 			file: src::File#&}:
 			Type(parsed, file),
 			Name(parsed->Name, file);
+	}
+
+	TupleType -> Type
+	{
+		# FINAL type() TypeType := :tuple;
+
+		Types: Type - std::Dynamic - std::Vector;
+
+		{
+			parsed: parser::TupleType #\,
+			file: src::File #&
+		}:	Type(parsed, file)
+		{
+			FOR(i ::= 0; i < parsed->Types.size(); i++)
+				Types += :gc(Type::create(parsed->Types[i], file));
+		}
 	}
 
 	BuiltinType -> Type
