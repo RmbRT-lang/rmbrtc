@@ -207,7 +207,7 @@ INCLUDE 'std/help'
 				BREAK;
 			}
 
-		IF(!Function::parse(p, TRUE, TRUE))
+		IF(!Function::parse(p, Abstractness != :abstract, TRUE))
 		{
 			IF(Abstractness != :none)
 				p.fail("expected function");
