@@ -10,6 +10,7 @@ INCLUDE "expression.rl"
 		void,
 		name,
 		symbolConstant,
+		tuple,
 		expression,
 		builtin
 	}
@@ -183,6 +184,8 @@ INCLUDE "expression.rl"
 		{
 			IF(v ::= [TypeOfExpression]parse_impl(p))
 				RETURN v;
+			IF(v ::= [TupleType]parse_impl(p))
+				RETURN v;
 			IF(v ::= [Signature]parse_impl(p))
 				RETURN v;
 			IF(v ::= [Void]parse_impl(p))
@@ -277,6 +280,33 @@ INCLUDE "expression.rl"
 
 			parse_generic_part(p);
 
+			RETURN TRUE;
+		}
+	}
+
+	TupleType -> Type
+	{
+		# FINAL type() TypeType := :tuple;
+
+		Types: Type - std::Dynamic - std::Vector;
+
+		parse(p: Parser &) bool
+		{
+			IF(!p.consume(:braceOpen))
+				RETURN FALSE;
+
+			IF(t ::= Type::parse(p))
+				Types += :gc(t);
+			ELSE p.fail("expected type");
+			p.expect(:comma);
+			DO()
+				IF(t ::= Type::parse(p))
+					Types += :gc(t);
+				ELSE p.fail("expected type");
+				WHILE(p.consume(:comma))
+			p.expect(:braceClose);
+
+			parse_generic_part(p);
 			RETURN TRUE;
 		}
 	}
