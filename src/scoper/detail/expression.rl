@@ -150,13 +150,16 @@ INCLUDE 'std/err/unimplemented'
 		# FINAL type() ExpressionType := :cast;
 
 		Type: std::[scoper::Type]Dynamic;
-		Value: std::[Expression]Dynamic;
+		Values: Expression-std::Dynamic-std::Vector;
 
 		{
 			parsed: parser::CastExpression #\,
 			file: src::File#&
-		}:	Type(:gc, Type::create(parsed->Type, file)),
-			Value(:gc, Expression::create(parsed->Value, file));
+		}:	Type(:gc, Type::create(parsed->Type, file))
+		{
+			FOR(i ::= 0; i < parsed->Values.size(); i++)
+				Values += :gc(Expression::create(parsed->Values[i], file));
+		}
 	}
 
 	SizeofExpression -> Expression

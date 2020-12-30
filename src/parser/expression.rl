@@ -578,7 +578,7 @@ INCLUDE 'std/vector'
 		# FINAL type() ExpressionType := :cast;
 
 		Type: std::[parser::Type]Dynamic;
-		Value: std::[Expression]Dynamic;
+		Values: Expression - std::Dynamic - std::Vector;
 
 		parse(p: Parser&) bool
 		{
@@ -592,13 +592,17 @@ INCLUDE 'std/vector'
 
 			p.expect(:greater);
 			p.expect(:parentheseOpen);
+			IF(!p.consume(:parentheseClose))
+			{
+				DO()
+					IF(value ::= Expression::parse(p))
+						Values += :gc(value);
+					ELSE
+						p.fail("expected expression");
+					WHILE(p.consume(:comma))
 
-			value ::= Expression::parse(p);
-			IF(!value)
-				p.fail("expected expression");
-			Value := :gc(value);
-
-			p.expect(:parentheseClose);
+				p.expect(:parentheseClose);
+			}
 
 			RETURN TRUE;
 		}
