@@ -15,7 +15,7 @@ INCLUDE 'std/vector'
 	shiftLeft, shiftRight, rotateLeft, rotateRight,
 	neg, pos,
 	subscript, call, conditional,
-	memberReference, memberPointer,
+	memberReference, memberPointer, tupleMemberReference, tupleMemberPointer,
 	bindReference, bindPointer,
 	dereference, address, move,
 	preIncrement, preDecrement,
@@ -468,9 +468,9 @@ INCLUDE 'std/vector'
 				(:doubleMinus, :postDecrement),
 				(:tripleDot, :variadicExpand));
 
-			STATIC memberAccess: {tok::Type, Operator, Operator}#[](
-				(:dot, :memberReference, :constructor),
-				(:minusGreater, :memberPointer, :pointerConstructor));
+			STATIC memberAccess: {tok::Type, Operator, Operator, Operator}#[](
+				(:dot, :memberReference, :constructor, :tupleMemberReference),
+				(:minusGreater, :memberPointer, :pointerConstructor, :tupleMemberPointer));
 
 			FOR["outer"](;;)
 			{
@@ -542,7 +542,13 @@ INCLUDE 'std/vector'
 								} WHILE(p.consume(:comma))
 								p.expect(:braceClose);
 							}
-							RETURN lhs;
+						}
+						ELSE IF(p.consume(:parentheseOpen))
+						{
+							IF(index ::= Expression::parse(p))
+								lhs := make_binary(memberAccess[i].(3), lhs, index);
+							ELSE p.fail("expected expression");
+							p.expect(:parentheseClose);
 						}
 						ELSE
 						{
