@@ -14,73 +14,73 @@ INCLUDE 'std/err/unimplemented'
 	{
 	DEFAULT:
 		THROW std::err::Unimplemented(type.NAME());
-	CASE StatementType::assert:
+	CASE :assert:
 		RETURN ::[AssertStatement]new(
 			position,
 			<parser::AssertStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE StatementType::block:
+	CASE :block:
 		RETURN ::[BlockStatement]new(
 			position,
 			<parser::BlockStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE StatementType::if:
+	CASE :if:
 		RETURN ::[IfStatement]new(
 			position,
 			<parser::IfStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE StatementType::variable:
+	CASE :variable:
 		RETURN ::[VariableStatement]new(
 			position,
 			<parser::VariableStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE StatementType::expression:
+	CASE :expression:
 		RETURN ::[ExpressionStatement]new(
 			position,
 			<parser::ExpressionStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE StatementType::return:
+	CASE :return:
 		RETURN ::[ReturnStatement]new(
 			position,
 			<parser::ReturnStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE StatementType::try:
+	CASE :try:
 		RETURN ::[TryStatement]new(
 			position,
 			<parser::TryStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE StatementType::throw:
+	CASE :throw:
 		RETURN ::[ThrowStatement]new(
 			position,
 			<parser::ThrowStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE StatementType::loop:
+	CASE :loop:
 		RETURN ::[LoopStatement]new(
 			position,
 			<parser::LoopStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE StatementType::switch:
+	CASE :switch:
 		RETURN ::[SwitchStatement]new(
 			position,
 			<parser::SwitchStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE StatementType::break:
+	CASE :break:
 		RETURN ::[BreakStatement]new(
 			position,
 			<parser::BreakStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE StatementType::continue:
+	CASE :continue:
 		RETURN ::[ContinueStatement]new(
 			position,
 			<parser::ContinueStatement #\>(parsed),
