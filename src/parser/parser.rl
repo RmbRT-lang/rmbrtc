@@ -149,6 +149,10 @@ INCLUDE 'std/tags'
 
 		# progress() ushort := Progress;
 
+		# position() UM := BufferSize
+			? Buffer[BufferIndex].Content.Start
+			: File->Contents.size();
+
 		Ctx: Trace *;
 	PRIVATE:
 		File: src::File #\;

@@ -9,6 +9,7 @@ INCLUDE "member.rl"
 	Name: src::String;
 
 	# FINAL name() src::String#& := Name;
+	# FINAL overloadable() bool := FALSE;
 
 	parse(p: Parser&) bool
 	{

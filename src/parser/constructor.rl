@@ -29,6 +29,7 @@ INCLUDE 'std/memory'
 
 	# FINAL type() Member::Type := :constructor;
 	# FINAL name() src::String#& := Name;
+	# FINAL overloadable() bool := TRUE;
 
 	parse(p: Parser&) bool
 	{

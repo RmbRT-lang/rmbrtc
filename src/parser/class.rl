@@ -44,6 +44,7 @@ INCLUDE 'std/memory'
 	Inheritances: std::[Inheritance]Vector;
 
 	# FINAL name() src::String #& := Name;
+	# FINAL overloadable() bool := FALSE;
 
 	parse(p: Parser &) bool
 	{

@@ -38,6 +38,7 @@ INCLUDE "../util/dynunion.rl"
 		InitValues: std::[std::[Expression]Dynamic]Vector;
 
 		# FINAL name() src::String#& := Name;
+		# FINAL overloadable() bool := !Name.exists();
 
 		parse_fn_arg(p: Parser&) bool
 			:= parse(p, FALSE, FALSE, FALSE);
@@ -161,7 +162,7 @@ INCLUDE "../util/dynunion.rl"
 
 			Name := has_name
 				? name.Content
-				: src::String::empty;
+				: (p.position(), 0);
 
 
 			IF(!needs_type)

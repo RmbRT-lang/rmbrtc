@@ -12,6 +12,7 @@ INCLUDE "templatedecl.rl"
 	Templates: TemplateDecl;
 
 	# ABSTRACT category() ScopeItem::Category;
+	# ABSTRACT overloadable() bool;
 
 	# ABSTRACT name() src::String#&;
 }

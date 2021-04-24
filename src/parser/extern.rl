@@ -12,6 +12,7 @@ INCLUDE "../src/file.rl"
 		? variable()->name()
 		: function()->name();
 	# FINAL type() Global::Type := :externSymbol;
+	# FINAL overloadable() bool := FALSE;
 
 	# is_variable() INLINE bool := Symbol.is_first();
 	# variable() INLINE GlobalVariable \ := Symbol.first();

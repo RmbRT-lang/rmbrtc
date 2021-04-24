@@ -40,6 +40,7 @@ INCLUDE 'std/help'
 	Operator: rlc::Operator;
 
 	# FINAL name() src::String#& := Name;
+	# FINAL overloadable() bool := TRUE;
 
 	parse(
 		p: Parser &,

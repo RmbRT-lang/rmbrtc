@@ -6,6 +6,7 @@ INCLUDE "../parser/scopeitem.rl"
 INCLUDE 'std/set'
 INCLUDE 'std/tags'
 INCLUDE 'std/io/stream'
+INCLUDE 'std/streambuffer'
 
 (// A scope contains a collection of scope items. /)
 ::rlc::scoper Scope
@@ -61,8 +62,9 @@ INCLUDE 'std/io/stream'
 			: Items.insert_at(loc, :gc(::[detail::ScopeItemGroup]new(name, &THIS))).Ptr;
 
 		ret ::= ScopeItem::create(entry, file, group);
-		group->Items += :gc(ret);
-		RETURN ret;
+		IF(ret.(1))
+			group->Items += :gc(ret.(0));
+		RETURN ret.(0);
 	}
 
 	# print_name(
@@ -79,6 +81,13 @@ INCLUDE 'std/io/stream'
 
 		n ::= <ScopeItem #\>(Owner)->name();
 		o.write(n.Data, n.Size);
+	}
+
+	# name() std::Utf8
+	{
+		buf: std::StreamBuffer;
+		print_name(buf);
+		RETURN <std::Utf8 &&>(buf);
 	}
 }
 

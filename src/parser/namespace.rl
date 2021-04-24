@@ -11,6 +11,7 @@ INCLUDE 'std/vector'
 
 	# FINAL name() src::String#& := Name;
 	# FINAL type() Global::Type := :namespace;
+	# FINAL overloadable() bool := TRUE;
 
 	parse(
 		p: Parser &) bool

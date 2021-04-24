@@ -9,6 +9,7 @@ INCLUDE "statement.rl"
 
 	# FINAL type() Global::Type := :test;
 	# FINAL name() src::String#& := src::String::empty;
+	# FINAL overloadable() bool := FALSE;
 
 	parse(p: Parser &) bool
 	{

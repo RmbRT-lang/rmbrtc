@@ -8,6 +8,7 @@ INCLUDE "member.rl"
 	Members: std::[std::[Member]Dynamic]Vector;
 
 	# FINAL name() src::String #& := Name;
+	# FINAL overloadable() bool := FALSE;
 
 	parse(p: Parser &) bool
 	{

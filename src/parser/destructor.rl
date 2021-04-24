@@ -4,6 +4,7 @@ INCLUDE "statement.rl"
 {
 	# FINAL type() Member::Type := :destructor;
 	# FINAL name() src::String#& := Name;
+	# FINAL overloadable() bool := FALSE;
 
 	Name: src::String; // Always DESTRUCTOR.
 	Body: BlockStatement;

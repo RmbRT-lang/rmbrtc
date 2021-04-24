@@ -13,12 +13,14 @@ INCLUDE 'std/vector'
 
 		# FINAL name() src::String#& := Name;
 		# FINAL type() Member::Type := :enumConstant;
+		# FINAL overloadable() bool := FALSE;
 	}
 
 	Name: src::String;
 	Constants: std::[Constant]Vector;
 
 	# FINAL name() src::String#& := Name;
+	# FINAL overloadable() bool := FALSE;
 
 	parse(p: Parser &) bool
 	{
