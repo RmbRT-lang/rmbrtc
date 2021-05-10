@@ -8,6 +8,7 @@ INCLUDE "../variable.rl"
 INCLUDE "../extern.rl"
 INCLUDE "../union.rl"
 INCLUDE "../typedef.rl"
+INCLUDE "../rawtype.rl"
 
 INCLUDE 'std/err/unimplemented'
 
@@ -33,6 +34,8 @@ INCLUDE 'std/err/unimplemented'
 		RETURN ::[GlobalVariable]new(<parser::GlobalVariable #\>(global), file, group);
 	CASE :externSymbol:
 		RETURN ::[ExternSymbol]new(<parser::ExternSymbol #\>(global), file, group);
+	CASE :rawtype:
+		RETURN ::[GlobalRawtype]new(<parser::GlobalRawtype #\>(global), file, group);
 	CASE :typedef:
 		RETURN ::[GlobalTypedef]new(<parser::GlobalTypedef #\>(global), file, group);
 	CASE :union:

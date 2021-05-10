@@ -7,6 +7,7 @@ INCLUDE "../constructor.rl"
 INCLUDE "../destructor.rl"
 INCLUDE "../union.rl"
 INCLUDE "../typedef.rl"
+INCLUDE "../rawtype.rl"
 
 
 INCLUDE 'std/err/unimplemented'
@@ -30,6 +31,8 @@ INCLUDE 'std/err/unimplemented'
 		RETURN ::[MemberVariable]new(<parser::MemberVariable #\>(parsed), file, group);
 	CASE :function:
 		RETURN ::[MemberFunction]new(<parser::MemberFunction #\>(parsed), file, group);
+	CASE :rawtype:
+		RETURN ::[MemberRawtype]new(<parser::MemberRawtype #\>(parsed), file, group);
 	CASE :constructor:
 		RETURN ::[Constructor]new(<parser::Constructor #\>(parsed), file, group);
 	CASE :destructor:
