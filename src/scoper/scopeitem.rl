@@ -80,21 +80,16 @@ INCLUDE 'std/io/format'
 
 	# FINAL print(o: std::io::OStream &) VOID
 	{
-		o.write(FileName.content());
-		o.write(':');
+		o.write_all(FileName.content(), ':');
 		std::io::format::dec(o, Line);
 		o.write(':');
 		std::io::format::dec(o, Column);
-		o.write(": invalid overload of ");
-		o.write(ScopeName.content());
-		o.write("::");
+		o.write_all(": invalid overload of ", ScopeName.content(), "::");
 		IF(Name.Size)
 			o.write(Name);
 		ELSE
 			o.write("<unnamed>");
-		o.write(": ");
-		o.write(Reason);
-		o.write('.');
+		o.write_all(": ", Reason, '.');
 	}
 }
 
