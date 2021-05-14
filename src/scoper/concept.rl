@@ -18,7 +18,7 @@ INCLUDE "scopeitem.rl"
 		FOR(i ::= 0; i < parsed->Members.size(); i++)
 		{
 			member ::= Scope::insert(parsed->Members[i], file);
-			IF(memfn ::= [MemberFunction \]dynamic_cast(member))
+			IF(memfn ::= <<MemberFunction \>>(member))
 				IF(!memfn->Body)
 					Functions += memfn;
 		}

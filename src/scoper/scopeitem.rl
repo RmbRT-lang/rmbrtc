@@ -115,8 +115,8 @@ INCLUDE 'std/io/format'
 		{
 		CASE :global:
 			{
-				type ::= [parser::Global #\]dynamic_cast(entry)->type();
-				type2 ::= [scoper::Global #\]dynamic_cast(cmp)->type();
+				type ::= <<parser::Global #\>>(entry)->type();
+				type2 ::= <<scoper::Global #\>>(cmp)->type();
 				same := type == type2;
 
 				IF(same && type == :namespace)
@@ -124,8 +124,8 @@ INCLUDE 'std/io/format'
 			}
 		CASE :member:
 			{
-				type ::= [parser::Member #\]dynamic_cast(entry)->type();
-				type2 ::= [scoper::Member #\]dynamic_cast(cmp)->type();
+				type ::= <<parser::Member #\>>(entry)->type();
+				type2 ::= <<scoper::Member #\>>(cmp)->type();
 				same := type == type2;
 			}
 		CASE :local:
@@ -141,11 +141,11 @@ INCLUDE 'std/io/format'
 	SWITCH(cat)
 	{
 	CASE :global:
-		i := Global::create([parser::Global #\]dynamic_cast(entry), file, group);
+		i := Global::create(<<parser::Global #\>>(entry), file, group);
 	CASE :member:
-		i := Member::create([parser::Member #\]dynamic_cast(entry), file, group);
+		i := Member::create(<<parser::Member #\>>(entry), file, group);
 	CASE :local:
-		i := ::[LocalVariable]new([parser::LocalVariable #\]dynamic_cast(entry), file, group);
+		i := ::[LocalVariable]new(<<parser::LocalVariable #\>>(entry), file, group);
 	DEFAULT:
 		THROW <std::err::Unimplemented>(cat.NAME());
 	}

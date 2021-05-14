@@ -20,7 +20,7 @@ INCLUDE 'std/err/unimplemented'
 	SWITCH(type ::= parsed->type())
 	{
 	DEFAULT:
-		THROW std::err::Unimplemented(type.NAME());
+		THROW <std::err::Unimplemented>(type.NAME());
 	CASE :class:
 		RETURN ::[MemberClass]new(<parser::MemberClass #\>(parsed), file, group);
 	CASE :enum:

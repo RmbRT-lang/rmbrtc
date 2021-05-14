@@ -21,7 +21,7 @@ INCLUDE 'std/err/unimplemented'
 	SWITCH(type ::= global->type())
 	{
 	DEFAULT:
-		THROW std::err::Unimplemented(type.NAME());
+		THROW <std::err::Unimplemented>(type.NAME());
 	CASE :namespace:
 		RETURN ::[Namespace]new(<parser::Namespace #\>(global), file, group);
 	CASE :class:

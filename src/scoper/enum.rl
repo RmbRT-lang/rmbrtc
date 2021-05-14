@@ -6,7 +6,7 @@ INCLUDE "../parser/enum.rl"
 	{
 		Value: src::Size;
 
-		# enum() Enum #\ := [Enum \]dynamic_cast(parent());
+		# enum() Enum #\ := <<Enum \>>(parent());
 
 		# FINAL type() Member::Type := :enumConstant;
 
@@ -32,7 +32,7 @@ INCLUDE "../parser/enum.rl"
 		FOR(i ::= 0; i < parsed->Constants.size(); i++)
 		{
 			c ::= Scope::insert(&parsed->Constants[i], file);
-			Constants += [Constant \]dynamic_cast(c);
+			Constants += <<Constant \>>(c);
 		}
 	}
 }

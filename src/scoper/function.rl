@@ -29,7 +29,7 @@ INCLUDE "exprorstmt.rl"
 		FOR(i ::= 0; i < parsed->Arguments.size(); i++)
 		{
 			var ::= ArgumentScope.insert(&parsed->Arguments[i], file);
-			Arguments += [LocalVariable \]dynamic_cast(var);
+			Arguments += <<LocalVariable \>>(var);
 		}
 
 		ASSERT(parsed->Return);

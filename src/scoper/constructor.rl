@@ -56,7 +56,7 @@ INCLUDE "detail/statement.rl"
 		FOR(i ::= 0; i < parsed->Arguments.size(); i++)
 		{
 			arg ::= ArgScope.insert(&parsed->Arguments[i], file);
-			Arguments += [LocalVariable \]dynamic_cast(arg);
+			Arguments += <<LocalVariable \>>(arg);
 		}
 
 		FOR(i ::= 0; i < parsed->BaseInits.size(); i++)

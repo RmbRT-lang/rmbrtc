@@ -114,7 +114,7 @@ INCLUDE 'std/err/unimplemented'
 		{
 			IF(parsed.is_variable())
 			{
-				THIS := [LocalVariable \]dynamic_cast(
+				THIS := <<LocalVariable \>>(
 					scope->insert(parsed.variable(), file));
 				variable()->Position := (*position)++;
 			}
@@ -252,7 +252,7 @@ INCLUDE 'std/err/unimplemented'
 			Static(parsed->Static)
 		{
 			scopeItem ::= parentScope->insert(&parsed->Variable, file);
-			Variable := [LocalVariable \]dynamic_cast(scopeItem);
+			Variable := <<LocalVariable \>>(scopeItem);
 			Variable->Position := position;
 		}
 	}
@@ -346,7 +346,7 @@ INCLUDE 'std/err/unimplemented'
 			parsed: parser::CatchStatement #\,
 			file: src::File#&}:
 			ExceptionScope(try, try->ParentScope),
-			Exception([LocalVariable \]dynamic_cast(
+			Exception(<<LocalVariable \>>(
 				ExceptionScope.insert(&parsed->Exception, file))),
 			Body(:gc, Statement::create(
 				++position, parsed->Body, file, &ExceptionScope));

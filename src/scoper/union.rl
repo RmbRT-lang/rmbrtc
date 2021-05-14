@@ -17,7 +17,7 @@ INCLUDE "member.rl"
 		FOR(i ::= 0; i < parsed->Members.size(); i++)
 		{
 			member ::= Scope::insert(parsed->Members[i], file);
-			IF(var ::= [MemberVariable \]dynamic_cast(member))
+			IF(var ::= <<MemberVariable \>>(member))
 				IF(var->Attribute != MemberAttribute::static)
 					Fields += var;
 		}
