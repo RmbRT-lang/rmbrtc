@@ -149,13 +149,15 @@ INCLUDE 'std/err/unimplemented'
 	{
 		# FINAL type() ExpressionType := :cast;
 
+		Method: parser::CastExpression::Kind;
 		Type: std::[scoper::Type]Dynamic;
 		Values: Expression-std::Dynamic-std::Vector;
 
 		{
 			parsed: parser::CastExpression #\,
 			file: src::File#&
-		}:	Type(:gc, Type::create(parsed->Type, file))
+		}:	Type(:gc, Type::create(parsed->Type, file)),
+			Method(parsed->Method)
 		{
 			FOR(i ::= 0; i < parsed->Values.size(); i++)
 				Values += :gc(Expression::create(parsed->Values[i], file));

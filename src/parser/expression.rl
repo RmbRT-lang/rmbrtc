@@ -584,12 +584,23 @@ INCLUDE 'std/vector'
 	{
 		# FINAL type() ExpressionType := :cast;
 
+		ENUM Kind { static, dynamic }
+		Method: Kind;
 		Type: std::[parser::Type]Dynamic;
 		Values: Expression - std::Dynamic - std::Vector;
 
 		parse(p: Parser&) bool
 		{
-			IF(!p.consume(:less))
+			// (method, open, close, allow multiple args, expect args)
+			STATIC lookup: {Kind, tok::Type, tok::Type, bool, bool}#[](
+				(:static, :less, :greater, TRUE, FALSE),
+				(:dynamic, :doubleLess, :doubleGreater, FALSE, TRUE)
+			);
+			type: UM;
+			FOR(type := 0; type < ::size(lookup); type++)
+				IF(p.consume(lookup[type].(1)))
+					BREAK;
+			IF(type == ::size(lookup))
 				RETURN FALSE;
 
 			t: Trace(&p, "cast expression");
@@ -597,16 +608,16 @@ INCLUDE 'std/vector'
 			IF(!(Type := :gc(parser::Type::parse(p))))
 				p.fail("expected type");
 
-			p.expect(:greater);
+			p.expect(lookup[type].(2));
 			p.expect(:parentheseOpen);
-			IF(!p.consume(:parentheseClose))
+			IF(lookup[type].(4) || !p.consume(:parentheseClose))
 			{
 				DO()
 					IF(value ::= Expression::parse(p))
 						Values += :gc(value);
 					ELSE
 						p.fail("expected expression");
-					WHILE(p.consume(:comma))
+					WHILE(lookup[type].(3) && p.consume(:comma))
 
 				p.expect(:parentheseClose);
 			}
