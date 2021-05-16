@@ -104,7 +104,7 @@ INCLUDE 'std/io/format'
 
 	IF(group->Items)
 	{
-		cmp ::= &*group->Items.front();
+		cmp # ::= &*group->Items.front();
 		IF(cmp->category() != cat)
 			THROW <IncompatibleOverloadError>(cmp, entry, file, "kind mismatch");
 		IF(!entry->overloadable())
@@ -120,7 +120,14 @@ INCLUDE 'std/io/format'
 				same := type == type2;
 
 				IF(same && type == :namespace)
+				{
+					ns ::= <<parser::Namespace #\>>(entry);
+					cmpns ::= <<scoper::Namespace \>>(cmp);
+					FOR(it ::= ns->Entries.start(); it; it++)
+						cmpns->insert(*it, file);
+
 					RETURN (cmp, FALSE);
+				}
 			}
 		CASE :member:
 			{

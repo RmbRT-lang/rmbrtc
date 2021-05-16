@@ -91,7 +91,7 @@ INCLUDE 'std/streambuffer'
 	}
 }
 
-::rlc::scoper ::detail
+::rlc::scoper::detail
 {
 	(// A collection of scope items with the same name. /)
 	ScopeItemGroup
