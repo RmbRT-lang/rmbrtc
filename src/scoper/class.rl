@@ -15,8 +15,8 @@ INCLUDE "symbol.rl"
 
 		{
 			parsed: parser::Class::Inheritance #&,
-			file: src::File #&}:
-			Visibility(parsed.Visibility),
+			file: src::File #&
+		}:	Visibility(parsed.Visibility),
 			IsVirtual(parsed.IsVirtual),
 			Type(parsed.Type, file);
 	}
@@ -24,8 +24,8 @@ INCLUDE "symbol.rl"
 	{
 		parsed: parser::Class #\,
 		file: src::File #&,
-		group: detail::ScopeItemGroup \}:
-		Scope(&THIS, group->Scope),
+		group: detail::ScopeItemGroup \
+	}:	Scope(&THIS, group->Scope),
 		Virtual(parsed->Virtual)
 	{
 		FOR(i ::= 0; i < parsed->Members.size(); i++)
@@ -46,8 +46,8 @@ INCLUDE "symbol.rl"
 	{
 		parsed: parser::GlobalClass #\,
 		file: src::File #&,
-		group: detail::ScopeItemGroup \}:
-		ScopeItem(group, parsed, file),
+		group: detail::ScopeItemGroup \
+	}:	ScopeItem(group, parsed, file),
 		Class(parsed, file, group);
 }
 
@@ -58,8 +58,8 @@ INCLUDE "symbol.rl"
 	{
 		parsed: parser::MemberClass #\,
 		file: src::File #&,
-		group: detail::ScopeItemGroup \}:
-		ScopeItem(group, parsed, file),
+		group: detail::ScopeItemGroup \
+	}:	ScopeItem(group, parsed, file),
 		Member(parsed),
 		Class(parsed, file, group);
 }
