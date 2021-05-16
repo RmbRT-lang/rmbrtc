@@ -20,7 +20,7 @@ PRIVATE:
 	Files: std::[std::[File]Dynamic, Utf8Cmp]VectorSet;
 
 PUBLIC:
-	get(file: std::Utf8 #&) File *
+	get(file: std::Utf8 #&) File \
 	{
 		loc: std::[std::[File]Dynamic, Utf8Cmp]VectorSet::Location;
 		IF(entry ::= Files.find(file, &loc))

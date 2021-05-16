@@ -142,6 +142,8 @@ INCLUDE 'std/tags'
 			RETURN TRUE;
 		}
 
+		# eof() bool := BufferSize == 0;
+
 		# context() char #\
 			:= Ctx
 				? Ctx->Name

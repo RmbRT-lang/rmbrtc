@@ -27,6 +27,9 @@ INCLUDE 'std/io/stream'
 		WHILE(entry ::= Global::parse(p))
 			RootScope += :gc(&&entry);
 
+		IF(!p.eof())
+			p.fail("expected scope entry");
+
 		out.write(THIS.name().content());
 		out.write('\n');
 	}
