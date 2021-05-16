@@ -61,11 +61,14 @@ INCLUDE "exprorstmt.rl"
 {
 	# FINAL type() Member::Type := :function;
 
+	Abstractness: rlc::Abstractness;
+
 	{
 		parsed: parser::MemberFunction #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \}:
 		ScopeItem(group, parsed, file),
 		Function(parsed, file, group),
-		Member(parsed);
+		Member(parsed),
+		Abstractness(parsed->Abstractness);
 }
