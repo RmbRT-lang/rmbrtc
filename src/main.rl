@@ -6,9 +6,9 @@ main(
 	argc: int,
 	argv: char **) int
 {
-	IF(argc != 2)
+	IF(argc < 2)
 	{
-		std::io::out.print("expected 1 argument\n");
+		std::io::out.print("expected arguments\n");
 		RETURN 1;
 	}
 
@@ -19,18 +19,18 @@ main(
 
 	TRY
 	{
-		absolute ::= rlc::util::absolute_file(std::str::buf(argv[1]));
-		registry.get(std::Utf8(absolute, :cstring).content());
+		FOR(i ::= 1; i < argc; i++)
+		{
+			absolute ::= rlc::util::absolute_file(std::str::buf(argv[i]));
+			registry.get(std::Utf8(absolute, :cstring).content());
+		}
 		out.write("success\n");
 	} CATCH(e: std::Error&)
 	{
 		e.print(out);
 		printf("\n");
 	} CATCH(e: char#\)
-	{
-		out.write(e);
-		out.write("\n");
-	}
+		out.write_all(e, "\n");
 
 	RETURN 0;
 }
