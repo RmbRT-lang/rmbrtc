@@ -43,12 +43,15 @@ INCLUDE 'std/shared'
 		FOR(i ::= 0; i < parsed.Includes.size(); i++)
 		{
 			path := Text(parsed.Includes[i].Token, *Source).utf8();
-			IF(parsed.Includes[i].Type == rlc::IncludeType::relative)
-				path := relative_path(path.content());
-			ELSE IF(parsed.Includes[i].Type == rlc::IncludeType::global)
-				path := registry.find_global(path.content());
-			ELSE
-				THROW;
+			TRY SWITCH(type ::= parsed.Includes[i].Type)
+			{
+			CASE :relative: path := relative_path(path.content());
+			CASE :global: path := registry.find_global(path.content());
+			DEFAULT:
+				THROW <std::err::Unimplemented>(type.NAME());
+			}
+			CATCH(std::io::FileNotFound&)
+				THROW <IncludeNotFound>(THIS, &&path, parsed.Includes[i].Type);
 
 			IF(!Includes.find(path, &loc))
 			{
@@ -60,6 +63,27 @@ INCLUDE 'std/shared'
 					file->Includes.insert(&THIS);
 				}
 			}
+		}
+	}
+
+	IncludeNotFound -> std::Error
+	{
+		Source: std::Utf8;
+		Include: std::Utf8;
+		Type: IncludeType;
+
+		{
+			source: File #&,
+			path: std::Utf8&&,
+			type: IncludeType
+		}:	Source(source.Source->Name),
+			Include(&&path),
+			Type(type);
+
+
+		# FINAL print(o: std::io::OStream &) VOID
+		{
+			o.write_all(Source.content(), ": ", Type.NAME(), " include '", Include.content(), "' not found");
 		}
 	}
 
