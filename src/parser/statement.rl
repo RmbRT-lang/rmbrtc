@@ -328,7 +328,7 @@ INCLUDE "../util/dynunion.rl"
 			{
 				IsVoid := FALSE;
 
-				IF(!Exception.parse(p, FALSE))
+				IF(!Exception.parse_catch(p))
 					p.fail("expected variable");
 			}
 			p.expect(:parentheseClose);

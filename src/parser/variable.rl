@@ -268,5 +268,7 @@ INCLUDE "../util/dynunion.rl"
 				p.expect(:semicolon);
 			RETURN TRUE;
 		}
+
+		parse_catch(p: Parser &) bool := Variable::parse_fn_arg(p);
 	}
 }
