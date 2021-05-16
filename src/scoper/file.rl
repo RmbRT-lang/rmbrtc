@@ -8,23 +8,34 @@ INCLUDE "../util/file.rl"
 
 INCLUDE 'std/set'
 INCLUDE 'std/string'
+INCLUDE 'std/shared'
 
 ::rlc::scoper File
 {
-	Scope: scoper::Scope;
+	Scope: scoper::Scope - std::Shared;
 	Source: src::File #\;
 
 	Includes: std::[File \, File]VectorSet;
 	IncludedBy: std::[File \, File]VectorSet;
 
+	(// Creates a file with an empty scope. /)
 	{
 		parsed: parser::File #&,
-		registry: FileRegistry &}:
-		Scope(NULL, NULL),
+		registry: FileRegistry &
+	}:	File(:create(NULL, NULL), parsed, registry);
+
+	(//
+	Creates a file with a custom scope, which may or may not be used by other files already. This is used especially for unified legacy scoping.
+	/)
+	{
+		scope: scoper::Scope - std::Shared,
+		parsed: parser::File #&,
+		registry: FileRegistry &
+	}:	Scope(scope),
 		Source(&parsed.Src)
 	{
 		FOR(i ::= 0; i < parsed.RootScope.size(); i++)
-			Scope.insert(parsed.RootScope[i], *Source);
+			Scope->insert(parsed.RootScope[i], *Source);
 
 		// Resolve and load all include files.
 		loc: std::[File \, File]VectorSet::Location;

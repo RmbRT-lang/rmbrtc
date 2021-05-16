@@ -10,6 +10,7 @@ INCLUDE "detail/type.rl"
 
 INCLUDE 'std/memory'
 INCLUDE 'std/set'
+INCLUDE 'std/shared'
 
 
 ::rlc::scoper FileRegistry
@@ -18,7 +19,8 @@ INCLUDE 'std/set'
 	Loading: std::[std::[char#]Buffer, FileRegistry]VectorSet;
 	Files: std::[std::[File]Dynamic, FileRegistry]VectorSet;
 	IncludeDirs: std::[std::Utf8]Vector;
-
+	(// Set this to create one global scope for all files. /)
+	LegacyScope: Scope - std::Shared;
 
 	{}
 	{
@@ -29,15 +31,18 @@ INCLUDE 'std/set'
 	get(path: std::[char#]Buffer #&) File *
 	{
 		loc: std::[std::[File]Dynamic, FileRegistry]VectorSet::Location;
-		IF(f ::= Files.find(path, &loc))
+		IF(f ::= Files.find(path))
 			RETURN *f;
 
 		IF(!Loading.insert(path))
 			RETURN NULL;
-		f:? #& := Files.emplace_at(loc, :gc(::[File]new(*ParsedFiles.get(path), THIS)));
-		IF(!Loading.remove(path))
-			THROW;
-		RETURN f;
+		file: File \ := LegacyScope
+			? ::[File]new(LegacyScope, *ParsedFiles.get(path), THIS)
+			: ::[File]new(*ParsedFiles.get(path), THIS);
+
+		ASSERT(Files.insert(:gc(file)));
+		ASSERT(Loading.remove(path));
+		RETURN file;
 	}
 
 	find_global(path: std::[char#]Buffer #&) std::Utf8
@@ -52,10 +57,15 @@ INCLUDE 'std/set'
 		THROW;
 	}
 
+
+	STATIC cmp(
+		key: File #\,
+		entry: File #\) INLINE
+		::= key->Source->Name.cmp(entry->Source->Name);
 	STATIC cmp(
 		key: std::[char#]Buffer #&,
 		entry: File #\) INLINE
-		::= -entry->Source->Name.cmp(key);
+		::= std::str::cmp(key, entry->Source->Name.content());
 	STATIC cmp(
 		key: std::[char#]Buffer #&,
 		entry: std::[char#]Buffer #&) INLINE

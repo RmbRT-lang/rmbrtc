@@ -15,6 +15,7 @@ main(
 	out ::= std::io::OStream::FROM(&std::io::out);
 
 	registry: rlc::scoper::FileRegistry;
+	registry.LegacyScope := :create(NULL, NULL);
 
 	TRY
 	{
