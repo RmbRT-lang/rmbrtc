@@ -110,7 +110,7 @@ INCLUDE "../util/dynunion.rl"
 
 	VarOrExp
 	{
-		PRIVATE V: util::[LocalVariable, Expression]DynUnion;
+		PRIVATE V: util::[LocalVariable; Expression]DynUnion;
 
 		{};
 		{v: LocalVariable \}: V(v);

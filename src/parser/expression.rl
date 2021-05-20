@@ -628,7 +628,7 @@ INCLUDE 'std/vector'
 
 	TypeOrExpr
 	{
-		PRIVATE V: util::[Expression, Type]DynUnion;
+		PRIVATE V: util::[Expression; Type]DynUnion;
 
 		{};
 		{v: Expression \}: V(v);

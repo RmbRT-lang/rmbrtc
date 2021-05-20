@@ -6,7 +6,7 @@ INCLUDE "../src/file.rl"
 
 ::rlc::parser ExternSymbol -> Global, VIRTUAL ScopeItem
 {
-	Symbol: util::[parser::GlobalVariable, GlobalFunction]DynUnion;
+	Symbol: util::[parser::GlobalVariable; GlobalFunction]DynUnion;
 
 	# FINAL name() src::String #& := is_variable()
 		? variable()->name()

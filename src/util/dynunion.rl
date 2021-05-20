@@ -1,6 +1,6 @@
 INCLUDE 'std/help'
 
-::rlc::util [A:TYPE, B:TYPE] DynUnion
+::rlc::util [A:TYPE; B:TYPE] DynUnion
 {
 PRIVATE:
 	UNION Union
@@ -29,7 +29,7 @@ PUBLIC:
 		Ptr.Second := p;
 	}
 
-	{move: [A!,B!]DynUnion &&}:
+	{move: [A!;B!]DynUnion &&}:
 		Ptr(move.Ptr),
 		IsB(move.IsB)
 	{
@@ -63,10 +63,10 @@ PUBLIC:
 		RETURN Ptr.Second;
 	}
 
-	THIS:=(move: [A!,B!]DynUnion &&) [A!,B!]DynUnion &
+	THIS:=(move: [A!;B!]DynUnion &&) [A!;B!]DynUnion &
 		:= std::help::move_assign(THIS, move);
-	THIS:=(p: A! *) [A!,B!]DynUnion &
+	THIS:=(p: A! *) [A!;B!]DynUnion &
 		:= std::help::custom_assign(THIS, p);
-	THIS:=(p: B! *) [A!,B!]DynUnion &
+	THIS:=(p: B! *) [A!;B!]DynUnion &
 		:= std::help::custom_assign(THIS, p);
 }

@@ -11,7 +11,7 @@ INCLUDE 'std/help'
 
 ::rlc::parser ExprOrStmt
 {
-	PRIVATE V: util::[Expression, Statement]DynUnion;
+	PRIVATE V: util::[Expression; Statement]DynUnion;
 
 	{};
 	{v: Expression \}: V(v);

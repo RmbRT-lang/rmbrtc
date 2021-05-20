@@ -15,8 +15,8 @@ INCLUDE 'std/shared'
 	Scope: scoper::Scope - std::Shared;
 	Source: src::File #\;
 
-	Includes: std::[File \, File]VectorSet;
-	IncludedBy: std::[File \, File]VectorSet;
+	Includes: std::[File \; File]VectorSet;
+	IncludedBy: std::[File \; File]VectorSet;
 
 	(// Creates a file with an empty scope. /)
 	{
@@ -38,7 +38,7 @@ INCLUDE 'std/shared'
 			Scope->insert(parsed.RootScope[i], *Source);
 
 		// Resolve and load all include files.
-		loc: std::[File \, File]VectorSet::Location;
+		loc: std::[File \; File]VectorSet::Location;
 		path: std::Utf8;
 		FOR(i ::= 0; i < parsed.Includes.size(); i++)
 		{

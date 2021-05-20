@@ -168,7 +168,7 @@ INCLUDE 'std/err/unimplemented'
 	{
 		# FINAL type() ExpressionType := :sizeof;
 
-		Term: util::[Type, Expression]DynUnion;
+		Term: util::[Type; Expression]DynUnion;
 
 		{
 			parsed: parser::SizeofExpression #\,

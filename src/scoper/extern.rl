@@ -5,7 +5,7 @@ INCLUDE "../util/dynunion.rl"
 
 ::rlc::scoper ExternSymbol -> Global, VIRTUAL ScopeItem
 {
-	Symbol: util::[GlobalVariable, GlobalFunction]DynUnion;
+	Symbol: util::[GlobalVariable; GlobalFunction]DynUnion;
 
 	# FINAL type() Global::Type := :externSymbol;
 

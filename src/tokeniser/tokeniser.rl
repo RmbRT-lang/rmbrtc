@@ -291,7 +291,7 @@ INCLUDE "error.rl"
 			);
 
 			str ::= tok_str();
-			static_assert(__cpp_std::[TYPE(str), std::[char#]Buffer]is_same::value);
+			static_assert(__cpp_std::[TYPE(str); std::[char#]Buffer]is_same::value);
 			static_assert(__cpp_std::[TYPE(std::str::buf(keywords[0].(0))), std::[char#]Buffer]is_same::value);
 			FOR(i: UM := 0; i < ::size(keywords); i++)
 				IF(!std::str::cmp(

@@ -13,7 +13,7 @@ INCLUDE "../util/dynunion.rl"
 {
 	VariableType
 	{
-		PRIVATE V: util::[Type, Type::Auto]DynUnion;
+		PRIVATE V: util::[Type; Type::Auto]DynUnion;
 
 		{};
 		{t: Type \}: V(t);

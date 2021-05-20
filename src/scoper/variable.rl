@@ -10,7 +10,7 @@ INCLUDE "../util/dynunion.rl"
 
 ::rlc::scoper VariableType
 {
-	PRIVATE V: util::[Type, Type::Auto]DynUnion;
+	PRIVATE V: util::[Type; Type::Auto]DynUnion;
 	{};
 	{t: Type \}: V(t);
 	{t: Type::Auto \}: V(t);
