@@ -8,7 +8,7 @@ INCLUDE 'std/vector'
 
 ::rlc::parser
 {
-	TYPE TemplateArg := TypeOrExpr;
+	TYPE TemplateArg := TypeOrExpr - std::Vector;
 
 	// std::[T]Vector
 	Symbol
@@ -31,17 +31,24 @@ INCLUDE 'std/vector'
 						DO()
 						{
 							tArg: TemplateArg;
-							IF(p.consume(:hash))
-							{
-								IF(!(tArg := Expression::parse(p)))
-									p.fail("expected expression");
-							} ELSE
-							{
-								IF(!(tArg := Type::parse(p)))
-									p.fail("expected type");
-							}
+							IF(p.consume(:semicolon))
+								{ ; }
+							ELSE IF(p.consume(:hash))
+								DO(arg: Expression *)
+								{
+									IF(!(arg := Expression::parse(p)))
+										p.fail("expected expression");
+									tArg += arg;
+								} WHILE(p.consume(:comma))
+							ELSE
+								DO(arg: Type *)
+								{
+									IF(!(arg := Type::parse(p)))
+										p.fail("expected type");
+									tArg += arg;
+								} WHILE(p.consume(:comma))
 							Templates += &&tArg;
-						} WHILE(p.consume(:comma))
+						} WHILE(p.consume(:semicolon))
 						p.expect(:bracketClose);
 					}
 					IF(!isValue

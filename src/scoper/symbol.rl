@@ -10,7 +10,7 @@ INCLUDE 'std/vector'
 	Child
 	{
 		Name: String;
-		Templates: TypeOrExpr - std::Vector;
+		Templates: TypeOrExpr - std::Vector - std::Vector;
 
 		{
 			parsed: parser::Symbol::Child #&,
@@ -18,10 +18,15 @@ INCLUDE 'std/vector'
 			Name(file.content(parsed.Name))
 		{
 			FOR(i ::= 0; i < parsed.Templates.size(); i++)
-				IF(parsed.Templates[i].is_type())
-					Templates += Type::create(parsed.Templates[i].type(), file);
-				ELSE
-					Templates += Expression::create(parsed.Templates[i].expression(), file);
+			{
+				arg: TypeOrExpr - std::Vector;
+				FOR(it ::= parsed.Templates[i].start(); it; ++it)
+					IF(it->is_type())
+						arg += Type::create(it->type(), file);
+					ELSE
+						arg += Expression::create(it->expression(), file);
+				Templates += &&arg;
+			}
 		}
 	}
 

@@ -57,7 +57,7 @@ INCLUDE 'std/vector'
 						p.fail("expected 'TYPE', 'NUMBER', or type");
 
 					Children += &&c;
-				} WHILE(p.consume(:comma))
+				} WHILE(p.consume(:semicolon))
 
 				p.expect(:bracketClose);
 			}

@@ -171,7 +171,8 @@ INCLUDE "expression.rl"
 					next ::= Type::parse(p);
 					ASSERT(next->type() == :name);
 					
-					<TypeName \>(next)->Name.Children.back().Templates += t;
+					tplArg: TemplateArg(:emplace, t);
+					<TypeName \>(next)->Name.Children.back().Templates += &&tplArg;
 					t := next;
 				}
 				RETURN t;
