@@ -4,7 +4,7 @@ INCLUDE "types.rl"
 
 ::rlc::scoper ControlLabel
 {
-	Exists: bool;
+	Exists: BOOL;
 	Label: String;
 
 	{

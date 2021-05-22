@@ -16,9 +16,9 @@ INCLUDE 'std/memory'
 	Name: src::String;
 
 	# FINAL name() src::String#& := Name;
-	# FINAL overloadable() bool := FALSE;
+	# FINAL overloadable() BOOL := FALSE;
 
-	parse(p: Parser&) bool
+	parse(p: Parser&) BOOL
 	{
 		IF(!p.consume(:concept))
 			RETURN FALSE;
@@ -43,5 +43,5 @@ INCLUDE 'std/memory'
 {
 	# FINAL type() Global::Type := :concept;
 
-	parse(p: Parser&) bool := Concept::parse(p);
+	parse(p: Parser&) BOOL := Concept::parse(p);
 }

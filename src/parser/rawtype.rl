@@ -14,9 +14,9 @@ INCLUDE 'std/vector'
 	Name: src::String;
 
 	# FINAL name() src::String #& := Name;
-	# FINAL overloadable() bool := FALSE;
+	# FINAL overloadable() BOOL := FALSE;
 
-	parse(p: Parser &) bool
+	parse(p: Parser &) BOOL
 	{
 		IF(!p.consume(:parentheseOpen))
 			RETURN FALSE;
@@ -48,11 +48,11 @@ INCLUDE 'std/vector'
 ::rlc::parser GlobalRawtype -> Global, Rawtype
 {
 	# FINAL type() Global::Type := :rawtype;
-	parse(p: Parser &) INLINE bool := Rawtype::parse(p);
+	parse(p: Parser &) INLINE BOOL := Rawtype::parse(p);
 }
 
 ::rlc::parser MemberRawtype -> Member, Rawtype
 {
 	# FINAL type() Member::Type := :rawtype;
-	parse(p: Parser &) INLINE bool := Rawtype::parse(p);
+	parse(p: Parser &) INLINE BOOL := Rawtype::parse(p);
 }

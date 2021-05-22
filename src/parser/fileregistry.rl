@@ -13,7 +13,7 @@ PRIVATE:
 		STATIC cmp(
 			a: std::Utf8 #&,
 			b: File # \
-		) INLINE int
+		) INLINE INT
 			:= a.cmp(b->name());
 	}
 

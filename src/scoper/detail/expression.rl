@@ -94,7 +94,7 @@ INCLUDE 'std/err/unimplemented'
 	{
 		# FINAL type() ExpressionType := :bool;
 
-		Value: bool;
+		Value: BOOL;
 
 		{
 			parsed: parser::BoolExpression #\

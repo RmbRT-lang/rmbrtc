@@ -12,15 +12,15 @@ INCLUDE "error.rl"
 			Read(0),
 			Start(0);
 
-		# eof() bool := Read == File->Contents.size();
+		# eof() BOOL := Read == File->Contents.size();
 		# position(
-			line: uint \,
-			column: uint \) VOID
+			line: UINT \,
+			column: UINT \) VOID
 		{
 			File->position(Read, line, column);
 		}
 
-		parse_next(out: Token \) bool
+		parse_next(out: Token \) BOOL
 		{
 			FOR(skipws(); comment(); skipws()){;}
 
@@ -42,30 +42,30 @@ INCLUDE "error.rl"
 		Read: src::Index; // The current reading position in the file.
 		Start: src::Index; // Start of the current token.
 
-		STATIC is_idfc(c: char) bool :=
+		STATIC is_idfc(c: CHAR) BOOL :=
 			(c >='a' && c<='z')
 			|| (c >='A' && c <= 'Z')
 			|| (c == '_');
-		STATIC is_digit(c: char) bool :=
+		STATIC is_digit(c: CHAR) BOOL :=
 			(c >= '0' && c <= '9');
-		STATIC is_alnum(c: char) bool :=
+		STATIC is_alnum(c: CHAR) BOOL :=
 			is_digit(c)
 			|| is_idfc(c);
 
-		# tok_str() std::[char#]Buffer
+		# tok_str() std::[CHAR#]Buffer
 			:= File->content(
 				src::String(
 					Start,
 					Read - Start));
 
-		PUBLIC # look() char := look(0);
-		# look(ahead: uint) char
+		PUBLIC # look() CHAR := look(0);
+		# look(ahead: UINT) CHAR
 		{
 			IF(Read+ahead >= File->Contents.size())
 				RETURN 0;
 			RETURN File->Contents[Read+ahead];
 		}
-		getc() char
+		getc() CHAR
 		{
 			IF(Read == File->Contents.size())
 				RETURN 0;
@@ -74,7 +74,7 @@ INCLUDE "error.rl"
 
 		skipws() VOID
 		{
-			c: char;
+			c: CHAR;
 			WHILE(c := look())
 			{
 				IF(c == ' '
@@ -87,7 +87,7 @@ INCLUDE "error.rl"
 			}
 		}
 
-		eatString(str: char#\) bool {
+		eatString(str: CHAR#\) BOOL {
 			buf# ::= std::str::buf(str);
 			FOR(i ::= 0; i < buf.Size; i++)
 				IF(look(i) != buf.Data[i])
@@ -98,8 +98,8 @@ INCLUDE "error.rl"
 
 		# error() VOID
 		{
-			line: uint;
-			column: uint;
+			line: UINT;
+			column: UINT;
 			position(&line, &column);
 
 			IF(eof())
@@ -115,7 +115,7 @@ INCLUDE "error.rl"
 					look());
 		}
 
-		comment() bool
+		comment() BOOL
 		{
 			IF(eatString("//"))
 			{
@@ -137,9 +137,9 @@ INCLUDE "error.rl"
 			RETURN FALSE;
 		}
 
-		special(out: Token \) bool
+		special(out: Token \) BOOL
 		{
-			STATIC specials: {char#\, Type}#[](
+			STATIC specials: {CHAR#\, Type}#[](
 				("+=", :plusEqual),
 				("++", :doublePlus),
 				("+", :plus),
@@ -236,14 +236,14 @@ INCLUDE "error.rl"
 			RETURN FALSE;
 		}
 
-		identifier(out: Token \) bool
+		identifier(out: Token \) BOOL
 		{
 			IF(!is_idfc(look()))
 				RETURN FALSE;
 			++Read;
 			WHILE(is_alnum(look())) ++Read;
 
-			STATIC keywords: {char#\, Type}#[](
+			STATIC keywords: {CHAR#\, Type}#[](
 				("ABSTRACT", :abstract),
 				("ASSERT", :assert),
 				("BOOL", :bool),
@@ -275,6 +275,7 @@ INCLUDE "error.rl"
 				("PUBLIC", :public),
 				("RETURN", :return),
 				("SIZEOF", :sizeof),
+				("SM", :sm),
 				("STATIC", :static),
 				("SWITCH", :switch),
 				("TEST", :test),
@@ -284,6 +285,7 @@ INCLUDE "error.rl"
 				("TRY", :try),
 				("TYPE", :type),
 				("UINT", :uint),
+				("UM", :um),
 				("UNION", :union),
 				("VIRTUAL", :virtual),
 				("VOID", :void),
@@ -291,8 +293,8 @@ INCLUDE "error.rl"
 			);
 
 			str ::= tok_str();
-			static_assert(__cpp_std::[TYPE(str); std::[char#]Buffer]is_same::value);
-			static_assert(__cpp_std::[TYPE(std::str::buf(keywords[0].(0))), std::[char#]Buffer]is_same::value);
+			static_assert(__cpp_std::[TYPE(str); std::[CHAR#]Buffer]is_same::value);
+			static_assert(__cpp_std::[TYPE(std::str::buf(keywords[0].(0))), std::[CHAR#]Buffer]is_same::value);
 			FOR(i: UM := 0; i < ::size(keywords); i++)
 				IF(!std::str::cmp(
 					str,
@@ -305,7 +307,7 @@ INCLUDE "error.rl"
 			RETURN TRUE;
 		}
 
-		number_literal(out: Token \) bool
+		number_literal(out: Token \) BOOL
 		{
 			IF(eatString("0x")
 			|| eatString("0X"))
@@ -335,7 +337,7 @@ INCLUDE "error.rl"
 			RETURN TRUE;
 		}
 
-		string(out: Token \) bool
+		string(out: Token \) BOOL
 		{
 			IF(eatString("´"))
 			{
@@ -357,7 +359,7 @@ INCLUDE "error.rl"
 				RETURN FALSE;
 
 			++Read;
-			c: char;
+			c: CHAR;
 			WHILE((c := getc()) != delim)
 			{
 				IF(!c) error();

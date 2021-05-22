@@ -109,7 +109,7 @@ INCLUDE 'std/streambuffer'
 
 		STATIC cmp(
 			lhs: String #&,
-			rhs: ScopeItemGroup # \) INLINE int :=
+			rhs: ScopeItemGroup # \) INLINE INT :=
 			std::str::cmp(lhs, rhs->Name);
 	}
 

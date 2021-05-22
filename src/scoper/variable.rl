@@ -15,12 +15,12 @@ INCLUDE "../util/dynunion.rl"
 	{t: Type \}: V(t);
 	{t: Type::Auto \}: V(t);
 
-	# is_type() INLINE bool := V.is_first();
+	# is_type() INLINE BOOL := V.is_first();
 	# type() INLINE Type \ := V.first();
-	# is_auto() INLINE bool := V.is_second();
+	# is_auto() INLINE BOOL := V.is_second();
 	# auto() Type::Auto \ := V.second();
 
-	# <bool> INLINE := V;
+	# <BOOL> INLINE := V;
 
 	[T:TYPE] THIS:=(v: T!&&) VariableType &
 		:= std::help::custom_assign(THIS, <T!&&>(v));
@@ -29,7 +29,7 @@ INCLUDE "../util/dynunion.rl"
 ::rlc::scoper Variable -> VIRTUAL ScopeItem
 {
 	Type: VariableType;
-	HasInitialiser: bool;
+	HasInitialiser: BOOL;
 	InitValues: std::[std::[Expression]Dynamic]Vector;
 
 	{

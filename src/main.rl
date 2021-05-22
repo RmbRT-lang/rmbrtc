@@ -3,8 +3,8 @@ INCLUDE "util/file.rl"
 INCLUDE 'std/io/file'
 
 main(
-	argc: int,
-	argv: char **) int
+	argc: INT,
+	argv: CHAR **) INT
 {
 	IF(argc < 2)
 	{
@@ -29,7 +29,7 @@ main(
 	{
 		e.print(out);
 		printf("\n");
-	} CATCH(e: char#\)
+	} CATCH(e: CHAR#\)
 		out.write_all(e, "\n");
 
 	RETURN 0;

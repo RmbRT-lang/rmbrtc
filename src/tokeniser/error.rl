@@ -5,13 +5,13 @@ INCLUDE 'std/string'
 ::rlc::tok Error -> std::Error
 {
 	File: std::Utf8;
-	Line: uint;
-	Column: uint;
+	Line: UINT;
+	Column: UINT;
 
 	{
 		File: src::File #\,
-		Line: uint,
-		Column: uint}:
+		Line: UINT,
+		Column: UINT}:
 		File(File->Name),
 		Line(Line),
 		Column(Column);
@@ -36,12 +36,12 @@ INCLUDE 'std/string'
 
 ::rlc::tok UnexpectedChar -> Error
 {
-	Char: char;
+	Char: CHAR;
 	{
 		File: src::File #\,
-		Line: uint,
-		Column: uint,
-		Char: char}:
+		Line: UINT,
+		Column: UINT,
+		Char: CHAR}:
 		Error(File, Line, Column),
 		Char(Char);
 
@@ -64,8 +64,8 @@ INCLUDE 'std/string'
 {
 	{
 		File: src::File #\,
-		Line: uint,
-		Column: uint}:
+		Line: UINT,
+		Column: UINT}:
 		Error(File, Line, Column);
 
 	# OVERRIDE reason(

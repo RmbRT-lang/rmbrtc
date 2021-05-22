@@ -10,7 +10,7 @@ INCLUDE "symbol.rl"
 	Inheritance
 	{
 		Visibility: rlc::Visibility;
-		IsVirtual: bool;
+		IsVirtual: BOOL;
 		Type: Symbol;
 
 		{
@@ -35,7 +35,7 @@ INCLUDE "symbol.rl"
 			Inheritances += (parsed->Inheritances[i], file);
 	}
 
-	Virtual: bool;
+	Virtual: BOOL;
 	Inheritances: std::[Inheritance]Vector;
 }
 

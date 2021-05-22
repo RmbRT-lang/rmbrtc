@@ -19,12 +19,12 @@ INCLUDE "../util/dynunion.rl"
 		{t: Type \}: V(t);
 		{t: Type::Auto \}: V(t);
 
-		# is_type() INLINE bool := V.is_first();
+		# is_type() INLINE BOOL := V.is_first();
 		# type() INLINE Type \ := V.first();
-		# is_auto() INLINE bool := V.is_second();
+		# is_auto() INLINE BOOL := V.is_second();
 		# auto() INLINE Type::Auto \ := V.second();
 
-		# <bool!> INLINE := V;
+		# <BOOL> INLINE := V;
 
 		[T:TYPE] THIS:=(v: T!&&) VariableType &
 			:= std::help::custom_assign(THIS, <T!&&>(v));
@@ -34,32 +34,38 @@ INCLUDE "../util/dynunion.rl"
 	{
 		Name: src::String;
 		Type: VariableType;
-		HasInitialiser: bool;
+		HasInitialiser: BOOL;
 		InitValues: std::[std::[Expression]Dynamic]Vector;
 
 		# FINAL name() src::String#& := Name;
-		# FINAL overloadable() bool := !Name.exists();
+		# FINAL overloadable() BOOL := !Name.exists();
 
-		parse_fn_arg(p: Parser&) bool
+		parse_fn_arg(p: Parser&) BOOL
 			:= parse(p, FALSE, FALSE, FALSE);
-		parse_var_decl(p: Parser &) bool
+		parse_var_decl(p: Parser &) BOOL
 			:= parse(p, TRUE, TRUE, FALSE);
-		parse_extern(p: Parser&) bool
+		parse_extern(p: Parser&) BOOL
 			:= parse(p, TRUE, FALSE, FALSE);
 
 		parse(p: Parser&,
-			needs_name: bool,
-			allow_initialiser: bool,
-			force_initialiser: bool) bool
+			needs_name: BOOL,
+			allow_initialiser: BOOL,
+			force_initialiser: BOOL) BOOL
 		{
 			STATIC k_needed_without_name: tok::Type#[](
 				:bracketOpen,
 				:braceOpen,
 				:doubleColon,
 				:colon,
-				:void);
+				:void,
+				:bool,
+				:char,
+				:int,
+				:uint,
+				:sm,
+				:um);
 
-			STATIC k_needed_after_name: {tok::Type, bool}#[](
+			STATIC k_needed_after_name: {tok::Type, BOOL}#[](
 				(:colon, TRUE),
 				(:colonEqual, TRUE),
 				(:doubleColonEqual, TRUE),
@@ -216,7 +222,7 @@ INCLUDE "../util/dynunion.rl"
 	GlobalVariable -> Global, Variable
 	{
 		# FINAL type() Global::Type := :variable;
-		parse(p: Parser&) bool
+		parse(p: Parser&) BOOL
 		{
 			IF(!parse_var_decl(p))
 				RETURN FALSE;
@@ -224,7 +230,7 @@ INCLUDE "../util/dynunion.rl"
 			RETURN TRUE;
 		}
 
-		parse_extern(p: Parser&) bool
+		parse_extern(p: Parser&) BOOL
 		{
 			IF(!Variable::parse_extern(p))
 				RETURN FALSE;
@@ -236,7 +242,7 @@ INCLUDE "../util/dynunion.rl"
 	MemberVariable -> Member, Variable
 	{
 		# FINAL type() Member::Type := :variable;
-		parse(p: Parser&, static: bool) bool
+		parse(p: Parser&, static: BOOL) BOOL
 		{
 			IF(static)
 			{
@@ -260,7 +266,7 @@ INCLUDE "../util/dynunion.rl"
 
 	LocalVariable -> Local, Variable
 	{
-		parse(p: Parser &, expect_semicolon: bool) bool
+		parse(p: Parser &, expect_semicolon: BOOL) BOOL
 		{
 			IF(!Variable::parse_var_decl(p))
 				RETURN FALSE;
@@ -269,6 +275,6 @@ INCLUDE "../util/dynunion.rl"
 			RETURN TRUE;
 		}
 
-		parse_catch(p: Parser &) bool := Variable::parse_fn_arg(p);
+		parse_catch(p: Parser &) BOOL := Variable::parse_fn_arg(p);
 	}
 }

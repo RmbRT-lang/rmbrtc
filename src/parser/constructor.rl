@@ -25,13 +25,13 @@ INCLUDE 'std/memory'
 	BaseInits: std::[BaseInit]Vector;
 	MemberInits: std::[MemberInit]Vector;
 	Body: std::[BlockStatement]Dynamic;
-	Inline: bool;
+	Inline: BOOL;
 
 	# FINAL type() Member::Type := :constructor;
 	# FINAL name() src::String#& := Name;
-	# FINAL overloadable() bool := TRUE;
+	# FINAL overloadable() BOOL := TRUE;
 
-	parse(p: Parser&) bool
+	parse(p: Parser&) BOOL
 	{
 		IF(!p.consume(:braceOpen, &Name))
 			RETURN FALSE;

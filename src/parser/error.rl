@@ -5,20 +5,20 @@ INCLUDE 'std/io/format'
 ::rlc::parser Error -> std::Error
 {
 	File: std::Utf8;
-	Line: uint;
-	Column: uint;
+	Line: UINT;
+	Column: UINT;
 	Tokens: tok::Token[2];
-	TokenContent: std::[char]Buffer[2];
-	TokenCount: uint;
+	TokenContent: std::[CHAR]Buffer[2];
+	TokenCount: UINT;
 	Context: std::Utf8;
 
 	{
 		file: src::File #\,
-		line: uint,
-		column: uint,
+		line: UINT,
+		column: UINT,
 		tokens: tok::Token#[2]&,
-		tokenIndex: uint,
-		tokenCount: uint,
+		tokenIndex: UINT,
+		tokenCount: UINT,
 		p: Parser#&}:
 		File(std::Utf8(file->Name)),
 		Line(line),
@@ -74,13 +74,13 @@ INCLUDE 'std/io/format'
 
 	{
 		file: src::File #\,
-		line: uint,
-		column: uint,
+		line: UINT,
+		column: UINT,
 		tokens: tok::Token#[2]&,
-		tokenIndex: uint,
-		tokenCount: uint,
+		tokenIndex: UINT,
+		tokenCount: UINT,
 		p: Parser#&,
-		reason: char #\}:
+		reason: CHAR #\}:
 		Error(file, line, column, tokens, tokenIndex, tokenCount, p),
 		Reason(reason, :cstring);
 
@@ -95,11 +95,11 @@ INCLUDE 'std/io/format'
 
 	{
 		file: src::File #\,
-		line: uint,
-		column: uint,
+		line: UINT,
+		column: UINT,
 		tokens: tok::Token#[2]&,
-		tokenIndex: uint,
-		tokenCount: uint,
+		tokenIndex: UINT,
+		tokenCount: UINT,
 		p: Parser#&,
 		expected: tok::Type}:
 		Error(file, line, column, tokens, tokenIndex, tokenCount, p),
@@ -112,5 +112,3 @@ INCLUDE 'std/io/format'
 		o.write(Expected.NAME());
 	}
 }
-
-::libc::itoa EXTERN sprintf(char \, char #\, int) int;

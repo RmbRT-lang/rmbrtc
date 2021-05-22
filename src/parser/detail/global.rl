@@ -31,7 +31,7 @@ INCLUDE "../test.rl"
 		RETURN ret;
 	}
 
-	[T: TYPE] parse_global_impl(p: Parser &, ret: Global * &) bool
+	[T: TYPE] parse_global_impl(p: Parser &, ret: Global * &) BOOL
 	{
 		v: T;
 		IF(v.parse(p))

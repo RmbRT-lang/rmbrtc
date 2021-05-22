@@ -113,7 +113,7 @@ INCLUDE 'std/vector'
 			:= OperatorExpression::parse(p);
 
 		[T:TYPE]
-		PRIVATE STATIC parse_impl(p: Parser &, ret: Expression * &) bool
+		PRIVATE STATIC parse_impl(p: Parser &, ret: Expression * &) BOOL
 		{
 			v: T;
 			IF(v.parse(p))
@@ -131,7 +131,7 @@ INCLUDE 'std/vector'
 
 		Symbol: src::String;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:colon))
 				RETURN FALSE;
@@ -146,16 +146,16 @@ INCLUDE 'std/vector'
 
 		Number: src::String;
 
-		parse(p: Parser &) bool := p.consume(:numberLiteral, &Number);
+		parse(p: Parser &) BOOL := p.consume(:numberLiteral, &Number);
 	}
 
 	BoolExpression -> Expression
 	{
 		# FINAL type() ExpressionType := :bool;
 
-		Value: bool;
+		Value: BOOL;
 
-		parse(p: Parser&) bool
+		parse(p: Parser&) BOOL
 		{
 			IF(p.consume(:true))
 			{
@@ -175,7 +175,7 @@ INCLUDE 'std/vector'
 
 		Char: src::String;
 
-		parse(p: Parser &) bool := p.consume(:stringApostrophe, &Char);
+		parse(p: Parser &) BOOL := p.consume(:stringApostrophe, &Char);
 	}
 
 	StringExpression -> Expression
@@ -184,7 +184,7 @@ INCLUDE 'std/vector'
 
 		String: src::String;
 
-		parse(p: Parser &) bool := p.consume(:stringQuote, &String);
+		parse(p: Parser &) BOOL := p.consume(:stringQuote, &String);
 	}
 
 	::detail
@@ -193,48 +193,48 @@ INCLUDE 'std/vector'
 		{
 			[N: NUMBER]
 			{
-				table: {tok::Type, Operator, bool}#[N] &,
-				leftAssoc: bool
+				table: {tok::Type, Operator, BOOL}#[N] &,
+				leftAssoc: BOOL
 			}:
 				Table(table),
 				Size(N),
 				LeftAssoc(leftAssoc);
 
-			Table: {tok::Type, Operator, bool}# \;
+			Table: {tok::Type, Operator, BOOL}# \;
 			Size: UM;
-			LeftAssoc: bool;
+			LeftAssoc: BOOL;
 		}
 
-		k_bind: {tok::Type, Operator, bool}#[](
+		k_bind: {tok::Type, Operator, BOOL}#[](
 			// bind operators.
 			(:dotAsterisk, :bindReference, FALSE),
 			(:minusGreaterAsterisk, :bindPointer, FALSE));
 
-		k_mul: {tok::Type, Operator, bool}#[](
+		k_mul: {tok::Type, Operator, BOOL}#[](
 			// multiplicative operators.
 			(:percent, :mod, TRUE),
 			(:forwardSlash, :div, TRUE),
 			(:asterisk, :mul, TRUE));
 
-		k_add: {tok::Type, Operator, bool}#[](
+		k_add: {tok::Type, Operator, BOOL}#[](
 			// additive operators.
 			(:minus, :sub, TRUE),
 			(:plus, :add, TRUE));
 
-		k_shift: {tok::Type, Operator, bool}#[](
+		k_shift: {tok::Type, Operator, BOOL}#[](
 			// bit shift operators.
 			(:doubleLess, :shiftLeft, TRUE),
 			(:doubleGreater, :shiftRight, TRUE),
 			(:tripleLess, :rotateLeft, TRUE),
 			(:tripleGreater, :rotateRight, TRUE));
 
-		k_bit: {tok::Type, Operator, bool}#[](
+		k_bit: {tok::Type, Operator, BOOL}#[](
 			// bit arithmetic operators.
 			(:and, :bitAnd, TRUE),
 			(:circumflex, :bitXor, TRUE),
 			(:pipe, :bitOr, TRUE));
 
-		k_cmp: {tok::Type, Operator, bool}#[](
+		k_cmp: {tok::Type, Operator, BOOL}#[](
 			// numeric comparisons.
 			(:less, :less, FALSE),
 			(:lessEqual, :lessEquals, FALSE),
@@ -244,16 +244,16 @@ INCLUDE 'std/vector'
 			(:exclamationMarkEqual, :notEquals, FALSE),
 			(:lessGreater, :cmp, TRUE));
 
-		k_log_and: {tok::Type, Operator, bool}#[](
+		k_log_and: {tok::Type, Operator, BOOL}#[](
 			// boolean arithmetic.
 			(:doubleAnd, :logAnd, TRUE),
 			(:doubleAnd, :logAnd, TRUE));
 
-		k_log_or: {tok::Type, Operator, bool}#[](
+		k_log_or: {tok::Type, Operator, BOOL}#[](
 			(:doublePipe, :logOr, TRUE),
 			(:doublePipe, :logOr, TRUE));
 
-		k_assign: {tok::Type, Operator, bool}#[](
+		k_assign: {tok::Type, Operator, BOOL}#[](
 			// assignments.
 			(:colonEqual, :assign, TRUE),
 			(:plusEqual, :addAssign, TRUE),
@@ -284,7 +284,7 @@ INCLUDE 'std/vector'
 
 		precedenceGroups: UM# := ::size(k_groups);
 
-		k_prefix_ops: {tok::Type, Operator, bool}#[](
+		k_prefix_ops: {tok::Type, Operator, BOOL}#[](
 				(:minus, :neg, TRUE),
 				(:plus, :pos, TRUE),
 				(:doublePlus, :preIncrement, TRUE),
@@ -298,7 +298,7 @@ INCLUDE 'std/vector'
 				(:asterisk, :dereference, TRUE),
 				(:lessMinus, :await, TRUE));
 
-		consume_overloadable_binary_operator(p: Parser &, op: Operator &) bool
+		consume_overloadable_binary_operator(p: Parser &, op: Operator &) BOOL
 		{
 			FOR(i ::= 0; i < ::size(k_groups); i++)
 				FOR(j ::= 0; j < k_groups[i].Size; j++)
@@ -311,7 +311,7 @@ INCLUDE 'std/vector'
 			RETURN FALSE;
 		}
 
-		consume_overloadable_prefix_operator(p: Parser &, op: Operator &) bool
+		consume_overloadable_prefix_operator(p: Parser &, op: Operator &) BOOL
 		{
 			FOR(i ::= 0; i < ::size(k_prefix_ops); i++)
 				IF(k_prefix_ops[i].(2))
@@ -323,7 +323,7 @@ INCLUDE 'std/vector'
 			RETURN FALSE;
 		}
 
-		consume_overloadable_postfix_operator(p: Parser &, op: Operator &) bool
+		consume_overloadable_postfix_operator(p: Parser &, op: Operator &) BOOL
 		{
 			STATIC k_postfix_ops: {tok::Type, Operator}#[](
 				(:doublePlus, :postIncrement),
@@ -352,7 +352,7 @@ INCLUDE 'std/vector'
 		STATIC parse_binary_rhs(
 			p: Parser&,
 			lhs: Expression *,
-			level: uint) Expression *
+			level: UINT) Expression *
 		{
 			IF(level == 0)
 				RETURN lhs;
@@ -395,7 +395,7 @@ INCLUDE 'std/vector'
 
 		STATIC parse_binary(
 			p: Parser&,
-			level: uint) Expression *
+			level: UINT) Expression *
 		{
 			lhs ::= level
 				? parse_binary(p, level-1)
@@ -577,7 +577,7 @@ INCLUDE 'std/vector'
 	{
 		# FINAL type() ExpressionType := :this;
 
-		parse(p: Parser&) bool := p.consume(:this);
+		parse(p: Parser&) BOOL := p.consume(:this);
 	}
 
 	CastExpression -> Expression
@@ -589,10 +589,10 @@ INCLUDE 'std/vector'
 		Type: std::[parser::Type]Dynamic;
 		Values: Expression - std::Dynamic - std::Vector;
 
-		parse(p: Parser&) bool
+		parse(p: Parser&) BOOL
 		{
 			// (method, open, close, allow multiple args, expect args)
-			STATIC lookup: {Kind, tok::Type, tok::Type, bool, bool}#[](
+			STATIC lookup: {Kind, tok::Type, tok::Type, BOOL, BOOL}#[](
 				(:static, :less, :greater, TRUE, FALSE),
 				(:dynamic, :doubleLess, :doubleGreater, FALSE, TRUE)
 			);
@@ -635,13 +635,13 @@ INCLUDE 'std/vector'
 		{v: Type \}: V(v);
 		{v: TypeOrExpr &&}: V(&&v.V);
 		
-		# is_type() INLINE bool := V.is_second();
+		# is_type() INLINE BOOL := V.is_second();
 		# type() Type \ := V.second();
-		# is_expression() INLINE bool := V.is_first();
+		# is_expression() INLINE BOOL := V.is_first();
 		# expression() INLINE Expression \ := V.first();
 
-		# <bool> INLINE := V;
-		# !THIS INLINE bool := !V;
+		# <BOOL> INLINE := V;
+		# !THIS INLINE BOOL := !V;
 
 		[T:TYPE] THIS:=(v: T! &&) TypeOrExpr &
 			:= std::help::custom_assign(THIS, <T!&&>(v));
@@ -653,10 +653,10 @@ INCLUDE 'std/vector'
 
 		Term: TypeOrExpr;
 
-		# is_expression() INLINE bool := Term.is_expression();
-		# is_type() INLINE bool := Term.is_type();
+		# is_expression() INLINE BOOL := Term.is_expression();
+		# is_type() INLINE BOOL := Term.is_type();
 
-		parse(p: Parser&) bool
+		parse(p: Parser&) BOOL
 		{
 			IF(!p.consume(:sizeof))
 				RETURN FALSE;

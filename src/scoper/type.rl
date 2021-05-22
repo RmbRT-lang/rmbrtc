@@ -15,10 +15,10 @@ INCLUDE "symbol.rl"
 		TYPE Indirection := parser::Type::Indirection;
 		Qualifier
 		{
-			Const: bool;
-			Volatile: bool;
+			Const: BOOL;
+			Volatile: BOOL;
 			{}: Const(FALSE), Volatile(FALSE);
-			{c: bool, v: bool}: Const(c), Volatile(v);
+			{c: BOOL, v: BOOL}: Const(c), Volatile(v);
 			{
 				cpy: parser::Type::Qualifier#&
 			}:	Const(cpy.Const),
@@ -29,7 +29,7 @@ INCLUDE "symbol.rl"
 		{
 			Indirection: Type::Indirection;
 			Qualifier: Type::Qualifier;
-			IsArray: bool;
+			IsArray: BOOL;
 			ArraySize: std::[std::[Expression]Dynamic]Vector;
 
 			{
@@ -58,7 +58,7 @@ INCLUDE "symbol.rl"
 
 		Modifiers: std::[Modifier]Vector;
 		Reference: Type::ReferenceType;
-		Variadic: bool;
+		Variadic: BOOL;
 
 		PROTECTED {
 			parsed: parser::Type #\,

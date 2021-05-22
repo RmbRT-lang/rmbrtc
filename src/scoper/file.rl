@@ -95,7 +95,7 @@ INCLUDE 'std/shared'
 
 	STATIC cmp(a: std::Utf8 #&, b: File \) INLINE
 		::= a.cmp(b->Source->Name);
-	STATIC cmp(a: std::[char#]Buffer #&, b: File \) INLINE
+	STATIC cmp(a: std::[CHAR#]Buffer #&, b: File \) INLINE
 		::= std::str::cmp(a, b->Source->Name.content());
 	STATIC cmp(a: File \, b: File \) INLINE
 		::= a->Source->Name.cmp(b->Source->Name);

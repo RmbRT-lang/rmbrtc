@@ -31,7 +31,7 @@ INCLUDE 'std/io/file'
 		{name: std::Utf8}: Name(name, :cstring)
 		{
 			f: std::io::File(Name.data(), "r");
-			buf: char[1024];
+			buf: CHAR[1024];
 			WHILE(!f.eof())
 			{
 				read ::= f.read(buf, SIZEOF(#buf));
@@ -39,13 +39,13 @@ INCLUDE 'std/io/file'
 			}
 		}
 
-		# content(str: String #&) std::[char#]Buffer
+		# content(str: String #&) std::[CHAR#]Buffer
 			:= Contents.substring(str.Start, str.Length);
 
 		# position(
 			index: Index,
-			line: uint \,
-			column: uint \) VOID
+			line: UINT \,
+			column: UINT \) VOID
 		{
 			*line := 1;
 			lineStart ::= 0;

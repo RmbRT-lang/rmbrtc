@@ -26,12 +26,12 @@ INCLUDE 'std/vector'
 			Type: TemplateDeclType;
 			TypeName: std::[parser::Type]Dynamic;
 			Name: src::String;
-			Variadic: bool;
+			Variadic: BOOL;
 		}
 		Children: std::[Child]Vector;
 
 		parse(
-			p: Parser &) bool
+			p: Parser &) BOOL
 		{
 			IF(!p.consume(:bracketOpen))
 				RETURN FALSE;
@@ -65,6 +65,6 @@ INCLUDE 'std/vector'
 			RETURN TRUE;
 		}
 
-		# exists() bool := Children.size() != 0;
+		# exists() BOOL := Children.size() != 0;
 	}
 }

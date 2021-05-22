@@ -7,7 +7,7 @@ INCLUDE "../tokeniser/token.rl"
 	{}:
 		Exists(FALSE);
 
-	Exists: bool;
+	Exists: BOOL;
 	(// Identifier or string. /)
 	Name: tok::Token;
 

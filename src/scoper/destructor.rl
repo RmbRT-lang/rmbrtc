@@ -3,7 +3,7 @@ INCLUDE "../parser/destructor.rl"
 ::rlc::scoper Destructor -> Member, VIRTUAL ScopeItem
 {
 	Body: BlockStatement;
-	Inline: bool;
+	Inline: BOOL;
 
 	# FINAL type() Member::Type := :destructor;
 

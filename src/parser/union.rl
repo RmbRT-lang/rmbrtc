@@ -8,9 +8,9 @@ INCLUDE "member.rl"
 	Members: std::[std::[Member]Dynamic]Vector;
 
 	# FINAL name() src::String #& := Name;
-	# FINAL overloadable() bool := FALSE;
+	# FINAL overloadable() BOOL := FALSE;
 
-	parse(p: Parser &) bool
+	parse(p: Parser &) BOOL
 	{
 		IF(!p.consume(:union))
 			RETURN FALSE;
@@ -33,11 +33,11 @@ INCLUDE "member.rl"
 {
 	# FINAL type() Global::Type := :union;
 
-	parse(p: Parser &) INLINE bool := Union::parse(p);
+	parse(p: Parser &) INLINE BOOL := Union::parse(p);
 }
 
 ::rlc::parser MemberUnion -> Member, Union
 {
 	# FINAL type() Member::Type := :union;
-	parse(p: Parser &) INLINE bool := Union::parse(p);
+	parse(p: Parser &) INLINE BOOL := Union::parse(p);
 }

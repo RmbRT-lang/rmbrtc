@@ -34,7 +34,7 @@ INCLUDE "../util/dynunion.rl"
 		{Statement &&};
 
 		[T: TYPE]
-		PRIVATE STATIC parse_impl(p: Parser &, out: Statement * &) bool
+		PRIVATE STATIC parse_impl(p: Parser &, out: Statement * &) BOOL
 		{
 			v: T;
 			IF(v.parse(p))
@@ -92,7 +92,7 @@ INCLUDE "../util/dynunion.rl"
 
 		# FINAL type() StatementType := StatementType::assert;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:assert))
 				RETURN FALSE;
@@ -116,11 +116,11 @@ INCLUDE "../util/dynunion.rl"
 		{v: LocalVariable \}: V(v);
 		{v: Expression \}: V(v);
 
-		# is_variable() INLINE bool := V.is_first();
+		# is_variable() INLINE BOOL := V.is_first();
 		# variable() INLINE LocalVariable \ := V.first();
-		# is_expression() INLINE bool := V.is_second();
+		# is_expression() INLINE BOOL := V.is_second();
 		# expression() INLINE Expression \ := V.second();
-		# <bool> INLINE := V;
+		# <BOOL> INLINE := V;
 
 		[T:TYPE] THIS:=(v: T! &&) VarOrExp &
 			:= std::help::custom_assign(THIS, <T!&&>(v));
@@ -131,7 +131,7 @@ INCLUDE "../util/dynunion.rl"
 				p.fail("expected variable or expression");
 		}
 
-		parse_opt(p: Parser &) bool
+		parse_opt(p: Parser &) BOOL
 		{
 			v: std::[LocalVariable]Dynamic := :gc([LocalVariable]new());
 			IF(v->parse_var_decl(p))
@@ -149,7 +149,7 @@ INCLUDE "../util/dynunion.rl"
 
 		# FINAL type() StatementType := StatementType::block;
 
-		parse(p: Parser&) bool
+		parse(p: Parser&) BOOL
 		{
 			IF(!p.consume(:braceOpen))
 				RETURN FALSE;
@@ -184,7 +184,7 @@ INCLUDE "../util/dynunion.rl"
 
 		# FINAL type() StatementType := StatementType::if;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:if))
 				RETURN FALSE;
@@ -222,11 +222,11 @@ INCLUDE "../util/dynunion.rl"
 	VariableStatement -> Statement
 	{
 		Variable: LocalVariable;
-		Static: bool;
+		Static: BOOL;
 
 		# FINAL type() StatementType := StatementType::variable;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			Static := p.consume(:static);
 			IF(Variable.parse(p, TRUE))
@@ -243,7 +243,7 @@ INCLUDE "../util/dynunion.rl"
 
 		# FINAL type() StatementType := StatementType::expression;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(!(Expression := :gc(parser::Expression::parse(p))))
 				RETURN FALSE;
@@ -259,9 +259,9 @@ INCLUDE "../util/dynunion.rl"
 
 		# FINAL type() StatementType := StatementType::return;
 
-		# is_void() INLINE bool := !Expression;
+		# is_void() INLINE BOOL := !Expression;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:return))
 				RETURN FALSE;
@@ -282,9 +282,9 @@ INCLUDE "../util/dynunion.rl"
 
 		# FINAL type() StatementType := StatementType::try;
 
-		# has_finally() INLINE bool := Finally;
+		# has_finally() INLINE BOOL := Finally;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:try))
 				RETURN FALSE;
@@ -307,11 +307,11 @@ INCLUDE "../util/dynunion.rl"
 
 	CatchStatement
 	{
-		IsVoid: bool;
+		IsVoid: BOOL;
 		Exception: LocalVariable;
 		Body: std::[Statement]Dynamic;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:catch))
 				RETURN FALSE;
@@ -354,7 +354,7 @@ INCLUDE "../util/dynunion.rl"
 
 		# FINAL type() StatementType := StatementType::throw;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:throw))
 				RETURN FALSE;
@@ -377,7 +377,7 @@ INCLUDE "../util/dynunion.rl"
 
 	LoopStatement -> Statement
 	{
-		IsPostCondition: bool;
+		IsPostCondition: BOOL;
 		Initial: VarOrExp;
 		Condition: VarOrExp;
 		Body: std::[Statement]Dynamic;
@@ -386,7 +386,7 @@ INCLUDE "../util/dynunion.rl"
 
 		# FINAL type() StatementType := StatementType::loop;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(!p.match(:do)
 			&& !p.match(:for)
@@ -416,7 +416,7 @@ INCLUDE "../util/dynunion.rl"
 				p.fail("expected loop head");
 		}
 
-		parse_do_head(p: Parser &) bool
+		parse_do_head(p: Parser &) BOOL
 		{
 			IF(!p.consume(:do))
 				RETURN FALSE;
@@ -431,7 +431,7 @@ INCLUDE "../util/dynunion.rl"
 			RETURN TRUE;
 		}
 
-		parse_for_head(p: Parser &) bool
+		parse_for_head(p: Parser &) BOOL
 		{
 			IF(!p.consume(:for))
 				RETURN FALSE;
@@ -458,7 +458,7 @@ INCLUDE "../util/dynunion.rl"
 			RETURN TRUE;
 		}
 
-		parse_while_head(p: Parser &) bool
+		parse_while_head(p: Parser &) BOOL
 		{
 			IF(!p.consume(:while))
 				RETURN FALSE;
@@ -508,7 +508,7 @@ INCLUDE "../util/dynunion.rl"
 
 		# FINAL type() StatementType := StatementType::switch;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:switch))
 				RETURN FALSE;
@@ -546,9 +546,9 @@ INCLUDE "../util/dynunion.rl"
 		Values: std::[std::[Expression]Dynamic]Vector;
 		Body: std::[Statement]Dynamic;
 
-		# is_default() INLINE bool := Values.empty();
+		# is_default() INLINE BOOL := Values.empty();
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(p.consume(:case))
 			{
@@ -575,7 +575,7 @@ INCLUDE "../util/dynunion.rl"
 		Label: ControlLabel;
 		# FINAL type() StatementType := StatementType::break;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:break))
 				RETURN FALSE;
@@ -591,7 +591,7 @@ INCLUDE "../util/dynunion.rl"
 		Label: ControlLabel;
 		# FINAL type() StatementType := StatementType::continue;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:continue))
 				RETURN FALSE;

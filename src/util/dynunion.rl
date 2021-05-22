@@ -11,7 +11,7 @@ PRIVATE:
 	}
 
 	Ptr: Union;
-	IsB: bool;
+	IsB: BOOL;
 PUBLIC:
 	{}: IsB(FALSE)
 	{
@@ -44,12 +44,12 @@ PUBLIC:
 			::delete(second());
 	}
 
-	# is_first() INLINE bool := !IsB && Ptr.First;
-	# is_second() INLINE bool := IsB && Ptr.Second;
-	# is_empty() INLINE bool := !Ptr.Check;
+	# is_first() INLINE BOOL := !IsB && Ptr.First;
+	# is_second() INLINE BOOL := IsB && Ptr.Second;
+	# is_empty() INLINE BOOL := !Ptr.Check;
 
-	# !THIS INLINE bool := !Ptr.Check;
-	# <bool> INLINE := Ptr.Check;
+	# !THIS INLINE BOOL := !Ptr.Check;
+	# <BOOL> INLINE := Ptr.Check;
 
 	# first() A! \
 	{

@@ -40,7 +40,7 @@ INCLUDE "detail/statement.rl"
 	BaseInits: std::[BaseInit]Vector;
 	MemberInits: std::[MemberInit] Vector;
 	Body: std::[BlockStatement]Dynamic;
-	Inline: bool;
+	Inline: BOOL;
 
 	# FINAL type() Member::Type := :constructor;
 

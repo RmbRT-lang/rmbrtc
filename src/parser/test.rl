@@ -9,9 +9,9 @@ INCLUDE "statement.rl"
 
 	# FINAL type() Global::Type := :test;
 	# FINAL name() src::String#& := src::String::empty;
-	# FINAL overloadable() bool := FALSE;
+	# FINAL overloadable() BOOL := FALSE;
 
-	parse(p: Parser &) bool
+	parse(p: Parser &) BOOL
 	{
 		IF(!p.consume(:test))
 			RETURN FALSE;

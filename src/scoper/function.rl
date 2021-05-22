@@ -13,8 +13,8 @@ INCLUDE "exprorstmt.rl"
 	Arguments: std::[LocalVariable\]Vector;
 	Return: VariableType;
 	Body: ExprOrStmt;
-	Inline: bool;
-	Coroutine: bool;
+	Inline: BOOL;
+	Coroutine: BOOL;
 
 	ArgumentScope: Scope;
 

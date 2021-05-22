@@ -4,13 +4,13 @@ INCLUDE "statement.rl"
 {
 	# FINAL type() Member::Type := :destructor;
 	# FINAL name() src::String#& := Name;
-	# FINAL overloadable() bool := FALSE;
+	# FINAL overloadable() BOOL := FALSE;
 
 	Name: src::String; // Always DESTRUCTOR.
 	Body: BlockStatement;
-	Inline: bool;
+	Inline: BOOL;
 
-	parse(p: Parser&) bool
+	parse(p: Parser&) BOOL
 	{
 		IF(!p.consume(:destructor, &Name))
 			RETURN FALSE;

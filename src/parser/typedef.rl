@@ -9,9 +9,9 @@ INCLUDE "member.rl"
 	Name: src::String;
 
 	# FINAL name() src::String#& := Name;
-	# FINAL overloadable() bool := FALSE;
+	# FINAL overloadable() BOOL := FALSE;
 
-	parse(p: Parser&) bool
+	parse(p: Parser&) BOOL
 	{
 		IF(!p.consume(:type))
 			RETURN FALSE;

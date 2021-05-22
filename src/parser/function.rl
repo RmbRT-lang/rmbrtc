@@ -17,12 +17,12 @@ INCLUDE 'std/help'
 	{v: Expression \}: V(v);
 	{v: Statement \}: V(v);
 
-	# is_expression() INLINE bool := V.is_first();
+	# is_expression() INLINE BOOL := V.is_first();
 	# expression() INLINE Expression \ := V.first();
-	# is_statement() INLINE bool := V.is_second();
+	# is_statement() INLINE BOOL := V.is_second();
 	# statement() INLINE Statement \ := V.second();
 
-	# <bool> INLINE := V;
+	# <BOOL> INLINE := V;
 
 	[T:TYPE] THIS:=(v: T! &&) ExprOrStmt &
 		:= std::help::custom_assign(THIS, <T!&&>(v));
@@ -33,19 +33,19 @@ INCLUDE 'std/help'
 	Arguments: std::[LocalVariable]Vector;
 	Return: VariableType;
 	Body: ExprOrStmt;
-	IsInline: bool;
-	IsCoroutine: bool;
-	IsOperator: bool;
+	IsInline: BOOL;
+	IsCoroutine: BOOL;
+	IsOperator: BOOL;
 	Name: src::String;
 	Operator: rlc::Operator;
 
 	# FINAL name() src::String#& := Name;
-	# FINAL overloadable() bool := TRUE;
+	# FINAL overloadable() BOOL := TRUE;
 
 	parse(
 		p: Parser &,
-		allow_body: bool,
-		allow_operators: bool) bool
+		allow_body: BOOL,
+		allow_operators: BOOL) BOOL
 	{
 		parOpen: tok::Type := :parentheseOpen;
 		parClose: tok::Type := :parentheseClose;
@@ -173,8 +173,8 @@ INCLUDE 'std/help'
 ::rlc::parser GlobalFunction -> Global, Function
 {
 	# FINAL type() Global::Type := :function;
-	parse(p: Parser&) INLINE bool := Function::parse(p, TRUE, FALSE);
-	parse_extern(p: Parser&) INLINE bool := Function::parse(p, FALSE, FALSE);
+	parse(p: Parser&) INLINE BOOL := Function::parse(p, TRUE, FALSE);
+	parse_extern(p: Parser&) INLINE BOOL := Function::parse(p, FALSE, FALSE);
 }
 
 ::rlc ENUM Abstractness
@@ -192,7 +192,7 @@ INCLUDE 'std/help'
 
 	# FINAL type() Member::Type := :function;
 
-	parse(p: Parser&) INLINE bool
+	parse(p: Parser&) INLINE BOOL
 	{
 		STATIC k_lookup: {tok::Type, rlc::Abstractness}#[](
 			(:virtual, :virtual),

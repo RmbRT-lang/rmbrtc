@@ -77,7 +77,7 @@ INCLUDE 'std/unicode'
 		ret: std::Utf8;
 		ch: std::C8[4];
 		FOR(i ::= 0; i < Codes.size(); i++)
-			ret.append(std::[char#]Buffer(
+			ret.append(std::[CHAR#]Buffer(
 				&ch[0],
 				std::code::utf8::encode(Codes[i], &ch[0])));
 		RETURN ret;

@@ -16,7 +16,7 @@ INCLUDE 'std/shared'
 ::rlc::scoper FileRegistry
 {
 	ParsedFiles: parser::FileRegistry;
-	Loading: std::[std::[char#]Buffer, FileRegistry]VectorSet;
+	Loading: std::[std::[CHAR#]Buffer, FileRegistry]VectorSet;
 	Files: std::[std::[File]Dynamic, FileRegistry]VectorSet;
 	IncludeDirs: std::[std::Utf8]Vector;
 	(// Set this to create one global scope for all files. /)
@@ -28,7 +28,7 @@ INCLUDE 'std/shared'
 	}
 
 	(// Returns pointer to file, or null if the file is currently being loaded. /)
-	get(path: std::[char#]Buffer #&) File *
+	get(path: std::[CHAR#]Buffer #&) File *
 	{
 		loc: std::[std::[File]Dynamic, FileRegistry]VectorSet::Location;
 		IF(f ::= Files.find(path))
@@ -45,7 +45,7 @@ INCLUDE 'std/shared'
 		RETURN file;
 	}
 
-	find_global(path: std::[char#]Buffer #&) std::Utf8
+	find_global(path: std::[CHAR#]Buffer #&) std::Utf8
 	{
 		FOR(i ::= 0; i < IncludeDirs.size(); i++)
 			TRY RETURN util::absolute_file(
@@ -63,12 +63,12 @@ INCLUDE 'std/shared'
 		entry: File #\) INLINE
 		::= key->Source->Name.cmp(entry->Source->Name);
 	STATIC cmp(
-		key: std::[char#]Buffer #&,
+		key: std::[CHAR#]Buffer #&,
 		entry: File #\) INLINE
 		::= std::str::cmp(key, entry->Source->Name.content());
 	STATIC cmp(
-		key: std::[char#]Buffer #&,
-		entry: std::[char#]Buffer #&) INLINE
+		key: std::[CHAR#]Buffer #&,
+		entry: std::[CHAR#]Buffer #&) INLINE
 		::= std::str::cmp(key, entry);
 
 	PRIVATE load_include_dirs() VOID
@@ -86,4 +86,4 @@ INCLUDE 'std/shared'
 	}
 }
 
-::rlc::scoper::detail EXTERN getenv(char #*) char # *;
+::rlc::scoper::detail EXTERN getenv(CHAR #*) CHAR # *;

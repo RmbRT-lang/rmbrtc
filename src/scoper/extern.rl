@@ -9,9 +9,9 @@ INCLUDE "../util/dynunion.rl"
 
 	# FINAL type() Global::Type := :externSymbol;
 
-	# is_variable() INLINE bool := Symbol.is_first();
+	# is_variable() INLINE BOOL := Symbol.is_first();
 	# variable() INLINE GlobalVariable \ := Symbol.first();
-	# is_function() INLINE bool := Symbol.is_second();
+	# is_function() INLINE BOOL := Symbol.is_second();
 	# function() INLINE GlobalFunction \ := Symbol.second();
 
 	{

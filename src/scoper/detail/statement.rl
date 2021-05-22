@@ -99,7 +99,7 @@ INCLUDE 'std/err/unimplemented'
 			Var: LocalVariable \;
 			Exp: Expression \;
 		}
-		PRIVATE IsVar: bool;
+		PRIVATE IsVar: BOOL;
 		PRIVATE Val: Value;
 
 		{}: IsVar(FALSE) { Val.Exp := NULL; }
@@ -139,20 +139,20 @@ INCLUDE 'std/err/unimplemented'
 				::delete(Val.Exp);
 		}
 
-		# is_variable() INLINE bool := IsVar && Val.Var;
+		# is_variable() INLINE BOOL := IsVar && Val.Var;
 		# variable() INLINE LocalVariable \
 		{
 			IF(!is_variable()) THROW;
 			RETURN Val.Var;
 		}
 
-		# is_expression() INLINE bool := !IsVar && Val.Exp;
+		# is_expression() INLINE BOOL := !IsVar && Val.Exp;
 		# expression() INLINE Expression \
 		{
 			IF(!is_expression()) THROW;
 			RETURN Val.Exp;
 		}
-		# <bool> INLINE := Val.Check;
+		# <BOOL> INLINE := Val.Check;
 	}
 
 	AssertStatement -> Statement
@@ -238,7 +238,7 @@ INCLUDE 'std/err/unimplemented'
 	VariableStatement -> Statement
 	{
 		Variable: LocalVariable \;
-		Static: bool;
+		Static: BOOL;
 
 		# FINAL type() StatementType := StatementType::variable;
 		# FINAL variables() UM := 1;
@@ -280,7 +280,7 @@ INCLUDE 'std/err/unimplemented'
 		# FINAL type() StatementType := StatementType::return;
 		# FINAL variables() UM := 0;
 
-		# is_void() INLINE bool := !Expression;
+		# is_void() INLINE BOOL := !Expression;
 
 		{
 			position: UM,
@@ -310,7 +310,7 @@ INCLUDE 'std/err/unimplemented'
 			RETURN vars;
 		}
 
-		# has_finally() INLINE bool := Finally;
+		# has_finally() INLINE BOOL := Finally;
 
 		{
 			position: UM,
@@ -337,7 +337,7 @@ INCLUDE 'std/err/unimplemented'
 		Exception: LocalVariable \;
 		Body: std::[Statement]Dynamic;
 
-		# is_void() INLINE bool := !Exception;
+		# is_void() INLINE BOOL := !Exception;
 		# variables() UM := (Exception ? 1 : 0) + Body->variables();
 
 		{
@@ -379,7 +379,7 @@ INCLUDE 'std/err/unimplemented'
 		InitScope: Scope;
 		ConditionScope: Scope;
 
-		PostCondition: bool;
+		PostCondition: BOOL;
 		Initial: VarOrExp;
 		Condition: VarOrExp;
 		Body: std::[Statement]Dynamic;
@@ -457,7 +457,7 @@ INCLUDE 'std/err/unimplemented'
 		Values: std::[std::[Expression]Dynamic]Vector;
 		Body: std::[Statement]Dynamic;
 
-		# is_default() INLINE bool := Values.empty();
+		# is_default() INLINE BOOL := Values.empty();
 		# variables() UM := Body->variables();
 		# position() UM := Body->Position;
 

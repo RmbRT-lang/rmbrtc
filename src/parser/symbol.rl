@@ -19,10 +19,10 @@ INCLUDE 'std/vector'
 			Name: src::String;
 			Templates: std::[TemplateArg]Vector;
 
-			parse(p: Parser&) bool := parse(p, FALSE);
+			parse(p: Parser&) BOOL := parse(p, FALSE);
 			parse(
 				p: Parser &,
-				isValue: bool) bool
+				isValue: BOOL) BOOL
 			{
 				IF(p.consume(:bracketOpen))
 				{
@@ -59,12 +59,12 @@ INCLUDE 'std/vector'
 		}
 
 		Children: std::[Child]Vector;
-		IsRoot: bool;
+		IsRoot: BOOL;
 
-		parse(p: Parser&) bool := parse(p, FALSE);
+		parse(p: Parser&) BOOL := parse(p, FALSE);
 		parse(
 			p: Parser &,
-			isValue: bool) bool
+			isValue: BOOL) BOOL
 		{
 			t: Trace(&p, "symbol");
 
@@ -93,7 +93,7 @@ INCLUDE 'std/vector'
 
 		Child: Symbol::Child;
 
-		parse(p: Parser &) bool := Child.parse(p, TRUE);
+		parse(p: Parser &) BOOL := Child.parse(p, TRUE);
 	}
 
 	SymbolExpression -> Expression
@@ -102,6 +102,6 @@ INCLUDE 'std/vector'
 
 		Symbol: parser::Symbol;
 
-		parse(p: Parser &) bool := Symbol.parse(p, TRUE);
+		parse(p: Parser &) BOOL := Symbol.parse(p, TRUE);
 	}
 }

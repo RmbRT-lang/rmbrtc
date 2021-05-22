@@ -52,24 +52,24 @@ INCLUDE 'std/io/format'
 		entry: parser::ScopeItem #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	) {ScopeItem \, bool} := detail::create_scope_item(entry, file, group);
+	) {ScopeItem \, BOOL} := detail::create_scope_item(entry, file, group);
 }
 
 ::rlc::scoper IncompatibleOverloadError -> std::Error
 {
 	FileName: std::Utf8;
-	Line: uint;
-	Column: uint;
+	Line: UINT;
+	Column: UINT;
 	ScopeName: std::Utf8;
 	Name: String;
 
-	Reason: char #\;
+	Reason: CHAR #\;
 
 	{
 		existing: ScopeItem #\,
 		addition: parser::ScopeItem #\,
 		file: src::File #&,
-		reason: char #\
+		reason: CHAR #\
 	}:	FileName(file.Name),
 		ScopeName(existing->parent_scope()->name()),
 		Name(file.content(addition->name())),
@@ -98,7 +98,7 @@ INCLUDE 'std/io/format'
 	entry: parser::ScopeItem #\,
 	file: src::File#&,
 	group: detail::ScopeItemGroup \
-) {ScopeItem \, bool}
+) {ScopeItem \, BOOL}
 {
 	cat ::= entry->category();
 
@@ -110,7 +110,7 @@ INCLUDE 'std/io/format'
 		IF(!entry->overloadable())
 			THROW <IncompatibleOverloadError>(cmp, entry, file, "not overloadable");
 
-		same: bool;
+		same: BOOL;
 		SWITCH(cat)
 		{
 		CASE :global:

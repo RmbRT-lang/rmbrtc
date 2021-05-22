@@ -2,5 +2,5 @@ INCLUDE 'std/memory'
 
 ::rlc::scoper
 {
-	TYPE String := std::[char#]Buffer;
+	TYPE String := std::[CHAR#]Buffer;
 }

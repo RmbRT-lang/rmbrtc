@@ -11,9 +11,9 @@ INCLUDE "types.rl"
 	{
 		Name: String;
 		Type: TemplateDeclType;
-		Variadic: bool;
+		Variadic: BOOL;
 
-		{name: String#&, type: TemplateDeclType, variadic: bool}:
+		{name: String#&, type: TemplateDeclType, variadic: BOOL}:
 			Name(name), Type(type), Variadic(variadic);
 	}
 

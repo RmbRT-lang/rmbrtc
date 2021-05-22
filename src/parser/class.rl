@@ -11,7 +11,7 @@ INCLUDE 'std/memory'
 	Inheritance
 	{
 		Visibility: rlc::Visibility;
-		IsVirtual: bool;
+		IsVirtual: BOOL;
 		Type: Symbol;
 
 		parse(p: Parser &) VOID
@@ -39,14 +39,14 @@ INCLUDE 'std/memory'
 	}
 
 	Name: src::String;
-	Virtual: bool;
+	Virtual: BOOL;
 	Members: std::[std::[Member]Dynamic]Vector;
 	Inheritances: std::[Inheritance]Vector;
 
 	# FINAL name() src::String #& := Name;
-	# FINAL overloadable() bool := FALSE;
+	# FINAL overloadable() BOOL := FALSE;
 
-	parse(p: Parser &) bool
+	parse(p: Parser &) BOOL
 	{
 		IF(!p.match(:identifier)
 		|| (!p.match_ahead(:braceOpen)
@@ -82,10 +82,10 @@ INCLUDE 'std/memory'
 ::rlc::parser GlobalClass -> Global, Class
 {
 	# FINAL type() Global::Type := :class;
-	parse(p: Parser &) INLINE bool := Class::parse(p);
+	parse(p: Parser &) INLINE BOOL := Class::parse(p);
 }
 ::rlc::parser MemberClass -> Member, Class
 {
 	# FINAL type() Member::Type := :class;
-	parse(p: Parser &) INLINE bool := Class::parse(p);
+	parse(p: Parser &) INLINE BOOL := Class::parse(p);
 }

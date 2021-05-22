@@ -5,7 +5,7 @@ INCLUDE 'std/err/filenotfound'
 
 ::rlc::util
 {
-	absolute_file(name: std::[char#]Buffer #&) std::Utf8
+	absolute_file(name: std::[CHAR#]Buffer #&) std::Utf8
 	{
 		n: std::Utf8(name, :cstring);
 
@@ -16,7 +16,7 @@ INCLUDE 'std/err/filenotfound'
 	}
 
 	(// Returns the parent directory, including the final '/'. /)
-	parent_dir(name: std::[char#]Buffer #&) std::[char#]Buffer
+	parent_dir(name: std::[CHAR#]Buffer #&) std::[CHAR#]Buffer
 	{
 		FOR(i ::= name.Size; i--;)
 			IF(name[i] == '/')
@@ -25,8 +25,8 @@ INCLUDE 'std/err/filenotfound'
 	}
 
 	concat_paths(
-		base: std::[char#]Buffer #&,
-		relative: std::[char#]Buffer #&
+		base: std::[CHAR#]Buffer #&,
+		relative: std::[CHAR#]Buffer #&
 	) std::Utf8
 	{
 		path: std::Utf8(base);
@@ -42,6 +42,6 @@ INCLUDE 'std/err/filenotfound'
 
 ::rlc::util::detail
 {
-	path_buf: std::[char]Vector(:move, std::[char]alloc(4097));
-	EXTERN realpath(char #\, char \) char #*;
+	path_buf: std::[CHAR]Vector(:move, std::[CHAR]alloc(4097));
+	EXTERN realpath(CHAR #\, CHAR \) CHAR #*;
 }

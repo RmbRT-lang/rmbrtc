@@ -13,16 +13,16 @@ INCLUDE 'std/vector'
 
 		# FINAL name() src::String#& := Name;
 		# FINAL type() Member::Type := :enumConstant;
-		# FINAL overloadable() bool := FALSE;
+		# FINAL overloadable() BOOL := FALSE;
 	}
 
 	Name: src::String;
 	Constants: std::[Constant]Vector;
 
 	# FINAL name() src::String#& := Name;
-	# FINAL overloadable() bool := FALSE;
+	# FINAL overloadable() BOOL := FALSE;
 
-	parse(p: Parser &) bool
+	parse(p: Parser &) BOOL
 	{
 		IF(!p.consume(:enum))
 			RETURN FALSE;
@@ -48,11 +48,11 @@ INCLUDE 'std/vector'
 ::rlc::parser GlobalEnum -> Global, Enum
 {
 	# FINAL type() Global::Type := :enum;
-	parse(p: Parser&) bool := Enum::parse(p);
+	parse(p: Parser&) BOOL := Enum::parse(p);
 }
 
 ::rlc::parser MemberEnum -> Member, Enum
 {
 	# FINAL type() Member::Type := :enum;
-	parse(p: Parser&) bool := Enum::parse(p);
+	parse(p: Parser&) BOOL := Enum::parse(p);
 }

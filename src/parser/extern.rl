@@ -12,14 +12,14 @@ INCLUDE "../src/file.rl"
 		? variable()->name()
 		: function()->name();
 	# FINAL type() Global::Type := :externSymbol;
-	# FINAL overloadable() bool := FALSE;
+	# FINAL overloadable() BOOL := FALSE;
 
-	# is_variable() INLINE bool := Symbol.is_first();
+	# is_variable() INLINE BOOL := Symbol.is_first();
 	# variable() INLINE GlobalVariable \ := Symbol.first();
-	# is_function() INLINE bool := Symbol.is_second();
+	# is_function() INLINE BOOL := Symbol.is_second();
 	# function() INLINE GlobalFunction \ := Symbol.second();
 
-	parse(p: Parser &) bool
+	parse(p: Parser &) BOOL
 	{
 		IF(!p.consume(:extern))
 			RETURN FALSE;

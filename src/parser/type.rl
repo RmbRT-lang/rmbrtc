@@ -70,11 +70,11 @@ INCLUDE "expression.rl"
 
 		Qualifier
 		{
-			Const: bool;
-			Volatile: bool;
+			Const: BOOL;
+			Volatile: BOOL;
 
 			parse(
-				p: Parser&) bool
+				p: Parser&) BOOL
 			{
 				start ::= p.progress();
 				IF((Const := p.consume(:hash)))
@@ -95,7 +95,7 @@ INCLUDE "expression.rl"
 			parse(p: Parser &) INLINE VOID { parse(p, TRUE); }
 			parse(
 				p: Parser&,
-				allowReferences: bool) VOID
+				allowReferences: BOOL) VOID
 			{
 				Qualifier.parse(p);
 				IF(allowReferences)
@@ -109,11 +109,11 @@ INCLUDE "expression.rl"
 		{
 			Indirection: Type::Indirection;
 			Qualifier: Type::Qualifier;
-			IsArray: bool;
+			IsArray: BOOL;
 			ArraySize: std::[std::[Expression]Dynamic]Vector;
 
 			parse(
-				p: Parser&) bool
+				p: Parser&) BOOL
 			{
 				start ::= p.progress();
 				Indirection := Type::parse_indirection(p);
@@ -147,7 +147,7 @@ INCLUDE "expression.rl"
 
 		Modifiers: std::[Modifier]Vector;
 		Reference: Type::ReferenceType;
-		Variadic: bool;
+		Variadic: BOOL;
 
 		[T:TYPE] PRIVATE STATIC parse_impl(
 			p: Parser &) Type *
@@ -221,7 +221,7 @@ INCLUDE "expression.rl"
 		Args: std::[std::[Type]Dynamic]Vector;
 		Ret: std::[Type]Dynamic;
 
-		parse(p: Parser&) bool
+		parse(p: Parser&) BOOL
 		{
 			t: Trace(&p, "signature");
 			// ((T1, T2) Ret)
@@ -259,7 +259,7 @@ INCLUDE "expression.rl"
 	{
 		# FINAL type() TypeType := :void;
 
-		parse(p: Parser&) bool
+		parse(p: Parser&) BOOL
 		{
 			IF(!p.consume(:void))
 				RETURN FALSE;
@@ -274,7 +274,7 @@ INCLUDE "expression.rl"
 
 		Name: src::String;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:colon))
 				RETURN FALSE;
@@ -292,7 +292,7 @@ INCLUDE "expression.rl"
 
 		Types: Type - std::Dynamic - std::Vector;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:braceOpen))
 				RETURN FALSE;
@@ -319,7 +319,7 @@ INCLUDE "expression.rl"
 
 		Expression: std::[parser::Expression]Dynamic;
 
-		parse(p: Parser &) bool
+		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:type))
 				RETURN FALSE;
@@ -338,9 +338,9 @@ INCLUDE "expression.rl"
 	{
 		# FINAL type() TypeType := :name;
 		Name: Symbol;
-		NoDecay: bool;
+		NoDecay: BOOL;
 
-		parse(p: Parser&) bool
+		parse(p: Parser&) BOOL
 		{
 			IF(!Name.parse(p))
 				RETURN FALSE;
@@ -357,20 +357,24 @@ INCLUDE "expression.rl"
 			bool,
 			char,
 			int,
-			uint
+			uint,
+			um,
+			sm
 		}
 
 		# FINAL type() TypeType := :builtin;
 
 		Kind: Primitive;
 
-		parse(p: Parser&) bool
+		parse(p: Parser&) BOOL
 		{
 			STATIC table: {tok::Type, Primitive}#[](
 				(:bool, Primitive::bool),
 				(:char, Primitive::char),
 				(:int, Primitive::int),
-				(:uint, Primitive::uint));
+				(:uint, Primitive::uint),
+				(:um, Primitive::um),
+				(:sm, Primitive::sm));
 
 			FOR(i ::= 0; i < ::size(table); i++)
 				IF(p.consume(table[i].(0)))

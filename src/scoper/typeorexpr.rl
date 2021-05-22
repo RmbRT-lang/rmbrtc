@@ -11,13 +11,13 @@ INCLUDE "../util/dynunion.rl"
 	{v: Expression \}: V(v);
 	{v: Type \}: V(v);
 	
-	# is_type() INLINE bool := V.is_second();
+	# is_type() INLINE BOOL := V.is_second();
 	# type() Type \ := V.second();
-	# is_expression() INLINE bool := V.is_first();
+	# is_expression() INLINE BOOL := V.is_first();
 	# expression() INLINE bool := V.first();
 
-	# <bool> INLINE := V;
-	# !THIS INLINE bool := !V;
+	# <BOOL> INLINE := V;
+	# !THIS INLINE BOOL := !V;
 
 	[T:TYPE] THIS:=(v: T!&&) TypeOrExpr &
 		:= std::help::custom_assign(THIS, <T!&&>(v));

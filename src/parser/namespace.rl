@@ -11,10 +11,10 @@ INCLUDE 'std/vector'
 
 	# FINAL name() src::String#& := Name;
 	# FINAL type() Global::Type := :namespace;
-	# FINAL overloadable() bool := TRUE;
+	# FINAL overloadable() BOOL := TRUE;
 
 	parse(
-		p: Parser &) bool
+		p: Parser &) BOOL
 	{
 		IF(!p.consume(:doubleColon))
 			RETURN FALSE;

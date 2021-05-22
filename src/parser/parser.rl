@@ -26,10 +26,10 @@ INCLUDE 'std/tags'
 				BufferSize := 1;
 		}
 
-		fail(reason: char#\) VOID
+		fail(reason: CHAR#\) VOID
 		{
-			line: uint;
-			column: uint;
+			line: UINT;
+			column: UINT;
 			IF(BufferSize)
 			{
 				File->position(
@@ -51,12 +51,12 @@ INCLUDE 'std/tags'
 		}
 
 
-		consume(type: tok::Type) bool
+		consume(type: tok::Type) BOOL
 			:= consume(type, <tok::Token*>(NULL));
 
 		consume(
 			type: tok::Type,
-			out: tok::Token *) bool
+			out: tok::Token *) BOOL
 		{
 			IF(match(type))
 			{
@@ -67,7 +67,7 @@ INCLUDE 'std/tags'
 			RETURN FALSE;
 		}
 
-		consume(type: tok::Type, out: src::String \) bool
+		consume(type: tok::Type, out: src::String \) BOOL
 		{
 			token: tok::Token;
 			IF(consume(type, &token))
@@ -85,8 +85,8 @@ INCLUDE 'std/tags'
 		{
 			IF(!consume(type, out))
 			{
-				line: uint;
-				column: uint;
+				line: UINT;
+				column: UINT;
 				IF(BufferSize)
 				{
 					File->position(
@@ -109,7 +109,7 @@ INCLUDE 'std/tags'
 			*out := tok.Content;
 		}
 
-		match(type: tok::Type) bool
+		match(type: tok::Type) BOOL
 		{
 			IF(!BufferSize)
 				RETURN FALSE;
@@ -117,7 +117,7 @@ INCLUDE 'std/tags'
 			RETURN Buffer[BufferIndex].Type == type;
 		}
 
-		match_ahead(type: tok::Type) bool
+		match_ahead(type: tok::Type) BOOL
 		{
 			IF(BufferSize != 2)
 				RETURN FALSE;
@@ -125,7 +125,7 @@ INCLUDE 'std/tags'
 			RETURN Buffer[BufferIndex^1].Type == type;
 		}
 
-		consume(out: tok::Token *) bool
+		consume(out: tok::Token *) BOOL
 		{
 			IF(!BufferSize)
 				RETURN FALSE;
@@ -142,9 +142,9 @@ INCLUDE 'std/tags'
 			RETURN TRUE;
 		}
 
-		# eof() bool := BufferSize == 0;
+		# eof() BOOL := BufferSize == 0;
 
-		# context() char #\
+		# context() CHAR #\
 			:= Ctx
 				? Ctx->Name
 				: "<unknown context>";
@@ -169,7 +169,7 @@ INCLUDE 'std/tags'
 	{
 		{
 			p: Parser \,
-			name: char#\}:
+			name: CHAR#\}:
 			P(p),
 			Name(name),
 			Prev(p->Ctx)
@@ -183,7 +183,7 @@ INCLUDE 'std/tags'
 		}
 
 		P: Parser\;
-		Name: char #\;
+		Name: CHAR #\;
 		Prev: Trace *;
 	}
 }

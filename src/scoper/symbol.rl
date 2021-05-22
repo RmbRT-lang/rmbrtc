@@ -26,7 +26,7 @@ INCLUDE 'std/vector'
 	}
 
 	Children: std::[Child]Vector;
-	IsRoot: bool;
+	IsRoot: BOOL;
 
 	{
 		parsed: parser::Symbol #&,

@@ -113,7 +113,7 @@ INCLUDE "../destructor.rl"
 		RETURN ret;
 	}
 
-	parse_member_variable(p: Parser &, ret: Member * &, static: bool) bool
+	parse_member_variable(p: Parser &, ret: Member * &, static: BOOL) BOOL
 	{
 		v: std::[MemberVariable]Dynamic := :gc([MemberVariable]new());
 		IF(v->parse(p, static))
@@ -124,7 +124,7 @@ INCLUDE "../destructor.rl"
 		RETURN FALSE;
 	}
 
-	[T:TYPE] parse_member_impl(p: Parser &, ret: Member * &) bool
+	[T:TYPE] parse_member_impl(p: Parser &, ret: Member * &) BOOL
 	{
 		v: T;
 		IF(v.parse(p))
@@ -138,7 +138,7 @@ INCLUDE "../destructor.rl"
 	parse_visibility(
 		p: Parser&,
 		default_visibility: Visibility &,
-		global: bool
+		global: BOOL
 	) Visibility
 	{
 		STATIC lookup: {tok::Type, Visibility}#[](

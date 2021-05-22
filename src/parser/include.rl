@@ -18,7 +18,7 @@ INCLUDE "parser.rl"
 		Type: IncludeType;
 
 		parse(
-			p: Parser &) bool
+			p: Parser &) BOOL
 		{
 			IF(!p.consume(:include))
 				RETURN FALSE;
