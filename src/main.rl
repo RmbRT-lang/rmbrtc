@@ -12,7 +12,7 @@ main(
 		RETURN 1;
 	}
 
-	out ::= std::io::OStream::FROM(&std::io::out);
+	out ::= <<<std::io::OStream>>>(&std::io::out);
 
 	registry: rlc::scoper::FileRegistry;
 	registry.LegacyScope := :create(NULL, NULL);

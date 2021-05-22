@@ -18,7 +18,7 @@ INCLUDE 'std/io/stream'
 
 	{name: std::Utf8}: Src(name)
 	{
-		out ::= std::io::OStream::FROM(&std::io::out);
+		out ::= <<<std::io::OStream>>>(&std::io::out);
 		p: Parser(&Src);
 		inc: Include;
 		WHILE(inc.parse(p))
