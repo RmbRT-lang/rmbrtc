@@ -30,6 +30,7 @@ INCLUDE "exprorstmt.rl"
 		{
 			var ::= ArgumentScope.insert(&parsed->Arguments[i], file);
 			Arguments += <<LocalVariable \>>(var);
+			Arguments.back()->Position := 0;
 		}
 
 		ASSERT(parsed->Return);

@@ -78,12 +78,14 @@ INCLUDE 'std/err/unimplemented'
 		# FINAL type() TypeType := :name;
 
 		Name: Symbol;
+		NoDecay: BOOL;
 
 		{
 			parsed: parser::TypeName #\,
 			file: src::File#&}:
 			Type(parsed, file),
-			Name(parsed->Name, file);
+			Name(parsed->Name, file),
+			NoDecay(parsed->NoDecay);
 	}
 
 	TupleType -> Type

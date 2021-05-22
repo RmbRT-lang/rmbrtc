@@ -19,7 +19,7 @@ INCLUDE 'std/unicode'
 	SymbolSize: std::U8;
 	Endian: rlc::Endian;
 	Type: TextType;
-	Codes: std::Char-std::Vector;
+	Codes: std::SYM-std::Vector;
 
 	{token: tok::Token #&, file: src::File #&}
 	{

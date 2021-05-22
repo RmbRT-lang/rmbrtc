@@ -89,9 +89,9 @@ INCLUDE 'std/help'
 				IsOperator := TRUE;
 				IF(!detail::consume_overloadable_prefix_operator(p, Operator))
 					p.fail("expected overloadable prefix operator");
-				p.expect(:this);
+				p.expect(:this, &Name);
 				allowArgs := FALSE;
-			} ELSE IF(p.consume(:less))
+			} ELSE IF(p.consume(:less, &Name))
 			{
 				allowArgs := FALSE;
 				IF(!(Return := Type::parse(p)))

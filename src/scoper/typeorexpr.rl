@@ -5,7 +5,7 @@ INCLUDE "../util/dynunion.rl"
 
 ::rlc::scoper TypeOrExpr
 {
-	PRIVATE V: util::[Expression, Type]DynUnion;
+	PRIVATE V: util::[Expression; Type]DynUnion;
 
 	{};
 	{v: Expression \}: V(v);
@@ -14,7 +14,7 @@ INCLUDE "../util/dynunion.rl"
 	# is_type() INLINE BOOL := V.is_second();
 	# type() Type \ := V.second();
 	# is_expression() INLINE BOOL := V.is_first();
-	# expression() INLINE bool := V.first();
+	# expression() INLINE Expression \ := V.first();
 
 	# <BOOL> INLINE := V;
 	# !THIS INLINE BOOL := !V;
