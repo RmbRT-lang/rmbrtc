@@ -53,6 +53,7 @@ INCLUDE 'std/vector'
 		string,
 		operator,
 		this,
+		null,
 		cast,
 		sizeof
 	}
@@ -100,6 +101,7 @@ INCLUDE 'std/vector'
 			|| [CharExpression]parse_impl(p, ret)
 			|| [StringExpression]parse_impl(p, ret)
 			|| [ThisExpression]parse_impl(p, ret)
+			|| [NullExpression]parse_impl(p, ret)
 			|| [CastExpression]parse_impl(p, ret)
 			|| [SizeofExpression]parse_impl(p, ret))
 			{
@@ -578,6 +580,13 @@ INCLUDE 'std/vector'
 		# FINAL type() ExpressionType := :this;
 
 		parse(p: Parser&) BOOL := p.consume(:this);
+	}
+
+	NullExpression -> Expression
+	{
+		# FINAL type() ExpressionType := :null;
+
+		parse(p: Parser&) BOOL := p.consume(:null);
 	}
 
 	CastExpression -> Expression

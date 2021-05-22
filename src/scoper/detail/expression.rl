@@ -33,6 +33,8 @@ INCLUDE 'std/err/unimplemented'
 		RETURN ::[OperatorExpression]new(<parser::OperatorExpression #\>(parsed), file);
 	CASE :this:
 		RETURN ::[ThisExpression]new();
+	CASE :null:
+		RETURN ::[NullExpression]new();
 	CASE :cast:
 		RETURN ::[CastExpression]new(<parser::CastExpression #\>(parsed), file);
 	CASE :sizeof:
@@ -143,6 +145,11 @@ INCLUDE 'std/err/unimplemented'
 	ThisExpression -> Expression
 	{
 		# FINAL type() ExpressionType := :this;
+	}
+
+	NullExpression -> Expression
+	{
+		# FINAL type() ExpressionType := :null;
 	}
 
 	CastExpression -> Expression

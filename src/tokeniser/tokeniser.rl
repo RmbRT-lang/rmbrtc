@@ -268,6 +268,7 @@ INCLUDE "error.rl"
 				("INLINE", :inline),
 				("INT", :int),
 				("NUMBER", :number),
+				("NULL", :null),
 				("OPERATOR", :operator),
 				("OVERRIDE", :override),
 				("PRIVATE", :private),
