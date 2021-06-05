@@ -27,13 +27,13 @@ INCLUDE "../src/file.rl"
 		t: Trace(&p, "external symbol");
 		IF(p.match_ahead(:colon))
 		{
-			var: std::[GlobalVariable]Dynamic := :gc([GlobalVariable]new());
+			var: std::[GlobalVariable]Dynamic := :gc(std::[GlobalVariable]new());
 			IF(!var->parse_extern(p))
 				p.fail("expected variable");
 			Symbol := var.release();
 		} ELSE
 		{
-			f: std::[GlobalFunction]Dynamic := :gc([GlobalFunction]new());
+			f: std::[GlobalFunction]Dynamic := :gc(std::[GlobalFunction]new());
 			IF(!f->parse_extern(p))
 				p.fail("expected function");
 			Symbol := f.release();

@@ -34,13 +34,13 @@ INCLUDE 'std/shared'
 	}:	Scope(scope),
 		Source(&parsed.Src)
 	{
-		FOR(i ::= 0; i < parsed.RootScope.size(); i++)
+		FOR(i ::= 0; i < ##parsed.RootScope; i++)
 			Scope->insert(parsed.RootScope[i], *Source);
 
 		// Resolve and load all include files.
 		loc: std::[File \; File]VectorSet::Location;
 		path: std::Utf8;
-		FOR(i ::= 0; i < parsed.Includes.size(); i++)
+		FOR(i ::= 0; i < ##parsed.Includes; i++)
 		{
 			path := Text(parsed.Includes[i].Token, *Source).utf8();
 			TRY SWITCH(type ::= parsed.Includes[i].Type)

@@ -26,7 +26,7 @@ INCLUDE "types.rl"
 			parsed: parser::TemplateDecl #&,
 			file: src::File #&}
 		{
-			FOR(i ::= 0; i < parsed.Children.size(); i++)
+			FOR(i ::= 0; i < ##parsed.Children; i++)
 				Templates += (
 					file.content(parsed.Children[i].Name),
 					parsed.Children[i].Type,
@@ -35,10 +35,12 @@ INCLUDE "types.rl"
 
 		# find(name: String #&) TemplateDecl #*
 		{
-			FOR(i ::= 0; i < Templates.size(); i++)
+			FOR(i ::= 0; i < ##Templates; i++)
 				IF(std::str::cmp(Templates[i].Name, name) == 0)
 					RETURN &Templates[i];
 			RETURN NULL;
 		}
+
+		# ##THIS INLINE UM := ##Templates;
 	}
 }

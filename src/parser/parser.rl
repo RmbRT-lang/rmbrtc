@@ -153,7 +153,7 @@ INCLUDE 'std/tags'
 
 		# position() UM := BufferSize
 			? Buffer[BufferIndex].Content.Start
-			: File->Contents.size();
+			: ##File->Contents;
 
 		Ctx: Trace *;
 	PRIVATE:

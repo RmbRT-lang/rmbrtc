@@ -201,7 +201,7 @@ INCLUDE 'std/help'
 			(:final, :final));
 
 		Abstractness := :none;
-		FOR(i ::= 0; i < ::size(k_lookup); i++)
+		FOR(i ::= 0; i < ##k_lookup; i++)
 			IF(p.consume(k_lookup[i].(0)))
 			{
 				Abstractness := k_lookup[i].(1);

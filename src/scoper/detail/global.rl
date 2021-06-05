@@ -23,24 +23,24 @@ INCLUDE 'std/err/unimplemented'
 	DEFAULT:
 		THROW <std::err::Unimplemented>(type.NAME());
 	CASE :namespace:
-		RETURN ::[Namespace]new(<parser::Namespace #\>(global), file, group);
+		RETURN std::[Namespace]new(<parser::Namespace #\>(global), file, group);
 	CASE :class:
-		RETURN ::[GlobalClass]new(<parser::GlobalClass #\>(global), file, group);
+		RETURN std::[GlobalClass]new(<parser::GlobalClass #\>(global), file, group);
 	CASE :enum:
-		RETURN ::[GlobalEnum]new(<parser::GlobalEnum #\>(global), file, group);
+		RETURN std::[GlobalEnum]new(<parser::GlobalEnum #\>(global), file, group);
 	CASE :function:
-		RETURN ::[GlobalFunction]new(<parser::GlobalFunction #\>(global), file, group);
+		RETURN std::[GlobalFunction]new(<parser::GlobalFunction #\>(global), file, group);
 	CASE :variable:
-		RETURN ::[GlobalVariable]new(<parser::GlobalVariable #\>(global), file, group);
+		RETURN std::[GlobalVariable]new(<parser::GlobalVariable #\>(global), file, group);
 	CASE :externSymbol:
-		RETURN ::[ExternSymbol]new(<parser::ExternSymbol #\>(global), file, group);
+		RETURN std::[ExternSymbol]new(<parser::ExternSymbol #\>(global), file, group);
 	CASE :rawtype:
-		RETURN ::[GlobalRawtype]new(<parser::GlobalRawtype #\>(global), file, group);
+		RETURN std::[GlobalRawtype]new(<parser::GlobalRawtype #\>(global), file, group);
 	CASE :typedef:
-		RETURN ::[GlobalTypedef]new(<parser::GlobalTypedef #\>(global), file, group);
+		RETURN std::[GlobalTypedef]new(<parser::GlobalTypedef #\>(global), file, group);
 	CASE :union:
-		RETURN ::[GlobalUnion]new(<parser::GlobalUnion #\>(global), file, group);
+		RETURN std::[GlobalUnion]new(<parser::GlobalUnion #\>(global), file, group);
 	CASE :concept:
-		RETURN ::[GlobalConcept]new(<parser::GlobalConcept #\>(global), file, group);
+		RETURN std::[GlobalConcept]new(<parser::GlobalConcept #\>(global), file, group);
 	}
 }

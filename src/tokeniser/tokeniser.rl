@@ -12,7 +12,7 @@ INCLUDE "error.rl"
 			Read(0),
 			Start(0);
 
-		# eof() BOOL := Read == File->Contents.size();
+		# eof() BOOL := Read == ##File->Contents;
 		# position(
 			line: UINT \,
 			column: UINT \) VOID
@@ -61,13 +61,13 @@ INCLUDE "error.rl"
 		PUBLIC # look() CHAR := look(0);
 		# look(ahead: UINT) CHAR
 		{
-			IF(Read+ahead >= File->Contents.size())
+			IF(Read+ahead >= ##File->Contents)
 				RETURN 0;
 			RETURN File->Contents[Read+ahead];
 		}
 		getc() CHAR
 		{
-			IF(Read == File->Contents.size())
+			IF(Read == ##File->Contents)
 				RETURN 0;
 			RETURN File->Contents[Read++];
 		}
@@ -223,10 +223,11 @@ INCLUDE "error.rl"
 				(">", :greater),
 
 				("$", :dollar),
+				("##", :doubleHash),
 				("#", :hash)
 			);
 
-			FOR(i ::= 0; i < ::size(specials); i++)
+			FOR(i ::= 0; i < ##specials; i++)
 				IF(eatString(specials[i].(0)))
 				{
 					out->Type := specials[i].(1);
@@ -296,7 +297,7 @@ INCLUDE "error.rl"
 			str ::= tok_str();
 			static_assert(__cpp_std::[TYPE(str); std::[CHAR#]Buffer]is_same::value);
 			static_assert(__cpp_std::[TYPE(std::str::buf(keywords[0].(0))), std::[CHAR#]Buffer]is_same::value);
-			FOR(i: UM := 0; i < ::size(keywords); i++)
+			FOR(i: UM := 0; i < ##keywords; i++)
 				IF(!std::str::cmp(
 					str,
 					std::str::buf(keywords[i].(0))))

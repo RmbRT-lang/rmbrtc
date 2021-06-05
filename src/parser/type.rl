@@ -33,7 +33,7 @@ INCLUDE "expression.rl"
 				(:and, ReferenceType::reference),
 				(:doubleAnd, ReferenceType::tempReference));
 
-			FOR(i ::= 0; i < ::size(table); i++)
+			FOR(i ::= 0; i < ##table; i++)
 				IF(p.consume(table[i].(0)))
 					RETURN table[i].(1);
 
@@ -60,7 +60,7 @@ INCLUDE "expression.rl"
 				(:doubleDotQuestionMark, Indirection::maybeDynamic),
 				(:at, Indirection::future));
 
-			FOR(i ::= 0; i < ::size(table); i++)
+			FOR(i ::= 0; i < ##table; i++)
 				IF(p.consume(table[i].(0)))
 					RETURN table[i].(1);
 
@@ -163,7 +163,7 @@ INCLUDE "expression.rl"
 						:bracketOpen,
 						:identifier);
 					found ::= FALSE;
-					FOR(i ::= 0; i < ::size(expect); i++)
+					FOR(i ::= 0; i < ##expect; i++)
 						found |= p.match(expect[i]);
 					IF(!found)
 						p.fail("expected symbol");
@@ -377,11 +377,11 @@ INCLUDE "expression.rl"
 				(:um, Primitive::um),
 				(:sm, Primitive::sm));
 
-			FOR(i ::= 0; i < ::size(table); i++)
+			FOR(i ::= 0; i < ##table; i++)
 				IF(p.consume(table[i].(0)))
 				{
 					Kind := table[i].(1);
-					parse_generic_part(p);
+					Type::parse_generic_part(p);
 					RETURN TRUE;
 				}
 

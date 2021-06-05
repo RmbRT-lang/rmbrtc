@@ -12,12 +12,14 @@ INCLUDE 'std/vector'
 		Name: String;
 		Templates: TypeOrExpr - std::Vector - std::Vector;
 
+		{};
+
 		{
 			parsed: parser::Symbol::Child #&,
 			file: src::File #&}:
 			Name(file.content(parsed.Name))
 		{
-			FOR(i ::= 0; i < parsed.Templates.size(); i++)
+			FOR(i ::= 0; i < ##parsed.Templates; i++)
 			{
 				arg: TypeOrExpr - std::Vector;
 				FOR(it ::= parsed.Templates[i].start(); it; ++it)
@@ -38,7 +40,7 @@ INCLUDE 'std/vector'
 		file: src::File #&}:
 		IsRoot(parsed.IsRoot)
 	{
-		FOR(i ::= 0; i < parsed.Children.size(); i++)
+		FOR(i ::= 0; i < ##parsed.Children; i++)
 			Children += (parsed.Children[i], file);
 	}
 }

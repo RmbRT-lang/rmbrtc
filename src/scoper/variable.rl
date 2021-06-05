@@ -40,9 +40,9 @@ INCLUDE "../util/dynunion.rl"
 		IF(parsed->Type.is_type())
 			Type := scoper::Type::create(parsed->Type.type(), file);
 		ELSE
-			Type := ::[scoper::Type::Auto]new(*parsed->Type.auto());
+			Type := std::[scoper::Type::Auto]new(*parsed->Type.auto());
 
-		FOR(i ::= 0; i < parsed->InitValues.size(); i++)
+		FOR(i ::= 0; i < ##parsed->InitValues; i++)
 			InitValues += :gc(Expression::create(parsed->InitValues[i], file));
 	}
 }
@@ -84,4 +84,11 @@ INCLUDE "../util/dynunion.rl"
 		group: detail::ScopeItemGroup \
 	}:	ScopeItem(group, parsed, file),
 		Variable(parsed, file);
+
+	set_position(position: UM) VOID
+	{
+		Position := position;
+		FOR(it ::= InitValues.start(); it; ++it)
+			(*it)->Position := position;
+	}
 }

@@ -29,7 +29,7 @@ INCLUDE "../parser/enum.rl"
 		Scope(&THIS, group->Scope),
 		Size(parsed->Constants.back().Value+1)
 	{
-		FOR(i ::= 0; i < parsed->Constants.size(); i++)
+		FOR(i ::= 0; i < ##parsed->Constants; i++)
 		{
 			c ::= Scope::insert(&parsed->Constants[i], file);
 			Constants += <<Constant \>>(c);

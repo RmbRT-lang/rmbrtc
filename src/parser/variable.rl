@@ -94,7 +94,7 @@ INCLUDE "../util/dynunion.rl"
 				found ::= FALSE;
 				IF(p.match(:identifier))
 				{
-					FOR(i ::= 0; i < ::size(k_needed_after_name); i++)
+					FOR(i ::= 0; i < ##k_needed_after_name; i++)
 						IF((!needs_name || k_needed_after_name[i].(1))
 						&& p.match_ahead(k_needed_after_name[i].(0)))
 						{
@@ -103,7 +103,7 @@ INCLUDE "../util/dynunion.rl"
 						}
 				}
 				ELSE
-					FOR(i ::= 0; i < ::size(k_needed_without_name); i++)
+					FOR(i ::= 0; i < ##k_needed_without_name; i++)
 						IF(p.match(k_needed_without_name[i]))
 						{
 							found := TRUE;
@@ -132,7 +132,7 @@ INCLUDE "../util/dynunion.rl"
 
 					IF(p.consume(:questionMark))
 					{
-						Type := ::[Type::Auto]new();
+						Type := std::[Type::Auto]new();
 						Type.auto()->parse(p);
 						p.expect(:colonEqual);
 						needs_type := FALSE;
@@ -144,13 +144,13 @@ INCLUDE "../util/dynunion.rl"
 						:dollar,
 						:doubleColonEqual);
 
-					FOR(i ::= 0; i < ::size(k_need_ahead); i++)
+					FOR(i ::= 0; i < ##k_need_ahead; i++)
 					{
 						IF(p.match_ahead(k_need_ahead[i]))
 						{
 							p.expect(:identifier, &name);
 
-							Type := ::[Type::Auto]new();
+							Type := std::[Type::Auto]new();
 							Type.auto()->parse(p, FALSE);
 
 							// "name ::=" style variable?

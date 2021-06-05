@@ -7,6 +7,7 @@ INCLUDE "../symbol.rl"
 INCLUDE 'std/err/unimplemented'
 
 ::rlc::scoper::detail expression_create(
+	position: UM,
 	parsed: parser::Expression #\,
 	file: src::File#&
 ) Expression \
@@ -14,31 +15,31 @@ INCLUDE 'std/err/unimplemented'
 	SWITCH(type ::= parsed->type())
 	{
 	DEFAULT:
-		THROW std::err::Unimplemented(type.NAME());
+		THROW <std::err::Unimplemented>(type.NAME());
 	CASE :symbol:
-		RETURN ::[SymbolExpression]new(<parser::SymbolExpression #\>(parsed), file);
+		RETURN std::[SymbolExpression]new(position, <parser::SymbolExpression #\>(parsed), file);
 	CASE :symbolChild:
-		RETURN ::[SymbolChildExpression]new(<parser::SymbolChildExpression #\>(parsed), file);
+		RETURN std::[SymbolChildExpression]new(<parser::SymbolChildExpression #\>(parsed), file);
 	CASE :symbolConstant:
-		RETURN ::[SymbolConstantExpression]new(<parser::SymbolConstantExpression #\>(parsed), file);
+		RETURN std::[SymbolConstantExpression]new(<parser::SymbolConstantExpression #\>(parsed), file);
 	CASE :number:
-		RETURN ::[NumberExpression]new(<parser::NumberExpression #\>(parsed), file);
+		RETURN std::[NumberExpression]new(<parser::NumberExpression #\>(parsed), file);
 	CASE :bool:
-		RETURN ::[BoolExpression]new(<parser::BoolExpression #\>(parsed));
+		RETURN std::[BoolExpression]new(<parser::BoolExpression #\>(parsed));
 	CASE :char:
-		RETURN ::[CharExpression]new(<parser::CharExpression #\>(parsed), file);
+		RETURN std::[CharExpression]new(<parser::CharExpression #\>(parsed), file);
 	CASE :string:
-		RETURN ::[StringExpression]new(<parser::StringExpression #\>(parsed), file);
+		RETURN std::[StringExpression]new(<parser::StringExpression #\>(parsed), file);
 	CASE :operator:
-		RETURN ::[OperatorExpression]new(<parser::OperatorExpression #\>(parsed), file);
+		RETURN std::[OperatorExpression]new(position, <parser::OperatorExpression #\>(parsed), file);
 	CASE :this:
-		RETURN ::[ThisExpression]new();
+		RETURN std::[ThisExpression]new();
 	CASE :null:
-		RETURN ::[NullExpression]new();
+		RETURN std::[NullExpression]new();
 	CASE :cast:
-		RETURN ::[CastExpression]new(<parser::CastExpression #\>(parsed), file);
+		RETURN std::[CastExpression]new(position, <parser::CastExpression #\>(parsed), file);
 	CASE :sizeof:
-		RETURN ::[SizeofExpression]new(<parser::SizeofExpression #\>(parsed), file);
+		RETURN std::[SizeofExpression]new(position, <parser::SizeofExpression #\>(parsed), file);
 	}
 }
 
@@ -51,9 +52,11 @@ INCLUDE 'std/err/unimplemented'
 		Symbol: scoper::Symbol;
 
 		{
+			position: UM,
 			parsed: parser::SymbolExpression #\,
 			file: src::File#&
-		}:	Symbol(parsed->Symbol, file);
+		}:	Expression(position),
+			Symbol(parsed->Symbol, file);
 	}
 
 	SymbolChildExpression -> Expression
@@ -72,12 +75,12 @@ INCLUDE 'std/err/unimplemented'
 	{
 		# FINAL type() ExpressionType := :symbolConstant;
 
-		Child: String;
+		Name: String;
 
 		{
 			parsed: parser::SymbolConstantExpression #\,
 			file: src::File#&
-		}:	Child(file.content(parsed->Symbol));
+		}:	Name(file.content(parsed->Symbol));
 	}
 
 	NumberExpression -> Expression
@@ -133,12 +136,14 @@ INCLUDE 'std/err/unimplemented'
 		Op: Operator;
 
 		{
+			position: UM,
 			parsed: parser::OperatorExpression #\,
 			file: src::File#&
-		}:	Op(parsed->Op)
+		}:	Expression(position),
+			Op(parsed->Op)
 		{
-			FOR(i ::= 0; i < parsed->Operands.size(); i++)
-				Operands += :gc(Expression::create(parsed->Operands[i], file));
+			FOR(i ::= 0; i < ##parsed->Operands; i++)
+				Operands += :gc(Expression::create(position, parsed->Operands[i], file));
 		}
 	}
 
@@ -155,19 +160,22 @@ INCLUDE 'std/err/unimplemented'
 	CastExpression -> Expression
 	{
 		# FINAL type() ExpressionType := :cast;
+		TYPE Kind := parser::CastExpression::Kind;
 
-		Method: parser::CastExpression::Kind;
+		Method: Kind;
 		Type: std::[scoper::Type]Dynamic;
 		Values: Expression-std::Dynamic-std::Vector;
 
 		{
+			position: UM,
 			parsed: parser::CastExpression #\,
 			file: src::File#&
-		}:	Type(:gc, Type::create(parsed->Type, file)),
+		}:	Expression(position),
+			Type(:gc, Type::create(parsed->Type, file)),
 			Method(parsed->Method)
 		{
-			FOR(i ::= 0; i < parsed->Values.size(); i++)
-				Values += :gc(Expression::create(parsed->Values[i], file));
+			FOR(i ::= 0; i < ##parsed->Values; i++)
+				Values += :gc(Expression::create(position, parsed->Values[i], file));
 		}
 	}
 
@@ -178,13 +186,15 @@ INCLUDE 'std/err/unimplemented'
 		Term: util::[Type; Expression]DynUnion;
 
 		{
+			position: UM,
 			parsed: parser::SizeofExpression #\,
-			file: src::File #&}
+			file: src::File #&
+		}:	Expression(position)
 		{
 			IF(parsed->Term.is_type())
 				Term := Type::create(parsed->Term.type(), file);
 			ELSE
-				Term := Expression::create(parsed->Term.expression(), file);
+				Term := Expression::create(position, parsed->Term.expression(), file);
 		}
 	}
 }

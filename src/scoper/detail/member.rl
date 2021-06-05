@@ -22,24 +22,24 @@ INCLUDE 'std/err/unimplemented'
 	DEFAULT:
 		THROW <std::err::Unimplemented>(type.NAME());
 	CASE :class:
-		RETURN ::[MemberClass]new(<parser::MemberClass #\>(parsed), file, group);
+		RETURN std::[MemberClass]new(<parser::MemberClass #\>(parsed), file, group);
 	CASE :enum:
-		RETURN ::[MemberEnum]new(<parser::MemberEnum #\>(parsed), file, group);
+		RETURN std::[MemberEnum]new(<parser::MemberEnum #\>(parsed), file, group);
 	CASE :enumConstant:
-		RETURN ::[Enum::Constant]new(<parser::Enum::Constant #\>(parsed), file, group);
+		RETURN std::[Enum::Constant]new(<parser::Enum::Constant #\>(parsed), file, group);
 	CASE :variable:
-		RETURN ::[MemberVariable]new(<parser::MemberVariable #\>(parsed), file, group);
+		RETURN std::[MemberVariable]new(<parser::MemberVariable #\>(parsed), file, group);
 	CASE :function:
-		RETURN ::[MemberFunction]new(<parser::MemberFunction #\>(parsed), file, group);
+		RETURN std::[MemberFunction]new(<parser::MemberFunction #\>(parsed), file, group);
 	CASE :rawtype:
-		RETURN ::[MemberRawtype]new(<parser::MemberRawtype #\>(parsed), file, group);
+		RETURN std::[MemberRawtype]new(<parser::MemberRawtype #\>(parsed), file, group);
 	CASE :constructor:
-		RETURN ::[Constructor]new(<parser::Constructor #\>(parsed), file, group);
+		RETURN std::[Constructor]new(<parser::Constructor #\>(parsed), file, group);
 	CASE :destructor:
-		RETURN ::[Destructor]new(<parser::Destructor #\>(parsed), file, group);
+		RETURN std::[Destructor]new(<parser::Destructor #\>(parsed), file, group);
 	CASE :union:
-		RETURN ::[MemberUnion]new(<parser::MemberUnion #\>(parsed), file, group);
+		RETURN std::[MemberUnion]new(<parser::MemberUnion #\>(parsed), file, group);
 	CASE :typedef:
-		RETURN ::[MemberTypedef]new(<parser::MemberTypedef #\>(parsed), file, group);
+		RETURN std::[MemberTypedef]new(<parser::MemberTypedef #\>(parsed), file, group);
 	}
 }

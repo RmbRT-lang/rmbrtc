@@ -12,7 +12,7 @@ INCLUDE "scopeitem.rl"
 		ScopeItem(group, parsed, file),
 		Scope(&THIS, group->Scope)
 	{
-		FOR(i ::= 0; i < parsed->Entries.size(); i++)
+		FOR(i ::= 0; i < ##parsed->Entries; i++)
 			insert(parsed->Entries[i], file);
 	}
 

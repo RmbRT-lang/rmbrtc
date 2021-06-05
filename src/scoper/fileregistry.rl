@@ -37,8 +37,8 @@ INCLUDE 'std/shared'
 		IF(!Loading.insert(path))
 			RETURN NULL;
 		file: File \ := LegacyScope
-			? ::[File]new(LegacyScope, *ParsedFiles.get(path), THIS)
-			: ::[File]new(*ParsedFiles.get(path), THIS);
+			? std::[File]new(LegacyScope, *ParsedFiles.get(path), THIS)
+			: std::[File]new(*ParsedFiles.get(path), THIS);
 
 		ASSERT(Files.insert(:gc(file)));
 		ASSERT(Loading.remove(path));
@@ -47,7 +47,7 @@ INCLUDE 'std/shared'
 
 	find_global(path: std::[CHAR#]Buffer #&) std::Utf8
 	{
-		FOR(i ::= 0; i < IncludeDirs.size(); i++)
+		FOR(i ::= 0; i < ##IncludeDirs; i++)
 			TRY RETURN util::absolute_file(
 				util::concat_paths(
 					IncludeDirs[i].content(),

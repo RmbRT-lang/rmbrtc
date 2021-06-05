@@ -133,7 +133,7 @@ INCLUDE "../util/dynunion.rl"
 
 		parse_opt(p: Parser &) BOOL
 		{
-			v: std::[LocalVariable]Dynamic := :gc([LocalVariable]new());
+			v: std::[LocalVariable]Dynamic := :gc(std::[LocalVariable]new());
 			IF(v->parse_var_decl(p))
 				V := v.release();
 			ELSE IF(exp ::= Expression::parse(p))

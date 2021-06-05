@@ -145,6 +145,7 @@ INCLUDE "../src/file.rl"
 		greater,
 
 		dollar,
+		doubleHash,
 		hash
 	}
 

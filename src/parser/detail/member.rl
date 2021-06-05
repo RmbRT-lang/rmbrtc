@@ -115,7 +115,7 @@ INCLUDE "../destructor.rl"
 
 	parse_member_variable(p: Parser &, ret: Member * &, static: BOOL) BOOL
 	{
-		v: std::[MemberVariable]Dynamic := :gc([MemberVariable]new());
+		v: std::[MemberVariable]Dynamic := :gc(std::[MemberVariable]new());
 		IF(v->parse(p, static))
 		{
 			ret := v.release();
@@ -153,7 +153,7 @@ INCLUDE "../destructor.rl"
 
 		DO(found ::= FALSE)
 		{
-			FOR(i ::= 0; i < ::size(lookup); i++)
+			FOR(i ::= 0; i < ##lookup; i++)
 				IF(found := p.consume(lookup[i].(0)))
 				{
 					visibility := lookup[i].(1);
@@ -172,7 +172,7 @@ INCLUDE "../destructor.rl"
 			(:static, :static),
 			(:hash, :isolated));
 
-		FOR(i ::= 0; i < ::size(lookup); i++)
+		FOR(i ::= 0; i < ##lookup; i++)
 			IF(p.consume(lookup[i].(0)))
 				RETURN lookup[i].(1);
 

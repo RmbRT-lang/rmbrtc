@@ -17,7 +17,7 @@ INCLUDE 'std/memory'
 	}:	Scope(&THIS, group->Scope),
 		Size(:gc(Expression::create(parsed->Size, file)))
 	{
-		FOR(i ::= 0; i < parsed->Members.size(); i++)
+		FOR(i ::= 0; i < ##parsed->Members; i++)
 			insert(parsed->Members[i], file);
 	}
 }

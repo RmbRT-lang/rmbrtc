@@ -65,6 +65,6 @@ INCLUDE 'std/vector'
 			RETURN TRUE;
 		}
 
-		# exists() BOOL := Children.size() != 0;
+		# exists() BOOL := ##Children != 0;
 	}
 }

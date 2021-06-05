@@ -20,6 +20,7 @@ INCLUDE 'std/vector'
 	dereference, address, move,
 	preIncrement, preDecrement,
 	postIncrement, postDecrement,
+	count,
 
 	async,
 	fullAsync,
@@ -78,7 +79,7 @@ INCLUDE 'std/vector'
 				{
 					IF(!op)
 					{
-						op := ::[OperatorExpression]new();
+						op := std::[OperatorExpression]new();
 						op->Op := :tuple;
 						op->Operands += :gc(exp);
 					}
@@ -284,7 +285,7 @@ INCLUDE 'std/vector'
 			(k_log_or, TRUE),
 			(k_assign, FALSE));
 
-		precedenceGroups: UM# := ::size(k_groups);
+		precedenceGroups: UM# := ##k_groups;
 
 		k_prefix_ops: {tok::Type, Operator, BOOL}#[](
 				(:minus, :neg, TRUE),
@@ -298,11 +299,12 @@ INCLUDE 'std/vector'
 				(:and, :address, FALSE),
 				(:doubleAnd, :move, FALSE),
 				(:asterisk, :dereference, TRUE),
-				(:lessMinus, :await, TRUE));
+				(:lessMinus, :await, TRUE),
+				(:doubleHash, :count, TRUE));
 
 		consume_overloadable_binary_operator(p: Parser &, op: Operator &) BOOL
 		{
-			FOR(i ::= 0; i < ::size(k_groups); i++)
+			FOR(i ::= 0; i < ##k_groups; i++)
 				FOR(j ::= 0; j < k_groups[i].Size; j++)
 					IF(k_groups[i].Table[j].(2))
 						IF(p.consume(k_groups[i].Table[j].(0)))
@@ -315,7 +317,7 @@ INCLUDE 'std/vector'
 
 		consume_overloadable_prefix_operator(p: Parser &, op: Operator &) BOOL
 		{
-			FOR(i ::= 0; i < ::size(k_prefix_ops); i++)
+			FOR(i ::= 0; i < ##k_prefix_ops; i++)
 				IF(k_prefix_ops[i].(2))
 					IF(p.consume(k_prefix_ops[i].(0)))
 					{
@@ -331,7 +333,7 @@ INCLUDE 'std/vector'
 				(:doublePlus, :postIncrement),
 				(:doubleMinus, :postDecrement));
 
-			FOR(i ::= 0; i < ::size(k_postfix_ops); i++)
+			FOR(i ::= 0; i < ##k_postfix_ops; i++)
 				IF(p.consume(k_postfix_ops[i].(0)))
 				{
 					op := k_postfix_ops[i].(1);
@@ -365,7 +367,7 @@ INCLUDE 'std/vector'
 				IF(p.consume(group->Table[i].(0)))
 				{
 					op ::= group->Table[i].(1);
-					ret ::= ::[OperatorExpression]new();
+					ret ::= std::[OperatorExpression]new();
 					ret->Op := op;
 					ret->Operands += :gc(lhs);
 
@@ -412,7 +414,7 @@ INCLUDE 'std/vector'
 				p.expect(:colon);
 				else ::= Expression::parse(p);
 
-				ret ::= [OperatorExpression]new();
+				ret ::= std::[OperatorExpression]new();
 				ret->Op := :conditional;
 				ret->Operands += :gc(lhs);
 				ret->Operands += :gc(then);
@@ -424,10 +426,10 @@ INCLUDE 'std/vector'
 
 		STATIC parse_prefix(p: Parser&) Expression *
 		{
-			FOR(i ::= 0; i < ::size(detail::k_prefix_ops); i++)
+			FOR(i ::= 0; i < ##detail::k_prefix_ops; i++)
 				IF(p.consume(detail::k_prefix_ops[i].(0)))
 				{
-					xp ::= [OperatorExpression]new();
+					xp ::= std::[OperatorExpression]new();
 					xp->Op := detail::k_prefix_ops[i].(1);
 					xp->Operands += :gc(parse_prefix(p));
 					RETURN xp;
@@ -440,7 +442,7 @@ INCLUDE 'std/vector'
 			op: Operator,
 			lhs: Expression *) Expression *
 		{
-			ret ::= ::[OperatorExpression]new();
+			ret ::= std::[OperatorExpression]new();
 			ret->Op := op;
 			ret->Operands += :gc(lhs);
 			RETURN ret;
@@ -451,7 +453,7 @@ INCLUDE 'std/vector'
 			lhs: Expression *,
 			rhs: Expression *) Expression *
 		{
-			ret ::= ::[OperatorExpression]new();
+			ret ::= std::[OperatorExpression]new();
 			ret->Op := op;
 			ret->Operands += :gc(lhs);
 			ret->Operands += :gc(rhs);
@@ -476,7 +478,7 @@ INCLUDE 'std/vector'
 
 			FOR["outer"](;;)
 			{
-				FOR(i ::= 0; i < ::size(postfix); i++)
+				FOR(i ::= 0; i < ##postfix; i++)
 				{
 					IF(p.consume(postfix[i].(0)))
 					{
@@ -487,7 +489,7 @@ INCLUDE 'std/vector'
 
 				IF(p.consume(:bracketOpen))
 				{
-					sub ::= ::[OperatorExpression]new();
+					sub ::= std::[OperatorExpression]new();
 					sub->Op := :subscript;
 					sub->Operands += :gc(lhs);
 
@@ -506,7 +508,7 @@ INCLUDE 'std/vector'
 
 				IF(p.consume(:parentheseOpen))
 				{
-					call ::= ::[OperatorExpression]new();
+					call ::= std::[OperatorExpression]new();
 					call->Op := :call;
 					call->Operands += :gc(lhs);
 
@@ -526,7 +528,7 @@ INCLUDE 'std/vector'
 					CONTINUE["outer"];
 				}
 
-				FOR(i ::= 0; i < ::size(memberAccess); i++)
+				FOR(i ::= 0; i < ##memberAccess; i++)
 				{
 					IF(p.consume(memberAccess[i].(0)))
 					{
@@ -561,7 +563,7 @@ INCLUDE 'std/vector'
 							lhs := make_binary(
 								memberAccess[i].(1),
 								lhs,
-								::[TYPE(member)]new(&&member));
+								std::[TYPE(member)]new(&&member));
 						}
 						CONTINUE["outer"];
 					}
@@ -607,10 +609,10 @@ INCLUDE 'std/vector'
 				(:concept, :tripleLess, :tripleGreater, TRUE, TRUE)
 			);
 			type: UM;
-			FOR(type := 0; type < ::size(lookup); type++)
+			FOR(type := 0; type < ##lookup; type++)
 				IF(p.consume(lookup[type].(1)))
 					BREAK;
-			IF(type == ::size(lookup))
+			IF(type == ##lookup)
 				RETURN FALSE;
 
 			t: Trace(&p, "cast expression");

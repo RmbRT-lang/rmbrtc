@@ -39,9 +39,9 @@ PUBLIC:
 	DESTRUCTOR
 	{
 		IF(is_first())
-			::delete(first());
+			std::delete(first());
 		ELSE IF(is_second())
-			::delete(second());
+			std::delete(second());
 	}
 
 	# is_first() INLINE BOOL := !IsB && Ptr.First;

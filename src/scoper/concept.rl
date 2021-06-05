@@ -15,7 +15,7 @@ INCLUDE "scopeitem.rl"
 		group: detail::ScopeItemGroup \}:
 		Scope(&THIS, group->Scope)
 	{
-		FOR(i ::= 0; i < parsed->Members.size(); i++)
+		FOR(i ::= 0; i < ##parsed->Members; i++)
 		{
 			member ::= Scope::insert(parsed->Members[i], file);
 			IF(memfn ::= <<MemberFunction \>>(member))

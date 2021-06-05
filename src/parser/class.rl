@@ -24,7 +24,7 @@ INCLUDE 'std/memory'
 			t: Trace(&p, "inheritance");
 
 			Visibility := :public;
-			FOR(i ::= 0; i < ::size(lookup); i++)
+			FOR(i ::= 0; i < ##lookup; i++)
 				IF(p.consume(lookup[i].(0)))
 				{
 					Visibility := lookup[i].(1);

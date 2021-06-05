@@ -26,7 +26,7 @@ INCLUDE "exprorstmt.rl"
 		Coroutine(parsed->IsCoroutine),
 		ArgumentScope(&THIS, group->Scope)
 	{
-		FOR(i ::= 0; i < parsed->Arguments.size(); i++)
+		FOR(i ::= 0; i < ##parsed->Arguments; i++)
 		{
 			var ::= ArgumentScope.insert(&parsed->Arguments[i], file);
 			Arguments += <<LocalVariable \>>(var);
@@ -37,10 +37,10 @@ INCLUDE "exprorstmt.rl"
 		IF(parsed->Return.is_type())
 			Return := Type::create(parsed->Return.type(), file);
 		ELSE
-			Return := ::[Type::Auto]new(*parsed->Return.auto());
+			Return := std::[Type::Auto]new(*parsed->Return.auto());
 
 		IF(parsed->Body.is_expression())
-			Body := Expression::create(parsed->Body.expression(), file);
+			Body := Expression::create(0, parsed->Body.expression(), file);
 		ELSE IF(parsed->Body.is_statement())
 			Body := Statement::create(0, parsed->Body.statement(), file, &ArgumentScope);
 	}

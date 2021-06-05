@@ -1,5 +1,5 @@
 INCLUDE "../statement.rl"
-
+INCLUDE 'std/memory'
 INCLUDE 'std/err/unimplemented'
 
 
@@ -13,75 +13,75 @@ INCLUDE 'std/err/unimplemented'
 	SWITCH(type ::= parsed->type())
 	{
 	DEFAULT:
-		THROW std::err::Unimplemented(type.NAME());
+		THROW <std::err::Unimplemented>(type.NAME());
 	CASE :assert:
-		RETURN ::[AssertStatement]new(
+		RETURN std::[AssertStatement]new(
 			position,
 			<parser::AssertStatement #\>(parsed),
 			file,
 			parentScope);
 	CASE :block:
-		RETURN ::[BlockStatement]new(
+		RETURN std::[BlockStatement]new(
 			position,
 			<parser::BlockStatement #\>(parsed),
 			file,
 			parentScope);
 	CASE :if:
-		RETURN ::[IfStatement]new(
+		RETURN std::[IfStatement]new(
 			position,
 			<parser::IfStatement #\>(parsed),
 			file,
 			parentScope);
 	CASE :variable:
-		RETURN ::[VariableStatement]new(
+		RETURN std::[VariableStatement]new(
 			position,
 			<parser::VariableStatement #\>(parsed),
 			file,
 			parentScope);
 	CASE :expression:
-		RETURN ::[ExpressionStatement]new(
+		RETURN std::[ExpressionStatement]new(
 			position,
 			<parser::ExpressionStatement #\>(parsed),
 			file,
 			parentScope);
 	CASE :return:
-		RETURN ::[ReturnStatement]new(
+		RETURN std::[ReturnStatement]new(
 			position,
 			<parser::ReturnStatement #\>(parsed),
 			file,
 			parentScope);
 	CASE :try:
-		RETURN ::[TryStatement]new(
+		RETURN std::[TryStatement]new(
 			position,
 			<parser::TryStatement #\>(parsed),
 			file,
 			parentScope);
 	CASE :throw:
-		RETURN ::[ThrowStatement]new(
+		RETURN std::[ThrowStatement]new(
 			position,
 			<parser::ThrowStatement #\>(parsed),
 			file,
 			parentScope);
 	CASE :loop:
-		RETURN ::[LoopStatement]new(
+		RETURN std::[LoopStatement]new(
 			position,
 			<parser::LoopStatement #\>(parsed),
 			file,
 			parentScope);
 	CASE :switch:
-		RETURN ::[SwitchStatement]new(
+		RETURN std::[SwitchStatement]new(
 			position,
 			<parser::SwitchStatement #\>(parsed),
 			file,
 			parentScope);
 	CASE :break:
-		RETURN ::[BreakStatement]new(
+		RETURN std::[BreakStatement]new(
 			position,
 			<parser::BreakStatement #\>(parsed),
 			file,
 			parentScope);
 	CASE :continue:
-		RETURN ::[ContinueStatement]new(
+		RETURN std::[ContinueStatement]new(
 			position,
 			<parser::ContinueStatement #\>(parsed),
 			file,
@@ -116,10 +116,10 @@ INCLUDE 'std/err/unimplemented'
 			{
 				THIS := <<LocalVariable \>>(
 					scope->insert(parsed.variable(), file));
-				variable()->Position := (*position)++;
+				variable()->set_position(++*position);
 			}
 			ELSE IF(parsed.is_expression())
-				THIS := Expression::create(parsed.expression(), file);
+				THIS := Expression::create(*position, parsed.expression(), file);
 			ELSE
 				Val.Check := NULL;
 		}
@@ -136,7 +136,7 @@ INCLUDE 'std/err/unimplemented'
 		DESTRUCTOR
 		{
 			IF(is_expression())
-				::delete(Val.Exp);
+				std::delete(Val.Exp);
 		}
 
 		# is_variable() INLINE BOOL := IsVar && Val.Var;
@@ -169,7 +169,7 @@ INCLUDE 'std/err/unimplemented'
 			file: src::File#&,
 			parentScope: scoper::Scope \}:
 			Statement(position, parentScope),
-			Expression(:gc, scoper::Expression::create(parsed->Expression, file));
+			Expression(:gc, scoper::Expression::create(position, parsed->Expression, file));
 	}
 
 	BlockStatement -> Statement
@@ -187,15 +187,15 @@ INCLUDE 'std/err/unimplemented'
 			position: UM,
 			parsed: parser::BlockStatement #\,
 			file: src::File#&,
-			parentScope: scoper::Scope \}:
-			Statement(position, parentScope),
+			parentScope: scoper::Scope \
+		}:	Statement(position, parentScope),
 			Scope(&THIS, parentScope)
 		{
 			p ::= Position;
-			FOR(i ::= 0; i < parsed->Statements.size(); i++)
+			FOR(i ::= 0; i < ##parsed->Statements; i++)
 			{
 				Statements += :gc(Statement::create(p, parsed->Statements[i], file, &Scope));
-				p += Statements.back().Ptr->variables();
+				p += Statements.back()->variables();
 			}
 		}
 	}
@@ -253,7 +253,7 @@ INCLUDE 'std/err/unimplemented'
 		{
 			scopeItem ::= parentScope->insert(&parsed->Variable, file);
 			Variable := <<LocalVariable \>>(scopeItem);
-			Variable->Position := position;
+			Variable->set_position(position+1);
 		}
 	}
 
@@ -268,9 +268,9 @@ INCLUDE 'std/err/unimplemented'
 			position: UM,
 			parsed: parser::ExpressionStatement #\,
 			file: src::File#&,
-			parentScope: Scope \}:
-			Statement(position, parentScope),
-			Expression(:gc, scoper::Expression::create(parsed->Expression, file));
+			parentScope: Scope \
+		}:	Statement(position, parentScope),
+			Expression(:gc, scoper::Expression::create(position, parsed->Expression, file));
 	}
 
 	ReturnStatement -> Statement
@@ -290,7 +290,7 @@ INCLUDE 'std/err/unimplemented'
 			Statement(position, parentScope),
 			Expression(:gc, parsed->is_void()
 				? NULL
-				: scoper::Expression::create(parsed->Expression, file));
+				: scoper::Expression::create(position, parsed->Expression, file));
 	}
 
 	TryStatement -> Statement
@@ -303,7 +303,7 @@ INCLUDE 'std/err/unimplemented'
 		# FINAL variables() UM
 		{
 			vars ::= Body->variables();
-			FOR(i ::= 0; i < Catches.size(); i++)
+			FOR(i ::= 0; i < ##Catches; i++)
 				vars += Catches[i].variables();
 			IF(Finally)
 				vars += Finally->variables();
@@ -321,7 +321,7 @@ INCLUDE 'std/err/unimplemented'
 			Body(:gc, Statement::create(position, parsed->Body, file, parentScope))
 		{
 			position += Body.Ptr->variables();
-			FOR(i ::= 0; i < Catches.size(); i++)
+			FOR(i ::= 0; i < ##Catches; i++)
 			{
 				Catches += (position, &THIS, &parsed->Catches[i], file);
 				position += Catches.back().variables();
@@ -370,7 +370,7 @@ INCLUDE 'std/err/unimplemented'
 			Statement(position, parentScope),
 			ValueType(parsed->ValueType),
 			Value(:gc, parsed->Value
-				? Expression::create(parsed->Value, file)
+				? Expression::create(position, parsed->Value, file)
 				: NULL);
 	}
 
@@ -404,17 +404,29 @@ INCLUDE 'std/err/unimplemented'
 			InitScope(&THIS, parentScope),
 			ConditionScope(&THIS, &InitScope),
 			PostCondition(parsed->IsPostCondition),
-			Initial(&position, parsed->Initial, file, &InitScope),
-			PostLoop(:gc, parsed->PostLoop
-				? Expression::create(parsed->PostLoop, file)
-				: NULL),
 			Label(parsed->Label, file)
 		{
-			IF(PostCondition)
-				Condition := VarOrExp(&position, parsed->Condition, file, &ConditionScope);
-			Body := :gc(Statement::create(position, parsed->Body, file, parentScope));
+			Initial := (&position, parsed->Initial, file, &InitScope);
 			IF(!PostCondition)
-				Condition := VarOrExp(&position, parsed->Condition, file, &ConditionScope);
+			{
+				Condition := (&position, parsed->Condition, file, &ConditionScope);
+				PostLoop := (:gc, parsed->PostLoop
+					? Expression::create(position, parsed->PostLoop, file)
+					: NULL);
+			}
+			Body := :gc(Statement::create(
+				position,
+				parsed->Body,
+				file,
+				PostCondition ? &InitScope : &ConditionScope ));
+			position += Body->variables();
+			IF(PostCondition)
+			{
+				Condition := (&position, parsed->Condition, file, &ConditionScope);
+				PostLoop := (:gc, parsed->PostLoop
+					? Expression::create(position, parsed->PostLoop, file)
+					: NULL);
+			}
 		}
 	}
 
@@ -444,7 +456,7 @@ INCLUDE 'std/err/unimplemented'
 			Value(&position, parsed->Value, file, &ValueScope),
 			Label(parsed->Label, file)
 		{
-			FOR(i ::= 0; i < parsed->Cases.size(); i++)
+			FOR(i ::= 0; i < ##parsed->Cases; i++)
 			{
 				Cases += (position, parsed->Cases[i], file, &ValueScope);
 				position += Cases.back().variables();
@@ -468,8 +480,8 @@ INCLUDE 'std/err/unimplemented'
 			parentScope: Scope \}:
 			Body(:gc, Statement::create(position, parsed.Body, file, parentScope))
 		{
-			FOR(i ::= 0; i < parsed.Values.size(); i++)
-				Values += :gc(Expression::create(parsed.Values[i], file));
+			FOR(i ::= 0; i < ##parsed.Values; i++)
+				Values += :gc(Expression::create(position, parsed.Values[i], file));
 		}
 	}
 

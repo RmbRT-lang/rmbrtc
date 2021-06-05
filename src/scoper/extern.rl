@@ -21,8 +21,8 @@ INCLUDE "../util/dynunion.rl"
 		ScopeItem(group, parsed, file)
 	{
 		IF(parsed->is_variable())
-			Symbol := ::[GlobalVariable]new(parsed->variable(), file, group);
+			Symbol := std::[GlobalVariable]new(parsed->variable(), file, group);
 		ELSE
-			Symbol := ::[GlobalFunction]new(parsed->function(), file, group);
+			Symbol := std::[GlobalFunction]new(parsed->function(), file, group);
 	}
 }

@@ -28,10 +28,10 @@ INCLUDE "symbol.rl"
 	}:	Scope(&THIS, group->Scope),
 		Virtual(parsed->Virtual)
 	{
-		FOR(i ::= 0; i < parsed->Members.size(); i++)
+		FOR(i ::= 0; i < ##parsed->Members; i++)
 			insert(parsed->Members[i], file);
 
-		FOR(i ::= 0; i < parsed->Inheritances.size(); i++)
+		FOR(i ::= 0; i < ##parsed->Inheritances; i++)
 			Inheritances += (parsed->Inheritances[i], file);
 	}
 

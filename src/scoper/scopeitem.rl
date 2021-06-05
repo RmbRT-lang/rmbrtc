@@ -152,7 +152,7 @@ INCLUDE 'std/io/format'
 	CASE :member:
 		i := Member::create(<<parser::Member #\>>(entry), file, group);
 	CASE :local:
-		i := ::[LocalVariable]new(<<parser::LocalVariable #\>>(entry), file, group);
+		i := std::[LocalVariable]new(<<parser::LocalVariable #\>>(entry), file, group);
 	DEFAULT:
 		THROW <std::err::Unimplemented>(cat.NAME());
 	}

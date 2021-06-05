@@ -32,6 +32,8 @@ INCLUDE 'std/streambuffer'
 		RETURN scope;
 	}
 
+	# is_root() BOOL := !Parent;
+
 	# find(name: String #&) detail::ScopeItemGroup #*
 	{
 		it ::= Items.find(name);
@@ -59,7 +61,7 @@ INCLUDE 'std/streambuffer'
 
 		group ::= it
 			? it->Ptr
-			: Items.insert_at(loc, :gc(::[detail::ScopeItemGroup]new(name, &THIS))).Ptr;
+			: Items.insert_at(loc, :gc(std::[detail::ScopeItemGroup]new(name, &THIS))).Ptr;
 
 		ret ::= ScopeItem::create(entry, file, group);
 		IF(ret.(1))

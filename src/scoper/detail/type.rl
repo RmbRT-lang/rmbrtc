@@ -14,19 +14,19 @@ INCLUDE 'std/err/unimplemented'
 	DEFAULT:
 		THROW std::err::Unimplemented(type.NAME());
 	CASE :signature:
-		RETURN ::[Signature]new(<parser::Signature #\>(parsed), file);
+		RETURN std::[Signature]new(<parser::Signature #\>(parsed), file);
 	CASE :symbolConstant:
-		RETURN ::[SymbolConstantType]new(<parser::SymbolConstantType #\>(parsed), file);
+		RETURN std::[SymbolConstantType]new(<parser::SymbolConstantType #\>(parsed), file);
 	CASE :void:
-		RETURN ::[Void]new(<parser::Void #\>(parsed), file);
+		RETURN std::[Void]new(<parser::Void #\>(parsed), file);
 	CASE :name:
-		RETURN ::[TypeName]new(<parser::TypeName #\>(parsed), file);
+		RETURN std::[TypeName]new(<parser::TypeName #\>(parsed), file);
 	CASE :tuple:
-		RETURN ::[TupleType]new(<parser::TupleType #\>(parsed), file);
+		RETURN std::[TupleType]new(<parser::TupleType #\>(parsed), file);
 	CASE :expression:
-		RETURN ::[TypeOfExpression]new(<parser::TypeOfExpression #\>(parsed), file);
+		RETURN std::[TypeOfExpression]new(<parser::TypeOfExpression #\>(parsed), file);
 	CASE :builtin:
-		RETURN ::[BuiltinType]new(<parser::BuiltinType #\>(parsed), file);
+		RETURN std::[BuiltinType]new(<parser::BuiltinType #\>(parsed), file);
 	}
 }
 
@@ -45,7 +45,7 @@ INCLUDE 'std/err/unimplemented'
 			Type(parsed, file),
 			Return(:gc, Type::create(parsed->Ret, file))
 		{
-			FOR(i ::= 0; i < parsed->Args.size(); i++)
+			FOR(i ::= 0; i < ##parsed->Args; i++)
 				Arguments += :gc(Type::create(parsed->Args[i], file));
 		}
 	}
@@ -99,7 +99,7 @@ INCLUDE 'std/err/unimplemented'
 			file: src::File #&
 		}:	Type(parsed, file)
 		{
-			FOR(i ::= 0; i < parsed->Types.size(); i++)
+			FOR(i ::= 0; i < ##parsed->Types; i++)
 				Types += :gc(Type::create(parsed->Types[i], file));
 		}
 	}

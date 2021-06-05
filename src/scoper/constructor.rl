@@ -15,7 +15,7 @@ INCLUDE "detail/statement.rl"
 			file: src::File#&}:
 			Base(parsed.Base, file)
 		{
-			FOR(i ::= 0; i < parsed.Arguments.size(); i++)
+			FOR(i ::= 0; i < ##parsed.Arguments; i++)
 				Arguments += :gc(Expression::create(parsed.Arguments[i], file));
 		}
 	}
@@ -30,7 +30,7 @@ INCLUDE "detail/statement.rl"
 			file: src::File#&}:
 			Member(file.content(parsed.Member))
 		{
-			FOR(i ::= 0; i < parsed.Arguments.size(); i++)
+			FOR(i ::= 0; i < ##parsed.Arguments; i++)
 				Arguments += :gc(Expression::create(parsed.Arguments[i], file));
 		}
 	}
@@ -53,16 +53,16 @@ INCLUDE "detail/statement.rl"
 		ArgScope(&THIS, group->Scope),
 		Inline(parsed->Inline)
 	{
-		FOR(i ::= 0; i < parsed->Arguments.size(); i++)
+		FOR(i ::= 0; i < ##parsed->Arguments; i++)
 		{
 			arg ::= ArgScope.insert(&parsed->Arguments[i], file);
 			Arguments += <<LocalVariable \>>(arg);
 		}
 
-		FOR(i ::= 0; i < parsed->BaseInits.size(); i++)
+		FOR(i ::= 0; i < ##parsed->BaseInits; i++)
 			BaseInits += (parsed->BaseInits[i], file);
 
-		FOR(i ::= 0; i < parsed->MemberInits.size(); i++)
+		FOR(i ::= 0; i < ##parsed->MemberInits; i++)
 			MemberInits += (parsed->MemberInits[i], file);
 
 		IF(parsed->Body)
