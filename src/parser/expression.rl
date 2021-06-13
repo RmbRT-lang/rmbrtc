@@ -595,7 +595,7 @@ INCLUDE 'std/vector'
 	{
 		# FINAL type() ExpressionType := :cast;
 
-		ENUM Kind { static, dynamic, concept }
+		ENUM Kind { static, dynamic, mask }
 		Method: Kind;
 		Type: std::[parser::Type]Dynamic;
 		Values: Expression - std::Dynamic - std::Vector;
@@ -606,7 +606,7 @@ INCLUDE 'std/vector'
 			STATIC lookup: {Kind, tok::Type, tok::Type, BOOL, BOOL}#[](
 				(:static, :less, :greater, TRUE, FALSE),
 				(:dynamic, :doubleLess, :doubleGreater, FALSE, TRUE),
-				(:concept, :tripleLess, :tripleGreater, TRUE, TRUE)
+				(:mask, :tripleLess, :tripleGreater, TRUE, TRUE)
 			);
 			type: UM;
 			FOR(type := 0; type < ##lookup; type++)

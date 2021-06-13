@@ -1,7 +1,7 @@
 INCLUDE "../global.rl"
 INCLUDE "../namespace.rl"
 INCLUDE "../class.rl"
-INCLUDE "../concept.rl"
+INCLUDE "../mask.rl"
 INCLUDE "../enum.rl"
 INCLUDE "../function.rl"
 INCLUDE "../variable.rl"
@@ -40,7 +40,7 @@ INCLUDE 'std/err/unimplemented'
 		RETURN std::[GlobalTypedef]new(<parser::GlobalTypedef #\>(global), file, group);
 	CASE :union:
 		RETURN std::[GlobalUnion]new(<parser::GlobalUnion #\>(global), file, group);
-	CASE :concept:
-		RETURN std::[GlobalConcept]new(<parser::GlobalConcept #\>(global), file, group);
+	CASE :mask:
+		RETURN std::[GlobalMask]new(<parser::GlobalMask #\>(global), file, group);
 	}
 }

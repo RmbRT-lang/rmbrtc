@@ -252,7 +252,7 @@ INCLUDE "error.rl"
 				("CASE", :case),
 				("CATCH", :catch),
 				("CHAR", :char),
-				("CONCEPT", :concept),
+				("MASK", :mask),
 				("CONTINUE", :continue),
 				("DEFAULT", :default),
 				("DESTRUCTOR", :destructor),

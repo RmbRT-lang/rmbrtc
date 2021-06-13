@@ -85,7 +85,7 @@ INCLUDE "../destructor.rl"
 		RETURN ret;
 	}
 
-	parse_concept_member(
+	parse_mask_member(
 		p: Parser &,
 		default_visibility: Visibility &) Member *
 	{

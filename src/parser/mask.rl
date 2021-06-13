@@ -10,7 +10,7 @@ INCLUDE "member.rl"
 INCLUDE 'std/vector'
 INCLUDE 'std/memory'
 
-::rlc::parser Concept -> VIRTUAL ScopeItem
+::rlc::parser Mask -> VIRTUAL ScopeItem
 {
 	Members: std::[std::[Member]Dynamic]Vector;
 	Name: src::String;
@@ -20,16 +20,16 @@ INCLUDE 'std/memory'
 
 	parse(p: Parser&) BOOL
 	{
-		IF(!p.consume(:concept))
+		IF(!p.consume(:mask))
 			RETURN FALSE;
 
-		t: Trace(&p, "concept");
+		t: Trace(&p, "mask");
 
 		p.expect(:identifier, &Name);
 		p.expect(:braceOpen);
 
 		DO(default_visibility: Visibility := Visibility::public)
-			IF(member ::= detail::parse_concept_member(p, default_visibility))
+			IF(member ::= detail::parse_mask_member(p, default_visibility))
 				Members += :gc(member);
 			ELSE
 				p.fail("expected member");
@@ -39,9 +39,9 @@ INCLUDE 'std/memory'
 	}
 }
 
-::rlc::parser GlobalConcept -> Global, Concept
+::rlc::parser GlobalMask -> Global, Mask
 {
-	# FINAL type() Global::Type := :concept;
+	# FINAL type() Global::Type := :mask;
 
-	parse(p: Parser&) BOOL := Concept::parse(p);
+	parse(p: Parser&) BOOL := Mask::parse(p);
 }

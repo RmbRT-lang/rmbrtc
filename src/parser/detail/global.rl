@@ -1,7 +1,7 @@
 INCLUDE "../global.rl"
 INCLUDE "../namespace.rl"
 INCLUDE "../typedef.rl"
-INCLUDE "../concept.rl"
+INCLUDE "../mask.rl"
 INCLUDE "../variable.rl"
 INCLUDE "../function.rl"
 INCLUDE "../test.rl"
@@ -19,7 +19,7 @@ INCLUDE "../test.rl"
 		|| [GlobalFunction]parse_global_impl(p, ret)
 		|| [GlobalVariable]parse_global_impl(p, ret)
 		|| [GlobalClass]parse_global_impl(p, ret)
-		|| [GlobalConcept]parse_global_impl(p, ret)
+		|| [GlobalMask]parse_global_impl(p, ret)
 		|| [GlobalRawtype]parse_global_impl(p, ret)
 		|| [GlobalEnum]parse_global_impl(p, ret)
 		|| [ExternSymbol]parse_global_impl(p, ret)

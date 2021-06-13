@@ -1,16 +1,16 @@
-INCLUDE "../parser/concept.rl"
+INCLUDE "../parser/mask.rl"
 
 INCLUDE "global.rl"
 INCLUDE "member.rl"
 INCLUDE "scopeitem.rl"
 
-::rlc::scoper Concept -> VIRTUAL ScopeItem, Scope
+::rlc::scoper Mask -> VIRTUAL ScopeItem, Scope
 {
-	(// The member functions required by the concept. /)
+	(// The member functions required by the mask. /)
 	Functions: std::[MemberFunction \]Vector;
 
 	{
-		parsed: parser::Concept #\,
+		parsed: parser::Mask #\,
 		file: src::File #&,
 		group: detail::ScopeItemGroup \}:
 		Scope(&THIS, group->Scope)
@@ -25,14 +25,14 @@ INCLUDE "scopeitem.rl"
 	}
 }
 
-::rlc::scoper GlobalConcept -> Global, Concept
+::rlc::scoper GlobalMask -> Global, Mask
 {
-	# FINAL type() Global::Type := :concept;
+	# FINAL type() Global::Type := :mask;
 
 	{
-		parsed: parser::GlobalConcept #\,
+		parsed: parser::GlobalMask #\,
 		file: src::File #&,
 		group: detail::ScopeItemGroup \}:
 		ScopeItem(group, parsed, file),
-		Concept(parsed, file, group);
+		Mask(parsed, file, group);
 }

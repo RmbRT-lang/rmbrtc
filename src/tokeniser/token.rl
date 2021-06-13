@@ -19,7 +19,7 @@ INCLUDE "../src/file.rl"
 		case,
 		catch,
 		char,
-		concept,
+		mask,
 		continue,
 		default,
 		destructor,
