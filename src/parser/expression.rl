@@ -39,7 +39,9 @@ INCLUDE 'std/vector'
 	tuple,
 	variadicExpand,
 	constructor,
-	pointerConstructor
+	pointerConstructor,
+	destructor,
+	pointerDestructor
 }
 
 ::rlc::parser
@@ -475,9 +477,10 @@ INCLUDE 'std/vector'
 				(:doubleMinus, :postDecrement),
 				(:tripleDot, :variadicExpand));
 
-			STATIC memberAccess: {tok::Type, Operator, Operator, Operator}#[](
-				(:dot, :memberReference, :constructor, :tupleMemberReference),
-				(:minusGreater, :memberPointer, :pointerConstructor, :tupleMemberPointer));
+			// (tok, op, opctor, opTuple, opDtor)
+			STATIC memberAccess: {tok::Type, Operator, Operator, Operator, Operator}#[](
+				(:dot, :memberReference, :constructor, :tupleMemberReference, :destructor),
+				(:minusGreater, :memberPointer, :pointerConstructor, :tupleMemberPointer, :pointerDestructor));
 
 			FOR["outer"](;;)
 			{
@@ -556,6 +559,9 @@ INCLUDE 'std/vector'
 								lhs := make_binary(memberAccess[i].(3), lhs, index);
 							ELSE p.fail("expected expression");
 							p.expect(:parentheseClose);
+						} ELSE IF(p.consume(:tilde))
+						{
+							lhs := make_unary(memberAccess[i].(4), lhs);
 						}
 						ELSE
 						{
