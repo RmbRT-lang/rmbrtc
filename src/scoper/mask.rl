@@ -32,7 +32,7 @@ INCLUDE "scopeitem.rl"
 	{
 		parsed: parser::GlobalMask #\,
 		file: src::File #&,
-		group: detail::ScopeItemGroup \}:
-		ScopeItem(group, parsed, file),
+		group: detail::ScopeItemGroup \
+	}:	ScopeItem(group, parsed, file),
 		Mask(parsed, file, group);
 }

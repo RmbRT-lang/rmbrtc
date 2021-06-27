@@ -94,6 +94,7 @@ INCLUDE "../src/file.rl"
 		tildeColon,
 		tilde,
 
+		tripleAnd,
 		doubleAndEqual,
 		doubleAnd,
 		andEqual,

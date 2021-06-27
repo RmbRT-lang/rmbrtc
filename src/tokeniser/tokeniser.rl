@@ -172,6 +172,7 @@ INCLUDE "error.rl"
 				("~:", :tildeColon),
 				("~", :tilde),
 
+				("&&&", :tripleAnd),
 				("&&=", :doubleAndEqual),
 				("&&", :doubleAnd),
 				("&=", :andEqual),

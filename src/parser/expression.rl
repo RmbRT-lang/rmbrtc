@@ -21,6 +21,7 @@ INCLUDE 'std/vector'
 	preIncrement, preDecrement,
 	postIncrement, postDecrement,
 	count,
+	baseAddr,
 
 	async,
 	fullAsync,
@@ -287,6 +288,7 @@ INCLUDE 'std/vector'
 
 		precedenceGroups: UM# := ##k_groups;
 
+		// (tok, op, user-overloadable)
 		k_prefix_ops: {tok::Type, Operator, BOOL}#[](
 				(:minus, :neg, TRUE),
 				(:plus, :pos, TRUE),
@@ -300,7 +302,8 @@ INCLUDE 'std/vector'
 				(:doubleAnd, :move, FALSE),
 				(:asterisk, :dereference, TRUE),
 				(:lessMinus, :await, TRUE),
-				(:doubleHash, :count, TRUE));
+				(:doubleHash, :count, TRUE),
+				(:tripleAnd, :baseAddr, FALSE));
 
 		consume_overloadable_binary_operator(p: Parser &, op: Operator &) BOOL
 		{
