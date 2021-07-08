@@ -4,14 +4,14 @@ INCLUDE "type.rl"
 INCLUDE "../util/dynunion.rl"
 INCLUDE "../src/file.rl"
 
-::rlc::parser ExternSymbol -> Global, VIRTUAL ScopeItem
+::rlc::parser ExternSymbol -> Global, ScopeItem
 {
 	Symbol: util::[parser::GlobalVariable; GlobalFunction]DynUnion;
 
 	# FINAL name() src::String #& := is_variable()
 		? variable()->name()
 		: function()->name();
-	# FINAL type() Global::Type := :externSymbol;
+	# FINAL type() ScopeItem::Type := :externSymbol;
 	# FINAL overloadable() BOOL := FALSE;
 
 	# is_variable() INLINE BOOL := Symbol.is_first();
@@ -27,16 +27,16 @@ INCLUDE "../src/file.rl"
 		t: Trace(&p, "external symbol");
 		IF(p.match_ahead(:colon))
 		{
-			var: std::[GlobalVariable]Dynamic := :gc(std::[GlobalVariable]new());
-			IF(!var->parse_extern(p))
+			var: GlobalVariable;
+			IF(!var.parse_extern(p))
 				p.fail("expected variable");
-			Symbol := var.release();
+			Symbol := :gc(std::dup(&&var));
 		} ELSE
 		{
-			f: std::[GlobalFunction]Dynamic := :gc(std::[GlobalFunction]new());
-			IF(!f->parse_extern(p))
+			f: GlobalFunction;
+			IF(!f.parse_extern(p))
 				p.fail("expected function");
-			Symbol := f.release();
+			Symbol := :gc(std::dup(&&f));
 		}
 
 		RETURN TRUE;

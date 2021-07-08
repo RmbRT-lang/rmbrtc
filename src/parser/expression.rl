@@ -67,6 +67,7 @@ INCLUDE 'std/vector'
 		# ABSTRACT type() ExpressionType;
 
 		Range: src::String;
+		Position: src::Position;
 
 		STATIC parse_atom(
 			p: Parser &) Expression *
@@ -141,7 +142,7 @@ INCLUDE 'std/vector'
 		{
 			IF(!p.consume(:colon))
 				RETURN FALSE;
-			p.expect(:identifier, &Symbol);
+			p.expect(:identifier, &Symbol, &THIS.Position);
 			RETURN TRUE;
 		}
 	}
@@ -152,7 +153,7 @@ INCLUDE 'std/vector'
 
 		Number: src::String;
 
-		parse(p: Parser &) BOOL := p.consume(:numberLiteral, &Number);
+		parse(p: Parser &) BOOL := p.consume(:numberLiteral, &Number, &THIS.Position);
 	}
 
 	BoolExpression -> Expression
@@ -163,10 +164,10 @@ INCLUDE 'std/vector'
 
 		parse(p: Parser&) BOOL
 		{
-			IF(p.consume(:true))
+			IF(p.consume(:true, &THIS.Position))
 			{
 				Value := TRUE;
-			} ELSE IF(p.consume(:false))
+			} ELSE IF(p.consume(:false, &THIS.Position))
 			{
 				Value := FALSE;
 			} ELSE
@@ -181,7 +182,7 @@ INCLUDE 'std/vector'
 
 		Char: src::String;
 
-		parse(p: Parser &) BOOL := p.consume(:stringApostrophe, &Char);
+		parse(p: Parser &) BOOL := p.consume(:stringApostrophe, &Char, &THIS.Position);
 	}
 
 	StringExpression -> Expression
@@ -190,7 +191,7 @@ INCLUDE 'std/vector'
 
 		String: src::String;
 
-		parse(p: Parser &) BOOL := p.consume(:stringQuote, &String);
+		parse(p: Parser &) BOOL := p.consume(:stringQuote, &String, &THIS.Position);
 	}
 
 	::detail
@@ -450,6 +451,7 @@ INCLUDE 'std/vector'
 			ret ::= std::[OperatorExpression]new();
 			ret->Op := op;
 			ret->Operands += :gc(lhs);
+			ret->Position := lhs->Position;
 			RETURN ret;
 		}
 
@@ -462,6 +464,7 @@ INCLUDE 'std/vector'
 			ret->Op := op;
 			ret->Operands += :gc(lhs);
 			ret->Operands += :gc(rhs);
+			ret->Position := lhs->Position;
 			RETURN ret;
 		}
 
@@ -590,14 +593,14 @@ INCLUDE 'std/vector'
 	{
 		# FINAL type() ExpressionType := :this;
 
-		parse(p: Parser&) BOOL := p.consume(:this);
+		parse(p: Parser&) BOOL := p.consume(:this, &THIS.Position);
 	}
 
 	NullExpression -> Expression
 	{
 		# FINAL type() ExpressionType := :null;
 
-		parse(p: Parser&) BOOL := p.consume(:null);
+		parse(p: Parser&) BOOL := p.consume(:null, &THIS.Position);
 	}
 
 	CastExpression -> Expression
@@ -619,7 +622,7 @@ INCLUDE 'std/vector'
 			);
 			type: UM;
 			FOR(type := 0; type < ##lookup; type++)
-				IF(p.consume(lookup[type].(1)))
+				IF(p.consume(lookup[type].(1), &THIS.Position))
 					BREAK;
 			IF(type == ##lookup)
 				RETURN FALSE;
@@ -652,8 +655,8 @@ INCLUDE 'std/vector'
 		PRIVATE V: util::[Expression; Type]DynUnion;
 
 		{};
-		{v: Expression \}: V(v);
-		{v: Type \}: V(v);
+		{:gc, v: Expression \}: V(:gc, v);
+		{:gc, v: Type \}: V(:gc, v);
 		{v: TypeOrExpr &&}: V(&&v.V);
 		
 		# is_type() INLINE BOOL := V.is_second();
@@ -687,11 +690,15 @@ INCLUDE 'std/vector'
 			p.expect(:parentheseOpen);
 			IF(p.consume(:hash))
 			{
-				IF(!(Term := Expression::parse(p)))
+				IF(exp ::= Expression::parse(p))
+					Term := :gc(exp);
+				ELSE
 					p.fail("expected expression");
 			} ELSE
 			{
-				IF(!(Term := Type::parse(p)))
+				IF(type ::= Type::parse(p))
+					Term := :gc(type);
+				ELSE
 					p.fail("expected type");
 			}
 

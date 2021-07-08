@@ -18,7 +18,7 @@ INCLUDE 'std/io/format'
 	}
 
 	(// An object that owns a scope. /)
-	ScopeOwner
+	ScopeOwner VIRTUAL
 	{
 		# ABSTRACT owner_type() OwnerType;
 	}
@@ -31,8 +31,8 @@ INCLUDE 'std/io/format'
 	Group: detail::ScopeItemGroup \;
 	Templates: TemplateDecls;
 
-	TYPE Category := parser::ScopeItem::Category;
-	# ABSTRACT category() ScopeItem::Category;
+	TYPE Type := parser::ScopeItem::Type;
+	# ABSTRACT type() ScopeItem::Type;
 
 	{
 		group: detail::ScopeItemGroup \,
@@ -100,62 +100,34 @@ INCLUDE 'std/io/format'
 	group: detail::ScopeItemGroup \
 ) {ScopeItem \, BOOL}
 {
-	cat ::= entry->category();
+	type ::= entry->type();
 
 	IF(group->Items)
 	{
 		cmp # ::= &*group->Items.front();
-		IF(cmp->category() != cat)
+
+		IF(cmp->type() != type)
 			THROW <IncompatibleOverloadError>(cmp, entry, file, "kind mismatch");
 		IF(!entry->overloadable())
 			THROW <IncompatibleOverloadError>(cmp, entry, file, "not overloadable");
 
-		same: BOOL;
-		SWITCH(cat)
+		IF(type == :namespace)
 		{
-		CASE :global:
-			{
-				type ::= <<parser::Global #\>>(entry)->type();
-				type2 ::= <<scoper::Global #\>>(cmp)->type();
-				same := type == type2;
+			ns ::= <<parser::Namespace #\>>(entry);
+			cmpns ::= <<scoper::Namespace \>>(cmp);
+			FOR(it ::= ns->Entries.start(); it; it++)
+				cmpns->insert(*it, file);
 
-				IF(same && type == :namespace)
-				{
-					ns ::= <<parser::Namespace #\>>(entry);
-					cmpns ::= <<scoper::Namespace \>>(cmp);
-					FOR(it ::= ns->Entries.start(); it; it++)
-						cmpns->insert(*it, file);
-
-					RETURN (cmp, FALSE);
-				}
-			}
-		CASE :member:
-			{
-				type ::= <<parser::Member #\>>(entry)->type();
-				type2 ::= <<scoper::Member #\>>(cmp)->type();
-				same := type == type2;
-			}
-		CASE :local:
-			same := TRUE;
-		DEFAULT:
-			THROW <std::err::Unimplemented>(cat.NAME());
+			RETURN (cmp, FALSE);
 		}
-
-		IF(!same)
-			THROW <IncompatibleOverloadError>(cmp, entry, file, "kind mismatch");
-	}
-	i: ScopeItem *;
-	SWITCH(cat)
-	{
-	CASE :global:
-		i := Global::create(<<parser::Global #\>>(entry), file, group);
-	CASE :member:
-		i := Member::create(<<parser::Member #\>>(entry), file, group);
-	CASE :local:
-		i := std::[LocalVariable]new(<<parser::LocalVariable #\>>(entry), file, group);
-	DEFAULT:
-		THROW <std::err::Unimplemented>(cat.NAME());
 	}
 
-	RETURN (i, TRUE);
+	IF(p ::= <<parser::Global #\>>(entry))
+		RETURN (<<ScopeItem \>>(Global::create(p, file, group)), TRUE);
+	ELSE IF(p ::= <<parser::Member #\>>(entry))
+		RETURN (<<ScopeItem \>>(Member::create(p, file, group)), TRUE);
+	ELSE IF(p ::= <<parser::LocalVariable #\>>(entry))
+		RETURN (std::[LocalVariable]new(p, file, group), TRUE);
+	ELSE
+		THROW <std::err::Unimplemented>(type.NAME());
 }

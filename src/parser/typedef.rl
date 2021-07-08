@@ -3,11 +3,12 @@ INCLUDE "scopeitem.rl"
 INCLUDE "global.rl"
 INCLUDE "member.rl"
 
-::rlc::parser Typedef -> VIRTUAL ScopeItem
+::rlc::parser Typedef VIRTUAL -> ScopeItem
 {
 	Type: std::[parser::Type]Dynamic;
 	Name: src::String;
 
+	# FINAL type() ScopeItem::Type := :typedef;
 	# FINAL name() src::String#& := Name;
 	# FINAL overloadable() BOOL := FALSE;
 
@@ -34,12 +35,10 @@ INCLUDE "member.rl"
 
 ::rlc::parser GlobalTypedef -> Global, Typedef
 {
-	# FINAL type() Global::Type := :typedef;
 	parse(p: Parser&) INLINE ::= Typedef::parse(p);
 }
 
 ::rlc::parser MemberTypedef -> Member, Typedef
 {
-	# FINAL type() Member::Type := :typedef;
 	parse(p: Parser&) INLINE ::= Typedef::parse(p);
 }

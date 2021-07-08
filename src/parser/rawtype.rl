@@ -7,12 +7,13 @@ INCLUDE "../src/file.rl"
 INCLUDE 'std/memory'
 INCLUDE 'std/vector'
 
-::rlc::parser Rawtype -> VIRTUAL ScopeItem
+::rlc::parser Rawtype VIRTUAL -> ScopeItem
 {
 	Size: std::[Expression]Dynamic;
 	Members: std::[std::[Member]Dynamic]Vector;
 	Name: src::String;
 
+	# FINAL type() ScopeItem::Type := :rawtype;
 	# FINAL name() src::String #& := Name;
 	# FINAL overloadable() BOOL := FALSE;
 
@@ -47,12 +48,10 @@ INCLUDE 'std/vector'
 
 ::rlc::parser GlobalRawtype -> Global, Rawtype
 {
-	# FINAL type() Global::Type := :rawtype;
 	parse(p: Parser &) INLINE BOOL := Rawtype::parse(p);
 }
 
 ::rlc::parser MemberRawtype -> Member, Rawtype
 {
-	# FINAL type() Member::Type := :rawtype;
 	parse(p: Parser &) INLINE BOOL := Rawtype::parse(p);
 }

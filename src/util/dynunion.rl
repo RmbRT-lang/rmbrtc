@@ -15,15 +15,15 @@ PRIVATE:
 PUBLIC:
 	{}: IsB(FALSE)
 	{
-		Ptr.First := NULL;
+		Ptr.Check := NULL;
 	}
 
-	{p: A! *}:
+	{:gc, p: A! *}:
 		IsB(FALSE)
 	{
 		Ptr.First := p;
 	}
-	{p: B! *}:
+	{:gc, p: B! *}:
 		IsB(TRUE)
 	{
 		Ptr.Second := p;
@@ -64,9 +64,5 @@ PUBLIC:
 	}
 
 	THIS:=(move: [A!;B!]DynUnion &&) [A!;B!]DynUnion &
-		:= std::help::move_assign(THIS, move);
-	THIS:=(p: A! *) [A!;B!]DynUnion &
-		:= std::help::custom_assign(THIS, p);
-	THIS:=(p: B! *) [A!;B!]DynUnion &
-		:= std::help::custom_assign(THIS, p);
+		:= std::help::move_assign(THIS, &&move);
 }

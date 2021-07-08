@@ -10,23 +10,25 @@ INCLUDE 'std/vector'
 	Child
 	{
 		Name: String;
+		Position: src::Position;
 		Templates: TypeOrExpr - std::Vector - std::Vector;
 
 		{};
 
 		{
 			parsed: parser::Symbol::Child #&,
-			file: src::File #&}:
-			Name(file.content(parsed.Name))
+			file: src::File #&
+		}: Name(file.content(parsed.Name)),
+			Position(parsed.Position)
 		{
 			FOR(i ::= 0; i < ##parsed.Templates; i++)
 			{
 				arg: TypeOrExpr - std::Vector;
 				FOR(it ::= parsed.Templates[i].start(); it; ++it)
 					IF(it->is_type())
-						arg += Type::create(it->type(), file);
+						arg += :gc(Type::create(it->type(), file));
 					ELSE
-						arg += Expression::create(it->expression(), file);
+						arg += :gc(Expression::create(it->expression(), file));
 				Templates += &&arg;
 			}
 		}

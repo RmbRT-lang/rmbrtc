@@ -10,9 +10,11 @@ INCLUDE 'std/tags'
 		std::NoMove;
 
 		{
-			file: src::File #\}:
+			file: src::File #\,
+			fileIndex: U1
+		}:
 			File(file),
-			Tokeniser(file),
+			Tokeniser(file, fileIndex),
 			Ctx(NULL),
 			BufferSize(0),
 			BufferIndex(0),
@@ -50,9 +52,19 @@ INCLUDE 'std/tags'
 				reason);
 		}
 
-
 		consume(type: tok::Type) BOOL
 			:= consume(type, <tok::Token*>(NULL));
+
+		consume(type: tok::Type, pos: src::Position \) BOOL
+		{
+			token: tok::Token;
+			IF(consume(type, &token))
+			{
+				*pos := token.Position;
+				RETURN TRUE;
+			}
+			RETURN FALSE;
+		}
 
 		consume(
 			type: tok::Type,
@@ -73,6 +85,18 @@ INCLUDE 'std/tags'
 			IF(consume(type, &token))
 			{
 				*out := token.Content;
+				RETURN TRUE;
+			}
+			RETURN FALSE;
+		}
+
+		consume(type: tok::Type, out: src::String \, pos: src::Position \) BOOL
+		{
+			token: tok::Token;
+			IF(consume(type, &token))
+			{
+				*out := token.Content;
+				*pos := token.Position;
 				RETURN TRUE;
 			}
 			RETURN FALSE;
@@ -104,9 +128,17 @@ INCLUDE 'std/tags'
 
 		expect(type: tok::Type, out: src::String \) VOID
 		{
-			tok: tok::Token;
-			expect(type, &tok);
-			*out := tok.Content;
+			token: tok::Token;
+			expect(type, &token);
+			*out := token.Content;
+		}
+
+		expect(type: tok::Type, out: src::String \, pos: src::Position \) VOID
+		{
+			token: tok::Token;
+			expect(type, &token);
+			*out := token.Content;
+			*pos := token.Position;
 		}
 
 		match(type: tok::Type) BOOL
@@ -149,7 +181,7 @@ INCLUDE 'std/tags'
 				? Ctx->Name
 				: "<unknown context>";
 
-		# progress() ushort := Progress;
+		# progress() UINT := Progress;
 
 		# position() UM := BufferSize
 			? Buffer[BufferIndex].Content.Start
@@ -160,9 +192,9 @@ INCLUDE 'std/tags'
 		File: src::File #\;
 		Tokeniser: tok::Tokeniser;
 		Buffer: tok::Token[2]; // Lookahead buffer.
-		BufferIndex: ushort;
-		BufferSize: ushort;
-		Progress: ushort;
+		BufferIndex: UINT;
+		BufferSize: UINT;
+		Progress: UINT;
 	}
 
 	Trace

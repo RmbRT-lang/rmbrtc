@@ -1,11 +1,11 @@
 INCLUDE "../parser/destructor.rl"
 
-::rlc::scoper Destructor -> Member, VIRTUAL ScopeItem
+::rlc::scoper Destructor -> Member, ScopeItem
 {
 	Body: BlockStatement;
 	Inline: BOOL;
 
-	# FINAL type() Member::Type := :destructor;
+	# FINAL type() ScopeItem::Type := :destructor;
 
 	{
 		parsed: parser::Destructor #\,

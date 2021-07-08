@@ -10,8 +10,8 @@ INCLUDE "../util/dynunion.rl"
 		PRIVATE V: util::[Expression; Statement]DynUnion;
 
 		{};
-		{v: Expression \}: V(v);
-		{v: Statement \}: V(v);
+		{:gc, v: Expression \}: V(:gc(v));
+		{:gc, v: Statement \}: V(:gc(v));
 
 		# is_expression() INLINE BOOL := V.is_first();
 		# expression() INLINE Expression \ := V.first();

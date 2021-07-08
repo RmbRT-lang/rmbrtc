@@ -8,7 +8,7 @@ INCLUDE "types.rl"
 
 ::rlc::scoper Number
 {
-	TYPE Num := std::S8;
+	TYPE Num := S8;
 	Value: Num;
 
 	{v: Num}: Value(v);

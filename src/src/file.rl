@@ -3,8 +3,11 @@ INCLUDE 'std/io/file'
 
 ::rlc::src
 {
-	TYPE Index := uint16_t;
-	TYPE Size := uint16_t;
+	TYPE Index := U2;
+	TYPE Size := U2;
+	TYPE Line := U2;
+	TYPE Column := U1;
+	TYPE FileNo := U1;
 
 	(// String inside a source file. /)
 	String
@@ -20,6 +23,19 @@ INCLUDE 'std/io/file'
 		Length: Size;
 
 		# exists() INLINE ::= Length != 0;
+	}
+
+	Position
+	{
+		Line: src::Line;
+		Column: src::Column;
+		File: FileNo;
+
+		{};
+		{ line: src::Line, col: src::Column, file: FileNo }:
+			Line(line),
+			Column(col),
+			File(file);
 	}
 
 	(// Source file. /)

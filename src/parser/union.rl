@@ -2,11 +2,12 @@ INCLUDE "scopeitem.rl"
 INCLUDE "global.rl"
 INCLUDE "member.rl"
 
-::rlc::parser Union -> VIRTUAL ScopeItem
+::rlc::parser Union VIRTUAL -> ScopeItem
 {
 	Name: src::String;
 	Members: std::[std::[Member]Dynamic]Vector;
 
+	# FINAL type() ScopeItem::Type := :union;
 	# FINAL name() src::String #& := Name;
 	# FINAL overloadable() BOOL := FALSE;
 
@@ -31,13 +32,10 @@ INCLUDE "member.rl"
 
 ::rlc::parser GlobalUnion -> Global, Union
 {
-	# FINAL type() Global::Type := :union;
-
 	parse(p: Parser &) INLINE BOOL := Union::parse(p);
 }
 
 ::rlc::parser MemberUnion -> Member, Union
 {
-	# FINAL type() Member::Type := :union;
 	parse(p: Parser &) INLINE BOOL := Union::parse(p);
 }

@@ -19,7 +19,6 @@ INCLUDE "../src/file.rl"
 		case,
 		catch,
 		char,
-		mask,
 		continue,
 		default,
 		destructor,
@@ -35,6 +34,7 @@ INCLUDE "../src/file.rl"
 		include,
 		inline,
 		int,
+		mask,
 		noinit,
 		null,
 		number,
@@ -44,6 +44,10 @@ INCLUDE "../src/file.rl"
 		protected,
 		public,
 		return,
+		s1,
+		s2,
+		s4,
+		s8,
 		sizeof,
 		sm,
 		static,
@@ -54,6 +58,11 @@ INCLUDE "../src/file.rl"
 		true,
 		try,
 		type,
+		u1,
+		u2,
+		u4,
+		u8,
+		uchar,
 		uint,
 		um,
 		union,
@@ -154,11 +163,13 @@ INCLUDE "../src/file.rl"
 	{
 		Type: tok::Type;
 		Content: src::String;
+		Position: src::Position;
 
 		{} INLINE;
 		{
 			type: tok::Type,
-			content: src::String#&
+			content: src::String#&,
+			position: src::Position
 		}:	Type(type),
 			Content(content);
 	}

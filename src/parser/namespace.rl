@@ -4,13 +4,13 @@ INCLUDE "parser.rl"
 
 INCLUDE 'std/vector'
 
-::rlc::parser Namespace -> VIRTUAL ScopeItem, Global
+::rlc::parser Namespace -> ScopeItem, Global
 {
-	Entries: std::[std::[Global]Dynamic]Vector;
+	Entries: std::[std::[ScopeItem]Dynamic]Vector;
 	Name: src::String;
 
 	# FINAL name() src::String#& := Name;
-	# FINAL type() Global::Type := :namespace;
+	# FINAL type() ScopeItem::Type := :namespace;
 	# FINAL overloadable() BOOL := TRUE;
 
 	parse(
@@ -27,7 +27,7 @@ INCLUDE 'std/vector'
 		IF(p.consume(:braceOpen))
 		{
 			WHILE(entry ::= Global::parse(p))
-				Entries += :gc(entry);
+				Entries += :gc(<<ScopeItem \>>(entry));
 
 			p.expect(:braceClose);
 
@@ -36,7 +36,7 @@ INCLUDE 'std/vector'
 
 		IF(entry ::= Global::parse(p))
 		{
-			Entries += :gc(entry);
+			Entries += :gc(<<ScopeItem \>>(entry));
 			RETURN TRUE;
 		}
 

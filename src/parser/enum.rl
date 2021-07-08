@@ -4,15 +4,17 @@ INCLUDE "../src/file.rl"
 
 INCLUDE 'std/vector'
 
-::rlc::parser Enum -> VIRTUAL ScopeItem
+::rlc::parser Enum VIRTUAL -> ScopeItem
 {
-	Constant -> VIRTUAL ScopeItem, Member
+	# FINAL type() ScopeItem::Type := :enum;
+
+	Constant -> ScopeItem, Member
 	{
 		Name: src::String;
 		Value: src::Index;
 
 		# FINAL name() src::String#& := Name;
-		# FINAL type() Member::Type := :enumConstant;
+		# FINAL type() ScopeItem::Type := :enumConstant;
 		# FINAL overloadable() BOOL := FALSE;
 	}
 
@@ -47,12 +49,10 @@ INCLUDE 'std/vector'
 
 ::rlc::parser GlobalEnum -> Global, Enum
 {
-	# FINAL type() Global::Type := :enum;
 	parse(p: Parser&) BOOL := Enum::parse(p);
 }
 
 ::rlc::parser MemberEnum -> Member, Enum
 {
-	# FINAL type() Member::Type := :enum;
 	parse(p: Parser&) BOOL := Enum::parse(p);
 }

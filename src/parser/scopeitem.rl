@@ -1,18 +1,29 @@
 INCLUDE "templatedecl.rl"
 
-::rlc::parser ScopeItem
+::rlc::parser ScopeItem VIRTUAL
 {
-	ENUM Category
+	ENUM Type
 	{
-		global,
-		member,
-		local
+		namespace,
+		typedef,
+		function,
+		variable,
+		class,
+		mask,
+		rawtype,
+		union,
+		enum,
+		enumConstant,
+		externSymbol,
+		test,
+
+		destructor,
+		constructor
 	}
 
 	Templates: TemplateDecl;
 
-	# ABSTRACT category() ScopeItem::Category;
+	# ABSTRACT type() Type;
 	# ABSTRACT overloadable() BOOL;
-
 	# ABSTRACT name() src::String#&;
 }

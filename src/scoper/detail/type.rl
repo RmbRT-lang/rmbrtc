@@ -19,6 +19,8 @@ INCLUDE 'std/err/unimplemented'
 		RETURN std::[SymbolConstantType]new(<parser::SymbolConstantType #\>(parsed), file);
 	CASE :void:
 		RETURN std::[Void]new(<parser::Void #\>(parsed), file);
+	CASE :null:
+		RETURN std::[Null]new(<parser::Null #\>(parsed), file);
 	CASE :name:
 		RETURN std::[TypeName]new(<parser::TypeName #\>(parsed), file);
 	CASE :tuple:
@@ -69,8 +71,18 @@ INCLUDE 'std/err/unimplemented'
 
 		{
 			parsed: parser::Void #\,
-			file: src::File#&}:
-			Type(parsed, file);
+			file: src::File#&
+		}:	Type(parsed, file);
+	}
+
+	Null -> Type
+	{
+		# FINAL type() TypeType := :null;
+
+		{
+			parsed: parser::Null #\,
+			file: src::File#&
+		}:	Type(parsed, file);
 	}
 
 	TypeName -> Type

@@ -8,8 +8,8 @@ INCLUDE "../util/dynunion.rl"
 	PRIVATE V: util::[Expression; Type]DynUnion;
 
 	{};
-	{v: Expression \}: V(v);
-	{v: Type \}: V(v);
+	{:gc, v: Expression \}: V(:gc(v));
+	{:gc, v: Type \}: V(:gc(v));
 	
 	# is_type() INLINE BOOL := V.is_second();
 	# type() Type \ := V.second();

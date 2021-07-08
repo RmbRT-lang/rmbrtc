@@ -17,7 +17,8 @@ PRIVATE:
 			:= a.cmp(b->name());
 	}
 
-	Files: std::[std::[File]Dynamic, Utf8Cmp]VectorSet;
+	Files: std::[File - std::Dynamic, Utf8Cmp]VectorSet;
+	NameByNumber: std::Utf8-std::Vector;
 
 PUBLIC:
 	get(file: std::Utf8 #&) File \
@@ -26,6 +27,17 @@ PUBLIC:
 		IF(entry ::= Files.find(file, &loc))
 			RETURN *entry;
 		ELSE
-			RETURN Files.emplace_at(loc, :gc(std::[File]new(file)));
+		{
+			max_files: UM# := ~<src::FileNo>(0);
+			ASSERT(##Files < max_files);
+			NameByNumber += file;
+			RETURN Files.emplace_at(loc, :gc(std::[File]new(file, ##Files)));
+		}
+	}
+
+	# nameByNumber(n: src::FileNo) CHAR#-std::Buffer
+	{
+		ASSERT(n < ##Files);
+		RETURN NameByNumber[n].content();
 	}
 }

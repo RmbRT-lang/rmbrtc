@@ -12,8 +12,8 @@ INCLUDE "../util/dynunion.rl"
 {
 	PRIVATE V: util::[Type; Type::Auto]DynUnion;
 	{};
-	{t: Type \}: V(t);
-	{t: Type::Auto \}: V(t);
+	{:gc, t: Type \}: V(:gc(t));
+	{:gc, t: Type::Auto \}: V(:gc(t));
 
 	# is_type() INLINE BOOL := V.is_first();
 	# type() INLINE Type \ := V.first();
@@ -26,21 +26,25 @@ INCLUDE "../util/dynunion.rl"
 		:= std::help::custom_assign(THIS, <T!&&>(v));
 }
 
-::rlc::scoper Variable -> VIRTUAL ScopeItem
+::rlc::scoper Variable VIRTUAL -> ScopeItem
 {
+	# FINAL type() ScopeItem::Type := :variable;
+
 	Type: VariableType;
 	HasInitialiser: BOOL;
 	InitValues: std::[std::[Expression]Dynamic]Vector;
 
 	{
+		group: detail::ScopeItemGroup \,
 		parsed: parser::Variable #\,
-		file: src::File#&}:
+		file: src::File#&
+	}:	ScopeItem(group, parsed, file),
 		HasInitialiser(parsed->HasInitialiser)
 	{
 		IF(parsed->Type.is_type())
-			Type := scoper::Type::create(parsed->Type.type(), file);
+			Type := :gc(scoper::Type::create(parsed->Type.type(), file));
 		ELSE
-			Type := std::[scoper::Type::Auto]new(*parsed->Type.auto());
+			Type := :gc(std::[scoper::Type::Auto]new(*parsed->Type.auto()));
 
 		FOR(i ::= 0; i < ##parsed->InitValues; i++)
 			InitValues += :gc(Expression::create(parsed->InitValues[i], file));
@@ -49,46 +53,37 @@ INCLUDE "../util/dynunion.rl"
 
 ::rlc::scoper GlobalVariable -> Global, Variable
 {
-	# FINAL type() Global::Type := :variable;
-	
 	{
 		parsed: parser::GlobalVariable #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	ScopeItem(group, parsed, file),
-		Variable(parsed, file);
+	}:	Variable(group, parsed, file);
 }
 
 ::rlc::scoper MemberVariable -> Member, Variable
 {
-	# FINAL type() Member::Type := :variable;
-
 	{
 		parsed: parser::MemberVariable #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	ScopeItem(group, parsed, file),
-		Member(parsed),
-		Variable(parsed, file);
+	}:	Member(parsed),
+		Variable(group, parsed, file);
 }
 
-::rlc::scoper LocalVariable -> VIRTUAL ScopeItem, Variable
+::rlc::scoper LocalVariable -> Variable
 {
 	Position: UM;
-
-	# FINAL category() ScopeItem::Category := ScopeItem::Category::local;
 
 	{
 		parsed: parser::LocalVariable #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	ScopeItem(group, parsed, file),
-		Variable(parsed, file);
+	}:	Variable(group, parsed, file);
 
 	set_position(position: UM) VOID
 	{
 		Position := position;
-		FOR(it ::= InitValues.start(); it; ++it)
+		FOR(it ::= Variable::InitValues.start(); it; ++it)
 			(*it)->Position := position;
 	}
 }

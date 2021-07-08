@@ -35,7 +35,7 @@ INCLUDE "../destructor.rl"
 		|| [Destructor]parse_member_impl(p, ret))
 		{
 			ret->Visibility := visibility;
-			ret->Templates := &&templates;
+			<<ScopeItem \>>(ret)->Templates := &&templates;
 			ret->Attribute := attr;
 		}
 
@@ -78,7 +78,7 @@ INCLUDE "../destructor.rl"
 		|| [Destructor]parse_member_impl(p, ret))
 		{
 			ret->Visibility := visibility;
-			ret->Templates := &&templates;
+			<<ScopeItem \>>(ret)->Templates := &&templates;
 			ret->Attribute := attr;
 		}
 
@@ -106,7 +106,7 @@ INCLUDE "../destructor.rl"
 		|| [Constructor]parse_member_impl(p, ret))
 		{
 			ret->Visibility := visibility;
-			ret->Templates := &&templates;
+			<<ScopeItem \>>(ret)->Templates := &&templates;
 			ret->Attribute := attr;
 		}
 

@@ -18,6 +18,7 @@ INCLUDE 'std/vector'
 		{
 			Name: src::String;
 			Templates: std::[TemplateArg]Vector;
+			Position: src::Position;
 
 			parse(p: Parser&) BOOL := parse(p, FALSE);
 			parse(
@@ -38,30 +39,23 @@ INCLUDE 'std/vector'
 								{
 									IF(!(arg := Expression::parse(p)))
 										p.fail("expected expression");
-									tArg += arg;
+									tArg += :gc(arg);
 								} WHILE(p.consume(:comma))
 							ELSE
 								DO(arg: Type *)
 								{
 									IF(!(arg := Type::parse(p)))
 										p.fail("expected type");
-									tArg += arg;
+									tArg += :gc(arg);
 								} WHILE(p.consume(:comma))
 							Templates += &&tArg;
 						} WHILE(p.consume(:semicolon))
 						p.expect(:bracketClose);
 					}
-					IF(!isValue
-					|| !p.consume(:destructor, &Name))
-						p.expect(:identifier, &Name);
+					p.expect(:identifier, &Name, &Position);
 					RETURN TRUE;
 				} ELSE
-				{
-					RETURN p.consume(:identifier, &Name)
-						|| (isValue
-							&& p.consume(:destructor, &Name));
-						
-				}
+					RETURN p.consume(:identifier, &Name, &Position);
 			}
 		}
 

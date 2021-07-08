@@ -15,28 +15,10 @@ INCLUDE "parser.rl"
 	static
 }
 
-::rlc::parser Member VIRTUAL -> VIRTUAL ScopeItem
+::rlc::parser Member VIRTUAL
 {
-	# FINAL category() ScopeItem::Category := ScopeItem::Category::member;
-
 	Visibility: rlc::Visibility;
 	Attribute: rlc::MemberAttribute;
-
-	ENUM Type
-	{
-		typedef,
-		function,
-		variable,
-		class,
-		rawtype,
-		union,
-		enum,
-		enumConstant,
-		constructor,
-		destructor
-	}
-
-	# ABSTRACT type() Member::Type;
 
 	STATIC parse(
 		p: Parser&,

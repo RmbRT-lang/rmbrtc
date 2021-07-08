@@ -18,6 +18,8 @@ INCLUDE 'std/shared'
 	Includes: std::[File \; File]VectorSet;
 	IncludedBy: std::[File \; File]VectorSet;
 
+	# name() #& ::= Source->Name;
+
 	(// Creates a file with an empty scope. /)
 	{
 		parsed: parser::File #&,
@@ -35,7 +37,7 @@ INCLUDE 'std/shared'
 		Source(&parsed.Src)
 	{
 		FOR(i ::= 0; i < ##parsed.RootScope; i++)
-			Scope->insert(parsed.RootScope[i], *Source);
+			Scope->insert(<<parser::ScopeItem #\>>(&*parsed.RootScope[i]), *Source);
 
 		// Resolve and load all include files.
 		loc: std::[File \; File]VectorSet::Location;

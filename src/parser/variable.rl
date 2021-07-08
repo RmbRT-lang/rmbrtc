@@ -16,8 +16,8 @@ INCLUDE "../util/dynunion.rl"
 		PRIVATE V: util::[Type; Type::Auto]DynUnion;
 
 		{};
-		{t: Type \}: V(t);
-		{t: Type::Auto \}: V(t);
+		{:gc, t: Type \}: V(:gc(t));
+		{:gc, t: Type::Auto \}: V(:gc(t));
 
 		# is_type() INLINE BOOL := V.is_first();
 		# type() INLINE Type \ := V.first();
@@ -30,13 +30,14 @@ INCLUDE "../util/dynunion.rl"
 			:= std::help::custom_assign(THIS, <T!&&>(v));
 	}
 
-	Variable -> VIRTUAL ScopeItem
+	Variable VIRTUAL -> ScopeItem
 	{
 		Name: src::String;
 		Type: VariableType;
 		HasInitialiser: BOOL;
 		InitValues: std::[std::[Expression]Dynamic]Vector;
 
+		# FINAL type() ScopeItem::Type := :variable;
 		# FINAL name() src::String#& := Name;
 		# FINAL overloadable() BOOL := !Name.exists();
 
@@ -63,7 +64,8 @@ INCLUDE "../util/dynunion.rl"
 				:int,
 				:uint,
 				:sm,
-				:um);
+				:um,
+				:null);
 
 			STATIC k_needed_after_name: {tok::Type, BOOL}#[](
 				(:colon, TRUE),
@@ -132,7 +134,7 @@ INCLUDE "../util/dynunion.rl"
 
 					IF(p.consume(:questionMark))
 					{
-						Type := std::[Type::Auto]new();
+						Type := :gc(std::[parser::Type::Auto]new());
 						Type.auto()->parse(p);
 						p.expect(:colonEqual);
 						needs_type := FALSE;
@@ -150,7 +152,7 @@ INCLUDE "../util/dynunion.rl"
 						{
 							p.expect(:identifier, &name);
 
-							Type := std::[Type::Auto]new();
+							Type := :gc(std::[parser::Type::Auto]new());
 							Type.auto()->parse(p, FALSE);
 
 							// "name ::=" style variable?
@@ -179,7 +181,7 @@ INCLUDE "../util/dynunion.rl"
 				InitValues += :gc(init);
 			} ELSE
 			{
-				IF(!(Type := parser::Type::parse(p)))
+				IF(!(Type := :gc(parser::Type::parse(p))))
 				{
 					IF(needs_name)
 						p.fail("expected name");
@@ -221,10 +223,9 @@ INCLUDE "../util/dynunion.rl"
 
 	GlobalVariable -> Global, Variable
 	{
-		# FINAL type() Global::Type := :variable;
 		parse(p: Parser&) BOOL
 		{
-			IF(!parse_var_decl(p))
+			IF(!Variable::parse_var_decl(p))
 				RETURN FALSE;
 			p.expect(:semicolon);
 			RETURN TRUE;
@@ -241,17 +242,16 @@ INCLUDE "../util/dynunion.rl"
 
 	MemberVariable -> Member, Variable
 	{
-		# FINAL type() Member::Type := :variable;
 		parse(p: Parser&, static: BOOL) BOOL
 		{
 			IF(static)
 			{
-				IF(!parse_var_decl(p))
+				IF(!Variable::parse_var_decl(p))
 					RETURN FALSE;
 			}
 			ELSE
 			{
-				IF(!parse_fn_arg(p))
+				IF(!Variable::parse_fn_arg(p))
 					RETURN FALSE;
 			}
 			p.expect(:semicolon);
@@ -259,10 +259,7 @@ INCLUDE "../util/dynunion.rl"
 		}
 	}
 
-	Local -> VIRTUAL ScopeItem
-	{
-		# FINAL category() ScopeItem::Category := ScopeItem::Category::local;
-	}
+	Local VIRTUAL {}
 
 	LocalVariable -> Local, Variable
 	{

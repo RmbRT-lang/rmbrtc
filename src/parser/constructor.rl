@@ -6,7 +6,7 @@ INCLUDE "statement.rl"
 INCLUDE 'std/vector'
 INCLUDE 'std/memory'
 
-::rlc::parser Constructor -> Member
+::rlc::parser Constructor -> Member, ScopeItem
 {
 	BaseInit
 	{
@@ -17,6 +17,7 @@ INCLUDE 'std/memory'
 	MemberInit
 	{
 		Member: src::String;
+		Position: src::Position;
 		Arguments: std::[std::[Expression]Dynamic]Vector;
 	}
 
@@ -27,7 +28,7 @@ INCLUDE 'std/memory'
 	Body: std::[BlockStatement]Dynamic;
 	Inline: BOOL;
 
-	# FINAL type() Member::Type := :constructor;
+	# FINAL type() ScopeItem::Type := :constructor;
 	# FINAL name() src::String#& := Name;
 	# FINAL overloadable() BOOL := TRUE;
 
@@ -50,35 +51,45 @@ INCLUDE 'std/memory'
 		Inline := p.consume(:inline);
 
 		IF(p.consume(:minusGreater))
+		{
 			DO(init: BaseInit)
 			{
 				IF(!init.Base.parse(p))
 					p.fail("expected base class name");
-				DO()
+				p.expect(:parentheseOpen);
+				IF(!p.consume(:parentheseClose))
 				{
-					IF(exp ::= Expression::parse(p))
-						init.Arguments += :gc(exp);
-					ELSE
-						p.fail("expected expression");
-				} WHILE(p.consume(:comma))
-				p.expect(:parentheseClose);
-
+					DO()
+					{
+						IF(exp ::= Expression::parse(p))
+							init.Arguments += :gc(exp);
+						ELSE
+							p.fail("expected expression");
+					} WHILE(p.consume(:comma))
+					p.expect(:parentheseClose);
+				}
+				BaseInits += &&init;
 			} WHILE(p.consume(:comma))
+		}
 
-		IF(p.consume(:colon))
+		IF(p.consume(:colon)){
 			DO(init: MemberInit)
 			{
-				p.expect(:identifier, &init.Member);
+				p.expect(:identifier, &init.Member, &init.Position);
 				p.expect(:parentheseOpen);
-				DO()
+				IF(!p.consume(:parentheseClose))
 				{
-					IF(exp ::= Expression::parse(p))
-						init.Arguments += :gc(exp);
-					ELSE
-						p.fail("expected expression");
-				} WHILE(p.consume(:comma))
-				p.expect(:parentheseClose);
+					DO()
+					{
+						IF(exp ::= Expression::parse(p))
+							init.Arguments += :gc(exp);
+						ELSE
+							p.fail("expected expression");
+					} WHILE(p.consume(:comma))
+					p.expect(:parentheseClose);
+				}
 			} WHILE(p.consume(:comma))
+		}
 
 		IF(!p.consume(:semicolon))
 		{

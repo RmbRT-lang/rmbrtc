@@ -7,10 +7,13 @@ INCLUDE "error.rl"
 	Tokeniser
 	{
 		{
-			file: src::File #\}:
+			file: src::File #\,
+			fileNumber: U1
+		}:
 			File(file),
 			Read(0),
-			Start(0);
+			Start(0),
+			Position(0, 0, fileNumber);
 
 		# eof() BOOL := Read == ##File->Contents;
 		# position(
@@ -25,6 +28,7 @@ INCLUDE "error.rl"
 			FOR(skipws(); comment(); skipws()){;}
 
 			out->Content.Start := Start := Read;
+			out->Position := Position;
 			IF(identifier(out)
 			|| number_literal(out)
 			|| string(out)
@@ -41,6 +45,7 @@ INCLUDE "error.rl"
 		File: src::File #\; // The source file.
 		Read: src::Index; // The current reading position in the file.
 		Start: src::Index; // Start of the current token.
+		Position: src::Position;
 
 		STATIC is_idfc(c: CHAR) BOOL :=
 			(c >='a' && c<='z')
@@ -69,7 +74,14 @@ INCLUDE "error.rl"
 		{
 			IF(Read == ##File->Contents)
 				RETURN 0;
-			RETURN File->Contents[Read++];
+			c ::= File->Contents[Read++];
+			IF(c == '\n')
+			{
+				Position.Column := 0;
+				Position.Line++;
+			} ELSE
+				Position.Column++;
+			RETURN c;
 		}
 
 		skipws() VOID
@@ -81,7 +93,9 @@ INCLUDE "error.rl"
 				|| c == '\t'
 				|| c =='\r'
 				|| c == '\n')
-					++Read;
+				{
+					getc();
+				}
 				ELSE
 					RETURN;
 			}
@@ -92,7 +106,8 @@ INCLUDE "error.rl"
 			FOR(i ::= 0; i < buf.Size; i++)
 				IF(look(i) != buf.Data[i])
 					RETURN FALSE;
-			Read := Read + buf.Size;
+			Read += buf.Size;
+			Position.Column += buf.Size;
 			RETURN TRUE;
 		}
 
@@ -243,7 +258,8 @@ INCLUDE "error.rl"
 			IF(!is_idfc(look()))
 				RETURN FALSE;
 			++Read;
-			WHILE(is_alnum(look())) ++Read;
+			++Position.Column;
+			WHILE(is_alnum(look())) (++Read, ++Position.Column);
 
 			STATIC keywords: {CHAR#\, Type}#[](
 				("ABSTRACT", :abstract),
@@ -253,7 +269,6 @@ INCLUDE "error.rl"
 				("CASE", :case),
 				("CATCH", :catch),
 				("CHAR", :char),
-				("MASK", :mask),
 				("CONTINUE", :continue),
 				("DEFAULT", :default),
 				("DESTRUCTOR", :destructor),
@@ -269,14 +284,19 @@ INCLUDE "error.rl"
 				("INCLUDE", :include),
 				("INLINE", :inline),
 				("INT", :int),
-				("NUMBER", :number),
+				("MASK", :mask),
 				("NULL", :null),
+				("NUMBER", :number),
 				("OPERATOR", :operator),
 				("OVERRIDE", :override),
 				("PRIVATE", :private),
 				("PROTECTED", :protected),
 				("PUBLIC", :public),
 				("RETURN", :return),
+				("S1", :s1),
+				("S2", :s2),
+				("S4", :s4),
+				("S8", :s8),
 				("SIZEOF", :sizeof),
 				("SM", :sm),
 				("STATIC", :static),
@@ -287,6 +307,11 @@ INCLUDE "error.rl"
 				("TRUE", :true),
 				("TRY", :try),
 				("TYPE", :type),
+				("U1", :u1),
+				("U2", :u2),
+				("U4", :u4),
+				("U8", :u8),
+				("UCHAR", :uchar),
 				("UINT", :uint),
 				("UM", :um),
 				("UNION", :union),
@@ -296,8 +321,6 @@ INCLUDE "error.rl"
 			);
 
 			str ::= tok_str();
-			static_assert(__cpp_std::[TYPE(str); std::[CHAR#]Buffer]is_same::value);
-			static_assert(__cpp_std::[TYPE(std::str::buf(keywords[0].(0))), std::[CHAR#]Buffer]is_same::value);
 			FOR(i: UM := 0; i < ##keywords; i++)
 				IF(!std::str::cmp(
 					str,

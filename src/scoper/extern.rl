@@ -3,11 +3,11 @@ INCLUDE "../parser/extern.rl"
 INCLUDE "global.rl"
 INCLUDE "../util/dynunion.rl"
 
-::rlc::scoper ExternSymbol -> Global, VIRTUAL ScopeItem
+::rlc::scoper ExternSymbol -> Global, ScopeItem
 {
 	Symbol: util::[GlobalVariable; GlobalFunction]DynUnion;
 
-	# FINAL type() Global::Type := :externSymbol;
+	# FINAL type() ScopeItem::Type := :externSymbol;
 
 	# is_variable() INLINE BOOL := Symbol.is_first();
 	# variable() INLINE GlobalVariable \ := Symbol.first();
@@ -21,8 +21,8 @@ INCLUDE "../util/dynunion.rl"
 		ScopeItem(group, parsed, file)
 	{
 		IF(parsed->is_variable())
-			Symbol := std::[GlobalVariable]new(parsed->variable(), file, group);
+			Symbol := :gc(std::[GlobalVariable]new(parsed->variable(), file, group));
 		ELSE
-			Symbol := std::[GlobalFunction]new(parsed->function(), file, group);
+			Symbol := :gc(std::[GlobalFunction]new(parsed->function(), file, group));
 	}
 }

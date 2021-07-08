@@ -1,14 +1,16 @@
 INCLUDE "../parser/enum.rl"
 
-::rlc::scoper Enum -> VIRTUAL ScopeItem, Scope
+::rlc::scoper Enum VIRTUAL -> ScopeItem, Scope
 {
-	Constant -> VIRTUAL ScopeItem, Member
+	# FINAL type() ScopeItem::Type := :enum;
+
+	Constant -> ScopeItem, Member
 	{
 		Value: src::Size;
 
-		# enum() Enum #\ := <<Enum \>>(parent());
+		# enum() Enum #\ := <<Enum #\>>(ScopeItem::parent());
 
-		# FINAL type() Member::Type := :enumConstant;
+		# FINAL type() ScopeItem::Type := :enumConstant;
 
 		{
 			parsed: parser::Enum::Constant #\,
@@ -26,7 +28,8 @@ INCLUDE "../parser/enum.rl"
 		parsed: parser::Enum #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	Scope(&THIS, group->Scope),
+	}:	ScopeItem(group, parsed, file),
+		Scope(&THIS, group->Scope),
 		Size(parsed->Constants.back().Value+1)
 	{
 		FOR(i ::= 0; i < ##parsed->Constants; i++)
@@ -39,25 +42,19 @@ INCLUDE "../parser/enum.rl"
 
 ::rlc::scoper GlobalEnum -> Global, Enum
 {
-	# FINAL type() Global::Type := :enum;
-
 	{
 		parsed: parser::GlobalEnum #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	ScopeItem(group, parsed, file),
-		Enum(parsed, file, group);
+	}:	Enum(parsed, file, group);
 }
 
 ::rlc::scoper MemberEnum -> Member, Enum
 {
-	# FINAL type() Member::Type := :enum;
-
 	{
 		parsed: parser::MemberEnum #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	ScopeItem(group, parsed, file),
-		Member(parsed),
+	}:	Member(parsed),
 		Enum(parsed, file, group);
 }

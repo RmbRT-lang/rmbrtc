@@ -6,7 +6,7 @@ INCLUDE 'std/vector'
 INCLUDE 'std/memory'
 
 
-::rlc::parser Class -> VIRTUAL ScopeItem
+::rlc::parser Class VIRTUAL -> ScopeItem
 {
 	Inheritance
 	{
@@ -43,6 +43,7 @@ INCLUDE 'std/memory'
 	Members: std::[std::[Member]Dynamic]Vector;
 	Inheritances: std::[Inheritance]Vector;
 
+	# FINAL type() ScopeItem::Type := :class;
 	# FINAL name() src::String #& := Name;
 	# FINAL overloadable() BOOL := FALSE;
 
@@ -81,11 +82,9 @@ INCLUDE 'std/memory'
 
 ::rlc::parser GlobalClass -> Global, Class
 {
-	# FINAL type() Global::Type := :class;
 	parse(p: Parser &) INLINE BOOL := Class::parse(p);
 }
 ::rlc::parser MemberClass -> Member, Class
 {
-	# FINAL type() Member::Type := :class;
 	parse(p: Parser &) INLINE BOOL := Class::parse(p);
 }

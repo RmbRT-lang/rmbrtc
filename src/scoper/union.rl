@@ -4,19 +4,22 @@ INCLUDE "variable.rl"
 INCLUDE "global.rl"
 INCLUDE "member.rl"
 
-::rlc::scoper Union -> VIRTUAL ScopeItem, Scope
+::rlc::scoper Union VIRTUAL -> ScopeItem, Scope
 {
+	# FINAL type() ScopeItem::Type := :union;
+
 	Fields: std::[MemberVariable \]Vector;
 
 	{
 		parsed: parser::Union #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \}:
+		group: detail::ScopeItemGroup \
+	}:	ScopeItem(group, parsed, file),
 		Scope(&THIS, group->Scope)
 	{
 		FOR(i ::= 0; i < ##parsed->Members; i++)
 		{
-			member ::= Scope::insert(parsed->Members[i], file);
+			member ::= Scope::insert(<<parser::ScopeItem #\>>(&*parsed->Members[i]), file);
 			IF(var ::= <<MemberVariable \>>(member))
 				IF(var->Attribute != MemberAttribute::static)
 					Fields += var;
@@ -26,25 +29,19 @@ INCLUDE "member.rl"
 
 ::rlc::scoper GlobalUnion -> Global, Union
 {
-	# type() Global::Type := :union;
-
 	{
 		parsed: parser::GlobalUnion #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \}:
-		ScopeItem(group, parsed, file),
-		Union(parsed, file, group);
+		group: detail::ScopeItemGroup \
+	}:	Union(parsed, file, group);
 }
 
 ::rlc::scoper MemberUnion -> Member, Union
 {
-	# type() Member::Type := :union;
-
 	{
 		parsed: parser::MemberUnion #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \}:
-		ScopeItem(group, parsed, file),
-		Member(parsed),
+		group: detail::ScopeItemGroup \
+	}:	Member(parsed),
 		Union(parsed, file, group);
 }

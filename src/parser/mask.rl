@@ -10,11 +10,12 @@ INCLUDE "member.rl"
 INCLUDE 'std/vector'
 INCLUDE 'std/memory'
 
-::rlc::parser Mask -> VIRTUAL ScopeItem
+::rlc::parser Mask VIRTUAL -> ScopeItem
 {
 	Members: std::[std::[Member]Dynamic]Vector;
 	Name: src::String;
 
+	# FINAL type() ScopeItem::Type := :mask;
 	# FINAL name() src::String#& := Name;
 	# FINAL overloadable() BOOL := FALSE;
 
@@ -41,7 +42,5 @@ INCLUDE 'std/memory'
 
 ::rlc::parser GlobalMask -> Global, Mask
 {
-	# FINAL type() Global::Type := :mask;
-
 	parse(p: Parser&) BOOL := Mask::parse(p);
 }

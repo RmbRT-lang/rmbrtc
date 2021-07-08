@@ -8,6 +8,7 @@ INCLUDE "expression.rl"
 	{
 		signature,
 		void,
+		null,
 		name,
 		symbolConstant,
 		tuple,
@@ -139,12 +140,6 @@ INCLUDE "expression.rl"
 			}
 		}
 
-
-		{};
-		{t: Type &&}:
-			Modifiers(&&t.Modifiers),
-			Reference(t.Reference);
-
 		Modifiers: std::[Modifier]Vector;
 		Reference: Type::ReferenceType;
 		Variadic: BOOL;
@@ -155,27 +150,18 @@ INCLUDE "expression.rl"
 			v: T;
 			IF(v.parse(p))
 			{
-				t: Type \ := std::dup(&&v);
+				t: Type-std::Dynamic := :gc(std::dup(&&v));
 				WHILE(p.consume(:minus))
 				{
-					STATIC expect: tok::Type#[](
-						:doubleColon,
-						:bracketOpen,
-						:identifier);
-					found ::= FALSE;
-					FOR(i ::= 0; i < ##expect; i++)
-						found |= p.match(expect[i]);
-					IF(!found)
+					next: TypeName;
+					IF(!next.parse(p))
 						p.fail("expected symbol");
 
-					next ::= Type::parse(p);
-					ASSERT(next->type() == :name);
-					
-					tplArg: TemplateArg(:emplace, t);
-					<TypeName \>(next)->Name.Children.back().Templates += &&tplArg;
-					t := next;
+					tplArg: TemplateArg(:emplace, :gc(t.release()));
+					next.Name.Children.back().Templates += &&tplArg;
+					t := :gc(std::dup(&&next));
 				}
-				RETURN t;
+				RETURN t.release();
 			}
 			ELSE
 				RETURN NULL;
@@ -191,6 +177,8 @@ INCLUDE "expression.rl"
 			IF(v ::= [Signature]parse_impl(p))
 				RETURN v;
 			IF(v ::= [Void]parse_impl(p))
+				RETURN v;
+			IF(v ::= [Null]parse_impl(p))
 				RETURN v;
 			IF(v ::= [TypeName]parse_impl(p))
 				RETURN v;
@@ -250,7 +238,7 @@ INCLUDE "expression.rl"
 
 			p.expect(:parentheseClose);
 
-			parse_generic_part(p);
+			Type::parse_generic_part(p);
 
 			RETURN TRUE;
 		}
@@ -264,7 +252,20 @@ INCLUDE "expression.rl"
 		{
 			IF(!p.consume(:void))
 				RETURN FALSE;
-			parse_generic_part(p);
+			Type::parse_generic_part(p);
+			RETURN TRUE;
+		}
+	}
+
+	Null -> Type
+	{
+		# FINAL type() TypeType := :null;
+
+		parse(p: Parser &) BOOL
+		{
+			IF(!p.consume(:null))
+				RETURN FALSE;
+			Type::parse_generic_part(p);
 			RETURN TRUE;
 		}
 	}
@@ -281,7 +282,7 @@ INCLUDE "expression.rl"
 				RETURN FALSE;
 			p.expect(:identifier, &Name);
 
-			parse_generic_part(p);
+			Type::parse_generic_part(p);
 
 			RETURN TRUE;
 		}
@@ -309,7 +310,7 @@ INCLUDE "expression.rl"
 				WHILE(p.consume(:comma))
 			p.expect(:braceClose);
 
-			parse_generic_part(p);
+			Type::parse_generic_part(p);
 			RETURN TRUE;
 		}
 	}
@@ -329,7 +330,7 @@ INCLUDE "expression.rl"
 				p.fail("expected expression");
 			p.expect(:parentheseClose);
 
-			parse_generic_part(p);
+			Type::parse_generic_part(p);
 
 			RETURN TRUE;
 		}
@@ -346,7 +347,7 @@ INCLUDE "expression.rl"
 			IF(!Name.parse(p))
 				RETURN FALSE;
 			NoDecay := p.consume(:exclamationMark);
-			parse_generic_part(p);
+			Type::parse_generic_part(p);
 			RETURN TRUE;
 		}
 	}
@@ -356,11 +357,14 @@ INCLUDE "expression.rl"
 		ENUM Primitive
 		{
 			bool,
-			char,
-			int,
-			uint,
-			um,
-			sm
+			char, uchar,
+			int, uint,
+			sm, um,
+
+			s1, u1,
+			s2, u2,
+			s4, u4,
+			s8, u8
 		}
 
 		# FINAL type() TypeType := :builtin;
@@ -370,12 +374,15 @@ INCLUDE "expression.rl"
 		parse(p: Parser&) BOOL
 		{
 			STATIC table: {tok::Type, Primitive}#[](
-				(:bool, Primitive::bool),
-				(:char, Primitive::char),
-				(:int, Primitive::int),
-				(:uint, Primitive::uint),
-				(:um, Primitive::um),
-				(:sm, Primitive::sm));
+				(:bool, :bool),
+				(:char, :char), (:uchar, :uchar),
+				(:int, :int), (:uint,:uint),
+				(:sm, :sm), (:um, :um),
+
+				(:s1, :s1), (:u1, :u1),
+				(:s2, :s2), (:u2, :u2),
+				(:s4, :s4), (:u4, :u4),
+				(:s8, :s8), (:u8, :u8));
 
 			FOR(i ::= 0; i < ##table; i++)
 				IF(p.consume(table[i].(0)))

@@ -114,7 +114,7 @@ INCLUDE 'std/err/unimplemented'
 		{
 			parsed: parser::CharExpression #\,
 			file: src::File#&
-		}:	Char(tok::Token(:stringApostrophe, parsed->Char), file);
+		}:	Char((:stringApostrophe, parsed->Char, parsed->Position), file);
 	}
 
 	StringExpression -> Expression
@@ -125,7 +125,7 @@ INCLUDE 'std/err/unimplemented'
 		{
 			parsed: parser::StringExpression #\,
 			file: src::File#&
-		}:	String(tok::Token(:stringQuote, parsed->String), file);
+		}:	String(tok::Token(:stringQuote, parsed->String, parsed->Position), file);
 	}
 
 	OperatorExpression -> Expression
@@ -192,9 +192,9 @@ INCLUDE 'std/err/unimplemented'
 		}:	Expression(position)
 		{
 			IF(parsed->Term.is_type())
-				Term := Type::create(parsed->Term.type(), file);
+				Term := :gc(Type::create(parsed->Term.type(), file));
 			ELSE
-				Term := Expression::create(position, parsed->Term.expression(), file);
+				Term := :gc(Expression::create(position, parsed->Term.expression(), file));
 		}
 	}
 }

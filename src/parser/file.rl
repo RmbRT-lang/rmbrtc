@@ -13,13 +13,13 @@ INCLUDE 'std/io/stream'
 	Src: src::File;
 	Includes: std::[Include]Vector;
 	RootScope: std::[std::[Global]Dynamic]Vector;
-	
+	Number: src::FileNo;
+
 	# name() std::Utf8#& := Src.Name;
 
-	{name: std::Utf8}: Src(name)
+	{name: std::Utf8, fileNo: src::FileNo}: Src(name), Number(fileNo)
 	{
-		out ::= <<<std::io::OStream>>>(&std::io::out);
-		p: Parser(&Src);
+		p: Parser(&Src, fileNo);
 		inc: Include;
 		WHILE(inc.parse(p))
 			Includes += inc;
@@ -29,8 +29,5 @@ INCLUDE 'std/io/stream'
 
 		IF(!p.eof())
 			p.fail("expected scope entry");
-
-		out.write(THIS.name().content());
-		out.write('\n');
 	}
 }

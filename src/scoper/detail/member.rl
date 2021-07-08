@@ -17,7 +17,7 @@ INCLUDE 'std/err/unimplemented'
 	file: src::File #&,
 	group: detail::ScopeItemGroup \) Member \
 {
-	SWITCH(type ::= parsed->type())
+	SWITCH(type ::= <<parser::ScopeItem #\>>(parsed)->type())
 	{
 	DEFAULT:
 		THROW <std::err::Unimplemented>(type.NAME());

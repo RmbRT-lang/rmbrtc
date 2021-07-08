@@ -30,9 +30,6 @@ INCLUDE "../util/dynunion.rl"
 	{
 		# ABSTRACT type() StatementType;
 
-		{};
-		{Statement &&};
-
 		[T: TYPE]
 		PRIVATE STATIC parse_impl(p: Parser &, out: Statement * &) BOOL
 		{
@@ -113,8 +110,8 @@ INCLUDE "../util/dynunion.rl"
 		PRIVATE V: util::[LocalVariable; Expression]DynUnion;
 
 		{};
-		{v: LocalVariable \}: V(v);
-		{v: Expression \}: V(v);
+		{:gc, v: LocalVariable \}: V(:gc(v));
+		{:gc, v: Expression \}: V(:gc(v));
 
 		# is_variable() INLINE BOOL := V.is_first();
 		# variable() INLINE LocalVariable \ := V.first();
@@ -133,11 +130,11 @@ INCLUDE "../util/dynunion.rl"
 
 		parse_opt(p: Parser &) BOOL
 		{
-			v: std::[LocalVariable]Dynamic := :gc(std::[LocalVariable]new());
-			IF(v->parse_var_decl(p))
-				V := v.release();
+			v: LocalVariable;
+			IF(v.parse_var_decl(p))
+				V := :gc(std::dup(&&v));
 			ELSE IF(exp ::= Expression::parse(p))
-				V := exp;
+				V := :gc(exp);
 
 			RETURN V;
 		}
@@ -480,7 +477,7 @@ INCLUDE "../util/dynunion.rl"
 				Condition := &&v;
 			} ELSE
 			{
-				IF(!(Condition := Expression::parse(p)))
+				IF(!(Condition := :gc(Expression::parse(p))))
 					p.fail("expected expression");
 			}
 

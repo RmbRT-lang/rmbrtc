@@ -18,7 +18,7 @@ INCLUDE 'std/err/unimplemented'
 	group:  detail::ScopeItemGroup \
 ) Global \
 {
-	SWITCH(type ::= global->type())
+	SWITCH(type ::= <<parser::ScopeItem #\>>(global)->type())
 	{
 	DEFAULT:
 		THROW <std::err::Unimplemented>(type.NAME());

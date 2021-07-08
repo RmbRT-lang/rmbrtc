@@ -3,8 +3,10 @@ INCLUDE "../parser/namespace.rl"
 INCLUDE "global.rl"
 INCLUDE "scopeitem.rl"
 
-::rlc::scoper Namespace -> VIRTUAL ScopeItem, Global, Scope
+::rlc::scoper Namespace -> ScopeItem, Global, Scope
 {
+	# FINAL type() ScopeItem::Type := :namespace;
+
 	{
 		parsed: parser::Namespace #\,
 		file: src::File#&,
@@ -13,8 +15,6 @@ INCLUDE "scopeitem.rl"
 		Scope(&THIS, group->Scope)
 	{
 		FOR(i ::= 0; i < ##parsed->Entries; i++)
-			insert(parsed->Entries[i], file);
+			Scope::insert(parsed->Entries[i], file);
 	}
-
-	# FINAL type() Global::Type := :namespace;
 }

@@ -25,7 +25,7 @@ INCLUDE "../test.rl"
 		|| [ExternSymbol]parse_global_impl(p, ret)
 		|| (!templates.exists() && [Test]parse_global_impl(p, ret)))
 		{
-			ret->Templates := &&templates;
+			<<ScopeItem \>>(ret)->Templates := &&templates;
 		}
 
 		RETURN ret;

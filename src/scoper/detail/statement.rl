@@ -191,7 +191,7 @@ INCLUDE 'std/err/unimplemented'
 		}:	Statement(position, parentScope),
 			Scope(&THIS, parentScope)
 		{
-			p ::= Position;
+			p ::= Statement::Position;
 			FOR(i ::= 0; i < ##parsed->Statements; i++)
 			{
 				Statements += :gc(Statement::create(p, parsed->Statements[i], file, &Scope));
@@ -214,8 +214,8 @@ INCLUDE 'std/err/unimplemented'
 		# FINAL type() StatementType := StatementType::if;
 
 		# FINAL variables() UM := Else
-			? Else->Position + Else->variables() - Position
-			: Then->Position + Then->variables() - Position;
+			? Else->Position + Else->variables() - Statement::Position
+			: Then->Position + Then->variables() - Statement::Position;
 
 		{
 			position: UM,
@@ -442,7 +442,7 @@ INCLUDE 'std/err/unimplemented'
 		# FINAL type() StatementType := StatementType::switch;
 
 		# FINAL variables() UM
-			:= Cases.back().position() + Cases.back().variables() - Position;
+			:= Cases.back().position() + Cases.back().variables() - Statement::Position;
 
 		{
 			position: UM,

@@ -14,8 +14,8 @@ INCLUDE 'std/help'
 	PRIVATE V: util::[Expression; Statement]DynUnion;
 
 	{};
-	{v: Expression \}: V(v);
-	{v: Statement \}: V(v);
+	{:gc, v: Expression \}: V(:gc(v));
+	{:gc, v: Statement \}: V(:gc(v));
 
 	# is_expression() INLINE BOOL := V.is_first();
 	# expression() INLINE Expression \ := V.first();
@@ -28,7 +28,7 @@ INCLUDE 'std/help'
 		:= std::help::custom_assign(THIS, <T!&&>(v));
 }
 
-::rlc::parser Function -> VIRTUAL ScopeItem
+::rlc::parser Function VIRTUAL -> ScopeItem
 {
 	Arguments: std::[LocalVariable]Vector;
 	Return: VariableType;
@@ -39,6 +39,7 @@ INCLUDE 'std/help'
 	Name: src::String;
 	Operator: rlc::Operator;
 
+	# FINAL type() ScopeItem::Type := :function;
 	# FINAL name() src::String#& := Name;
 	# FINAL overloadable() BOOL := TRUE;
 
@@ -94,7 +95,7 @@ INCLUDE 'std/help'
 			} ELSE IF(p.consume(:less, &Name))
 			{
 				allowArgs := FALSE;
-				IF(!(Return := Type::parse(p)))
+				IF(!(Return := :gc(parser::Type::parse(p))))
 					p.fail("expected type");
 				p.expect(:greater);
 			} ELSE
@@ -123,7 +124,7 @@ INCLUDE 'std/help'
 		IsCoroutine := p.consume(:at);
 
 		IF(!Return)
-			Return := Type::parse(p);
+			Return := :gc(parser::Type::parse(p));
 
 		IF(!allow_body)
 			IF(!Return)
@@ -138,30 +139,30 @@ INCLUDE 'std/help'
 		IF(!Return)
 		{
 			expectBody ::= p.consume(:questionMark);
-			auto: Type::Auto;
+			auto: parser::Type::Auto;
 			auto.parse(p);
-			Return := std::dup(&&auto);
+			Return := :gc(std::dup(&&auto));
 
 			IF(expectBody)
 			{
 				IF(!body.parse(p))
 					p.fail("expected block statement");
-				Body := std::dup(&&body);
+				Body := :gc(std::dup(&&body));
 			} ELSE
 			{
 				p.expect(:doubleColonEqual);
-				Body := Expression::parse(p);
+				Body := :gc(Expression::parse(p));
 				p.expect(:semicolon);
 			}
 		} ELSE IF(!p.consume(:semicolon))
 		{
 			IF(body.parse(p))
-				Body := std::dup(&&body);
+				Body := :gc(std::dup(&&body));
 			ELSE
 			{
 				p.expect(tok::Type::colonEqual);
 
-				Body := Expression::parse(p);
+				Body := :gc(Expression::parse(p));
 				p.expect(:semicolon);
 			}
 		}
@@ -172,7 +173,6 @@ INCLUDE 'std/help'
 
 ::rlc::parser GlobalFunction -> Global, Function
 {
-	# FINAL type() Global::Type := :function;
 	parse(p: Parser&) INLINE BOOL := Function::parse(p, TRUE, FALSE);
 	parse_extern(p: Parser&) INLINE BOOL := Function::parse(p, FALSE, FALSE);
 }
@@ -189,8 +189,6 @@ INCLUDE 'std/help'
 ::rlc::parser MemberFunction -> Member, Function
 {
 	Abstractness: rlc::Abstractness;
-
-	# FINAL type() Member::Type := :function;
 
 	parse(p: Parser&) INLINE BOOL
 	{

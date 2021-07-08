@@ -2,12 +2,12 @@ INCLUDE "global.rl"
 INCLUDE "scopeitem.rl"
 INCLUDE "statement.rl"
 
-::rlc::parser Test -> Global, VIRTUAL ScopeItem
+::rlc::parser Test -> Global, ScopeItem
 {
 	Name: tok::Token;
 	Body: BlockStatement;
 
-	# FINAL type() Global::Type := :test;
+	# FINAL type() ScopeItem::Type := :test;
 	# FINAL name() src::String#& := src::String::empty;
 	# FINAL overloadable() BOOL := FALSE;
 

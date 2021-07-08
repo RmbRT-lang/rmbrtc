@@ -16,7 +16,7 @@ INCLUDE 'std/unicode'
 
 ::rlc::scoper Text
 {
-	SymbolSize: std::U8;
+	SymbolSize: U8;
 	Endian: rlc::Endian;
 	Type: TextType;
 	Codes: std::SYM-std::Vector;

@@ -1,8 +1,8 @@
 INCLUDE "statement.rl"
 
-::rlc::parser Destructor -> Member
+::rlc::parser Destructor -> Member, ScopeItem
 {
-	# FINAL type() Member::Type := :destructor;
+	# FINAL type() ScopeItem::Type := :destructor;
 	# FINAL name() src::String#& := Name;
 	# FINAL overloadable() BOOL := FALSE;
 

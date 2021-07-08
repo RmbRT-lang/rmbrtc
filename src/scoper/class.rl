@@ -5,8 +5,10 @@ INCLUDE "member.rl"
 INCLUDE "scopeitem.rl"
 INCLUDE "symbol.rl"
 
-::rlc::scoper Class -> VIRTUAL ScopeItem, Scope
+::rlc::scoper Class VIRTUAL -> ScopeItem, Scope
 {
+	# FINAL type() ScopeItem::Type := :class;
+
 	Inheritance
 	{
 		Visibility: rlc::Visibility;
@@ -25,11 +27,12 @@ INCLUDE "symbol.rl"
 		parsed: parser::Class #\,
 		file: src::File #&,
 		group: detail::ScopeItemGroup \
-	}:	Scope(&THIS, group->Scope),
+	}:	ScopeItem(group, parsed, file),
+		Scope(&THIS, group->Scope),
 		Virtual(parsed->Virtual)
 	{
 		FOR(i ::= 0; i < ##parsed->Members; i++)
-			insert(parsed->Members[i], file);
+			Scope::insert(<<parser::ScopeItem #\>>(&*parsed->Members[i]), file);
 
 		FOR(i ::= 0; i < ##parsed->Inheritances; i++)
 			Inheritances += (parsed->Inheritances[i], file);
@@ -41,25 +44,19 @@ INCLUDE "symbol.rl"
 
 ::rlc::scoper GlobalClass -> Global, Class
 {
-	# FINAL type() Global::Type := :class;
-
 	{
 		parsed: parser::GlobalClass #\,
 		file: src::File #&,
 		group: detail::ScopeItemGroup \
-	}:	ScopeItem(group, parsed, file),
-		Class(parsed, file, group);
+	}:	Class(parsed, file, group);
 }
 
 ::rlc::scoper MemberClass -> Member, Class
 {
-	# FINAL type() Member::Type := :class;
-
 	{
 		parsed: parser::MemberClass #\,
 		file: src::File #&,
 		group: detail::ScopeItemGroup \
-	}:	ScopeItem(group, parsed, file),
-		Member(parsed),
+	}:	Member(parsed),
 		Class(parsed, file, group);
 }

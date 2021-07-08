@@ -1,15 +1,10 @@
 INCLUDE "../parser/member.rl"
 INCLUDE "scopeitem.rl"
 
-::rlc::scoper Member VIRTUAL -> VIRTUAL ScopeItem
+::rlc::scoper Member VIRTUAL
 {
 	Visibility: rlc::Visibility;
 	Attribute: rlc::MemberAttribute;
-
-	TYPE Type := parser::Member::Type;
-
-	# ABSTRACT type() Member::Type;
-	# FINAL category() ScopeItem::Category := ScopeItem::Category::member;
 
 	{parsed: parser::Member #\}:
 		Visibility(parsed->Visibility),

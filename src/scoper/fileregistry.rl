@@ -27,6 +27,8 @@ INCLUDE 'std/shared'
 		load_include_dirs();
 	}
 
+	# nameByNumber(n: src::FileNo) ::= ParsedFiles.nameByNumber(n);
+
 	(// Returns pointer to file, or null if the file is currently being loaded. /)
 	get(path: std::[CHAR#]Buffer #&) File *
 	{

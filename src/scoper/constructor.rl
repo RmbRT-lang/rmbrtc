@@ -4,7 +4,7 @@ INCLUDE "member.rl"
 INCLUDE "scope.rl"
 INCLUDE "detail/statement.rl"
 
-::rlc::scoper Constructor -> Member, VIRTUAL ScopeItem
+::rlc::scoper Constructor -> Member, ScopeItem
 {
 	BaseInit
 	{
@@ -23,12 +23,14 @@ INCLUDE "detail/statement.rl"
 	MemberInit
 	{
 		Member: String;
+		Position: src::Position;
 		Arguments: std::[std::[Expression]Dynamic]Vector;
 
 		{
 			parsed: parser::Constructor::MemberInit #&,
-			file: src::File#&}:
-			Member(file.content(parsed.Member))
+			file: src::File#&
+		}:	Member(file.content(parsed.Member)),
+			Position(parsed.Position)
 		{
 			FOR(i ::= 0; i < ##parsed.Arguments; i++)
 				Arguments += :gc(Expression::create(parsed.Arguments[i], file));
@@ -42,7 +44,7 @@ INCLUDE "detail/statement.rl"
 	Body: std::[BlockStatement]Dynamic;
 	Inline: BOOL;
 
-	# FINAL type() Member::Type := :constructor;
+	# FINAL type() ScopeItem::Type := :constructor;
 
 	{
 		parsed: parser::Constructor #\,
@@ -56,7 +58,9 @@ INCLUDE "detail/statement.rl"
 		FOR(i ::= 0; i < ##parsed->Arguments; i++)
 		{
 			arg ::= ArgScope.insert(&parsed->Arguments[i], file);
-			Arguments += <<LocalVariable \>>(arg);
+			local ::= <<LocalVariable \>>(arg);
+			local->set_position(0);
+			Arguments += local;
 		}
 
 		FOR(i ::= 0; i < ##parsed->BaseInits; i++)
@@ -66,6 +70,6 @@ INCLUDE "detail/statement.rl"
 			MemberInits += (parsed->MemberInits[i], file);
 
 		IF(parsed->Body)
-			Body := :gc([BlockStatement]new(0, parsed->Body, file, &ArgScope));
+			Body := :gc(std::[BlockStatement]new(0, parsed->Body, file, &ArgScope));
 	}
 }
