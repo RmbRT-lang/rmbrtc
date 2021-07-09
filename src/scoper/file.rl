@@ -2,6 +2,7 @@ INCLUDE "scope.rl"
 INCLUDE "fileregistry.rl"
 INCLUDE "types.rl"
 INCLUDE "string.rl"
+INCLUDE "error.rl"
 
 INCLUDE "../parser/file.rl"
 INCLUDE "../util/file.rl"
@@ -42,10 +43,10 @@ INCLUDE 'std/shared'
 		// Resolve and load all include files.
 		loc: std::[File \; File]VectorSet::Location;
 		path: std::Utf8;
-		FOR(i ::= 0; i < ##parsed.Includes; i++)
+		FOR(inc ::= parsed.Includes.start(); inc; ++inc)
 		{
-			path := Text(parsed.Includes[i].Token, *Source).utf8();
-			TRY SWITCH(type ::= parsed.Includes[i].Type)
+			path := Text(inc->Token, *Source).utf8();
+			TRY SWITCH(type ::= inc->Type)
 			{
 			CASE :relative: path := relative_path(path.content());
 			CASE :global: path := registry.find_global(path.content());
@@ -53,7 +54,7 @@ INCLUDE 'std/shared'
 				THROW <std::err::Unimplemented>(type.NAME());
 			}
 			CATCH(std::io::FileNotFound&)
-				THROW <IncludeNotFound>(THIS, &&path, parsed.Includes[i].Type);
+				THROW <IncludeNotFound>(inc->Token.Position, &&path, inc->Type);
 
 			IF(!Includes.find(path, &loc))
 			{
@@ -68,24 +69,23 @@ INCLUDE 'std/shared'
 		}
 	}
 
-	IncludeNotFound -> std::Error
+	IncludeNotFound -> Error
 	{
-		Source: std::Utf8;
 		Include: std::Utf8;
 		Type: IncludeType;
 
 		{
-			source: File #&,
+			position: src::Position,
 			path: std::Utf8&&,
 			type: IncludeType
-		}:	Source(source.Source->Name),
-			Include(&&path),
+		}->	Error(position)
+		:	Include(&&path),
 			Type(type);
 
 
-		# FINAL print(o: std::io::OStream &) VOID
+		# FINAL print_msg(o: std::io::OStream &) VOID
 		{
-			o.write_all(Source.content(), ": ", Type.NAME(), " include '", Include.content(), "' not found");
+			o.write_all(Type.NAME(), " include '", Include.content(), "' not found");
 		}
 	}
 
