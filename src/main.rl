@@ -17,13 +17,14 @@ main(
 	argc: INT,
 	argv: CHAR **) INT
 {
+	out ::= <<<std::io::OStream>>>(&std::io::out);
+
 	IF(argc < 2)
 	{
-		std::io::out.print("expected arguments\n");
+		out.write_all(argv[0], ": expected arguments\n");
 		RETURN 1;
 	}
 
-	out ::= <<<std::io::OStream>>>(&std::io::out);
 
 	registry: rlc::scoper::FileRegistry;
 	registry.LegacyScope := :create(NULL, NULL);
