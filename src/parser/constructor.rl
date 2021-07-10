@@ -88,6 +88,7 @@ INCLUDE 'std/memory'
 					} WHILE(p.consume(:comma))
 					p.expect(:parentheseClose);
 				}
+				MemberInits += &&init;
 			} WHILE(p.consume(:comma))
 		}
 
