@@ -268,8 +268,8 @@ INCLUDE "../scoper/fileregistry.rl"
 				IF(##itemGroup->Items > 1)
 					THROW <NotResolved>(
 						symbolScope,
-						reference.Children[i].Name,
-						reference.Children[i].Position,
+						child->Name,
+						child->Position,
 						"ambiguous");
 
 				item # ::= &*itemGroup->Items[0];
@@ -280,7 +280,7 @@ INCLUDE "../scoper/fileregistry.rl"
 						symbolScope,
 						child->Name,
 						child->Position,
-						"number of template arguments does not match declaration");
+						"too many template arguments");
 
 				// Check template argument kind compatibility (value/type). Ignore empty and omitted template arguments
 				FOR(j ::= 0; j < ##child->Templates; j++)
