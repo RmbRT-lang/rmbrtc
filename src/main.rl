@@ -48,6 +48,11 @@ main(
 		e.print(out, registry);
 		out.write("\n");
 	}
+	CATCH(e: rlc::tok::Error &)
+	{
+		e.print(out);
+		out.write("\n");
+	}
 	CATCH(e: rlc::parser::Error &)
 	{
 		e.print(out);
