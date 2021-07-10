@@ -144,7 +144,7 @@ INCLUDE "error.rl"
 						++nest;
 					IF(eatString("/)"))
 						--nest;
-					IF(!getc())
+					ELSE IF(!getc())
 						error();
 				}
 				RETURN TRUE;
