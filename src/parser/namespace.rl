@@ -6,7 +6,7 @@ INCLUDE 'std/vector'
 
 ::rlc::parser Namespace -> ScopeItem, Global
 {
-	Entries: std::[std::[ScopeItem]Dynamic]Vector;
+	Entries: ScopeItem - std::DynVector;
 	Name: src::String;
 
 	# FINAL name() src::String#& := Name;

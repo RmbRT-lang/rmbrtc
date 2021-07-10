@@ -103,7 +103,7 @@ INCLUDE 'std/streambuffer'
 
 		Scope: scoper::Scope \;
 		Name: String;
-		Items: std::[std::[ScopeItem]Dynamic]Vector;
+		Items: ScopeItem - std::DynVector;
 
 		{name: String#&, scope: scoper::Scope \}:
 			Scope(scope),

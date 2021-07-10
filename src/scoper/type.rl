@@ -30,7 +30,7 @@ INCLUDE "symbol.rl"
 			Indirection: Type::Indirection;
 			Qualifier: Type::Qualifier;
 			IsArray: BOOL;
-			ArraySize: std::[std::[Expression]Dynamic]Vector;
+			ArraySize: Expression - std::DynVector;
 
 			{
 				parsed: parser::Type::Modifier#&,

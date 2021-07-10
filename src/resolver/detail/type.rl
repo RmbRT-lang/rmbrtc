@@ -53,7 +53,7 @@ INCLUDE 'std/memory'
 	{
 		# FINAL type() Type::Kind := :signature;
 
-		Arguments: Type - std::Dynamic - std::Vector;
+		Arguments: Type - std::DynVector;
 		Result: Type - std::Dynamic;
 
 		{scope: scoper::Scope #\, scopedType: scoper::Signature #\}
@@ -96,7 +96,7 @@ INCLUDE 'std/memory'
 	{
 		# FINAL type() Type::Kind := :tuple;
 
-		Types: Type - std::Dynamic - std::Vector;
+		Types: Type - std::DynVector;
 
 		{scope: scoper::Scope #\, scopedType: scoper::TupleType #\}
 		->	Type(scopedType, scope)

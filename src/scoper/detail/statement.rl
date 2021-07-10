@@ -175,7 +175,7 @@ INCLUDE 'std/err/unimplemented'
 	BlockStatement -> Statement
 	{
 		Scope: scoper::Scope;
-		Statements: std::[std::[Statement]Dynamic]Vector;
+		Statements: Statement - std::DynVector;
 
 		# FINAL type() StatementType := StatementType::block;
 
@@ -466,7 +466,7 @@ INCLUDE 'std/err/unimplemented'
 
 	CaseStatement
 	{
-		Values: std::[std::[Expression]Dynamic]Vector;
+		Values: Expression - std::DynVector;
 		Body: std::[Statement]Dynamic;
 
 		# is_default() INLINE BOOL := Values.empty();

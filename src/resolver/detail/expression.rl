@@ -91,7 +91,7 @@ INCLUDE "../symbol.rl"
 
 		Lhs: Expression - std::Dynamic;
 		MemberName: scoper::String;
-		MemberTemplates: TemplateArg - std::Dynamic - std::Vector;
+		MemberTemplates: TemplateArg - std::DynVector;
 		IsPtr: BOOL;
 
 		{
@@ -111,7 +111,7 @@ INCLUDE "../symbol.rl"
 	{
 		# FINAL type() Expression::Type := :operator;
 		Op: Operator;
-		Args: Expression - std::Dynamic - std::Vector;
+		Args: Expression - std::DynVector;
 
 		{
 			ref: scoper::OperatorExpression #\,
@@ -131,7 +131,7 @@ INCLUDE "../symbol.rl"
 
 		Method: Kind;
 		Type: resolver::Type - std::Dynamic;
-		Values: Expression - std::Dynamic - std::Vector;
+		Values: Expression - std::DynVector;
 
 		{
 			ref: scoper::CastExpression #\,

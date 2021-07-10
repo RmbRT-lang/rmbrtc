@@ -142,7 +142,7 @@ INCLUDE "../util/dynunion.rl"
 
 	BlockStatement -> Statement
 	{
-		Statements: std::[std::[Statement]Dynamic]Vector;
+		Statements: Statement - std::DynVector;
 
 		# FINAL type() StatementType := StatementType::block;
 
@@ -540,7 +540,7 @@ INCLUDE "../util/dynunion.rl"
 
 	CaseStatement
 	{
-		Values: std::[std::[Expression]Dynamic]Vector;
+		Values: Expression - std::DynVector;
 		Body: std::[Statement]Dynamic;
 
 		# is_default() INLINE BOOL := Values.empty();

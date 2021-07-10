@@ -32,7 +32,7 @@ INCLUDE "../util/dynunion.rl"
 
 	Type: VariableType;
 	HasInitialiser: BOOL;
-	InitValues: std::[std::[Expression]Dynamic]Vector;
+	InitValues: Expression - std::DynVector;
 
 	{
 		group: detail::ScopeItemGroup \,

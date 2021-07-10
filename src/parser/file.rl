@@ -12,7 +12,7 @@ INCLUDE 'std/io/stream'
 {
 	Src: src::File;
 	Includes: std::[Include]Vector;
-	RootScope: std::[std::[Global]Dynamic]Vector;
+	RootScope: Global - std::DynVector;
 	Number: src::FileNo;
 
 	# name() std::Utf8#& := Src.Name;

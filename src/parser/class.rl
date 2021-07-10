@@ -40,7 +40,7 @@ INCLUDE 'std/memory'
 
 	Name: src::String;
 	Virtual: BOOL;
-	Members: std::[std::[Member]Dynamic]Vector;
+	Members: Member - std::DynVector;
 	Inheritances: std::[Inheritance]Vector;
 
 	# FINAL type() ScopeItem::Type := :class;

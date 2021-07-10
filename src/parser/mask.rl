@@ -12,7 +12,7 @@ INCLUDE 'std/memory'
 
 ::rlc::parser Mask VIRTUAL -> ScopeItem
 {
-	Members: std::[std::[Member]Dynamic]Vector;
+	Members: Member - std::DynVector;
 	Name: src::String;
 
 	# FINAL type() ScopeItem::Type := :mask;

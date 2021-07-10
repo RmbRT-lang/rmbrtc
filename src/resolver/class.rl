@@ -21,11 +21,11 @@ INCLUDE "symbol.rl"
 
 	IsVirtual: BOOL;
 	Inheritances: Inheritance - std::Vector;
-	Fields: MemberVariable - std::Dynamic - std::Vector;
-	Constructors: Constructor - std::Dynamic - std::Vector;
+	Fields: MemberVariable - std::DynVector;
+	Constructors: Constructor - std::DynVector;
 	Destructor: resolver::Destructor - std::Dynamic;
-	Functions: MemberFunction - std::Dynamic - std::Vector;
-	Types: Member - std::Dynamic - std::Vector;
+	Functions: MemberFunction - std::DynVector;
+	Types: Member - std::DynVector;
 
 	{
 		class: scoper::Class #\,

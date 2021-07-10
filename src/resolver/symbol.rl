@@ -23,7 +23,7 @@ INCLUDE "../scoper/fileregistry.rl"
 		(// Inner-most resolved item. /)
 		Tail: scoper::ScopeItem # *;
 		(// All specified path nodes' templates. /)
-		Templates: TemplateArg - std::Dynamic - std::Vector - std::Vector;
+		Templates: TemplateArg - std::DynVector - std::Vector;
 
 		{
 			scope: scoper::Scope # *,
@@ -35,7 +35,7 @@ INCLUDE "../scoper/fileregistry.rl"
 			FOR(i ::= 0; i+1 < depth; i++)
 			{
 				child # ::= &symbol.Children[i];
-				templates: TemplateArg - std::Dynamic - std::Vector;
+				templates: TemplateArg - std::DynVector;
 				FOR(tpl ::= child->Templates.start(); tpl; ++tpl)
 					templates += :gc(TemplateArg::create(scope, *tpl));
 				Templates += &&templates;
@@ -49,7 +49,7 @@ INCLUDE "../scoper/fileregistry.rl"
 	Unresolved
 	{
 		Symbols: scoper::Symbol::Child # - std::Buffer;
-		Templates: TemplateArg - std::Dynamic - std::Vector - std::Vector;
+		Templates: TemplateArg - std::DynVector - std::Vector;
 
 		{
 			scope: scoper::Scope #\,
@@ -59,7 +59,7 @@ INCLUDE "../scoper/fileregistry.rl"
 		{
 			FOR(child ::= Symbols.start(); child; ++child)
 			{
-				templates: TemplateArg - std::Dynamic - std::Vector;
+				templates: TemplateArg - std::DynVector;
 				FOR(tpl ::= child->Templates.start(); tpl; ++tpl)
 					templates += :gc(TemplateArg::create(scope, *tpl));
 				Templates += &&templates;
@@ -82,7 +82,7 @@ INCLUDE "../scoper/fileregistry.rl"
 	(// The inner-most resolvable part of the symbol. /)
 	Item: Reference;
 	(// Templates of `Item`. /)
-	ItemTemplates: TemplateArg - std::Dynamic - std::Vector;
+	ItemTemplates: TemplateArg - std::DynVector;
 
 	(// Symbol children depending on an uninstantiated template or typedef. /)
 	Rest: Unresolved;

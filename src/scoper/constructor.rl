@@ -9,7 +9,7 @@ INCLUDE "detail/statement.rl"
 	BaseInit
 	{
 		Base: Symbol;
-		Arguments: std::[std::[Expression]Dynamic]Vector;
+		Arguments: Expression - std::DynVector;
 		{
 			parsed: parser::Constructor::BaseInit #&,
 			file: src::File#&}:
@@ -24,7 +24,7 @@ INCLUDE "detail/statement.rl"
 	{
 		Member: String;
 		Position: src::Position;
-		Arguments: std::[std::[Expression]Dynamic]Vector;
+		Arguments: Expression - std::DynVector;
 
 		{
 			parsed: parser::Constructor::MemberInit #&,

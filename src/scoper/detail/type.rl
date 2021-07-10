@@ -38,7 +38,7 @@ INCLUDE 'std/err/unimplemented'
 	{
 		# FINAL type() TypeType := :signature;
 
-		Arguments: std::[std::[Type]Dynamic]Vector;
+		Arguments: Type - std::DynVector;
 		Return: std::[Type]Dynamic;
 
 		{
@@ -104,7 +104,7 @@ INCLUDE 'std/err/unimplemented'
 	{
 		# FINAL type() TypeType := :tuple;
 
-		Types: Type - std::Dynamic - std::Vector;
+		Types: Type - std::DynVector;
 
 		{
 			parsed: parser::TupleType #\,

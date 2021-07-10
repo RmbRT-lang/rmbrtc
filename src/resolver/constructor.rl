@@ -9,7 +9,7 @@ INCLUDE "member.rl"
 	BaseInit
 	{
 		Base: Symbol;
-		Arguments: Expression - std::Dynamic - std::Vector;
+		Arguments: Expression - std::DynVector;
 		{
 			scoped: scoper::Constructor::BaseInit #&,
 			ctor: scoper::Constructor #\
@@ -23,7 +23,7 @@ INCLUDE "member.rl"
 	MemberInit
 	{
 		Member: scoper::MemberVariable #\;
-		Arguments: Expression - std::Dynamic - std::Vector;
+		Arguments: Expression - std::DynVector;
 
 		STATIC resolve_member(
 			scoped: scoper::Constructor::MemberInit #&,
@@ -56,7 +56,7 @@ INCLUDE "member.rl"
 		}
 	}
 
-	Arguments: LocalVariable - std::Dynamic - std::Vector;
+	Arguments: LocalVariable - std::DynVector;
 	BaseInits: BaseInit - std::Vector;
 	MemberInits: MemberInit - std::Vector;
 	Body: BlockStatement - std::Dynamic;

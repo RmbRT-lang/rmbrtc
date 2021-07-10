@@ -12,7 +12,7 @@ INCLUDE 'std/tags'
 {
 	# FINAL type() ScopeItem::Type := :function;
 
-	Arguments: LocalVariable - std::Dynamic - std::Vector;
+	Arguments: LocalVariable - std::DynVector;
 	Return: VariableType;
 	Body: ExprOrStmt;
 	Inline: BOOL;

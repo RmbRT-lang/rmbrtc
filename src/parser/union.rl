@@ -5,7 +5,7 @@ INCLUDE "member.rl"
 ::rlc::parser Union VIRTUAL -> ScopeItem
 {
 	Name: src::String;
-	Members: std::[std::[Member]Dynamic]Vector;
+	Members: Member - std::DynVector;
 
 	# FINAL type() ScopeItem::Type := :union;
 	# FINAL name() src::String #& := Name;

@@ -30,7 +30,7 @@ INCLUDE "../util/dynunion.rl"
 
 		Type: VariableType;
 		HasInitialiser: BOOL;
-		InitValues: Expression - std::Dynamic - std::Vector;
+		InitValues: Expression - std::DynVector;
 
 		{
 			v: scoper::Variable #\,

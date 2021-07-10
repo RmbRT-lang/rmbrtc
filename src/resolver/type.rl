@@ -30,7 +30,7 @@ INCLUDE "expression.rl"
 		Indirection: Type::Indirection;
 		Qualifier: Type::Qualifier;
 		IsArray: BOOL;
-		ArraySize: Expression - std::Dynamic - std::Vector;
+		ArraySize: Expression - std::DynVector;
 
 		{
 			scoped: scoper::Type::Modifier#&,

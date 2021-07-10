@@ -353,7 +353,7 @@ INCLUDE 'std/vector'
 	{
 		# FINAL type() ExpressionType := :operator;
 
-		Operands: std::[std::[Expression]Dynamic]Vector;
+		Operands: Expression - std::DynVector;
 		Op: Operator;
 
 		STATIC parse(p: Parser&) INLINE Expression *
@@ -610,7 +610,7 @@ INCLUDE 'std/vector'
 		ENUM Kind { static, dynamic, mask }
 		Method: Kind;
 		Type: std::[parser::Type]Dynamic;
-		Values: Expression - std::Dynamic - std::Vector;
+		Values: Expression - std::DynVector;
 
 		parse(p: Parser&) BOOL
 		{

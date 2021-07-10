@@ -11,14 +11,14 @@ INCLUDE 'std/memory'
 	BaseInit
 	{
 		Base: Symbol;
-		Arguments: std::[std::[Expression]Dynamic]Vector;
+		Arguments: Expression - std::DynVector;
 	}
 
 	MemberInit
 	{
 		Member: src::String;
 		Position: src::Position;
-		Arguments: std::[std::[Expression]Dynamic]Vector;
+		Arguments: Expression - std::DynVector;
 	}
 
 	Name: src::String; // Always {.

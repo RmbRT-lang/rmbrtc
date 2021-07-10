@@ -9,9 +9,9 @@ INCLUDE "type.rl"
 	# FINAL type() ScopeItem::Type := :rawtype;
 
 	Size: Expression - std::Dynamic;
-	Constructors: Constructor - std::Dynamic - std::Vector;
-	Functions: MemberFunction - std::Dynamic - std::Vector;
-	Others: Member - std::Dynamic - std::Vector;
+	Constructors: Constructor - std::DynVector;
+	Functions: MemberFunction - std::DynVector;
+	Others: Member - std::DynVector;
 
 	{
 		rawtype: scoper::Rawtype #\,

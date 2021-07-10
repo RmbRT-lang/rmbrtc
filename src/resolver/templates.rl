@@ -21,13 +21,13 @@ INCLUDE "../util/dynunion.rl"
 				RETURN std::[TemplateValuesArg]new(args, scope);
 		}
 	}
-	TYPE TemplateArgs := TemplateArg-std::Dynamic-std::Vector;
+	TYPE TemplateArgs := TemplateArg-std::DynVector;
 
 	TemplateTypesArg -> TemplateArg
 	{
 		# FINAL type() TemplateArg::Type := :types;
 
-		Types: resolver::Type - std::Dynamic - std::Vector;
+		Types: resolver::Type - std::DynVector;
 
 		{
 			types: scoper::TypeOrExpr - std::Vector #&,
@@ -43,7 +43,7 @@ INCLUDE "../util/dynunion.rl"
 	{
 		# FINAL type() TemplateArg::Type := :values;
 
-		Values: Expression - std::Dynamic - std::Vector;
+		Values: Expression - std::DynVector;
 
 		{
 			values: scoper::TypeOrExpr - std::Vector #&,

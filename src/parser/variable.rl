@@ -35,7 +35,7 @@ INCLUDE "../util/dynunion.rl"
 		Name: src::String;
 		Type: VariableType;
 		HasInitialiser: BOOL;
-		InitValues: std::[std::[Expression]Dynamic]Vector;
+		InitValues: Expression - std::DynVector;
 
 		# FINAL type() ScopeItem::Type := :variable;
 		# FINAL name() src::String#& := Name;

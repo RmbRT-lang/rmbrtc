@@ -6,8 +6,8 @@ INCLUDE "type.rl"
 {
 	# FINAL type() ScopeItem::Type := :union;
 
-	Fields: MemberVariable - std::Dynamic - std::Vector;
-	Functions: MemberFunction - std::Dynamic - std::Vector;
+	Fields: MemberVariable - std::DynVector;
+	Functions: MemberFunction - std::DynVector;
 
 	{v: scoper::Union #\, cache: Cache &}
 	->	ScopeItem(v, cache)

@@ -132,7 +132,7 @@ INCLUDE 'std/err/unimplemented'
 	{
 		# FINAL type() ExpressionType := :operator;
 
-		Operands: std::[std::[Expression]Dynamic]Vector;
+		Operands: Expression - std::DynVector;
 		Op: Operator;
 
 		{
@@ -164,7 +164,7 @@ INCLUDE 'std/err/unimplemented'
 
 		Method: Kind;
 		Type: std::[scoper::Type]Dynamic;
-		Values: Expression-std::Dynamic-std::Vector;
+		Values: Expression-std::DynVector;
 
 		{
 			position: UM,

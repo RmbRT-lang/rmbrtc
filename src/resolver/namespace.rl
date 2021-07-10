@@ -5,7 +5,7 @@ INCLUDE "global.rl"
 {
 	# FINAL type() ScopeItem::Type := :namespace;
 
-	Entries: Global - std::Dynamic - std::Vector;
+	Entries: Global - std::DynVector;
 
 	{v: scoper::Namespace #\, cache: Cache &}->
 		ScopeItem(v, cache)

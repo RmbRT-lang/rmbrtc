@@ -10,7 +10,7 @@ INCLUDE 'std/vector'
 ::rlc::parser Rawtype VIRTUAL -> ScopeItem
 {
 	Size: std::[Expression]Dynamic;
-	Members: std::[std::[Member]Dynamic]Vector;
+	Members: Member - std::DynVector;
 	Name: src::String;
 
 	# FINAL type() ScopeItem::Type := :rawtype;

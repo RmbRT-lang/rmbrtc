@@ -8,10 +8,10 @@ INCLUDE "scopeitem.rl"
 	# FINAL type() ScopeItem::Type := :mask;
 
 	// Functions that other types must implement.
-	AbstractFunctions: MemberFunction - std::Dynamic - std::Vector;
+	AbstractFunctions: MemberFunction - std::DynVector;
 	// Functions that the mask already implements itself.
-	Functions: MemberFunction - std::Dynamic - std::Vector;
-	Others: Member - std::Dynamic - std::Vector;
+	Functions: MemberFunction - std::DynVector;
+	Others: Member - std::DynVector;
 
 
 	{mask: scoper::Mask #\, cache: Cache &}->

@@ -111,7 +111,7 @@ INCLUDE "expression.rl"
 			Indirection: Type::Indirection;
 			Qualifier: Type::Qualifier;
 			IsArray: BOOL;
-			ArraySize: std::[std::[Expression]Dynamic]Vector;
+			ArraySize: Expression - std::DynVector;
 
 			parse(
 				p: Parser&) BOOL
@@ -207,7 +207,7 @@ INCLUDE "expression.rl"
 		# FINAL type() TypeType := :signature;
 		{};
 
-		Args: std::[std::[Type]Dynamic]Vector;
+		Args: Type - std::DynVector;
 		Ret: std::[Type]Dynamic;
 
 		parse(p: Parser&) BOOL
@@ -292,7 +292,7 @@ INCLUDE "expression.rl"
 	{
 		# FINAL type() TypeType := :tuple;
 
-		Types: Type - std::Dynamic - std::Vector;
+		Types: Type - std::DynVector;
 
 		parse(p: Parser &) BOOL
 		{
