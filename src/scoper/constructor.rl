@@ -49,10 +49,10 @@ INCLUDE "detail/statement.rl"
 	{
 		parsed: parser::Constructor #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \}:
-		Member(parsed),
-		ScopeItem(group, parsed, file),
-		ArgScope(&THIS, group->Scope),
+		group: detail::ScopeItemGroup \
+	}->	Member(parsed),
+		ScopeItem(group, parsed, file)
+	:	ArgScope(&THIS, group->Scope),
 		Inline(parsed->Inline)
 	{
 		FOR(i ::= 0; i < ##parsed->Arguments; i++)

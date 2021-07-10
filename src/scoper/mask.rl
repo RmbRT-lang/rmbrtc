@@ -21,7 +21,7 @@ INCLUDE "scopeitem.rl"
 		parsed: parser::Mask #\,
 		file: src::File #&,
 		group: detail::ScopeItemGroup \
-	}:	ScopeItem(group, parsed, file),
+	}->	ScopeItem(group, parsed, file),
 		Scope(&THIS, group->Scope)
 	{
 		FOR(i ::= 0; i < ##parsed->Members; i++)
@@ -43,5 +43,5 @@ INCLUDE "scopeitem.rl"
 		parsed: parser::GlobalMask #\,
 		file: src::File #&,
 		group: detail::ScopeItemGroup \
-	}:	Mask(parsed, file, group);
+	}->	Mask(parsed, file, group);
 }

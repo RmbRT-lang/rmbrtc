@@ -10,9 +10,9 @@ INCLUDE "../parser/destructor.rl"
 	{
 		parsed: parser::Destructor #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \}:
-		Member(parsed),
-		ScopeItem(group, parsed, file),
-		Body(0, &parsed->Body, file, group->Scope),
+		group: detail::ScopeItemGroup \
+	}->	Member(parsed),
+		ScopeItem(group, parsed, file)
+	:	Body(0, &parsed->Body, file, group->Scope),
 		Inline(parsed->Inline);
 }

@@ -41,9 +41,9 @@ INCLUDE 'std/string'
 		File: src::File #\,
 		Line: UINT,
 		Column: UINT,
-		Char: CHAR}:
-		Error(File, Line, Column),
-		Char(Char);
+		Char: CHAR
+	}->	Error(File, Line, Column)
+	:	Char(Char);
 
 	# OVERRIDE reason(
 		o: std::io::OStream &) VOID
@@ -65,8 +65,8 @@ INCLUDE 'std/string'
 	{
 		File: src::File #\,
 		Line: UINT,
-		Column: UINT}:
-		Error(File, Line, Column);
+		Column: UINT
+	}->	Error(File, Line, Column);
 
 	# OVERRIDE reason(
 		o: std::io::OStream &) VOID

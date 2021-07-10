@@ -12,6 +12,6 @@ INCLUDE "scopeitem.rl"
 		parsed: parser::Test #\,
 		file: src::File #&,
 		group: detail::ScopeItemGroup \
-	}:	ScopeItem(group, parsed, file),
-		Body(0, &parsed->Body, file, group->Scope);
+	}->	ScopeItem(group, parsed, file)
+	:	Body(0, &parsed->Body, file, group->Scope);
 }

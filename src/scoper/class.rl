@@ -27,9 +27,9 @@ INCLUDE "symbol.rl"
 		parsed: parser::Class #\,
 		file: src::File #&,
 		group: detail::ScopeItemGroup \
-	}:	ScopeItem(group, parsed, file),
-		Scope(&THIS, group->Scope),
-		Virtual(parsed->Virtual)
+	}->	ScopeItem(group, parsed, file),
+		Scope(&THIS, group->Scope)
+	:	Virtual(parsed->Virtual)
 	{
 		FOR(i ::= 0; i < ##parsed->Members; i++)
 			Scope::insert(<<parser::ScopeItem #\>>(&*parsed->Members[i]), file);
@@ -48,7 +48,7 @@ INCLUDE "symbol.rl"
 		parsed: parser::GlobalClass #\,
 		file: src::File #&,
 		group: detail::ScopeItemGroup \
-	}:	Class(parsed, file, group);
+	}->	Class(parsed, file, group);
 }
 
 ::rlc::scoper MemberClass -> Member, Class
@@ -57,6 +57,6 @@ INCLUDE "symbol.rl"
 		parsed: parser::MemberClass #\,
 		file: src::File #&,
 		group: detail::ScopeItemGroup \
-	}:	Member(parsed),
+	}->	Member(parsed),
 		Class(parsed, file, group);
 }

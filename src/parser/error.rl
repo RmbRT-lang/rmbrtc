@@ -80,9 +80,9 @@ INCLUDE 'std/io/format'
 		tokenIndex: UINT,
 		tokenCount: UINT,
 		p: Parser#&,
-		reason: CHAR #\}:
-		Error(file, line, column, tokens, tokenIndex, tokenCount, p),
-		Reason(reason, :cstring);
+		reason: CHAR #\
+	}->	Error(file, line, column, tokens, tokenIndex, tokenCount, p)
+	:	Reason(reason, :cstring);
 
 	# FINAL reason(o: std::io::OStream &) VOID
 	{
@@ -101,9 +101,9 @@ INCLUDE 'std/io/format'
 		tokenIndex: UINT,
 		tokenCount: UINT,
 		p: Parser#&,
-		expected: tok::Type}:
-		Error(file, line, column, tokens, tokenIndex, tokenCount, p),
-		Expected(expected);
+		expected: tok::Type
+	}->	Error(file, line, column, tokens, tokenIndex, tokenCount, p)
+	:	Expected(expected);
 
 	# OVERRIDE reason(
 		o: std::io::OStream &) VOID

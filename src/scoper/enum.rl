@@ -16,9 +16,9 @@ INCLUDE "../parser/enum.rl"
 			parsed: parser::Enum::Constant #\,
 			file: src::File#&,
 			group: detail::ScopeItemGroup \
-		}:	ScopeItem(group, parsed, file),
-			Member(parsed),
-			Value(parsed->Value);
+		}->	ScopeItem(group, parsed, file),
+			Member(parsed)
+		:	Value(parsed->Value);
 	}
 
 	Constants: std::[Constant \]Vector;
@@ -28,9 +28,9 @@ INCLUDE "../parser/enum.rl"
 		parsed: parser::Enum #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	ScopeItem(group, parsed, file),
-		Scope(&THIS, group->Scope),
-		Size(parsed->Constants.back().Value+1)
+	}->	ScopeItem(group, parsed, file),
+		Scope(&THIS, group->Scope)
+	:	Size(parsed->Constants.back().Value+1)
 	{
 		FOR(i ::= 0; i < ##parsed->Constants; i++)
 		{
@@ -46,7 +46,7 @@ INCLUDE "../parser/enum.rl"
 		parsed: parser::GlobalEnum #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	Enum(parsed, file, group);
+	}->	Enum(parsed, file, group);
 }
 
 ::rlc::scoper MemberEnum -> Member, Enum
@@ -55,6 +55,6 @@ INCLUDE "../parser/enum.rl"
 		parsed: parser::MemberEnum #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	Member(parsed),
+	}->	Member(parsed),
 		Enum(parsed, file, group);
 }

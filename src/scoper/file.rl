@@ -25,7 +25,7 @@ INCLUDE 'std/shared'
 	{
 		parsed: parser::File #&,
 		registry: FileRegistry &
-	}:	File(:create(NULL, NULL), parsed, registry);
+	}->	File(:create(NULL, NULL), parsed, registry);
 
 	(//
 	Creates a file with a custom scope, which may or may not be used by other files already. This is used especially for unified legacy scoping.

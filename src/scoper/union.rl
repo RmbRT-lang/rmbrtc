@@ -14,7 +14,7 @@ INCLUDE "member.rl"
 		parsed: parser::Union #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	ScopeItem(group, parsed, file),
+	}->	ScopeItem(group, parsed, file),
 		Scope(&THIS, group->Scope)
 	{
 		FOR(i ::= 0; i < ##parsed->Members; i++)
@@ -33,7 +33,7 @@ INCLUDE "member.rl"
 		parsed: parser::GlobalUnion #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	Union(parsed, file, group);
+	}->	Union(parsed, file, group);
 }
 
 ::rlc::scoper MemberUnion -> Member, Union
@@ -42,6 +42,6 @@ INCLUDE "member.rl"
 		parsed: parser::MemberUnion #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	Member(parsed),
+	}->	Member(parsed),
 		Union(parsed, file, group);
 }

@@ -23,8 +23,8 @@ INCLUDE "exprorstmt.rl"
 		parsed: parser::Function #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	ScopeItem(group, parsed, file),
-		Inline(parsed->IsInline),
+	}->	ScopeItem(group, parsed, file)
+	:	Inline(parsed->IsInline),
 		Coroutine(parsed->IsCoroutine),
 		ArgumentScope(&THIS, group->Scope)
 	{
@@ -54,7 +54,7 @@ INCLUDE "exprorstmt.rl"
 		parsed: parser::GlobalFunction #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	Function(parsed, file, group);
+	}->	Function(parsed, file, group);
 }
 
 ::rlc::scoper MemberFunction -> Member, Function
@@ -65,7 +65,7 @@ INCLUDE "exprorstmt.rl"
 		parsed: parser::MemberFunction #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	Function(parsed, file, group),
-		Member(parsed),
-		Abstractness(parsed->Abstractness);
+	}->	Function(parsed, file, group),
+		Member(parsed)
+	:	Abstractness(parsed->Abstractness);
 }

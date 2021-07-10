@@ -15,7 +15,7 @@ INCLUDE "types.rl"
 	{
 		str: src::String #&,
 		file: src::File #&
-	}:	Number(file.content(str));
+	}->	Number(file.content(str));
 
 	{str: String #&}
 	{

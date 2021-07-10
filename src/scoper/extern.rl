@@ -17,8 +17,8 @@ INCLUDE "../util/dynunion.rl"
 	{
 		parsed: parser::ExternSymbol #\,
 		file: src::File #&,
-		group: detail::ScopeItemGroup \}:
-		ScopeItem(group, parsed, file)
+		group: detail::ScopeItemGroup \
+	}->	ScopeItem(group, parsed, file)
 	{
 		IF(parsed->is_variable())
 			Symbol := :gc(std::[GlobalVariable]new(parsed->variable(), file, group));

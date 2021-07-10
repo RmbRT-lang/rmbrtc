@@ -55,8 +55,8 @@ INCLUDE 'std/err/unimplemented'
 			position: UM,
 			parsed: parser::SymbolExpression #\,
 			file: src::File#&
-		}:	Expression(position),
-			Symbol(parsed->Symbol, file);
+		}->	Expression(position)
+		:	Symbol(parsed->Symbol, file);
 	}
 
 	SymbolChildExpression -> Expression
@@ -139,8 +139,8 @@ INCLUDE 'std/err/unimplemented'
 			position: UM,
 			parsed: parser::OperatorExpression #\,
 			file: src::File#&
-		}:	Expression(position),
-			Op(parsed->Op)
+		}->	Expression(position)
+		:	Op(parsed->Op)
 		{
 			FOR(i ::= 0; i < ##parsed->Operands; i++)
 				Operands += :gc(Expression::create(position, parsed->Operands[i], file));
@@ -170,8 +170,8 @@ INCLUDE 'std/err/unimplemented'
 			position: UM,
 			parsed: parser::CastExpression #\,
 			file: src::File#&
-		}:	Expression(position),
-			Type(:gc, Type::create(parsed->Type, file)),
+		}->	Expression(position)
+		:	Type(:gc, scoper::Type::create(parsed->Type, file)),
 			Method(parsed->Method)
 		{
 			FOR(i ::= 0; i < ##parsed->Values; i++)
@@ -189,7 +189,7 @@ INCLUDE 'std/err/unimplemented'
 			position: UM,
 			parsed: parser::SizeofExpression #\,
 			file: src::File #&
-		}:	Expression(position)
+		}->	Expression(position)
 		{
 			IF(parsed->Term.is_type())
 				Term := :gc(Type::create(parsed->Term.type(), file));

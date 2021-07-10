@@ -10,8 +10,8 @@ INCLUDE "../parser/typedef.rl"
 		parsed: parser::Typedef #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	ScopeItem(group, parsed, file),
-		Type(:gc(scoper::Type::create(parsed->Type, file)));
+	}->	ScopeItem(group, parsed, file)
+	:	Type(:gc(scoper::Type::create(parsed->Type, file)));
 }
 
 ::rlc::scoper GlobalTypedef -> Global, Typedef
@@ -20,7 +20,7 @@ INCLUDE "../parser/typedef.rl"
 		parsed: parser::GlobalTypedef #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	Typedef(parsed, file, group);
+	}->	Typedef(parsed, file, group);
 }
 
 ::rlc::scoper MemberTypedef -> Member, Typedef
@@ -29,6 +29,6 @@ INCLUDE "../parser/typedef.rl"
 		parsed: parser::MemberTypedef #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	Member(parsed),
+	}->	Member(parsed),
 		Typedef(parsed, file, group);
 }

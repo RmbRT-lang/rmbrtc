@@ -38,8 +38,8 @@ INCLUDE "../util/dynunion.rl"
 		group: detail::ScopeItemGroup \,
 		parsed: parser::Variable #\,
 		file: src::File#&
-	}:	ScopeItem(group, parsed, file),
-		HasInitialiser(parsed->HasInitialiser)
+	}->	ScopeItem(group, parsed, file)
+	:	HasInitialiser(parsed->HasInitialiser)
 	{
 		IF(parsed->Type.is_type())
 			Type := :gc(scoper::Type::create(parsed->Type.type(), file));
@@ -57,7 +57,7 @@ INCLUDE "../util/dynunion.rl"
 		parsed: parser::GlobalVariable #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	Variable(group, parsed, file);
+	}->	Variable(group, parsed, file);
 }
 
 ::rlc::scoper MemberVariable -> Member, Variable
@@ -66,7 +66,7 @@ INCLUDE "../util/dynunion.rl"
 		parsed: parser::MemberVariable #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	Member(parsed),
+	}->	Member(parsed),
 		Variable(group, parsed, file);
 }
 
@@ -78,7 +78,7 @@ INCLUDE "../util/dynunion.rl"
 		parsed: parser::LocalVariable #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	}:	Variable(group, parsed, file);
+	}->	Variable(group, parsed, file);
 
 	set_position(position: UM) VOID
 	{

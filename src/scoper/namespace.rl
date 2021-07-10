@@ -10,8 +10,8 @@ INCLUDE "scopeitem.rl"
 	{
 		parsed: parser::Namespace #\,
 		file: src::File#&,
-		group: detail::ScopeItemGroup \}:
-		ScopeItem(group, parsed, file),
+		group: detail::ScopeItemGroup \
+	}->	ScopeItem(group, parsed, file),
 		Scope(&THIS, group->Scope)
 	{
 		FOR(i ::= 0; i < ##parsed->Entries; i++)

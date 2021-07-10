@@ -43,9 +43,9 @@ INCLUDE 'std/memory'
 		NoDecay: BOOL;
 		Reference: Symbol;
 
-		{scope: scoper::Scope #\, scopedType: scoper::TypeName #\}:
-			Type(scopedType, scope),
-			Reference(:resolve(*scope, scopedType->Name)),
+		{scope: scoper::Scope #\, scopedType: scoper::TypeName #\}
+		->	Type(scopedType, scope)
+		:	Reference(:resolve(*scope, scopedType->Name)),
 			NoDecay(scopedType->NoDecay);
 	}
 
@@ -56,9 +56,9 @@ INCLUDE 'std/memory'
 		Arguments: Type - std::Dynamic - std::Vector;
 		Result: Type - std::Dynamic;
 
-		{scope: scoper::Scope #\, scopedType: scoper::Signature #\}:
-			Type(scopedType, scope),
-			Result(:gc, Type::create(scope, scopedType->Return))
+		{scope: scoper::Scope #\, scopedType: scoper::Signature #\}
+		->	Type(scopedType, scope)
+		:	Result(:gc, Type::create(scope, scopedType->Return))
 		{
 			FOR(it ::= scopedType->Arguments.start(); it; ++it)
 				Arguments += :gc(Type::create(scope, *it));
@@ -69,16 +69,16 @@ INCLUDE 'std/memory'
 	{
 		# FINAL type() Type::Kind := :void;
 
-		{scope: scoper::Scope #\, scopedType: scoper::Type #\}:
-			Type(scopedType, scope);
+		{scope: scoper::Scope #\, scopedType: scoper::Type #\}
+		->	Type(scopedType, scope);
 	}
 
 	Null -> Type
 	{
 		# FINAL type() Type::Kind := :null;
 
-		{scope: scoper::Scope #\, scopedType: scoper::Type #\}:
-			Type(scopedType, scope);
+		{scope: scoper::Scope #\, scopedType: scoper::Type #\}
+		->	Type(scopedType, scope);
 	}
 
 	SymbolConstantType -> Type
@@ -87,9 +87,9 @@ INCLUDE 'std/memory'
 
 		Name: scoper::String;
 
-		{scope: scoper::Scope #\, scopedType: scoper::SymbolConstantType #\}:
-			Type(scopedType, scope),
-			Name(scopedType->Name);
+		{scope: scoper::Scope #\, scopedType: scoper::SymbolConstantType #\}
+		->	Type(scopedType, scope)
+		:	Name(scopedType->Name);
 	}
 
 	TupleType -> Type
@@ -98,8 +98,8 @@ INCLUDE 'std/memory'
 
 		Types: Type - std::Dynamic - std::Vector;
 
-		{scope: scoper::Scope #\, scopedType: scoper::TupleType #\}:
-			Type(scopedType, scope)
+		{scope: scoper::Scope #\, scopedType: scoper::TupleType #\}
+		->	Type(scopedType, scope)
 		{
 			FOR(i ::= 0; i < ##scopedType->Types; i++)
 				Types += :gc(Type::create(scope, scopedType->Types[i]));
@@ -112,9 +112,9 @@ INCLUDE 'std/memory'
 
 		Expression: resolver::Expression - std::Dynamic;
 
-		{scope: scoper::Scope #\, scopedType: scoper::TypeOfExpression #\}:
-			Type(scopedType, scope),
-			Expression(:gc, resolver::Expression::create(scope, scopedType->Expression));
+		{scope: scoper::Scope #\, scopedType: scoper::TypeOfExpression #\}
+		->	Type(scopedType, scope)
+		:	Expression(:gc, resolver::Expression::create(scope, scopedType->Expression));
 	}
 
 	BuiltinType -> Type
@@ -125,8 +125,8 @@ INCLUDE 'std/memory'
 
 		Kind: Primitive;
 
-		{scope: scoper::Scope #\, scopedType: scoper::BuiltinType #\}:
-			Type(scopedType, scope),
-			Kind(scopedType->Kind);
+		{scope: scoper::Scope #\, scopedType: scoper::BuiltinType #\}
+		->	Type(scopedType, scope)
+		:	Kind(scopedType->Kind);
 	}
 }

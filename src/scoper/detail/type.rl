@@ -43,9 +43,9 @@ INCLUDE 'std/err/unimplemented'
 
 		{
 			parsed: parser::Signature #\,
-			file: src::File #&}:
-			Type(parsed, file),
-			Return(:gc, Type::create(parsed->Ret, file))
+			file: src::File #&
+		}->	Type(parsed, file)
+		:	Return(:gc, Type::create(parsed->Ret, file))
 		{
 			FOR(i ::= 0; i < ##parsed->Args; i++)
 				Arguments += :gc(Type::create(parsed->Args[i], file));
@@ -61,8 +61,8 @@ INCLUDE 'std/err/unimplemented'
 		{
 			parsed: parser::SymbolConstantType #\,
 			file: src::File #&
-		}:	Type(parsed, file),
-			Name(file.content(parsed->Name));
+		}->	Type(parsed, file)
+		:	Name(file.content(parsed->Name));
 	}
 
 	Void -> Type
@@ -72,7 +72,7 @@ INCLUDE 'std/err/unimplemented'
 		{
 			parsed: parser::Void #\,
 			file: src::File#&
-		}:	Type(parsed, file);
+		}->	Type(parsed, file);
 	}
 
 	Null -> Type
@@ -82,7 +82,7 @@ INCLUDE 'std/err/unimplemented'
 		{
 			parsed: parser::Null #\,
 			file: src::File#&
-		}:	Type(parsed, file);
+		}->	Type(parsed, file);
 	}
 
 	TypeName -> Type
@@ -94,9 +94,9 @@ INCLUDE 'std/err/unimplemented'
 
 		{
 			parsed: parser::TypeName #\,
-			file: src::File#&}:
-			Type(parsed, file),
-			Name(parsed->Name, file),
+			file: src::File#&
+		}->	Type(parsed, file)
+		:	Name(parsed->Name, file),
 			NoDecay(parsed->NoDecay);
 	}
 
@@ -109,7 +109,7 @@ INCLUDE 'std/err/unimplemented'
 		{
 			parsed: parser::TupleType #\,
 			file: src::File #&
-		}:	Type(parsed, file)
+		}->	Type(parsed, file)
 		{
 			FOR(i ::= 0; i < ##parsed->Types; i++)
 				Types += :gc(Type::create(parsed->Types[i], file));
@@ -125,8 +125,8 @@ INCLUDE 'std/err/unimplemented'
 		{
 			parsed: parser::TypeOfExpression #\,
 			file: src::File #&
-		}:	Type(parsed, file),
-			Expression(:gc, Expression::create(parsed->Expression, file));
+		}->	Type(parsed, file)
+		:	Expression(:gc, scoper::Expression::create(parsed->Expression, file));
 	}
 
 	BuiltinType -> Type
@@ -138,8 +138,8 @@ INCLUDE 'std/err/unimplemented'
 
 		{
 			parsed: parser::BuiltinType #\,
-			file: src::File#&}:
-			Type(parsed, file),
-			Kind(parsed->Kind);
+			file: src::File#&
+		}->	Type(parsed, file)
+		:	Kind(parsed->Kind);
 	}
 }

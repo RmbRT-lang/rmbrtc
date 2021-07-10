@@ -91,14 +91,14 @@ INCLUDE "../scoper/fileregistry.rl"
 		:resolve,
 		scope: scoper::Scope #&,
 		reference: scoper::Symbol #&
-	}:	Symbol(resolve(scope, reference));
+	}->	Symbol(resolve(scope, reference));
 
 	{
 		:resolve,
 		scope: scoper::Scope #&,
 		reference: scoper::Symbol #&,
 		position: UM
-	}:	Symbol(resolve(scope, reference, position));
+	}->	Symbol(resolve(scope, reference, position));
 
 	NotResolved -> scoper::Error
 	{
@@ -412,7 +412,7 @@ INCLUDE "../scoper/fileregistry.rl"
 		origScope: scoper::Scope #\,
 		itemGroup: scoper::detail::ScopeItemGroup #\,
 		symbol: scoper::Symbol #\
-	}:	Symbol(parent, origScope, itemGroup, symbol, ##symbol->Children);
+	}->	Symbol(parent, origScope, itemGroup, symbol, ##symbol->Children);
 
 	(// Creates a partially resolved symbol.
 	@param resolved:

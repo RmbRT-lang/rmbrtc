@@ -30,8 +30,8 @@ INCLUDE "symbol.rl"
 	{
 		class: scoper::Class #\,
 		cache: Cache &
-	}:	ScopeItem(class, cache),
-		IsVirtual(class->Virtual)
+	}->	ScopeItem(class, cache)
+	:	IsVirtual(class->Virtual)
 	{
 		scope ::= class->parent_scope();
 		FOR(group ::= class->Items.start(); group; ++group)
@@ -67,7 +67,7 @@ INCLUDE "symbol.rl"
 	{
 		class: scoper::GlobalClass #\,
 		cache: Cache &
-	}:	Class(class, cache);
+	}->	Class(class, cache);
 }
 
 ::rlc::resolver MemberClass -> Member, Class
@@ -75,6 +75,6 @@ INCLUDE "symbol.rl"
 	{
 		class: scoper::MemberClass #\,
 		cache: Cache &
-	}:	Class(class, cache),
+	}->	Class(class, cache),
 		Member(class);
 }
