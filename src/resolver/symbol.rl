@@ -206,8 +206,8 @@ INCLUDE "../scoper/fileregistry.rl"
 			(/
 			If we found no item within the scope, and this is the first symbol child, look for template place-holders in the current scope or search the parent scope. Only non-root symbols can address template place-holders.
 			/)
-			IF(!is_match(itemGroup, position)
-			&& !i
+			IF(!i
+			&& !is_match(itemGroup, position, 0, reference)
 			&& !reference.IsRoot
 			&& symbolScope->Parent)
 			{
@@ -231,7 +231,7 @@ INCLUDE "../scoper/fileregistry.rl"
 					}
 					symbolScope := symbolScope->Parent;
 					IF(itemGroup := symbolScope->find(name))
-						IF(!is_match(itemGroup, position))
+						IF(!is_match(itemGroup, position, 0, reference))
 							itemGroup := NULL;
 				} WHILE(!itemGroup && symbolScope->Parent)
 			}
@@ -242,20 +242,20 @@ INCLUDE "../scoper/fileregistry.rl"
 					reference.Children[i].Position,
 					"not found");
 
+			IF(!is_match(itemGroup, position, i, reference))
+				THROW <NotResolved>(
+					origSymScope,
+					reference.Children[i].Name,
+					reference.Children[i].Position,
+					"not a suitable candidate");
+
 			IF(<<scoper::LocalVariable #\>>(&*itemGroup->Items[0]))
 			{
-				IF(##reference.Children > 1)
+				IF(reference.Children[i].Templates)
 					THROW <NotResolved>(
 						itemGroup->Scope,
 						itemGroup->Name,
-						reference.Children[1].Name,
-						reference.Children[1].Position,
-						"parent is local variable");
-				IF(reference.Children[0].Templates)
-					THROW <NotResolved>(
-						itemGroup->Scope,
-						itemGroup->Name,
-						reference.Children[0].Position,
+						reference.Children[i].Position,
 						"variables must not have templates");
 			}
 
@@ -366,15 +366,39 @@ INCLUDE "../scoper/fileregistry.rl"
 
 	STATIC is_match(
 		itemGroup: scoper::detail::ScopeItemGroup #*,
-		position: UM
+		position: UM,
+		index: UM,
+		symbol: scoper::Symbol #&
 	) BOOL
 	{
 		IF(!itemGroup)
 			RETURN FALSE;
 
-		IF(var ::= <<scoper::LocalVariable #\>>(&*itemGroup->Items[0]))
-			IF(var->Position <= position)
+		item # ::= &*itemGroup->Items[0];
+		IF(index == ##symbol.Children-1)
+		{
+			SWITCH(type ::= item->type())
+			{
+			CASE :variable:
+				{
+					IF(var ::= <<scoper::LocalVariable #\>>(item))
+						IF(var->Position <= position)
+							RETURN TRUE;
+					RETURN TRUE;
+				}
+			CASE :function, :externSymbol:
 				RETURN TRUE;
+			}
+		}
+
+		SWITCH(type ::= item->type())
+		{
+		CASE
+			:variable,
+			:function,
+			:externSymbol:
+			RETURN FALSE;
+		}
 
 		RETURN TRUE;
 	}
