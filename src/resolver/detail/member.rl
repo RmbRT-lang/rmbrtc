@@ -11,7 +11,8 @@ INCLUDE "../constructor.rl"
 INCLUDE "../destructor.rl"
 
 ::rlc::resolver::detail create_member(
-	member: scoper::Member #\
+	member: scoper::Member #\,
+	cache: Cache &
 ) Member \
 {
 	SWITCH(t ::= <<scoper::ScopeItem #\>>(member)->type())
@@ -19,22 +20,22 @@ INCLUDE "../destructor.rl"
 	DEFAULT:
 		THROW <std::err::Unimplemented>(t.NAME());
 	CASE :typedef:
-		RETURN std::[MemberTypedef]new(<<scoper::MemberTypedef #\>>(member));
+		RETURN std::[MemberTypedef]new(<<scoper::MemberTypedef #\>>(member), cache);
 	CASE :function:
-		RETURN std::[MemberFunction]new(<<scoper::MemberFunction#\>>(member));
+		RETURN std::[MemberFunction]new(<<scoper::MemberFunction#\>>(member), cache);
 	CASE :variable:
-		RETURN std::[MemberVariable]new(<<scoper::MemberVariable#\>>(member));
+		RETURN std::[MemberVariable]new(<<scoper::MemberVariable#\>>(member), cache);
 	CASE :class:
-		RETURN std::[MemberClass]new(<<scoper::MemberClass#\>>(member));
+		RETURN std::[MemberClass]new(<<scoper::MemberClass#\>>(member), cache);
 	CASE :rawtype:
-		RETURN std::[MemberRawtype]new(<<scoper::MemberRawtype#\>>(member));
+		RETURN std::[MemberRawtype]new(<<scoper::MemberRawtype#\>>(member), cache);
 	CASE :union:
-		RETURN std::[MemberUnion]new(<<scoper::MemberUnion#\>>(member));
+		RETURN std::[MemberUnion]new(<<scoper::MemberUnion#\>>(member), cache);
 	CASE :enum:
-		RETURN std::[MemberEnum]new(<<scoper::MemberEnum#\>>(member));
+		RETURN std::[MemberEnum]new(<<scoper::MemberEnum#\>>(member), cache);
 	CASE :constructor:
-		RETURN std::[Constructor]new(<<scoper::Constructor#\>>(member));
+		RETURN std::[Constructor]new(<<scoper::Constructor#\>>(member), cache);
 	CASE :destructor:
-		RETURN std::[Destructor]new(<<scoper::Destructor#\>>(member));
+		RETURN std::[Destructor]new(<<scoper::Destructor#\>>(member), cache);
 	}
 }

@@ -6,11 +6,11 @@ INCLUDE "type.rl"
 {
 	# FINAL type() ScopeItem::Type := :union;
 
-	Fields: MemberVariable - std::Vector;
-	Functions: MemberFunction - std::Vector;
+	Fields: MemberVariable - std::Dynamic - std::Vector;
+	Functions: MemberFunction - std::Dynamic - std::Vector;
 
-	{v: scoper::Union #\}:
-		ScopeItem(v)
+	{v: scoper::Union #\, cache: Cache &}
+	->	ScopeItem(v, cache)
 	{
 		FOR(group ::= v->Items.start(); group; ++group)
 			FOR(item ::= (*group)->Items.start(); item; ++item)
@@ -19,9 +19,9 @@ INCLUDE "type.rl"
 				SWITCH(type ::= (*item)->type())
 				{
 				CASE :variable:
-					Fields += <scoper::MemberVariable #\>(member);
+					Fields += :create(<scoper::MemberVariable #\>(member), cache);
 				CASE :function:
-					Functions += <scoper::MemberFunction #\>(member);
+					Functions += :create(<scoper::MemberFunction #\>(member), cache);
 				DEFAULT:
 					THROW <std::err::Unimplemented>(type.NAME());
 				}
@@ -31,13 +31,13 @@ INCLUDE "type.rl"
 
 ::rlc::resolver GlobalUnion -> Global, Union
 {
-	{union: scoper::GlobalUnion #\}:
-		Union(union);
+	{union: scoper::GlobalUnion #\, cache: Cache &}
+	->	Union(union, cache);
 }
 
 ::rlc::resolver MemberUnion -> Member, Union
 {
-	{union: scoper::MemberUnion #\}:
-		Member(union),
-		Union(union);
+	{union: scoper::MemberUnion #\, cache: Cache &}
+	->	Member(union),
+		Union(union, cache);
 }

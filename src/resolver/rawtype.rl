@@ -9,14 +9,15 @@ INCLUDE "type.rl"
 	# FINAL type() ScopeItem::Type := :rawtype;
 
 	Size: Expression - std::Dynamic;
-	Constructors: Constructor - std::Vector;
-	Functions: MemberFunction - std::Vector;
+	Constructors: Constructor - std::Dynamic - std::Vector;
+	Functions: MemberFunction - std::Dynamic - std::Vector;
 	Others: Member - std::Dynamic - std::Vector;
 
 	{
-		rawtype: scoper::Rawtype #\
-	}:	ScopeItem(rawtype),
-		Size(:gc(Expression::create(rawtype->parent_scope(), rawtype->Size)))
+		rawtype: scoper::Rawtype #\,
+		cache: Cache &
+	}->	ScopeItem(rawtype, cache)
+	:	Size(:gc(Expression::create(rawtype->parent_scope(), rawtype->Size)))
 	{
 		FOR(group ::= rawtype->Items.start(); group; ++group)
 			FOR(it ::= (*group)->Items.start(); it; ++it)
@@ -25,11 +26,11 @@ INCLUDE "type.rl"
 				SWITCH((*it)->type())
 				{
 				CASE :constructor:
-					Constructors += <scoper::Constructor #\>(member);
+					Constructors += :create(<scoper::Constructor #\>(member), cache);
 				CASE :function:
-					Functions += <scoper::MemberFunction #\>(member);
+					Functions += :create(<scoper::MemberFunction #\>(member), cache);
 				DEFAULT:
-					Others += :gc(Member::create(member));
+					Others += :gc(Member::create(member, cache));
 				}
 			}
 	}
@@ -38,15 +39,17 @@ INCLUDE "type.rl"
 ::rlc::resolver GlobalRawtype -> Global, Rawtype
 {
 	{
-		rawtype: scoper::GlobalRawtype #\
-	}:	Rawtype(rawtype);
+		rawtype: scoper::GlobalRawtype #\,
+		cache: Cache &
+	}->	Rawtype(rawtype, cache);
 }
 
 
 ::rlc::resolver MemberRawtype -> Member, Rawtype
 {
 	{
-		rawtype: scoper::MemberRawtype #\
-	}:	Member(rawtype),
-		Rawtype(rawtype);
+		rawtype: scoper::MemberRawtype #\,
+		cache: Cache&
+	}->	Member(rawtype),
+		Rawtype(rawtype, cache);
 }

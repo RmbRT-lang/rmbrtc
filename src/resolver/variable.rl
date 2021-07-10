@@ -33,9 +33,10 @@ INCLUDE "../util/dynunion.rl"
 		InitValues: Expression - std::Dynamic - std::Vector;
 
 		{
-			v: scoper::Variable #\
-		}:	ScopeItem(v),
-			HasInitialiser(v->HasInitialiser)
+			v: scoper::Variable #\,
+			cache: Cache &
+		}->	ScopeItem(v, cache)
+		:	HasInitialiser(v->HasInitialiser)
 		{
 			scope ::= v->parent_scope();
 			IF(v->Type.is_type())
@@ -51,16 +52,18 @@ INCLUDE "../util/dynunion.rl"
 	GlobalVariable -> Global, Variable
 	{
 		{
-			v: scoper::GlobalVariable #\
-		}:	Variable(v);
+			v: scoper::GlobalVariable #\,
+			cache: Cache &
+		}->	Variable(v, cache);
 	}
 
 	MemberVariable -> Member, Variable
 	{
 		{
-			v: scoper::MemberVariable #\
-		}:	Member(v),
-			Variable(v);
+			v: scoper::MemberVariable #\,
+			cache: Cache &
+		}->	Member(v),
+			Variable(v, cache);
 	}
 
 	LocalVariable -> Variable
@@ -68,8 +71,9 @@ INCLUDE "../util/dynunion.rl"
 		Position: UM;
 
 		{
-			local: scoper::LocalVariable #\
-		}:	Variable(local),
-			Position(local->Position);
+			local: scoper::LocalVariable #\,
+			cache: Cache &
+		}->	Variable(local, cache)
+		:	Position(local->Position);
 	}
 }

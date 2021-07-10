@@ -56,24 +56,24 @@ INCLUDE "member.rl"
 		}
 	}
 
-	Arguments: LocalVariable - std::Vector;
+	Arguments: LocalVariable - std::Dynamic - std::Vector;
 	BaseInits: BaseInit - std::Vector;
 	MemberInits: MemberInit - std::Vector;
 	Body: BlockStatement - std::Dynamic;
 	Inline: BOOL;
 
-	{ctor: scoper::Constructor #\}:
-		ScopeItem(ctor),
-		Member(ctor),
-		Inline(ctor->Inline)
+	{ctor: scoper::Constructor #\, cache: Cache &}
+	->	ScopeItem(ctor, cache),
+		Member(ctor)
+	:	Inline(ctor->Inline)
 	{
 		FOR(arg ::= ctor->Arguments.start(); arg; arg++)
-			Arguments += *arg;
+			Arguments += :create(*arg, cache);
 		FOR(init ::= ctor->BaseInits.start(); init; init++)
 			BaseInits += (*init, ctor);
 		FOR(init ::= ctor->MemberInits.start(); init; init++)
 			MemberInits += (*init, ctor);
 		IF(ctor->Body)
-			Body := :gc(std::[BlockStatement]new(ctor->Body));
+			Body := :create(ctor->Body, cache);
 	}
 }

@@ -12,16 +12,17 @@ INCLUDE 'std/tags'
 {
 	# FINAL type() ScopeItem::Type := :function;
 
-	Arguments: LocalVariable - std::Vector;
+	Arguments: LocalVariable - std::Dynamic - std::Vector;
 	Return: VariableType;
 	Body: ExprOrStmt;
 	Inline: BOOL;
 	Coroutine: BOOL;
 
 	{
-		function: scoper::Function #\
-	}:	ScopeItem(function),
-		Inline(function->Inline),
+		function: scoper::Function #\,
+		cache: Cache &
+	}->	ScopeItem(function, cache)
+	:	Inline(function->Inline),
 		Coroutine(function->Coroutine)
 	{
 		scope ::= &function->ArgumentScope;
@@ -31,20 +32,21 @@ INCLUDE 'std/tags'
 			Return := :gc(std::[resolver::Type::Auto]new(*function->Return.auto()));
 
 		FOR(arg ::= function->Arguments.start(); arg; arg++)
-			Arguments += *arg;
+			Arguments += :create(*arg, cache);
 
 		IF(function->Body.is_expression())
 			Body := :gc(Expression::create(&function->ArgumentScope, function->Body.expression()));
 		ELSE IF(function->Body.is_statement())
-			Body := :gc(Statement::create(function->Body.statement()));
+			Body := :gc(Statement::create(function->Body.statement(), cache));
 	}
 }
 
 ::rlc::resolver GlobalFunction -> Global, Function
 {
 	{
-		function: scoper::GlobalFunction #\
-	}:	Function(function);
+		function: scoper::GlobalFunction #\,
+		cache: Cache &
+	}->	Function(function, cache);
 }
 
 ::rlc::resolver MemberFunction -> Member, Function
@@ -52,9 +54,10 @@ INCLUDE 'std/tags'
 	Abstractness: rlc::Abstractness;
 
 	{
-		function: scoper::MemberFunction #\
-	}:	Member(function),
-		Function(function),
-		Abstractness(function->Abstractness);
+		function: scoper::MemberFunction #\,
+		cache: Cache &
+	}->	Member(function),
+		Function(function, cache)
+	:	Abstractness(function->Abstractness);
 }
 

@@ -21,15 +21,16 @@ INCLUDE "symbol.rl"
 
 	IsVirtual: BOOL;
 	Inheritances: Inheritance - std::Vector;
-	Fields: MemberVariable - std::Vector;
-	Constructors: Constructor - std::Vector;
+	Fields: MemberVariable - std::Dynamic - std::Vector;
+	Constructors: Constructor - std::Dynamic - std::Vector;
 	Destructor: resolver::Destructor - std::Dynamic;
 	Functions: MemberFunction - std::Dynamic - std::Vector;
 	Types: Member - std::Dynamic - std::Vector;
 
 	{
-		class: scoper::Class #\
-	}:	ScopeItem(class),
+		class: scoper::Class #\,
+		cache: Cache &
+	}:	ScopeItem(class, cache),
 		IsVirtual(class->Virtual)
 	{
 		scope ::= class->parent_scope();
@@ -41,16 +42,15 @@ INCLUDE "symbol.rl"
 				SWITCH(type ::= (*item)->type())
 				{
 				CASE :variable:
-					Fields += <<scoper::MemberVariable#\>>(member);
+					Fields += :create(<<scoper::MemberVariable#\>>(member), cache);
 				CASE :function:
-					Functions += :gc(std::[MemberFunction]new(<scoper::MemberFunction#\>(member)));
+					Functions += :create(<scoper::MemberFunction#\>(member), cache);
 				CASE :constructor:
-					Constructors += <scoper::Constructor#\>(member);
+					Constructors += :create(<scoper::Constructor#\>(member), cache);
 				CASE :destructor:
-					Destructor := :gc(std::[resolver::Destructor]new(
-						<scoper::Destructor#\>(member)));
+					Destructor := :create(<scoper::Destructor#\>(member), cache);
 				CASE :enum, :typedef, :class, :rawtype, :union:
-					Types += :gc(Member::create(member));
+					Types += :gc(Member::create(member, cache));
 				DEFAULT:
 					THROW <std::err::Unimplemented>(type.NAME());
 				}
@@ -65,14 +65,16 @@ INCLUDE "symbol.rl"
 {
 
 	{
-		class: scoper::GlobalClass #\
-	}:	Class(class);
+		class: scoper::GlobalClass #\,
+		cache: Cache &
+	}:	Class(class, cache);
 }
 
 ::rlc::resolver MemberClass -> Member, Class
 {
 	{
-		class: scoper::MemberClass #\
-	}:	Class(class),
+		class: scoper::MemberClass #\,
+		cache: Cache &
+	}:	Class(class, cache),
 		Member(class);
 }

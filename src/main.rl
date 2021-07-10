@@ -11,8 +11,6 @@ INCLUDE 'std/io/file'
 INCLUDE 'std/set'
 INCLUDE 'std/map'
 
-Cmp{ [T:TYPE] STATIC cmp(a: T, b: T!) ::= a-b; }
-
 main(
 	argc: INT,
 	argv: CHAR **) INT
@@ -29,7 +27,7 @@ main(
 	registry: rlc::scoper::FileRegistry;
 	registry.LegacyScope := :create(NULL, NULL);
 
-	cache: std::[rlc::scoper::ScopeItem \; rlc::resolver::ScopeItem - std::Dynamic; Cmp]Map;
+	cache: rlc::resolver::Cache;
 	TRY
 	{
 		files: rlc::scoper::File \ - std::Vector;
@@ -38,18 +36,21 @@ main(
 			absolute ::= rlc::util::absolute_file(std::str::buf(argv[i]));
 			files += registry.get(std::Utf8(absolute, :cstring).content());
 		}
-		done: std::[rlc::scoper::ScopeItem \; Cmp]VectorSet;
 		FOR(f ::= files.start(); f; f++)
 		{
 			FOR(group ::= (*f)->Scope->Items.start(); group; group++)
 				FOR(it ::= (*group)->Items.start(); it; it++)
-					IF(!done.insert(*it))
-						cache.insert(*it, :gc(rlc::resolver::ScopeItem::create(*it)));
+					cache += *it;
 		}
 		out.write("success\n");
 	} CATCH(e: rlc::scoper::Error &)
 	{
 		e.print(out, registry);
+		out.write("\n");
+	}
+	CATCH(e: rlc::parser::Error &)
+	{
+		e.print(out);
 		out.write("\n");
 	}
 	(/CATCH(e: std::Error&)

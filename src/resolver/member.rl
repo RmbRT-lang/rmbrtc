@@ -13,6 +13,7 @@ INCLUDE "scopeitem.rl"
 		Visibility(m->Visibility);
 
 	STATIC create(
-		m: scoper::Member #\
-	) Member \ := detail::create_member(m);
+		m: scoper::Member #\,
+		cache: Cache &
+	) Member \ := detail::create_member(m, cache);
 }

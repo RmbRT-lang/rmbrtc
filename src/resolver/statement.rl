@@ -12,6 +12,7 @@ INCLUDE "../scoper/scope.rl"
 	{stmt: scoper::Statement #\}: Position(stmt->Position);
 
 	STATIC create(
-		stmt: scoper::Statement #\
-	) Statement \ := detail::create_statement(stmt);
+		stmt: scoper::Statement #\,
+		cache: Cache &
+	) Statement \ := detail::create_statement(stmt, cache);
 }

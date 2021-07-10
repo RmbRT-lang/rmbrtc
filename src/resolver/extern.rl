@@ -15,12 +15,13 @@ INCLUDE "../util/dynunion.rl"
 	# function() INLINE GlobalFunction \ := Symbol.second();
 
 	{
-		scoped: scoper::ExternSymbol #\
-	}:	ScopeItem(scoped)
+		scoped: scoper::ExternSymbol #\,
+		cache: Cache &
+	}->	ScopeItem(scoped, cache)
 	{
 		IF(scoped->is_variable())
-			Symbol := :gc(std::[GlobalVariable]new(scoped->variable()));
+			Symbol := :gc(std::[GlobalVariable]new(scoped->variable(), cache));
 		ELSE
-			Symbol := :gc(std::[GlobalFunction]new(scoped->function()));
+			Symbol := :gc(std::[GlobalFunction]new(scoped->function(), cache));
 	}
 }

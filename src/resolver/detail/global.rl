@@ -13,7 +13,8 @@ INCLUDE "../test.rl"
 INCLUDE 'std/err/unimplemented'
 
 ::rlc::resolver::detail create_global(
-	v: scoper::Global #\
+	v: scoper::Global #\,
+	cache: Cache &
 ) Global \
 {
 	SWITCH(t ::= <<scoper::ScopeItem #\>>(v)->type())
@@ -21,26 +22,26 @@ INCLUDE 'std/err/unimplemented'
 	DEFAULT:
 		THROW <std::err::Unimplemented>(t.NAME());
 	CASE :namespace:
-		RETURN std::[Namespace]new(<<scoper::Namespace #\>>(v));
+		RETURN std::[Namespace]new(<<scoper::Namespace #\>>(v), cache);
 	CASE :typedef:
-		RETURN std::[GlobalTypedef]new(<<scoper::GlobalTypedef #\>>(v));
+		RETURN std::[GlobalTypedef]new(<<scoper::GlobalTypedef #\>>(v), cache);
 	CASE :function:
-		RETURN std::[GlobalFunction]new(<<scoper::GlobalFunction #\>>(v));
+		RETURN std::[GlobalFunction]new(<<scoper::GlobalFunction #\>>(v), cache);
 	CASE :variable:
-		RETURN std::[GlobalVariable]new(<<scoper::GlobalVariable #\>>(v));
+		RETURN std::[GlobalVariable]new(<<scoper::GlobalVariable #\>>(v), cache);
 	CASE :class:
-		RETURN std::[GlobalClass]new(<<scoper::GlobalClass #\>>(v));
+		RETURN std::[GlobalClass]new(<<scoper::GlobalClass #\>>(v), cache);
 	CASE :mask:
-		RETURN std::[GlobalMask]new(<<scoper::GlobalMask #\>>(v));
+		RETURN std::[GlobalMask]new(<<scoper::GlobalMask #\>>(v), cache);
 	CASE :rawtype:
-		RETURN std::[GlobalRawtype]new(<<scoper::GlobalRawtype #\>>(v));
+		RETURN std::[GlobalRawtype]new(<<scoper::GlobalRawtype #\>>(v), cache);
 	CASE :union:
-		RETURN std::[GlobalUnion]new(<<scoper::GlobalUnion #\>>(v));
+		RETURN std::[GlobalUnion]new(<<scoper::GlobalUnion #\>>(v), cache);
 	CASE :enum:
-		RETURN std::[GlobalEnum]new(<<scoper::GlobalEnum #\>>(v));
+		RETURN std::[GlobalEnum]new(<<scoper::GlobalEnum #\>>(v), cache);
 	CASE :externSymbol:
-		RETURN std::[ExternSymbol]new(<<scoper::ExternSymbol #\>>(v));
+		RETURN std::[ExternSymbol]new(<<scoper::ExternSymbol #\>>(v), cache);
 	CASE :test:
-		RETURN std::[Test]new(<<scoper::Test #\>>(v));
+		RETURN std::[Test]new(<<scoper::Test #\>>(v), cache);
 	}
 }

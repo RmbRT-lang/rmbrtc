@@ -8,14 +8,14 @@ INCLUDE "scopeitem.rl"
 	# FINAL type() ScopeItem::Type := :mask;
 
 	// Functions that other types must implement.
-	AbstractFunctions: MemberFunction - std::Vector;
+	AbstractFunctions: MemberFunction - std::Dynamic - std::Vector;
 	// Functions that the mask already implements itself.
-	Functions: MemberFunction - std::Vector;
+	Functions: MemberFunction - std::Dynamic - std::Vector;
 	Others: Member - std::Dynamic - std::Vector;
 
 
-	{mask: scoper::Mask #\}:
-		ScopeItem(mask)
+	{mask: scoper::Mask #\, cache: Cache &}->
+		ScopeItem(mask, cache)
 	{
 		FOR(group ::= mask->Items.start(); group; ++group)
 			FOR(item ::= (*group)->Items.start(); item; ++item)
@@ -29,14 +29,13 @@ INCLUDE "scopeitem.rl"
 					IF(fn->Attribute != :static
 					&& !fn->Body)
 					{
-						abstract: MemberFunction(fn);
-						abstract.Abstractness := :abstract;
-						AbstractFunctions += &&abstract;
+						AbstractFunctions += :create(fn, cache);
+						AbstractFunctions.back()->Abstractness := :abstract;
 					} ELSE
-						Functions += fn;
+						Functions += :create(fn, cache);
 				}
 				DEFAULT:
-					Others += :gc(Member::create(member));
+					Others += :gc(Member::create(member, cache));
 				}
 			}
 	}
@@ -45,6 +44,6 @@ INCLUDE "scopeitem.rl"
 
 ::rlc::resolver GlobalMask -> Global, Mask
 {
-	{mask: scoper::GlobalMask #\}:
-		Mask(mask);
+	{mask: scoper::GlobalMask #\, cache: Cache &}->
+		Mask(mask, cache);
 }

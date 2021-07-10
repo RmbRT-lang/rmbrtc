@@ -3,15 +3,16 @@ INCLUDE "../member.rl"
 INCLUDE "../variable.rl"
 
 ::rlc::resolver::detail create_scope_item(
-	scoped: scoper::ScopeItem #\
+	scoped: scoper::ScopeItem #\,
+	cache: Cache &
 ) ScopeItem \
 {
 	IF(it ::= <<scoper::Global #\>>(scoped))
-		RETURN <<ScopeItem \>>(Global::create(it));
+		RETURN <<ScopeItem \>>(Global::create(it, cache));
 	ELSE IF(it ::= <<scoper::Member #\>>(scoped))
-		RETURN <<ScopeItem \>>(Member::create(it));
+		RETURN <<ScopeItem \>>(Member::create(it, cache));
 	ELSE IF(it ::= <<scoper::LocalVariable #\>>(scoped))
-		RETURN <<ScopeItem \>>(std::[LocalVariable]new(it));
+		RETURN <<ScopeItem \>>(std::[LocalVariable]new(it, cache));
 	ELSE
 		THROW <std::err::Unimplemented>(scoped->type().NAME());
 }

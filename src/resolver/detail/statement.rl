@@ -3,7 +3,8 @@ INCLUDE "../../util/dynunion.rl"
 INCLUDE 'std/err/unimplemented'
 
 ::rlc::resolver::detail create_statement(
-	stmt: scoper::Statement #\
+	stmt: scoper::Statement #\,
+	cache: Cache &
 ) Statement \
 {
 	SWITCH(type ::= stmt->type())
@@ -13,23 +14,23 @@ INCLUDE 'std/err/unimplemented'
 	CASE :assert:
 		RETURN std::[AssertStatement]new(<scoper::AssertStatement #\>(stmt));
 	CASE :block:
-		RETURN std::[BlockStatement]new(<scoper::BlockStatement #\>(stmt));
+		RETURN std::[BlockStatement]new(<scoper::BlockStatement #\>(stmt), cache);
 	CASE :if:
-		RETURN std::[IfStatement]new(<scoper::IfStatement #\>(stmt));
+		RETURN std::[IfStatement]new(<scoper::IfStatement #\>(stmt), cache);
 	CASE :variable:
-		RETURN std::[VariableStatement]new(<scoper::VariableStatement #\>(stmt));
+		RETURN std::[VariableStatement]new(<scoper::VariableStatement #\>(stmt), cache);
 	CASE :expression:
 		RETURN std::[ExpressionStatement]new(<scoper::ExpressionStatement #\>(stmt));
 	CASE :return:
 		RETURN std::[ReturnStatement]new(<scoper::ReturnStatement #\>(stmt));
 	CASE :try:
-		RETURN std::[TryStatement]new(<scoper::TryStatement #\>(stmt));
+		RETURN std::[TryStatement]new(<scoper::TryStatement #\>(stmt), cache);
 	CASE :throw:
 		RETURN std::[ThrowStatement]new(<scoper::ThrowStatement #\>(stmt));
 	CASE :loop:
-		RETURN std::[LoopStatement]new(<scoper::LoopStatement #\>(stmt));
+		RETURN std::[LoopStatement]new(<scoper::LoopStatement #\>(stmt), cache);
 	CASE :switch:
-		RETURN std::[SwitchStatement]new(<scoper::SwitchStatement #\>(stmt));
+		RETURN std::[SwitchStatement]new(<scoper::SwitchStatement #\>(stmt), cache);
 	CASE :break:
 		RETURN std::[BreakStatement]new(<scoper::BreakStatement #\>(stmt));
 	CASE :continue:
@@ -48,11 +49,12 @@ INCLUDE 'std/err/unimplemented'
 		{:gc, v: Expression \}: V(:gc(v));
 		{
 			scope: scoper::Scope #\,
-			v: scoper::VarOrExp #&
+			v: scoper::VarOrExp #&,
+			cache: Cache &
 		}
 		{
 			IF(v.is_variable())
-				V := :gc(std::[LocalVariable]new(v.variable()));
+				V := :gc(std::[LocalVariable]new(v.variable(), cache));
 			ELSE IF(v.is_expression())
 				V := :gc(Expression::create(scope, v.expression()));
 		}
@@ -73,9 +75,9 @@ INCLUDE 'std/err/unimplemented'
 
 		Expression: resolver::Expression - std::Dynamic;
 
-		{stmt: scoper::AssertStatement #\}:
-			Statement(stmt),
-			Expression(:gc, resolver::Expression::create(stmt->ParentScope, stmt->Expression));
+		{stmt: scoper::AssertStatement #\}
+		->	Statement(stmt)
+		:	Expression(:gc, resolver::Expression::create(stmt->ParentScope, stmt->Expression));
 	}
 
 	BlockStatement -> Statement
@@ -84,11 +86,11 @@ INCLUDE 'std/err/unimplemented'
 
 		Statements: Statement - std::Dynamic - std::Vector;
 
-		{stmt: scoper::BlockStatement #\}:
-			Statement(stmt)
+		{stmt: scoper::BlockStatement #\, cache: Cache &}
+		->	Statement(stmt)
 		{
 			FOR(i ::= 0; i < ##stmt->Statements; i++)
-				Statements += :gc(Statement::create(stmt->Statements[i]));
+				Statements += :gc(Statement::create(stmt->Statements[i], cache));
 		}
 	}
 
@@ -102,14 +104,14 @@ INCLUDE 'std/err/unimplemented'
 		Then: std::[Statement]Dynamic;
 		Else: std::[Statement]Dynamic;
 
-		{stmt: scoper::IfStatement #\}:
-			Statement(stmt),
-			Init(&stmt->InitScope, stmt->Init),
-			Condition(&stmt->CondScope, stmt->Condition),
-			Then(:gc(Statement::create(stmt->Then)))
+		{stmt: scoper::IfStatement #\, cache: Cache &}
+		->	Statement(stmt)
+		:	Init(&stmt->InitScope, stmt->Init, cache),
+			Condition(&stmt->CondScope, stmt->Condition, cache),
+			Then(:gc(Statement::create(stmt->Then, cache)))
 		{
 			IF(stmt->Else)
-				Else := :gc(Statement::create(stmt->Then));
+				Else := :gc(Statement::create(stmt->Else, cache));
 		}
 	}
 
@@ -120,10 +122,10 @@ INCLUDE 'std/err/unimplemented'
 		Static: BOOL;
 		Variable: LocalVariable;
 
-		{stmt: scoper::VariableStatement #\}:
-			Statement(stmt),
-			Static(stmt->Static),
-			Variable(stmt->Variable);
+		{stmt: scoper::VariableStatement #\, cache: Cache &}
+		->	Statement(stmt)
+		:	Static(stmt->Static),
+			Variable(stmt->Variable, cache);
 	}
 
 	ExpressionStatement -> Statement
@@ -132,9 +134,9 @@ INCLUDE 'std/err/unimplemented'
 
 		Expression: resolver::Expression - std::Dynamic;
 
-		{stmt: scoper::ExpressionStatement #\}:
-			Statement(stmt),
-			Expression(:gc(resolver::Expression::create(stmt->ParentScope, stmt->Expression)));
+		{stmt: scoper::ExpressionStatement #\}
+		->	Statement(stmt)
+		:	Expression(:gc(resolver::Expression::create(stmt->ParentScope, stmt->Expression)));
 	}
 
 	ReturnStatement -> Statement
@@ -143,8 +145,8 @@ INCLUDE 'std/err/unimplemented'
 
 		Expression: resolver::Expression - std::Dynamic;
 
-		{stmt: scoper::ReturnStatement #\}:
-			Statement(stmt)
+		{stmt: scoper::ReturnStatement #\}
+		->	Statement(stmt)
 		{
 			IF(stmt->Expression)
 				Expression := :gc(resolver::Expression::create(stmt->ParentScope, stmt->Expression));
@@ -159,14 +161,14 @@ INCLUDE 'std/err/unimplemented'
 		Catches: std::[CatchStatement]Vector;
 		Finally: std::[Statement]Dynamic;
 
-		{stmt: scoper::TryStatement #\}:
-			Statement(stmt),
-			Body(:gc(Statement::create(stmt->Body)))
+		{stmt: scoper::TryStatement #\, cache: Cache&}
+		->	Statement(stmt)
+		:	Body(:gc(Statement::create(stmt->Body, cache)))
 		{
 			FOR(catch ::= stmt->Catches.start(); catch; ++catch)
-				Catches += *catch;
+				Catches += (*catch, cache);
 			IF(stmt->Finally)
-				Finally := :gc(Statement::create(stmt->Finally));
+				Finally := :gc(Statement::create(stmt->Finally, cache));
 		}
 	}
 
@@ -174,9 +176,9 @@ INCLUDE 'std/err/unimplemented'
 	{
 		Exception: LocalVariable;
 		Body: std::[Statement]Dynamic;
-		{catch: scoper::CatchStatement #&}:
-			Exception(catch.Exception),
-			Body(:gc(Statement::create(catch.Body)));
+		{catch: scoper::CatchStatement #&, cache: Cache &}:
+			Exception(catch.Exception, cache),
+			Body(:gc(Statement::create(catch.Body, cache)));
 	}
 
 	ThrowStatement -> Statement
@@ -188,9 +190,9 @@ INCLUDE 'std/err/unimplemented'
 		ValueType: Type;
 		Value: Expression - std::Dynamic;
 
-		{stmt: scoper::ThrowStatement #\}:
-			Statement(stmt),
-			ValueType(stmt->ValueType)
+		{stmt: scoper::ThrowStatement #\}
+		->	Statement(stmt)
+		:	ValueType(stmt->ValueType)
 		{
 			IF(stmt->Value)
 				Value := :gc(Expression::create(stmt->ParentScope, stmt->Value));
@@ -208,12 +210,12 @@ INCLUDE 'std/err/unimplemented'
 		PostLoop: std::[Expression]Dynamic;
 		Label: scoper::ControlLabel;
 
-		{stmt: scoper::LoopStatement #\}:
-			Statement(stmt),
-			PostCondition(stmt->PostCondition),
-			Initial(&stmt->InitScope, stmt->Initial),
-			Condition(&stmt->ConditionScope, stmt->Condition),
-			Body(:gc(Statement::create(stmt->Body))),
+		{stmt: scoper::LoopStatement #\, cache: Cache &}
+		->	Statement(stmt)
+		:	PostCondition(stmt->PostCondition),
+			Initial(&stmt->InitScope, stmt->Initial, cache),
+			Condition(&stmt->ConditionScope, stmt->Condition, cache),
+			Body(:gc(Statement::create(stmt->Body, cache))),
 			Label(stmt->Label)
 		{
 			IF(stmt->PostLoop)
@@ -230,14 +232,14 @@ INCLUDE 'std/err/unimplemented'
 		Cases: std::[CaseStatement]Vector;
 		Label: scoper::ControlLabel;
 
-		{stmt: scoper::SwitchStatement #\}:
-			Statement(stmt),
-			Initial(&stmt->InitScope, stmt->Initial),
-			Value(&stmt->ValueScope, stmt->Value),
+		{stmt: scoper::SwitchStatement #\, cache: Cache &}
+		->	Statement(stmt)
+		:	Initial(&stmt->InitScope, stmt->Initial, cache),
+			Value(&stmt->ValueScope, stmt->Value, cache),
 			Label(stmt->Label)
 		{
 			FOR(case ::= stmt->Cases.start(); case; ++case)
-				Cases += *case;
+				Cases += (*case, cache);
 		}
 	}
 
@@ -248,8 +250,8 @@ INCLUDE 'std/err/unimplemented'
 
 		# is_default() INLINE BOOL := Values.empty();
 
-		{case: scoper::CaseStatement #&}:
-			Body(:gc(Statement::create(case.Body)))
+		{case: scoper::CaseStatement #&, cache: Cache &}:
+			Body(:gc(Statement::create(case.Body, cache)))
 		{
 			FOR(value ::= case.Values.start(); value; ++value)
 				Values += :gc(Expression::create(case.Body->ParentScope, *value));
@@ -262,9 +264,9 @@ INCLUDE 'std/err/unimplemented'
 
 		Label: scoper::ControlLabel;
 
-		{stmt: scoper::BreakStatement #\}:
-			Statement(stmt),
-			Label(stmt->Label);
+		{stmt: scoper::BreakStatement #\}
+		->	Statement(stmt)
+		:	Label(stmt->Label);
 
 	}
 
@@ -274,8 +276,8 @@ INCLUDE 'std/err/unimplemented'
 
 		Label: scoper::ControlLabel;
 
-		{stmt: scoper::ContinueStatement #\}:
-			Statement(stmt),
-			Label(stmt->Label);
+		{stmt: scoper::ContinueStatement #\}
+		->	Statement(stmt)
+		:	Label(stmt->Label);
 	}
 }

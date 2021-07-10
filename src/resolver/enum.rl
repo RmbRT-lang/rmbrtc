@@ -16,35 +16,36 @@ INCLUDE "scopeitem.rl"
 
 		{
 			constant: scoper::Enum::Constant #&,
-			enum: Enum #\
-		}:	ScopeItem(&constant),
-			Member(&constant),
-			Type(enum),
+			enum: Enum #\,
+			cache: Cache &
+		}->	ScopeItem(&constant, cache),
+			Member(&constant)
+		:	Type(enum),
 			Value(constant.Value);
 	}
 
 	Constants: Constant - std::Vector;
 	Size: src::Size;
 
-	{enum: scoper::Enum #\}:
-		ScopeItem(enum),
-		Size(enum->Size)
+	{enum: scoper::Enum #\, cache: Cache &}
+	->	ScopeItem(enum, cache)
+	:	Size(enum->Size)
 	{
 		FOR(constant ::= enum->Constants.start(); constant; ++constant)
-			Constants += (**constant, &THIS);
+			Constants += (**constant, &THIS, cache);
 	}
 }
 
 ::rlc::resolver GlobalEnum -> Global, Enum
 {
 
-	{enum: scoper::GlobalEnum #\}:
-		Enum(enum);
+	{enum: scoper::GlobalEnum #\, cache: Cache &}
+	->	Enum(enum, cache);
 }
 
 ::rlc::resolver MemberEnum -> Member, Enum
 {
-	{enum: scoper::MemberEnum #\}:
-		Member(enum),
-		Enum(enum);
+	{enum: scoper::MemberEnum #\, cache: Cache &}
+	->	Member(enum),
+		Enum(enum, cache);
 }

@@ -9,9 +9,9 @@ INCLUDE "member.rl"
 	Body: BlockStatement;
 	Inline: BOOL;
 
-	{dtor: scoper::Destructor #\}:
-		ScopeItem(dtor),
-		Member(dtor),
-		Body(&dtor->Body),
+	{dtor: scoper::Destructor #\, cache: Cache &}
+	->	ScopeItem(dtor, cache),
+		Member(dtor)
+	:	Body(&dtor->Body, cache),
 		Inline(dtor->Inline);
 }
