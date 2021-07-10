@@ -26,12 +26,12 @@ INCLUDE "scopeitem.rl"
 	{
 		FOR(i ::= 0; i < ##parsed->Members; i++)
 		{
-			member ::= Scope::insert(<<parser::ScopeItem #\>>(&*parsed->Members[i]), file);
-			IF(memfn ::= <<MemberFunction \>>(member))
+			member ::= Scope::insert(<<parser::ScopeItem #\>>(parsed->Members[i]), file);
+			IF(memfn ::= <<MemberFunction *>>(member))
 			{
 				IF(!memfn->Body)
 					Functions += memfn;
-			} ELSE IF(field ::= <<MemberVariable \>>(member))
+			} ELSE IF(field ::= <<MemberVariable *>>(member))
 				Fields += field;
 		}
 	}

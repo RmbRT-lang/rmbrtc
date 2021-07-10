@@ -249,7 +249,7 @@ INCLUDE "../scoper/fileregistry.rl"
 					reference.Children[i].Position,
 					"not a suitable candidate");
 
-			IF(<<scoper::LocalVariable #\>>(&*itemGroup->Items[0]))
+			IF(<<scoper::LocalVariable #*>>(itemGroup->Items[0]))
 			{
 				IF(reference.Children[i].Templates)
 					THROW <NotResolved>(
@@ -381,7 +381,7 @@ INCLUDE "../scoper/fileregistry.rl"
 			{
 			CASE :variable:
 				{
-					IF(var ::= <<scoper::LocalVariable #\>>(item))
+					IF(var ::= <<scoper::LocalVariable #*>>(item))
 						IF(var->Position <= position)
 							RETURN TRUE;
 					RETURN TRUE;

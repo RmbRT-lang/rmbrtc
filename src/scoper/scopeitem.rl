@@ -122,11 +122,11 @@ INCLUDE 'std/io/format'
 		}
 	}
 
-	IF(p ::= <<parser::Global #\>>(entry))
+	IF(p ::= <<parser::Global #*>>(entry))
 		RETURN (<<ScopeItem \>>(Global::create(p, file, group)), TRUE);
-	ELSE IF(p ::= <<parser::Member #\>>(entry))
+	ELSE IF(p ::= <<parser::Member #*>>(entry))
 		RETURN (<<ScopeItem \>>(Member::create(p, file, group)), TRUE);
-	ELSE IF(p ::= <<parser::LocalVariable #\>>(entry))
+	ELSE IF(p ::= <<parser::LocalVariable #*>>(entry))
 		RETURN (std::[LocalVariable]new(p, file, group), TRUE);
 	ELSE
 		THROW <std::err::Unimplemented>(type.NAME());

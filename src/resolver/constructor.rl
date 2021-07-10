@@ -37,7 +37,7 @@ INCLUDE "member.rl"
 					scoped.Member,
 					scoped.Position,
 					"initialiser: unknown member");
-			IF(m ::= <<scoper::MemberVariable #\>>(&*member->Items[0]))
+			IF(m ::= <<scoper::MemberVariable #*>>(member->Items[0]))
 				RETURN m;
 			THROW <Symbol::NotResolved>(
 				ctor->parent_scope(),

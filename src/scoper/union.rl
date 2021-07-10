@@ -19,8 +19,8 @@ INCLUDE "member.rl"
 	{
 		FOR(i ::= 0; i < ##parsed->Members; i++)
 		{
-			member ::= Scope::insert(<<parser::ScopeItem #\>>(&*parsed->Members[i]), file);
-			IF(var ::= <<MemberVariable \>>(member))
+			member ::= Scope::insert(<<parser::ScopeItem #\>>(parsed->Members[i]), file);
+			IF(var ::= <<MemberVariable *>>(member))
 				IF(var->Attribute != MemberAttribute::static)
 					Fields += var;
 		}

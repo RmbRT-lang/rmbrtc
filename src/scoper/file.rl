@@ -38,7 +38,7 @@ INCLUDE 'std/shared'
 		Source(&parsed.Src)
 	{
 		FOR(i ::= 0; i < ##parsed.RootScope; i++)
-			Scope->insert(<<parser::ScopeItem #\>>(&*parsed.RootScope[i]), *Source);
+			Scope->insert(<<parser::ScopeItem #\>>(parsed.RootScope[i]), *Source);
 
 		// Resolve and load all include files.
 		loc: std::[File \; File]VectorSet::Location;

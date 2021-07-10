@@ -7,11 +7,11 @@ INCLUDE "../variable.rl"
 	cache: Cache &
 ) ScopeItem \
 {
-	IF(it ::= <<scoper::Global #\>>(scoped))
+	IF(it ::= <<scoper::Global #*>>(scoped))
 		RETURN <<ScopeItem \>>(Global::create(it, cache));
-	ELSE IF(it ::= <<scoper::Member #\>>(scoped))
+	ELSE IF(it ::= <<scoper::Member #*>>(scoped))
 		RETURN <<ScopeItem \>>(Member::create(it, cache));
-	ELSE IF(it ::= <<scoper::LocalVariable #\>>(scoped))
+	ELSE IF(it ::= <<scoper::LocalVariable #*>>(scoped))
 		RETURN <<ScopeItem \>>(std::[LocalVariable]new(it, cache));
 	ELSE
 		THROW <std::err::Unimplemented>(scoped->type().NAME());

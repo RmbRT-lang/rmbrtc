@@ -37,12 +37,11 @@ INCLUDE "symbol.rl"
 		FOR(group ::= class->Items.start(); group; ++group)
 			FOR(item ::= (*group)->Items.start(); item; ++item)
 			{
-				member # ::= <<scoper::Member#\>>(&**item);
-				ASSERT(member);
+				member # ::= <<scoper::Member#\>>(*item);
 				SWITCH(type ::= (*item)->type())
 				{
 				CASE :variable:
-					Fields += :create(<<scoper::MemberVariable#\>>(member), cache);
+					Fields += :create(<scoper::MemberVariable#\>(member), cache);
 				CASE :function:
 					Functions += :create(<scoper::MemberFunction#\>(member), cache);
 				CASE :constructor:
