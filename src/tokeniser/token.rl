@@ -67,6 +67,7 @@ INCLUDE "../src/file.rl"
 		um,
 		union,
 		virtual,
+		visit,
 		void,
 		while,
 

@@ -316,6 +316,7 @@ INCLUDE "error.rl"
 				("UM", :um),
 				("UNION", :union),
 				("VIRTUAL", :virtual),
+				("VISIT", :visit),
 				("VOID", :void),
 				("WHILE", :while)
 			);

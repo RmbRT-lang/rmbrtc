@@ -14,7 +14,7 @@ INCLUDE 'std/vector'
 	logAnd, logOr, logNot,
 	shiftLeft, shiftRight, rotateLeft, rotateRight,
 	neg, pos,
-	subscript, call, conditional,
+	subscript, call, visit, conditional,
 	memberReference, memberPointer, tupleMemberReference, tupleMemberPointer,
 	bindReference, bindPointer,
 	dereference, address, move,
@@ -512,6 +512,27 @@ INCLUDE 'std/vector'
 					p.expect(:bracketClose);
 
 					lhs := sub;
+					CONTINUE["outer"];
+				}
+
+				IF(p.consume(:visit))
+				{
+					p.expect(:parentheseOpen);
+					visit ::= std::[OperatorExpression]new();
+					visit->Op := :visit;
+					visit->Operands += :gc(lhs);
+
+					DO(comma ::= FALSE)
+					{
+						IF(comma)
+							p.expect(:comma);
+						IF(rhs ::= Expression::parse(p))
+							visit->Operands += :gc(rhs);
+						ELSE
+							p.fail("expected expression");
+					} FOR(!p.consume(:parentheseClose); comma := TRUE)
+
+					lhs := visit;
 					CONTINUE["outer"];
 				}
 
