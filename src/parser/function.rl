@@ -68,10 +68,13 @@ INCLUDE 'std/help'
 				} ELSE IF(detail::consume_overloadable_postfix_operator(p, Operator))
 				{
 					allowArgs := FALSE;
+				} ELSE IF(p.match(:parentheseOpen))
+				{
+					Operator := :call;
 				} ELSE IF(p.match(:bracketOpen))
 				{
-					parOpen := :bracketOpen;
-					parClose := :bracketClose;
+					Operator := :subscript;
+					(parOpen, parClose) := (:bracketOpen, :bracketClose);
 				} ELSE IF(p.match(:questionMark))
 				{
 					p.expect(:parentheseOpen);

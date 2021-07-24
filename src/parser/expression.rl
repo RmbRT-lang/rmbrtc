@@ -200,6 +200,7 @@ INCLUDE 'std/vector'
 		{
 			[N: NUMBER]
 			{
+				// (token, operator, UserOverloadable)
 				table: {tok::Type, Operator, BOOL}#[N] &,
 				leftAssoc: BOOL
 			}:
@@ -243,13 +244,12 @@ INCLUDE 'std/vector'
 
 		k_cmp: {tok::Type, Operator, BOOL}#[](
 			// numeric comparisons.
-			(:less, :less, FALSE),
-			(:lessEqual, :lessEquals, FALSE),
-			(:greater, :greater, FALSE),
-			(:greaterEqual, :greaterEquals, FALSE),
-			(:doubleEqual, :equals, FALSE),
-			(:exclamationMarkEqual, :notEquals, FALSE),
-			(:lessGreater, :cmp, TRUE));
+			(:less, :less, TRUE),
+			(:lessEqual, :lessEquals, TRUE),
+			(:greater, :greater, TRUE),
+			(:greaterEqual, :greaterEquals, TRUE),
+			(:doubleEqual, :equals, TRUE),
+			(:exclamationMarkEqual, :notEquals, TRUE));
 
 		k_log_and: {tok::Type, Operator, BOOL}#[](
 			// boolean arithmetic.
