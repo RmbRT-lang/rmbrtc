@@ -78,13 +78,13 @@ INCLUDE 'std/shared'
 		incs ::= std::str::buf(detail::getenv("RLINCLUDE"));
 		DO(len: UM)
 		{
-			FOR(len := 0; len < incs.Size; len++)
+			FOR(len := 0; len < ##incs; len++)
 				IF(incs[len] == ':')
 					BREAK;
 
 			IF(len)
 				IncludeDirs += incs.cut(len);
-		} FOR(incs.Size > len; incs := incs.drop_start(len+1))
+		} FOR(len < ##incs; incs := incs.drop_start(len+1))
 	}
 }
 
