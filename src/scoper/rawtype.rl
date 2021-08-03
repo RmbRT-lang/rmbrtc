@@ -18,7 +18,7 @@ INCLUDE 'std/memory'
 		group: detail::ScopeItemGroup \
 	}->	ScopeItem(group, parsed, file),
 		Scope(&THIS, group->Scope)
-	:	Size(:gc(Expression::create(parsed->Size, file)))
+	:	Size(:gc(<<<Expression>>>(parsed->Size, file)))
 	{
 		FOR(i ::= 0; i < ##parsed->Members; i++)
 			Scope::insert(<<parser::ScopeItem #\>>(parsed->Members[i]), file);

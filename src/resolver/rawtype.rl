@@ -17,7 +17,7 @@ INCLUDE "type.rl"
 		rawtype: scoper::Rawtype #\,
 		cache: Cache &
 	}->	ScopeItem(rawtype, cache)
-	:	Size(:gc(Expression::create(rawtype->parent_scope(), rawtype->Size)))
+	:	Size(:gc(<<<Expression>>>(rawtype->parent_scope(), rawtype->Size)))
 	{
 		FOR(group ::= rawtype->Items.start(); group; ++group)
 			FOR(it ::= (*group)->Items.start(); it; ++it)
@@ -30,7 +30,7 @@ INCLUDE "type.rl"
 				CASE :function:
 					Functions += :create(<scoper::MemberFunction #\>(member), cache);
 				DEFAULT:
-					Others += :gc(Member::create(member, cache));
+					Others += :gc(<<<Member>>>(member, cache));
 				}
 			}
 	}

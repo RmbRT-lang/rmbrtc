@@ -45,10 +45,10 @@ INCLUDE 'std/err/unimplemented'
 			parsed: parser::Signature #\,
 			file: src::File #&
 		}->	Type(parsed, file)
-		:	Return(:gc, Type::create(parsed->Ret, file))
+		:	Return(:gc, <<<Type>>>(parsed->Ret, file))
 		{
 			FOR(i ::= 0; i < ##parsed->Args; i++)
-				Arguments += :gc(Type::create(parsed->Args[i], file));
+				Arguments += :gc(<<<Type>>>(parsed->Args[i], file));
 		}
 	}
 
@@ -112,7 +112,7 @@ INCLUDE 'std/err/unimplemented'
 		}->	Type(parsed, file)
 		{
 			FOR(i ::= 0; i < ##parsed->Types; i++)
-				Types += :gc(Type::create(parsed->Types[i], file));
+				Types += :gc(<<<Type>>>(parsed->Types[i], file));
 		}
 	}
 
@@ -126,7 +126,7 @@ INCLUDE 'std/err/unimplemented'
 			parsed: parser::TypeOfExpression #\,
 			file: src::File #&
 		}->	Type(parsed, file)
-		:	Expression(:gc, scoper::Expression::create(parsed->Expression, file));
+		:	Expression(:gc, <<<scoper::Expression>>>(parsed->Expression, file));
 	}
 
 	BuiltinType -> Type

@@ -37,14 +37,14 @@ INCLUDE "exprorstmt.rl"
 
 		ASSERT(parsed->Return);
 		IF(parsed->Return.is_type())
-			Return := :gc(scoper::Type::create(parsed->Return.type(), file));
+			Return := :gc(<<<scoper::Type>>>(parsed->Return.type(), file));
 		ELSE
 			Return := :gc(std::[scoper::Type::Auto]new(*parsed->Return.auto()));
 
 		IF(parsed->Body.is_expression())
-			Body := :gc(Expression::create(0, parsed->Body.expression(), file));
+			Body := :gc(<<<Expression>>>(0, parsed->Body.expression(), file));
 		ELSE IF(parsed->Body.is_statement())
-			Body := :gc(Statement::create(0, parsed->Body.statement(), file, &ArgumentScope));
+			Body := :gc(<<<Statement>>>(0, parsed->Body.statement(), file, &ArgumentScope));
 	}
 }
 

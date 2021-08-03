@@ -20,19 +20,19 @@ INCLUDE 'std/tags'
 	}
 
 
-	STATIC create(
+	<<<
 		scoped: scoper::ScopeItem #\,
 		cache: Cache &
-	) ScopeItem \ := detail::create_scope_item(scoped, cache);
+	>>> ScopeItem \ := detail::create_scope_item(scoped, cache);
 }
 
 
 ::rlc::resolver Cache
 {
-	Resolved: std::[scoper::ScopeItem #\, ScopeItem #\, Cache]Map;
+	Resolved: std::[scoper::ScopeItem #\, ScopeItem #\]NatMap;
 
 	insert(scoped: scoper::ScopeItem #\) VOID
-		{ insert(scoped, ScopeItem::create(scoped, THIS)); }
+		{ insert(scoped, <<<ScopeItem>>>(scoped, THIS)); }
 	THIS+=(v: scoper::ScopeItem #\) INLINE VOID
 		{ insert(v); }
 

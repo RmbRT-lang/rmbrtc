@@ -12,6 +12,6 @@ INCLUDE "global.rl"
 	{
 		FOR(group ::= v->Items.start(); group; ++group)
 			FOR(it ::= (*group)->Items.start(); it; ++it)
-				Entries += :gc(Global::create(<<scoper::Global #\>>(&**it), cache));
+				Entries += :gc(<<<Global>>>(<<scoper::Global #\>>(&**it), cache));
 	}
 }

@@ -14,8 +14,8 @@ INCLUDE "../scoper/scope.rl"
 
 	# ABSTRACT type() Type;
 
-	STATIC create(
+	<<<
 		scope: scoper::Scope #\,
 		ref: scoper::Expression #\
-	) Expression \ := detail::create_expression(scope, ref);
+	>>> Expression \ := detail::create_expression(scope, ref);
 }

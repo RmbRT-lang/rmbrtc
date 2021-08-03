@@ -40,12 +40,12 @@ INCLUDE "../util/dynunion.rl"
 		{
 			scope ::= v->parent_scope();
 			IF(v->Type.is_type())
-				Type := :gc(resolver::Type::create(scope, v->Type.type()));
+				Type := :gc(<<<resolver::Type>>>(scope, v->Type.type()));
 			ELSE
 				Type := :gc(std::[resolver::Type::Auto]new(*v->Type.auto()));
 
 			FOR(it ::= v->InitValues.start(); it; ++it)
-				InitValues += :gc(Expression::create(scope, *it));
+				InitValues += :gc(<<<Expression>>>(scope, *it));
 		}
 	}
 

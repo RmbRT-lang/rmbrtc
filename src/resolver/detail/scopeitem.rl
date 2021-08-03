@@ -8,9 +8,9 @@ INCLUDE "../variable.rl"
 ) ScopeItem \
 {
 	IF(it ::= <<scoper::Global #*>>(scoped))
-		RETURN <<ScopeItem \>>(Global::create(it, cache));
+		RETURN <<ScopeItem \>>(<<<Global>>>(it, cache));
 	ELSE IF(it ::= <<scoper::Member #*>>(scoped))
-		RETURN <<ScopeItem \>>(Member::create(it, cache));
+		RETURN <<ScopeItem \>>(<<<Member>>>(it, cache));
 	ELSE IF(it ::= <<scoper::LocalVariable #*>>(scoped))
 		RETURN <<ScopeItem \>>(std::[LocalVariable]new(it, cache));
 	ELSE

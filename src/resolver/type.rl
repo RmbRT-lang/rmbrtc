@@ -40,7 +40,7 @@ INCLUDE "expression.rl"
 			IsArray(scoped.IsArray)
 		{
 			FOR(i ::= 0; i < ##scoped.ArraySize; i++)
-				ArraySize += :gc(Expression::create(scope, scoped.ArraySize[i]));
+				ArraySize += :gc(<<<Expression>>>(scope, scoped.ArraySize[i]));
 		}
 	}
 
@@ -58,8 +58,8 @@ INCLUDE "expression.rl"
 			Modifiers += (scoped->Modifiers[i], scope);
 	}
 
-	STATIC create(
+	<<<
 		scope: scoper::Scope #\,
 		scopedType: scoper::Type #\
-	) Type \ := detail::create_type(scope, scopedType);
+	>>> Type \ := detail::create_type(scope, scopedType);
 }

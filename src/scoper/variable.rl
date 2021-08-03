@@ -42,12 +42,12 @@ INCLUDE "../util/dynunion.rl"
 	:	HasInitialiser(parsed->HasInitialiser)
 	{
 		IF(parsed->Type.is_type())
-			Type := :gc(scoper::Type::create(parsed->Type.type(), file));
+			Type := :gc(<<<scoper::Type>>>(parsed->Type.type(), file));
 		ELSE
 			Type := :gc(std::[scoper::Type::Auto]new(*parsed->Type.auto()));
 
 		FOR(i ::= 0; i < ##parsed->InitValues; i++)
-			InitValues += :gc(Expression::create(parsed->InitValues[i], file));
+			InitValues += :gc(<<<Expression>>>(parsed->InitValues[i], file));
 	}
 }
 

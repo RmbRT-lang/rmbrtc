@@ -36,6 +36,7 @@ INCLUDE 'std/help'
 	IsInline: BOOL;
 	IsCoroutine: BOOL;
 	IsOperator: BOOL;
+	IsFactory: BOOL;
 	Name: src::String;
 	Operator: rlc::Operator;
 
@@ -53,7 +54,7 @@ INCLUDE 'std/help'
 		allowArgs ::= TRUE;
 		singleArg ::= FALSE;
 
-		IsOperator := FALSE;
+		IsFactory := IsOperator := FALSE;
 		IF(!p.match_ahead(:parentheseOpen)
 		|| !p.consume(:identifier, &Name))
 		{
@@ -101,6 +102,10 @@ INCLUDE 'std/help'
 				IF(!(Return := :gc(parser::Type::parse(p))))
 					p.fail("expected type");
 				p.expect(:greater);
+			} ELSE IF(p.match(:tripleLess, &Name))
+			{
+				(parOpen, parClose) := (:tripleLess, :tripleGreater);
+				IsFactory := TRUE;
 			} ELSE
 				RETURN FALSE;
 		}

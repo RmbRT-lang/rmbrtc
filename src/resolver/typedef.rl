@@ -11,7 +11,7 @@ INCLUDE "member.rl"
 
 	{v: scoper::Typedef #\, cache: Cache &}
 	->	ScopeItem(v, cache)
-	:	Type(:gc, resolver::Type::create(v->parent_scope(), v->Type));
+	:	Type(:gc, <<<resolver::Type>>>(v->parent_scope(), v->Type));
 }
 
 ::rlc::resolver GlobalTypedef -> Global, Typedef

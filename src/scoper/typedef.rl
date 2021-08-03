@@ -11,7 +11,7 @@ INCLUDE "../parser/typedef.rl"
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
 	}->	ScopeItem(group, parsed, file)
-	:	Type(:gc(scoper::Type::create(parsed->Type, file)));
+	:	Type(:gc(<<<scoper::Type>>>(parsed->Type, file)));
 }
 
 ::rlc::scoper GlobalTypedef -> Global, Typedef

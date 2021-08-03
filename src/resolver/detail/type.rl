@@ -58,10 +58,10 @@ INCLUDE 'std/memory'
 
 		{scope: scoper::Scope #\, scopedType: scoper::Signature #\}
 		->	Type(scopedType, scope)
-		:	Result(:gc, Type::create(scope, scopedType->Return))
+		:	Result(:gc, <<<Type>>>(scope, scopedType->Return))
 		{
 			FOR(it ::= scopedType->Arguments.start(); it; ++it)
-				Arguments += :gc(Type::create(scope, *it));
+				Arguments += :gc(<<<Type>>>(scope, *it));
 		}
 	}
 
@@ -102,7 +102,7 @@ INCLUDE 'std/memory'
 		->	Type(scopedType, scope)
 		{
 			FOR(i ::= 0; i < ##scopedType->Types; i++)
-				Types += :gc(Type::create(scope, scopedType->Types[i]));
+				Types += :gc(<<<Type>>>(scope, scopedType->Types[i]));
 		}
 	}
 
@@ -114,7 +114,7 @@ INCLUDE 'std/memory'
 
 		{scope: scoper::Scope #\, scopedType: scoper::TypeOfExpression #\}
 		->	Type(scopedType, scope)
-		:	Expression(:gc, resolver::Expression::create(scope, scopedType->Expression));
+		:	Expression(:gc, <<<resolver::Expression>>>(scope, scopedType->Expression));
 	}
 
 	BuiltinType -> Type

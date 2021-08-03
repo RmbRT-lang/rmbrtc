@@ -16,7 +16,7 @@ INCLUDE "member.rl"
 		}:	Base(:resolve(ctor->ArgScope, scoped.Base))
 		{
 			FOR(it ::= scoped.Arguments.start(); it; it++)
-				Arguments += :gc(Expression::create(&ctor->ArgScope, (*it)));
+				Arguments += :gc(<<<Expression>>>(&ctor->ArgScope, (*it)));
 		}
 	}
 
@@ -52,7 +52,7 @@ INCLUDE "member.rl"
 		}:	Member(resolve_member(scoped, ctor))
 		{
 			FOR(it ::= scoped.Arguments.start(); it; it++)
-				Arguments += :gc(Expression::create(&ctor->ArgScope, (*it)));
+				Arguments += :gc(<<<Expression>>>(&ctor->ArgScope, (*it)));
 		}
 	}
 

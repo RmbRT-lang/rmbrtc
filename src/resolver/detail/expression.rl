@@ -97,13 +97,13 @@ INCLUDE "../symbol.rl"
 		{
 			ref: scoper::OperatorExpression #\,
 			scope: scoper::Scope #\
-		}:	Lhs(:gc(Expression::create(scope, ref->Operands[0]))),
+		}:	Lhs(:gc(<<<Expression>>>(scope, ref->Operands[0]))),
 			IsPtr(ref->Op == Operator::memberPointer)
 		{
 			child ::= &<scoper::SymbolChildExpression #\>(&*ref->Operands[1])->Child;
 			MemberName := child->Name;
 			FOR(tpl ::= child->Templates.start(); tpl; ++tpl)
-				MemberTemplates += :gc(TemplateArg::create(scope, *tpl));
+				MemberTemplates += :gc(<<<TemplateArg>>>(scope, *tpl));
 		}
 	}
 
@@ -120,7 +120,7 @@ INCLUDE "../symbol.rl"
 			Op(ref->Op)
 		{
 			FOR(i ::= 0; i < ##ref->Operands; i++)
-				Args += :gc(Expression::create(scope, ref->Operands[i]));
+				Args += :gc(<<<Expression>>>(scope, ref->Operands[i]));
 		}
 	}
 
@@ -137,11 +137,11 @@ INCLUDE "../symbol.rl"
 			ref: scoper::CastExpression #\,
 			scope: scoper::Scope #\
 		}:
-			Type(:gc(resolver::Type::create(scope, ref->Type))),
+			Type(:gc(<<<resolver::Type>>>(scope, ref->Type))),
 			Method(ref->Method)
 		{
 			FOR(it ::= ref->Values.start(); it; ++it)
-				Values += :gc(Expression::create(scope, *it));
+				Values += :gc(<<<Expression>>>(scope, *it));
 		}
 	}
 
@@ -154,9 +154,9 @@ INCLUDE "../symbol.rl"
 		}
 		{
 			IF(ref->Term.is_first())
-				Term := :gc(resolver::Type::create(scope, ref->Term.first()));
+				Term := :gc(<<<resolver::Type>>>(scope, ref->Term.first()));
 			ELSE
-				Term := :gc(Expression::create(scope, ref->Term.second()));
+				Term := :gc(<<<Expression>>>(scope, ref->Term.second()));
 		}
 
 		# FINAL value_type() ConstantExpression::Type := :sizeof;

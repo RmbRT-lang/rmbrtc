@@ -63,7 +63,7 @@ INCLUDE 'std/streambuffer'
 			? it->Ptr
 			: Items.insert_at(loc, :gc(std::[detail::ScopeItemGroup]new(name, &THIS))).Ptr;
 
-		ret ::= ScopeItem::create(entry, file, group);
+		ret ::= <<<ScopeItem>>>(entry, file, group);
 		IF(ret.(1))
 			group->Items += :gc(ret.(0));
 		RETURN ret.(0);

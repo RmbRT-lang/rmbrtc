@@ -119,7 +119,7 @@ INCLUDE 'std/err/unimplemented'
 				variable()->set_position(++*position);
 			}
 			ELSE IF(parsed.is_expression())
-				THIS := Expression::create(*position, parsed.expression(), file);
+				THIS := <<<Expression>>>(*position, parsed.expression(), file);
 			ELSE
 				Val.Check := NULL;
 		}
@@ -169,7 +169,7 @@ INCLUDE 'std/err/unimplemented'
 			file: src::File#&,
 			parentScope: scoper::Scope \}
 		->	Statement(position, parentScope)
-		:	Expression(:gc, scoper::Expression::create(position, parsed->Expression, file));
+		:	Expression(:gc, <<<scoper::Expression>>>(position, parsed->Expression, file));
 	}
 
 	BlockStatement -> Statement
@@ -194,7 +194,7 @@ INCLUDE 'std/err/unimplemented'
 			p ::= Statement::Position;
 			FOR(i ::= 0; i < ##parsed->Statements; i++)
 			{
-				Statements += :gc(Statement::create(p, parsed->Statements[i], file, &Scope));
+				Statements += :gc(<<<Statement>>>(p, parsed->Statements[i], file, &Scope));
 				p += Statements.back()->variables();
 			}
 		}
@@ -227,11 +227,11 @@ INCLUDE 'std/err/unimplemented'
 			CondScope(&THIS, &InitScope),
 			Init(&position, parsed->Init, file, &InitScope),
 			Condition(&position, parsed->Condition, file, &CondScope),
-			Then(:gc, Statement::create(position, parsed->Then, file, &CondScope))
+			Then(:gc, <<<Statement>>>(position, parsed->Then, file, &CondScope))
 		{
 			position += Then->variables();
 			IF(parsed->Else)
-				Else := :gc(Statement::create(position, parsed->Else, file, &CondScope));
+				Else := :gc(<<<Statement>>>(position, parsed->Else, file, &CondScope));
 		}
 	}
 
@@ -270,7 +270,7 @@ INCLUDE 'std/err/unimplemented'
 			file: src::File#&,
 			parentScope: Scope \
 		}->	Statement(position, parentScope)
-		:	Expression(:gc, scoper::Expression::create(position, parsed->Expression, file));
+		:	Expression(:gc, <<<scoper::Expression>>>(position, parsed->Expression, file));
 	}
 
 	ReturnStatement -> Statement
@@ -290,7 +290,7 @@ INCLUDE 'std/err/unimplemented'
 		}->	Statement(position, parentScope)
 		:	Expression(:gc, parsed->is_void()
 				? NULL
-				: scoper::Expression::create(position, parsed->Expression, file));
+				: <<<scoper::Expression>>>(position, parsed->Expression, file));
 	}
 
 	TryStatement -> Statement
@@ -318,7 +318,7 @@ INCLUDE 'std/err/unimplemented'
 			file: src::File#&,
 			parentScope: Scope \
 		}->	Statement(position, parentScope)
-		:	Body(:gc, Statement::create(position, parsed->Body, file, parentScope))
+		:	Body(:gc, <<<Statement>>>(position, parsed->Body, file, parentScope))
 		{
 			position += Body.Ptr->variables();
 			FOR(i ::= 0; i < ##Catches; i++)
@@ -327,7 +327,7 @@ INCLUDE 'std/err/unimplemented'
 				position += Catches.back().variables();
 			}
 			IF(parsed->has_finally())
-				Finally := :gc(Statement::create(position, parsed->Finally, file, parentScope));
+				Finally := :gc(<<<Statement>>>(position, parsed->Finally, file, parentScope));
 		}
 	}
 
@@ -348,7 +348,7 @@ INCLUDE 'std/err/unimplemented'
 			ExceptionScope(try, try->ParentScope),
 			Exception(<<LocalVariable \>>(
 				ExceptionScope.insert(&parsed->Exception, file))),
-			Body(:gc, Statement::create(
+			Body(:gc, <<<Statement>>>(
 				++position, parsed->Body, file, &ExceptionScope));
 	}
 
@@ -370,7 +370,7 @@ INCLUDE 'std/err/unimplemented'
 		}->	Statement(position, parentScope)
 		:	ValueType(parsed->ValueType),
 			Value(:gc, parsed->Value
-				? Expression::create(position, parsed->Value, file)
+				? <<<Expression>>>(position, parsed->Value, file)
 				: NULL);
 	}
 
@@ -411,10 +411,10 @@ INCLUDE 'std/err/unimplemented'
 			{
 				Condition := (&position, parsed->Condition, file, &ConditionScope);
 				PostLoop := (:gc, parsed->PostLoop
-					? Expression::create(position, parsed->PostLoop, file)
+					? <<<Expression>>>(position, parsed->PostLoop, file)
 					: NULL);
 			}
-			Body := :gc(Statement::create(
+			Body := :gc(<<<Statement>>>(
 				position,
 				parsed->Body,
 				file,
@@ -424,7 +424,7 @@ INCLUDE 'std/err/unimplemented'
 			{
 				Condition := (&position, parsed->Condition, file, &ConditionScope);
 				PostLoop := (:gc, parsed->PostLoop
-					? Expression::create(position, parsed->PostLoop, file)
+					? <<<Expression>>>(position, parsed->PostLoop, file)
 					: NULL);
 			}
 		}
@@ -478,10 +478,10 @@ INCLUDE 'std/err/unimplemented'
 			parsed: parser::CaseStatement#&,
 			file: src::File#&,
 			parentScope: Scope \}:
-			Body(:gc, Statement::create(position, parsed.Body, file, parentScope))
+			Body(:gc, <<<Statement>>>(position, parsed.Body, file, parentScope))
 		{
 			FOR(i ::= 0; i < ##parsed.Values; i++)
-				Values += :gc(Expression::create(position, parsed.Values[i], file));
+				Values += :gc(<<<Expression>>>(position, parsed.Values[i], file));
 		}
 	}
 

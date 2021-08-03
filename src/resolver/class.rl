@@ -49,7 +49,7 @@ INCLUDE "symbol.rl"
 				CASE :destructor:
 					Destructor := :create(<scoper::Destructor#\>(member), cache);
 				CASE :enum, :typedef, :class, :rawtype, :union:
-					Types += :gc(Member::create(member, cache));
+					Types += :gc(<<<Member>>>(member, cache));
 				DEFAULT:
 					THROW <std::err::Unimplemented>(type.NAME());
 				}

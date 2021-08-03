@@ -27,7 +27,7 @@ INCLUDE 'std/tags'
 	{
 		scope ::= &function->ArgumentScope;
 		IF(function->Return.is_type())
-			Return := :gc(resolver::Type::create(scope, function->Return.type()));
+			Return := :gc(<<<resolver::Type>>>(scope, function->Return.type()));
 		ELSE
 			Return := :gc(std::[resolver::Type::Auto]new(*function->Return.auto()));
 
@@ -35,9 +35,9 @@ INCLUDE 'std/tags'
 			Arguments += :create(*arg, cache);
 
 		IF(function->Body.is_expression())
-			Body := :gc(Expression::create(&function->ArgumentScope, function->Body.expression()));
+			Body := :gc(<<<Expression>>>(&function->ArgumentScope, function->Body.expression()));
 		ELSE IF(function->Body.is_statement())
-			Body := :gc(Statement::create(function->Body.statement(), cache));
+			Body := :gc(<<<Statement>>>(function->Body.statement(), cache));
 	}
 }
 

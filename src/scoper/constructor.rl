@@ -16,7 +16,7 @@ INCLUDE "detail/statement.rl"
 			Base(parsed.Base, file)
 		{
 			FOR(i ::= 0; i < ##parsed.Arguments; i++)
-				Arguments += :gc(Expression::create(parsed.Arguments[i], file));
+				Arguments += :gc(<<<Expression>>>(parsed.Arguments[i], file));
 		}
 	}
 
@@ -33,7 +33,7 @@ INCLUDE "detail/statement.rl"
 			Position(parsed.Position)
 		{
 			FOR(i ::= 0; i < ##parsed.Arguments; i++)
-				Arguments += :gc(Expression::create(parsed.Arguments[i], file));
+				Arguments += :gc(<<<Expression>>>(parsed.Arguments[i], file));
 		}
 	}
 

@@ -10,9 +10,10 @@ INCLUDE "../util/dynunion.rl"
 		ENUM Type { types, values }
 		# ABSTRACT type() Type;
 
-		STATIC create(
+		<<<
 			scope: scoper::Scope #\,
-			args: scoper::TypeOrExpr - std::Vector #&) TemplateArg \
+			args: scoper::TypeOrExpr - std::Vector #&
+		>>> TemplateArg \
 		{
 			ASSERT(!args.empty());
 			IF(args.front().is_type())
@@ -35,7 +36,7 @@ INCLUDE "../util/dynunion.rl"
 		}
 		{
 			FOR(it ::= types.start(); it; ++it)
-				Types += :gc(resolver::Type::create(scope, it->type()));
+				Types += :gc(<<<resolver::Type>>>(scope, it->type()));
 		}
 	}
 
@@ -51,7 +52,7 @@ INCLUDE "../util/dynunion.rl"
 		}
 		{
 			FOR(it ::= values.start(); it; ++it)
-				Values += :gc(Expression::create(scope, it->expression()));
+				Values += :gc(<<<Expression>>>(scope, it->expression()));
 		}
 	}
 }

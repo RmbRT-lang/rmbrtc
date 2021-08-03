@@ -48,11 +48,12 @@ INCLUDE 'std/io/format'
 
 	# name() INLINE String#& := Group->Name;
 
-	STATIC create(
+	<<<
 		entry: parser::ScopeItem #\,
 		file: src::File#&,
 		group: detail::ScopeItemGroup \
-	) {ScopeItem \, BOOL} := detail::create_scope_item(entry, file, group);
+	>>> {ScopeItem \, BOOL}
+		:= detail::create_scope_item(entry, file, group);
 }
 
 ::rlc::scoper IncompatibleOverloadError -> std::Error
@@ -123,9 +124,9 @@ INCLUDE 'std/io/format'
 	}
 
 	IF(p ::= <<parser::Global #*>>(entry))
-		RETURN (<<ScopeItem \>>(Global::create(p, file, group)), TRUE);
+		RETURN (<<ScopeItem \>>(<<<Global>>>(p, file, group)), TRUE);
 	ELSE IF(p ::= <<parser::Member #*>>(entry))
-		RETURN (<<ScopeItem \>>(Member::create(p, file, group)), TRUE);
+		RETURN (<<ScopeItem \>>(<<<Member>>>(p, file, group)), TRUE);
 	ELSE IF(p ::= <<parser::LocalVariable #*>>(entry))
 		RETURN (std::[LocalVariable]new(p, file, group), TRUE);
 	ELSE

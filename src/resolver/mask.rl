@@ -35,7 +35,7 @@ INCLUDE "scopeitem.rl"
 						Functions += :create(fn, cache);
 				}
 				DEFAULT:
-					Others += :gc(Member::create(member, cache));
+					Others += :gc(<<<Member>>>(member, cache));
 				}
 			}
 	}

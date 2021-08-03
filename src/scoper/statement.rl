@@ -28,12 +28,12 @@ INCLUDE "../util/dynunion.rl"
 			Position(position),
 			ParentScope(parentScope);
 
-		STATIC create(
+		<<<
 			position: UM,
 			parsed: parser::Statement #\,
 			file: src::File#&,
 			parentScope: Scope \
-		) Statement \ := detail::create_statement(
+		>>> Statement \ := detail::create_statement(
 			position,
 			parsed,
 			file,

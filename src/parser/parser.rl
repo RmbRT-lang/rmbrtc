@@ -149,6 +149,14 @@ INCLUDE 'std/tags'
 			RETURN Buffer[BufferIndex].Type == type;
 		}
 
+		match(type: tok::Type, out: src::String \) BOOL
+		{
+			ret: BOOL;
+			IF(ret := match(type))
+				*out := Buffer[BufferIndex].Content;
+			RETURN ret;
+		}
+
 		match_ahead(type: tok::Type) BOOL
 		{
 			IF(BufferSize != 2)

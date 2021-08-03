@@ -10,9 +10,10 @@ INCLUDE "scopeitem.rl"
 		Visibility(parsed->Visibility),
 		Attribute(parsed->Attribute);
 
-	STATIC create(
+	<<<
 		parsed: parser::Member #\,
 		file: src::File #&,
-		group: detail::ScopeItemGroup \) Member \
+		group: detail::ScopeItemGroup \
+	>>> Member \
 		:= detail::create_member(parsed, file, group);
 }

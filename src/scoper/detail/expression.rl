@@ -143,7 +143,7 @@ INCLUDE 'std/err/unimplemented'
 		:	Op(parsed->Op)
 		{
 			FOR(i ::= 0; i < ##parsed->Operands; i++)
-				Operands += :gc(Expression::create(position, parsed->Operands[i], file));
+				Operands += :gc(<<<Expression>>>(position, parsed->Operands[i], file));
 		}
 	}
 
@@ -171,11 +171,11 @@ INCLUDE 'std/err/unimplemented'
 			parsed: parser::CastExpression #\,
 			file: src::File#&
 		}->	Expression(position)
-		:	Type(:gc, scoper::Type::create(parsed->Type, file)),
+		:	Type(:gc, <<<scoper::Type>>>(parsed->Type, file)),
 			Method(parsed->Method)
 		{
 			FOR(i ::= 0; i < ##parsed->Values; i++)
-				Values += :gc(Expression::create(position, parsed->Values[i], file));
+				Values += :gc(<<<Expression>>>(position, parsed->Values[i], file));
 		}
 	}
 
@@ -192,9 +192,9 @@ INCLUDE 'std/err/unimplemented'
 		}->	Expression(position)
 		{
 			IF(parsed->Term.is_type())
-				Term := :gc(Type::create(parsed->Term.type(), file));
+				Term := :gc(<<<Type>>>(parsed->Term.type(), file));
 			ELSE
-				Term := :gc(Expression::create(position, parsed->Term.expression(), file));
+				Term := :gc(<<<Expression>>>(position, parsed->Term.expression(), file));
 		}
 	}
 }
