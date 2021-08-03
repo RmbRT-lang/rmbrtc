@@ -44,5 +44,10 @@ INCLUDE 'std/tags'
 	THIS+=(v: {scoper::ScopeItem #\, ScopeItem #\}) INLINE VOID
 		{ insert(v.(0), v.(1)); }
 
-	[T:TYPE] STATIC cmp(a: T, b: T!) ::= a-b;
+	# find(scoped: scoper::ScopeItem #\) ScopeItem #\
+	{
+		found ::= Resolved.find(scoped);
+		ASSERT(found);
+		RETURN *found;
+	}
 }
