@@ -28,7 +28,6 @@ INCLUDE 'std/memory'
 	Body: std::[BlockStatement]Dynamic;
 	Inline: BOOL;
 
-	# FINAL type() ScopeItem::Type := :constructor;
 	# FINAL name() src::String#& := Name;
 	# FINAL overloadable() BOOL := TRUE;
 

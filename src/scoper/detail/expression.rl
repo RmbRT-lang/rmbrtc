@@ -12,33 +12,33 @@ INCLUDE 'std/err/unimplemented'
 	file: src::File#&
 ) Expression \
 {
-	SWITCH(type ::= parsed->type())
+	TYPE SWITCH(parsed)
 	{
 	DEFAULT:
-		THROW <std::err::Unimplemented>(type.NAME());
-	CASE :symbol:
+		THROW <std::err::Unimplemented>(TYPE(parsed));
+	CASE parser::SymbolExpression:
 		RETURN std::[SymbolExpression]new(position, <parser::SymbolExpression #\>(parsed), file);
-	CASE :symbolChild:
+	CASE parser::SymbolChildExpression:
 		RETURN std::[SymbolChildExpression]new(<parser::SymbolChildExpression #\>(parsed), file);
-	CASE :symbolConstant:
+	CASE parser::SymbolConstantExpression:
 		RETURN std::[SymbolConstantExpression]new(<parser::SymbolConstantExpression #\>(parsed), file);
-	CASE :number:
+	CASE parser::NumberExpression:
 		RETURN std::[NumberExpression]new(<parser::NumberExpression #\>(parsed), file);
-	CASE :bool:
+	CASE parser::BoolExpression:
 		RETURN std::[BoolExpression]new(<parser::BoolExpression #\>(parsed));
-	CASE :char:
+	CASE parser::CharExpression:
 		RETURN std::[CharExpression]new(<parser::CharExpression #\>(parsed), file);
-	CASE :string:
+	CASE parser::StringExpression:
 		RETURN std::[StringExpression]new(<parser::StringExpression #\>(parsed), file);
-	CASE :operator:
+	CASE parser::OperatorExpression:
 		RETURN std::[OperatorExpression]new(position, <parser::OperatorExpression #\>(parsed), file);
-	CASE :this:
+	CASE parser::ThisExpression:
 		RETURN std::[ThisExpression]new();
-	CASE :null:
+	CASE parser::NullExpression:
 		RETURN std::[NullExpression]new();
-	CASE :cast:
+	CASE parser::CastExpression:
 		RETURN std::[CastExpression]new(position, <parser::CastExpression #\>(parsed), file);
-	CASE :sizeof:
+	CASE parser::SizeofExpression:
 		RETURN std::[SizeofExpression]new(position, <parser::SizeofExpression #\>(parsed), file);
 	}
 }
@@ -47,8 +47,6 @@ INCLUDE 'std/err/unimplemented'
 {
 	SymbolExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :symbol;
-
 		Symbol: scoper::Symbol;
 
 		{
@@ -61,8 +59,6 @@ INCLUDE 'std/err/unimplemented'
 
 	SymbolChildExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :symbolChild;
-
 		Child: Symbol::Child;
 
 		{
@@ -73,8 +69,6 @@ INCLUDE 'std/err/unimplemented'
 
 	SymbolConstantExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :symbolConstant;
-
 		Name: String;
 
 		{
@@ -85,8 +79,6 @@ INCLUDE 'std/err/unimplemented'
 
 	NumberExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :number;
-
 		Number: scoper::Number;
 
 		{
@@ -97,8 +89,6 @@ INCLUDE 'std/err/unimplemented'
 
 	BoolExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :bool;
-
 		Value: BOOL;
 
 		{
@@ -108,7 +98,6 @@ INCLUDE 'std/err/unimplemented'
 
 	CharExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :char;
 		Char: Text;
 
 		{
@@ -119,7 +108,6 @@ INCLUDE 'std/err/unimplemented'
 
 	StringExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :string;
 		String: Text;
 
 		{
@@ -130,8 +118,6 @@ INCLUDE 'std/err/unimplemented'
 
 	OperatorExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :operator;
-
 		Operands: Expression - std::DynVector;
 		Op: Operator;
 
@@ -147,19 +133,12 @@ INCLUDE 'std/err/unimplemented'
 		}
 	}
 
-	ThisExpression -> Expression
-	{
-		# FINAL type() ExpressionType := :this;
-	}
+	ThisExpression -> Expression { }
 
-	NullExpression -> Expression
-	{
-		# FINAL type() ExpressionType := :null;
-	}
+	NullExpression -> Expression { }
 
 	CastExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :cast;
 		TYPE Kind := parser::CastExpression::Kind;
 
 		Method: Kind;
@@ -181,8 +160,6 @@ INCLUDE 'std/err/unimplemented'
 
 	SizeofExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :sizeof;
-
 		Term: util::[Type; Expression]DynUnion;
 
 		{

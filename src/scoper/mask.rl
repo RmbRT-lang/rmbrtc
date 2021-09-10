@@ -6,8 +6,6 @@ INCLUDE "scopeitem.rl"
 
 ::rlc::scoper Mask VIRTUAL -> ScopeItem, Scope
 {
-	# FINAL type() ScopeItem::Type := :mask;
-
 	(// The member functions required by the mask. /)
 	Functions: std::[MemberFunction \]Vector;
 	Fields: std::[MemberVariable \]Vector;

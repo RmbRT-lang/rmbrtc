@@ -4,8 +4,6 @@ INCLUDE "member.rl"
 
 ::rlc::resolver Constructor -> Member, ScopeItem
 {
-	# FINAL type() ScopeItem::Type := :constructor;
-
 	BaseInit
 	{
 		Base: Symbol;

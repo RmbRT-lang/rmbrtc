@@ -43,7 +43,6 @@ INCLUDE 'std/memory'
 	Members: Member - std::DynVector;
 	Inheritances: std::[Inheritance]Vector;
 
-	# FINAL type() ScopeItem::Type := :class;
 	# FINAL name() src::String #& := Name;
 	# FINAL overloadable() BOOL := FALSE;
 

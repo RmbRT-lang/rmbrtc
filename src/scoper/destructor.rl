@@ -5,8 +5,6 @@ INCLUDE "../parser/destructor.rl"
 	Body: BlockStatement;
 	Inline: BOOL;
 
-	# FINAL type() ScopeItem::Type := :destructor;
-
 	{
 		parsed: parser::Destructor #\,
 		file: src::File#&,

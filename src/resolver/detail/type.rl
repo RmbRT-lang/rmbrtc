@@ -11,25 +11,25 @@ INCLUDE 'std/memory'
 	scopedType: scoper::Type #\
 ) Type \
 {
-	SWITCH(type ::= scopedType->type())
+	TYPE SWITCH(scopedType)
 	{
 	DEFAULT:
-		THROW <std::err::Unimplemented>(type.NAME());
-	CASE :signature:
+		THROW <std::err::Unimplemented>(TYPE(scopedType));
+	CASE scoper::Signature:
 		RETURN std::[Signature]new(scope, <scoper::Signature #\>(scopedType));
-	CASE :void:
+	CASE scoper::Void:
 		RETURN std::[Void]new(scope, scopedType);
-	CASE :null:
+	CASE scoper::Null:
 		RETURN std::[Null]new(scope, scopedType);
-	CASE :name:
+	CASE scoper::TypeName:
 		RETURN std::[ReferenceType]new(scope, <scoper::TypeName #\>(scopedType));
-	CASE :symbolConstant:
+	CASE scoper::SymbolConstantType:
 		RETURN std::[SymbolConstantType]new(scope, <scoper::SymbolConstantType #\>(scopedType));
-	CASE :tuple:
+	CASE scoper::TupleType:
 		RETURN std::[TupleType]new(scope, <scoper::TupleType #\>(scopedType));
-	CASE :expression:
+	CASE scoper::TypeOfExpression:
 		RETURN std::[TypeOfExpression]new(scope, <scoper::TypeOfExpression #\>(scopedType));
-	CASE :builtin:
+	CASE resolver::BuiltinType:
 		RETURN std::[BuiltinType]new(scope, <scoper::BuiltinType #\>(scopedType));
 	}
 }
@@ -38,8 +38,6 @@ INCLUDE 'std/memory'
 {
 	ReferenceType -> Type
 	{
-		# FINAL type() Type::Kind := :reference;
-
 		NoDecay: BOOL;
 		Reference: Symbol;
 
@@ -51,8 +49,6 @@ INCLUDE 'std/memory'
 
 	Signature -> Type
 	{
-		# FINAL type() Type::Kind := :signature;
-
 		Arguments: Type - std::DynVector;
 		Result: Type - std::Dynamic;
 
@@ -67,24 +63,18 @@ INCLUDE 'std/memory'
 
 	Void -> Type
 	{
-		# FINAL type() Type::Kind := :void;
-
 		{scope: scoper::Scope #\, scopedType: scoper::Type #\}
 		->	Type(scopedType, scope);
 	}
 
 	Null -> Type
 	{
-		# FINAL type() Type::Kind := :null;
-
 		{scope: scoper::Scope #\, scopedType: scoper::Type #\}
 		->	Type(scopedType, scope);
 	}
 
 	SymbolConstantType -> Type
 	{
-		# FINAL type() Type::Kind := :symbolConstant;
-
 		Name: scoper::String;
 
 		{scope: scoper::Scope #\, scopedType: scoper::SymbolConstantType #\}
@@ -94,8 +84,6 @@ INCLUDE 'std/memory'
 
 	TupleType -> Type
 	{
-		# FINAL type() Type::Kind := :tuple;
-
 		Types: Type - std::DynVector;
 
 		{scope: scoper::Scope #\, scopedType: scoper::TupleType #\}
@@ -108,8 +96,6 @@ INCLUDE 'std/memory'
 
 	TypeOfExpression -> Type
 	{
-		# FINAL type() Type::Kind := :expression;
-
 		Expression: resolver::Expression - std::Dynamic;
 
 		{scope: scoper::Scope #\, scopedType: scoper::TypeOfExpression #\}
@@ -119,8 +105,6 @@ INCLUDE 'std/memory'
 
 	BuiltinType -> Type
 	{
-		# FINAL type() Type::Kind := :builtin;
-
 		TYPE Primitive := parser::BuiltinType::Primitive;
 
 		Kind: Primitive;

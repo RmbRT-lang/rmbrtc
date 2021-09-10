@@ -46,26 +46,8 @@ INCLUDE 'std/vector'
 
 ::rlc::parser
 {
-	ENUM ExpressionType
-	{
-		symbol,
-		symbolChild,
-		symbolConstant,
-		number,
-		bool,
-		char,
-		string,
-		operator,
-		this,
-		null,
-		cast,
-		sizeof
-	}
-
 	Expression VIRTUAL
 	{
-		# ABSTRACT type() ExpressionType;
-
 		Range: src::String;
 		Position: src::Position;
 
@@ -134,8 +116,6 @@ INCLUDE 'std/vector'
 
 	SymbolConstantExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :symbolConstant;
-
 		Symbol: src::String;
 
 		parse(p: Parser &) BOOL
@@ -149,8 +129,6 @@ INCLUDE 'std/vector'
 
 	NumberExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :number;
-
 		Number: src::String;
 
 		parse(p: Parser &) BOOL := p.consume(:numberLiteral, &Number, &THIS.Position);
@@ -158,8 +136,6 @@ INCLUDE 'std/vector'
 
 	BoolExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :bool;
-
 		Value: BOOL;
 
 		parse(p: Parser&) BOOL
@@ -178,8 +154,6 @@ INCLUDE 'std/vector'
 
 	CharExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :char;
-
 		Char: src::String;
 
 		parse(p: Parser &) BOOL := p.consume(:stringApostrophe, &Char, &THIS.Position);
@@ -187,8 +161,6 @@ INCLUDE 'std/vector'
 
 	StringExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :string;
-
 		String: src::String;
 
 		parse(p: Parser &) BOOL := p.consume(:stringQuote, &String, &THIS.Position);
@@ -351,8 +323,6 @@ INCLUDE 'std/vector'
 
 	OperatorExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :operator;
-
 		Operands: Expression - std::DynVector;
 		Op: Operator;
 
@@ -612,22 +582,16 @@ INCLUDE 'std/vector'
 
 	ThisExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :this;
-
 		parse(p: Parser&) BOOL := p.consume(:this, &THIS.Position);
 	}
 
 	NullExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :null;
-
 		parse(p: Parser&) BOOL := p.consume(:null, &THIS.Position);
 	}
 
 	CastExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :cast;
-
 		ENUM Kind { static, dynamic, mask }
 		Method: Kind;
 		Type: std::[parser::Type]Dynamic;
@@ -694,8 +658,6 @@ INCLUDE 'std/vector'
 
 	SizeofExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :sizeof;
-
 		Term: TypeOrExpr;
 
 		# is_expression() INLINE BOOL := Term.is_expression();

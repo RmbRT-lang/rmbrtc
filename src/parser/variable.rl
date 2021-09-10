@@ -37,7 +37,6 @@ INCLUDE "../util/dynunion.rl"
 		HasInitialiser: BOOL;
 		InitValues: Expression - std::DynVector;
 
-		# FINAL type() ScopeItem::Type := :variable;
 		# FINAL name() src::String#& := Name;
 		# FINAL overloadable() BOOL := !Name.exists();
 

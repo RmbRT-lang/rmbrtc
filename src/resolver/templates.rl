@@ -7,9 +7,6 @@ INCLUDE "../util/dynunion.rl"
 {
 	TemplateArg VIRTUAL
 	{
-		ENUM Type { types, values }
-		# ABSTRACT type() Type;
-
 		<<<
 			scope: scoper::Scope #\,
 			args: scoper::TypeOrExpr - std::Vector #&
@@ -26,8 +23,6 @@ INCLUDE "../util/dynunion.rl"
 
 	TemplateTypesArg -> TemplateArg
 	{
-		# FINAL type() TemplateArg::Type := :types;
-
 		Types: resolver::Type - std::DynVector;
 
 		{
@@ -42,8 +37,6 @@ INCLUDE "../util/dynunion.rl"
 
 	TemplateValuesArg -> TemplateArg
 	{
-		# FINAL type() TemplateArg::Type := :values;
-
 		Values: Expression - std::DynVector;
 
 		{

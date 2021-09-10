@@ -3,8 +3,6 @@ INCLUDE "global.rl"
 
 ::rlc::resolver Namespace -> ScopeItem, Global
 {
-	# FINAL type() ScopeItem::Type := :namespace;
-
 	Entries: Global - std::DynVector;
 
 	{v: scoper::Namespace #\, cache: Cache &}->

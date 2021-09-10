@@ -51,8 +51,7 @@ INCLUDE 'std/streambuffer'
 		file: src::File #&) ScopeItem \
 	{
 		name ::= file.content(entry->name());
-		IF(Owner
-		&& Owner->owner_type() == OwnerType::scopeItem
+		IF(<<ScopeItem #*>>(Owner)
 		&& <ScopeItem \>(Owner)->Templates.find(name))
 			THROW "shadowing template parameter";
 
@@ -74,8 +73,7 @@ INCLUDE 'std/streambuffer'
 	{
 		IF(Parent)
 			Parent->print_name(o);
-		IF(!Owner
-		|| Owner->owner_type() != OwnerType::scopeItem)
+		IF(!<<ScopeItem #*>>(Owner))
 			RETURN;
 
 		IF(Parent && Parent->Parent)

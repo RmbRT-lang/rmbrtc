@@ -7,9 +7,6 @@ INCLUDE 'std/tags'
 	std::NoMove; // Don't move because of Cache's pointer tracking.
 	std::NoCopy;
 
-	TYPE Type := scoper::ScopeItem::Type;
-	# ABSTRACT type() Type;
-
 	Name: scoper::String;
 
 

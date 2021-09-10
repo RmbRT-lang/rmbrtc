@@ -4,8 +4,6 @@ INCLUDE "member.rl"
 
 ::rlc::resolver Destructor -> Member, ScopeItem
 {
-	# FINAL type() ScopeItem::Type := :destructor;
-
 	Body: BlockStatement;
 	Inline: BOOL;
 

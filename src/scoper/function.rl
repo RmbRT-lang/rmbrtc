@@ -9,8 +9,6 @@ INCLUDE "exprorstmt.rl"
 
 ::rlc::scoper Function VIRTUAL -> ScopeItem
 {
-	# FINAL type() ScopeItem::Type := :function;
-
 	Arguments: std::[LocalVariable\]Vector;
 	Return: VariableType;
 	Body: ExprOrStmt;

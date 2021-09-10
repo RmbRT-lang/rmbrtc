@@ -44,8 +44,6 @@ INCLUDE "detail/statement.rl"
 	Body: std::[BlockStatement]Dynamic;
 	Inline: BOOL;
 
-	# FINAL type() ScopeItem::Type := :constructor;
-
 	{
 		parsed: parser::Constructor #\,
 		file: src::File#&,

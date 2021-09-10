@@ -5,12 +5,8 @@ INCLUDE "scopeitem.rl"
 
 ::rlc::resolver Enum VIRTUAL -> ScopeItem
 {
-	# FINAL type() ScopeItem::Type := :enum;
-
 	Constant -> ScopeItem, Member
 	{
-		# FINAL type() ScopeItem::Type := :enumConstant;
-
 		Value: src::Index;
 		Type: Enum #\;
 

@@ -13,7 +13,6 @@ INCLUDE 'std/vector'
 	Members: Member - std::DynVector;
 	Name: src::String;
 
-	# FINAL type() ScopeItem::Type := :rawtype;
 	# FINAL name() src::String #& := Name;
 	# FINAL overloadable() BOOL := FALSE;
 

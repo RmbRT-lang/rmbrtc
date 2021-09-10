@@ -5,8 +5,6 @@ INCLUDE "scopeitem.rl"
 
 ::rlc::scoper Namespace -> ScopeItem, Global, Scope
 {
-	# FINAL type() ScopeItem::Type := :namespace;
-
 	{
 		parsed: parser::Namespace #\,
 		file: src::File#&,

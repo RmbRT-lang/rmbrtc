@@ -15,27 +15,27 @@ INCLUDE "../destructor.rl"
 	cache: Cache &
 ) Member \
 {
-	SWITCH(t ::= <<scoper::ScopeItem #\>>(member)->type())
+	TYPE SWITCH(member)
 	{
 	DEFAULT:
-		THROW <std::err::Unimplemented>(t.NAME());
-	CASE :typedef:
+		THROW <std::err::Unimplemented>(TYPE(member));
+	CASE scoper::MemberTypedef:
 		RETURN std::[MemberTypedef]new(<<scoper::MemberTypedef #\>>(member), cache);
-	CASE :function:
+	CASE scoper::MemberFunction:
 		RETURN std::[MemberFunction]new(<<scoper::MemberFunction#\>>(member), cache);
-	CASE :variable:
+	CASE scoper::MemberVariable:
 		RETURN std::[MemberVariable]new(<<scoper::MemberVariable#\>>(member), cache);
-	CASE :class:
+	CASE scoper::MemberClass:
 		RETURN std::[MemberClass]new(<<scoper::MemberClass#\>>(member), cache);
-	CASE :rawtype:
+	CASE scoper::MemberRawtype:
 		RETURN std::[MemberRawtype]new(<<scoper::MemberRawtype#\>>(member), cache);
-	CASE :union:
+	CASE scoper::MemberUnion:
 		RETURN std::[MemberUnion]new(<<scoper::MemberUnion#\>>(member), cache);
-	CASE :enum:
+	CASE scoper::MemberEnum:
 		RETURN std::[MemberEnum]new(<<scoper::MemberEnum#\>>(member), cache);
-	CASE :constructor:
+	CASE scoper::Constructor:
 		RETURN std::[Constructor]new(<<scoper::Constructor#\>>(member), cache);
-	CASE :destructor:
+	CASE scoper::Destructor:
 		RETURN std::[Destructor]new(<<scoper::Destructor#\>>(member), cache);
 	}
 }

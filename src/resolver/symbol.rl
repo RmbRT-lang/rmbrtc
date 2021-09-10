@@ -214,10 +214,8 @@ INCLUDE "../scoper/fileregistry.rl"
 				name ::= reference.Children[0].Name;
 				DO()
 				{
-					IF(symbolScope->Owner
-					&& symbolScope->Owner->owner_type() == :scopeItem)
+					IF(item ::= <<scoper::ScopeItem #*>>(symbolScope->Owner))
 					{
-						item ::= <<scoper::ScopeItem #\>>(symbolScope->Owner);
 						IF(decl ::= item->Templates.find(name))
 							IF(reference.Children[0].Templates)
 								THROW <NotResolved>(
@@ -377,25 +375,25 @@ INCLUDE "../scoper/fileregistry.rl"
 		item # ::= &*itemGroup->Items[0];
 		IF(index == ##symbol.Children-1)
 		{
-			SWITCH(type ::= item->type())
+			TYPE SWITCH(item)
 			{
-			CASE :variable:
+			CASE scoper::Variable:
 				{
 					IF(var ::= <<scoper::LocalVariable #*>>(item))
 						RETURN var->Position <= position;
 					RETURN TRUE;
 				}
-			CASE :function, :externSymbol:
+			CASE scoper::Function, scoper::ExternSymbol:
 				RETURN TRUE;
 			}
 		}
 
-		SWITCH(type ::= item->type())
+		TYPE SWITCH(item)
 		{
 		CASE
-			:variable,
-			:function,
-			:externSymbol:
+			scoper::Variable,
+			scoper::Function,
+			scoper::ExternSymbol:
 			RETURN FALSE;
 		}
 
@@ -406,25 +404,29 @@ INCLUDE "../scoper/fileregistry.rl"
 	/)
 	STATIC primaryScope(item: scoper::ScopeItem #\) {scoper::Scope #*, BOOL}
 	{
-		SWITCH(type ::= item->type())
+		TYPE SWITCH(item)
 		{
 		DEFAULT:
-			THROW <std::err::Unimplemented>(type.NAME());
-		CASE :class:
+			THROW <std::err::Unimplemented>(TYPE(item));
+		CASE scoper::Class:
 			RETURN (<scoper::Class #\>(item), TRUE);
-		CASE :rawtype:
+		CASE scoper::Rawtype:
 			RETURN (<scoper::Rawtype #\>(item), TRUE);
-		CASE :union:
+		CASE scoper::Union:
 			RETURN (<scoper::Union #\>(item), TRUE);
-		CASE :enum:
+		CASE scoper::Enum:
 			RETURN (<scoper::Enum #\>(item), TRUE);
-		CASE :namespace:
+		CASE scoper::Namespace:
 			RETURN (<scoper::Namespace #\>(item), TRUE);
-		CASE :mask:
+		CASE scoper::Mask:
 			RETURN (<scoper::Mask #\>(item), TRUE);
-		CASE :typedef:
+		CASE scoper::Typedef:
 			RETURN (NULL, TRUE);
-		CASE :variable, :enumConstant, :function, :externSymbol:
+		CASE
+			scoper::Variable,
+			scoper::Enum::Constant,
+			scoper::Function,
+			scoper::ExternSymbol:
 			RETURN (NULL, FALSE);
 		}
 	}

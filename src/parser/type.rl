@@ -4,22 +4,8 @@ INCLUDE "expression.rl"
 
 ::rlc::parser
 {
-	ENUM TypeType
-	{
-		signature,
-		void,
-		null,
-		name,
-		symbolConstant,
-		tuple,
-		expression,
-		builtin
-	}
-
 	Type VIRTUAL
 	{
-		# ABSTRACT type() TypeType;
-
 		ENUM ReferenceType
 		{
 			none,
@@ -204,7 +190,6 @@ INCLUDE "expression.rl"
 
 	Signature -> Type
 	{
-		# FINAL type() TypeType := :signature;
 		{};
 
 		Args: Type - std::DynVector;
@@ -246,8 +231,6 @@ INCLUDE "expression.rl"
 
 	Void -> Type
 	{
-		# FINAL type() TypeType := :void;
-
 		parse(p: Parser&) BOOL
 		{
 			IF(!p.consume(:void))
@@ -259,8 +242,6 @@ INCLUDE "expression.rl"
 
 	Null -> Type
 	{
-		# FINAL type() TypeType := :null;
-
 		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:null))
@@ -272,8 +253,6 @@ INCLUDE "expression.rl"
 
 	SymbolConstantType -> Type
 	{
-		# FINAL type() TypeType := :symbolConstant;
-
 		Name: src::String;
 
 		parse(p: Parser &) BOOL
@@ -290,8 +269,6 @@ INCLUDE "expression.rl"
 
 	TupleType -> Type
 	{
-		# FINAL type() TypeType := :tuple;
-
 		Types: Type - std::DynVector;
 
 		parse(p: Parser &) BOOL
@@ -317,8 +294,6 @@ INCLUDE "expression.rl"
 
 	TypeOfExpression -> Type
 	{
-		# FINAL type() TypeType := :expression;
-
 		Expression: std::[parser::Expression]Dynamic;
 
 		parse(p: Parser &) BOOL
@@ -338,7 +313,6 @@ INCLUDE "expression.rl"
 
 	TypeName -> Type
 	{
-		# FINAL type() TypeType := :name;
 		Name: Symbol;
 		NoDecay: BOOL;
 
@@ -366,8 +340,6 @@ INCLUDE "expression.rl"
 			s4, u4,
 			s8, u8
 		}
-
-		# FINAL type() TypeType := :builtin;
 
 		Kind: Primitive;
 

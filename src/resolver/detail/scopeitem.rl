@@ -14,5 +14,5 @@ INCLUDE "../variable.rl"
 	ELSE IF(it ::= <<scoper::LocalVariable #*>>(scoped))
 		RETURN <<ScopeItem \>>(std::[LocalVariable]new(it, cache));
 	ELSE
-		THROW <std::err::Unimplemented>(scoped->type().NAME());
+		THROW <std::err::Unimplemented>(TYPE(scoped));
 }

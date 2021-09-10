@@ -7,8 +7,6 @@ INCLUDE "../util/dynunion.rl"
 {
 	Symbol: util::[GlobalVariable; GlobalFunction]DynUnion;
 
-	# FINAL type() ScopeItem::Type := :externSymbol;
-
 	# is_variable() INLINE BOOL := Symbol.is_first();
 	# variable() INLINE GlobalVariable \ := Symbol.first();
 	# is_function() INLINE BOOL := Symbol.is_second();

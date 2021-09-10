@@ -7,8 +7,6 @@ INCLUDE "symbol.rl"
 
 ::rlc::scoper Class VIRTUAL -> ScopeItem, Scope
 {
-	# FINAL type() ScopeItem::Type := :class;
-
 	Inheritance
 	{
 		Visibility: rlc::Visibility;

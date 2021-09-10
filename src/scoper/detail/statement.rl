@@ -10,77 +10,77 @@ INCLUDE 'std/err/unimplemented'
 	parentScope: Scope \
 ) Statement \
 {
-	SWITCH(type ::= parsed->type())
+	TYPE SWITCH(parsed)
 	{
 	DEFAULT:
-		THROW <std::err::Unimplemented>(type.NAME());
-	CASE :assert:
+		THROW <std::err::Unimplemented>(TYPE(parsed));
+	CASE parser::AssertStatement:
 		RETURN std::[AssertStatement]new(
 			position,
 			<parser::AssertStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE :block:
+	CASE parser::BlockStatement:
 		RETURN std::[BlockStatement]new(
 			position,
 			<parser::BlockStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE :if:
+	CASE parser::IfStatement:
 		RETURN std::[IfStatement]new(
 			position,
 			<parser::IfStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE :variable:
+	CASE parser::VariableStatement:
 		RETURN std::[VariableStatement]new(
 			position,
 			<parser::VariableStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE :expression:
+	CASE parser::ExpressionStatement:
 		RETURN std::[ExpressionStatement]new(
 			position,
 			<parser::ExpressionStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE :return:
+	CASE parser::ReturnStatement:
 		RETURN std::[ReturnStatement]new(
 			position,
 			<parser::ReturnStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE :try:
+	CASE parser::TryStatement:
 		RETURN std::[TryStatement]new(
 			position,
 			<parser::TryStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE :throw:
+	CASE parser::ThrowStatement:
 		RETURN std::[ThrowStatement]new(
 			position,
 			<parser::ThrowStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE :loop:
+	CASE parser::LoopStatement:
 		RETURN std::[LoopStatement]new(
 			position,
 			<parser::LoopStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE :switch:
+	CASE parser::SwitchStatement:
 		RETURN std::[SwitchStatement]new(
 			position,
 			<parser::SwitchStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE :break:
+	CASE parser::BreakStatement:
 		RETURN std::[BreakStatement]new(
 			position,
 			<parser::BreakStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE :continue:
+	CASE parser::ContinueStatement:
 		RETURN std::[ContinueStatement]new(
 			position,
 			<parser::ContinueStatement #\>(parsed),
@@ -159,8 +159,6 @@ INCLUDE 'std/err/unimplemented'
 	{
 		Expression: std::[scoper::Expression]Dynamic;
 
-		# FINAL type() StatementType := StatementType::assert;
-
 		# FINAL variables() UM := 0;
 
 		{
@@ -176,8 +174,6 @@ INCLUDE 'std/err/unimplemented'
 	{
 		Scope: scoper::Scope;
 		Statements: Statement - std::DynVector;
-
-		# FINAL type() StatementType := StatementType::block;
 
 		# FINAL variables() UM := Statements.empty()
 			? 0
@@ -211,8 +207,6 @@ INCLUDE 'std/err/unimplemented'
 		Then: std::[Statement]Dynamic;
 		Else: std::[Statement]Dynamic;
 
-		# FINAL type() StatementType := StatementType::if;
-
 		# FINAL variables() UM := Else
 			? Else->Position + Else->variables() - Statement::Position
 			: Then->Position + Then->variables() - Statement::Position;
@@ -240,7 +234,6 @@ INCLUDE 'std/err/unimplemented'
 		Variable: LocalVariable \;
 		Static: BOOL;
 
-		# FINAL type() StatementType := StatementType::variable;
 		# FINAL variables() UM := 1;
 
 		{
@@ -261,7 +254,6 @@ INCLUDE 'std/err/unimplemented'
 	{
 		Expression: std::[scoper::Expression]Dynamic;
 
-		# FINAL type() StatementType := StatementType::expression;
 		# FINAL variables() UM := 0;
 
 		{
@@ -277,7 +269,6 @@ INCLUDE 'std/err/unimplemented'
 	{
 		Expression: std::[scoper::Expression]Dynamic;
 
-		# FINAL type() StatementType := StatementType::return;
 		# FINAL variables() UM := 0;
 
 		# is_void() INLINE BOOL := !Expression;
@@ -299,7 +290,6 @@ INCLUDE 'std/err/unimplemented'
 		Catches: std::[CatchStatement]Vector;
 		Finally: std::[Statement]Dynamic;
 
-		# FINAL type() StatementType := StatementType::try;
 		# FINAL variables() UM
 		{
 			vars ::= Body->variables();
@@ -359,7 +349,6 @@ INCLUDE 'std/err/unimplemented'
 		ValueType: Type;
 		Value: std::[Expression]Dynamic;
 
-		# FINAL type() StatementType := StatementType::throw;
 		# FINAL variables() UM := 0;
 
 		{
@@ -386,7 +375,6 @@ INCLUDE 'std/err/unimplemented'
 		PostLoop: std::[Expression]Dynamic;
 		Label: ControlLabel;
 
-		# FINAL type() StatementType := StatementType::loop;
 		# FINAL variables() UM
 		{
 			vars ::= Body->variables();
@@ -439,8 +427,6 @@ INCLUDE 'std/err/unimplemented'
 		Cases: std::[CaseStatement]Vector;
 		Label: ControlLabel;
 
-		# FINAL type() StatementType := StatementType::switch;
-
 		# FINAL variables() UM
 			:= Cases.back().position() + Cases.back().variables() - Statement::Position;
 
@@ -489,7 +475,6 @@ INCLUDE 'std/err/unimplemented'
 	{
 		Label: ControlLabel;
 
-		# FINAL type() StatementType := StatementType::break;
 		# FINAL variables() UM := 0;
 
 		{
@@ -505,7 +490,6 @@ INCLUDE 'std/err/unimplemented'
 	{
 		Label: ControlLabel;
 
-		# FINAL type() StatementType := StatementType::continue;
 		# FINAL variables() UM := 0;
 
 		{

@@ -10,7 +10,6 @@ INCLUDE 'std/vector'
 	Name: src::String;
 
 	# FINAL name() src::String#& := Name;
-	# FINAL type() ScopeItem::Type := :namespace;
 	# FINAL overloadable() BOOL := TRUE;
 
 	parse(

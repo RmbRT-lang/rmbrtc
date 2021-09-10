@@ -5,8 +5,6 @@ INCLUDE "symbol.rl"
 
 ::rlc::resolver Class VIRTUAL -> ScopeItem
 {
-	# FINAL type() ScopeItem::Type := :class;
-
 	Inheritance
 	{
 		Visibility: rlc::Visibility;
@@ -37,21 +35,25 @@ INCLUDE "symbol.rl"
 		FOR(group ::= class->Items.start(); group; ++group)
 			FOR(item ::= (*group)->Items.start(); item; ++item)
 			{
-				member # ::= <<scoper::Member#\>>(*item);
-				SWITCH(type ::= (*item)->type())
+				member # ::= <<scoper::Member#\>>(&**item);
+				TYPE SWITCH(member)
 				{
-				CASE :variable:
+				CASE scoper::MemberVariable:
 					Fields += :create(<scoper::MemberVariable#\>(member), cache);
-				CASE :function:
+				CASE scoper::MemberFunction:
 					Functions += :create(<scoper::MemberFunction#\>(member), cache);
-				CASE :constructor:
+				CASE scoper::Constructor:
 					Constructors += :create(<scoper::Constructor#\>(member), cache);
-				CASE :destructor:
+				CASE scoper::Destructor:
 					Destructor := :create(<scoper::Destructor#\>(member), cache);
-				CASE :enum, :typedef, :class, :rawtype, :union:
+				CASE scoper::MemberEnum,
+					scoper::MemberTypedef,
+					scoper::MemberClass,
+					scoper::MemberRawtype,
+					scoper::MemberUnion:
 					Types += :gc(<<<Member>>>(member, cache));
 				DEFAULT:
-					THROW <std::err::Unimplemented>(type.NAME());
+					THROW <std::err::Unimplemented>(TYPE(member));
 				}
 			}
 
@@ -62,7 +64,6 @@ INCLUDE "symbol.rl"
 
 ::rlc::resolver GlobalClass -> Global, Class
 {
-
 	{
 		class: scoper::GlobalClass #\,
 		cache: Cache &

@@ -8,31 +8,13 @@ INCLUDE "../parser/global.rl"
 INCLUDE 'std/error'
 INCLUDE 'std/io/format'
 
-::rlc::scoper
-{
-	(// Identifies the kind of object that is owning a scope. /)
-	ENUM OwnerType
-	{
-		scopeItem,
-		statement
-	}
-
-	(// An object that owns a scope. /)
-	ScopeOwner VIRTUAL
-	{
-		# ABSTRACT owner_type() OwnerType;
-	}
-}
+(// An object that owns a scope. /)
+::rlc::scoper ScopeOwner VIRTUAL { }
 
 ::rlc::scoper ScopeItem VIRTUAL -> ScopeOwner
 {
-	# FINAL owner_type() OwnerType := OwnerType::scopeItem;
-
 	Group: detail::ScopeItemGroup \;
 	Templates: TemplateDecls;
-
-	TYPE Type := parser::ScopeItem::Type;
-	# ABSTRACT type() ScopeItem::Type;
 
 	{
 		group: detail::ScopeItemGroup \,
@@ -101,18 +83,18 @@ INCLUDE 'std/io/format'
 	group: detail::ScopeItemGroup \
 ) {ScopeItem \, BOOL}
 {
-	type ::= entry->type();
+	type ::= TYPE(entry);
 
 	IF(group->Items)
 	{
 		cmp # ::= &*group->Items.front();
 
-		IF(cmp->type() != type)
+		IF(TYPE(*cmp) != type)
 			THROW <IncompatibleOverloadError>(cmp, entry, file, "kind mismatch");
 		IF(!entry->overloadable())
 			THROW <IncompatibleOverloadError>(cmp, entry, file, "not overloadable");
 
-		IF(type == :namespace)
+		IF(type == TYPE TYPE(parser::Namespace))
 		{
 			ns ::= <<parser::Namespace #\>>(entry);
 			cmpns ::= <<scoper::Namespace \>>(cmp);
@@ -130,5 +112,5 @@ INCLUDE 'std/io/format'
 	ELSE IF(p ::= <<parser::LocalVariable #*>>(entry))
 		RETURN (std::[LocalVariable]new(p, file, group), TRUE);
 	ELSE
-		THROW <std::err::Unimplemented>(type.NAME());
+		THROW <std::err::Unimplemented>(type);
 }

@@ -6,15 +6,12 @@ INCLUDE 'std/vector'
 
 ::rlc::parser Enum VIRTUAL -> ScopeItem
 {
-	# FINAL type() ScopeItem::Type := :enum;
-
 	Constant -> ScopeItem, Member
 	{
 		Name: src::String;
 		Value: src::Index;
 
 		# FINAL name() src::String#& := Name;
-		# FINAL type() ScopeItem::Type := :enumConstant;
 		# FINAL overloadable() BOOL := FALSE;
 	}
 

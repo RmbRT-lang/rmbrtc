@@ -2,8 +2,6 @@ INCLUDE "../parser/typedef.rl"
 
 ::rlc::scoper Typedef VIRTUAL -> ScopeItem
 {
-	# FINAL type() ScopeItem::Type := :typedef;
-
 	Type: std::[scoper::Type]Dynamic;
 
 	{

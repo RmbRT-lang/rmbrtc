@@ -8,7 +8,6 @@ INCLUDE "member.rl"
 	Type: std::[parser::Type]Dynamic;
 	Name: src::String;
 
-	# FINAL type() ScopeItem::Type := :typedef;
 	# FINAL name() src::String#& := Name;
 	# FINAL overloadable() BOOL := FALSE;
 

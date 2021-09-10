@@ -90,8 +90,6 @@ INCLUDE 'std/vector'
 
 	SymbolChildExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :symbolChild;
-
 		Child: Symbol::Child;
 
 		parse(p: Parser &) BOOL := Child.parse(p, TRUE);
@@ -99,8 +97,6 @@ INCLUDE 'std/vector'
 
 	SymbolExpression -> Expression
 	{
-		# FINAL type() ExpressionType := :symbol;
-
 		Symbol: parser::Symbol;
 
 		parse(p: Parser &) BOOL := Symbol.parse(p, TRUE);
