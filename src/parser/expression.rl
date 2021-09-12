@@ -22,6 +22,7 @@ INCLUDE 'std/vector'
 	postIncrement, postDecrement,
 	count,
 	baseAddr,
+	valueOf,
 
 	async,
 	fullAsync,
@@ -310,7 +311,8 @@ INCLUDE 'std/vector'
 		{
 			STATIC k_postfix_ops: {tok::Type, Operator}#[](
 				(:doublePlus, :postIncrement),
-				(:doubleMinus, :postDecrement));
+				(:doubleMinus, :postDecrement),
+				(:exclamationMark, :valueOf));
 
 			FOR(i ::= 0; i < ##k_postfix_ops; i++)
 				IF(p.consume(k_postfix_ops[i].(0)))
@@ -449,7 +451,8 @@ INCLUDE 'std/vector'
 			STATIC postfix: {tok::Type, Operator}#[](
 				(:doublePlus, :postIncrement),
 				(:doubleMinus, :postDecrement),
-				(:tripleDot, :variadicExpand));
+				(:tripleDot, :variadicExpand),
+				(:exclamationMark, :valueOf));
 
 			// (tok, op, opctor, opTuple, opDtor)
 			STATIC memberAccess: {tok::Type, Operator, Operator, Operator, Operator}#[](
