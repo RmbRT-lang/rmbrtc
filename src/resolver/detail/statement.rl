@@ -31,6 +31,8 @@ INCLUDE 'std/err/unimplemented'
 		RETURN std::[LoopStatement]new(<scoper::LoopStatement #\>(stmt), cache);
 	CASE scoper::SwitchStatement:
 		RETURN std::[SwitchStatement]new(<scoper::SwitchStatement #\>(stmt), cache);
+	CASE scoper::TypeSwitchStatement:
+		RETURN std::[TypeSwitchStatement]new(<scoper::TypeSwitchStatement #\>(stmt), cache);
 	CASE scoper::BreakStatement:
 		RETURN std::[BreakStatement]new(<scoper::BreakStatement #\>(stmt));
 	CASE scoper::ContinueStatement:
@@ -235,6 +237,41 @@ INCLUDE 'std/err/unimplemented'
 		{
 			FOR(value ::= case.Values.start(); value; ++value)
 				Values += :gc(<<<Expression>>>(case.Body->ParentScope, *value));
+		}
+	}
+
+	TypeSwitchStatement -> Statement
+	{
+		Static: BOOL;
+		Initial: VarOrExp;
+		Value: VarOrExp;
+		Cases: std::[TypeCaseStatement]Vector;
+		Label: scoper::ControlLabel;
+
+		{stmt: scoper::TypeSwitchStatement #\, cache: Cache &}
+		->	Statement(stmt)
+		:	Static(stmt->Static),
+			Initial(&stmt->InitScope, stmt->Initial, cache),
+			Value(&stmt->ValueScope, stmt->Value, cache),
+			Label(stmt->Label)
+		{
+			FOR(case ::= stmt->Cases.start(); case; ++case)
+				Cases += (*case, cache);
+		}
+	}
+
+	TypeCaseStatement
+	{
+		Types: Type - std::DynVector;
+		Body: std::[Statement]Dynamic;
+
+		# is_default() INLINE BOOL := Types.empty();
+
+		{case: scoper::TypeCaseStatement #&, cache: Cache &}:
+			Body(:gc(<<<Statement>>>(case.Body, cache)))
+		{
+			FOR(type ::= case.Types.start(); type; ++type)
+				Types += :gc(<<<Type>>>(case.Body->ParentScope, *type));
 		}
 	}
 

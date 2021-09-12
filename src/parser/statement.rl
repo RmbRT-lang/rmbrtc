@@ -37,6 +37,7 @@ INCLUDE "../util/dynunion.rl"
 			|| [ThrowStatement]parse_impl(p, ret)
 			|| [LoopStatement]parse_impl(p, ret)
 			|| [SwitchStatement]parse_impl(p, ret)
+			|| [TypeSwitchStatement]parse_impl(p, ret)
 			|| [BreakStatement]parse_impl(p, ret)
 			|| [ContinueStatement]parse_impl(p, ret))
 				RETURN ret;
@@ -57,6 +58,7 @@ INCLUDE "../util/dynunion.rl"
 			|| [ThrowStatement]parse_impl(p, ret)
 			|| [LoopStatement]parse_impl(p, ret)
 			|| [SwitchStatement]parse_impl(p, ret)
+			|| [TypeSwitchStatement]parse_impl(p, ret)
 			|| [BreakStatement]parse_impl(p, ret)
 			|| [ContinueStatement]parse_impl(p, ret))
 				RETURN ret;
@@ -516,6 +518,78 @@ INCLUDE "../util/dynunion.rl"
 					IF(!(value := Expression::parse(p)))
 						p.fail("expected expression");
 					Values += :gc(value);
+				} WHILE(p.consume(:comma))
+			} ELSE
+				IF(!p.consume(:default))
+					RETURN FALSE;
+
+			p.expect(:colon);
+
+			Body := :gc(Statement::parse_body(p));
+
+			RETURN TRUE;
+		}
+	}
+
+	TypeSwitchStatement -> Statement
+	{
+		Static: BOOL;
+		Initial: VarOrExp;
+		Value: VarOrExp;
+		Cases: std::[TypeCaseStatement]Vector;
+		Label: ControlLabel;
+
+		parse(p: Parser &) BOOL
+		{
+			IF(!p.match_ahead(:switch) || !p.consume(:type))
+				RETURN FALSE;
+			p.consume(NULL);
+			Static := p.consume(:static);
+
+			Label.parse(p);
+			p.expect(:parentheseOpen);
+
+			val: VarOrExp;
+			val.parse(p);
+
+			IF(p.consume(:semicolon))
+			{
+				Initial := &&val;
+				Value.parse(p);
+			} ELSE
+				Value := &&val;
+
+			p.expect(:parentheseClose);
+			p.expect(:braceOpen);
+
+			DO(case: TypeCaseStatement)
+			{
+				IF(!case.parse(p))
+					p.fail("expected case");
+
+				Cases += &&case;
+			} WHILE(!p.consume(:braceClose))
+
+			RETURN TRUE;
+		}
+	}
+
+	TypeCaseStatement
+	{
+		Types: Type - std::DynVector;
+		Body: std::[Statement]Dynamic;
+
+		# is_default() INLINE BOOL := Types.empty();
+
+		parse(p: Parser &) BOOL
+		{
+			IF(p.consume(:case))
+			{
+				DO(type: Type *)
+				{
+					IF(!(type := Type::parse(p)))
+						p.fail("expected type");
+					Types += :gc(type);
 				} WHILE(p.consume(:comma))
 			} ELSE
 				IF(!p.consume(:default))

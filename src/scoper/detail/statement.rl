@@ -74,6 +74,12 @@ INCLUDE 'std/err/unimplemented'
 			<parser::SwitchStatement #\>(parsed),
 			file,
 			parentScope);
+	CASE parser::TypeSwitchStatement:
+		RETURN std::[TypeSwitchStatement]new(
+			position,
+			<parser::TypeSwitchStatement #\>(parsed),
+			file,
+			parentScope);
 	CASE parser::BreakStatement:
 		RETURN std::[BreakStatement]new(
 			position,
@@ -468,6 +474,61 @@ INCLUDE 'std/err/unimplemented'
 		{
 			FOR(i ::= 0; i < ##parsed.Values; i++)
 				Values += :gc(<<<Expression>>>(position, parsed.Values[i], file));
+		}
+	}
+
+	TypeSwitchStatement -> Statement
+	{
+		Static: BOOL;
+		InitScope: Scope;
+		ValueScope: Scope;
+		Initial: VarOrExp;
+		Value: VarOrExp;
+		Cases: std::[TypeCaseStatement]Vector;
+		Label: ControlLabel;
+
+		# FINAL variables() UM
+			:= Cases.back().position() + Cases.back().variables() - Statement::Position;
+
+		{
+			position: UM,
+			parsed: parser::TypeSwitchStatement #\,
+			file: src::File#&,
+			parentScope: Scope \
+		}->	Statement(position, parentScope)
+		:	Static(parsed->Static),
+			InitScope(&THIS, parentScope),
+			ValueScope(&THIS, &InitScope),
+			Initial(&position, parsed->Initial, file, &InitScope),
+			Value(&position, parsed->Value, file, &ValueScope),
+			Label(parsed->Label, file)
+		{
+			FOR(i ::= 0; i < ##parsed->Cases; i++)
+			{
+				Cases += (position, parsed->Cases[i], file, &ValueScope);
+				position += Cases.back().variables();
+			}
+		}
+	}
+
+	TypeCaseStatement
+	{
+		Types: Type - std::DynVector;
+		Body: std::[Statement]Dynamic;
+
+		# is_default() INLINE BOOL := Types.empty();
+		# variables() UM := Body->variables();
+		# position() UM := Body->Position;
+
+		{
+			position: UM,
+			parsed: parser::TypeCaseStatement#&,
+			file: src::File#&,
+			parentScope: Scope \}:
+			Body(:gc, <<<Statement>>>(position, parsed.Body, file, parentScope))
+		{
+			FOR(i ::= 0; i < ##parsed.Types; i++)
+				Types += :gc(<<<Type>>>(parsed.Types[i], file));
 		}
 	}
 
