@@ -382,8 +382,7 @@ INCLUDE "../scoper/fileregistry.rl"
 			CASE :variable:
 				{
 					IF(var ::= <<scoper::LocalVariable #*>>(item))
-						IF(var->Position <= position)
-							RETURN TRUE;
+						RETURN var->Position <= position;
 					RETURN TRUE;
 				}
 			CASE :function, :externSymbol:

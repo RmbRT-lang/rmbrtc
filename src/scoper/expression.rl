@@ -8,6 +8,13 @@ INCLUDE "../parser/expression.rl"
 
 	Position: UM;
 
+	VIRTUAL set_position_impl(p: UM) VOID {}
+	set_position(position: UM) VOID
+	{
+		Position := position;
+		set_position_impl(position);
+	}
+
 	{}: Position(0);
 	{position: UM}: Position(position);
 

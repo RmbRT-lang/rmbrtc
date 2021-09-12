@@ -135,6 +135,13 @@ INCLUDE 'std/err/unimplemented'
 		Operands: Expression - std::DynVector;
 		Op: Operator;
 
+		FINAL set_position_impl(position: UM) VOID
+		{
+			Expression::Position := position;
+			FOR(it ::= Operands.start(); it; ++it)
+				(*it)->set_position(position);
+		}
+
 		{
 			position: UM,
 			parsed: parser::OperatorExpression #\,
@@ -166,6 +173,12 @@ INCLUDE 'std/err/unimplemented'
 		Type: std::[scoper::Type]Dynamic;
 		Values: Expression-std::DynVector;
 
+		FINAL set_position_impl(pos: UM) VOID
+		{
+			FOR(it ::= Values.start(); it; ++it)
+				(*it)->set_position(pos);
+		}
+
 		{
 			position: UM,
 			parsed: parser::CastExpression #\,
@@ -184,6 +197,12 @@ INCLUDE 'std/err/unimplemented'
 		# FINAL type() ExpressionType := :sizeof;
 
 		Term: util::[Type; Expression]DynUnion;
+
+		FINAL set_position_impl(pos: UM) VOID
+		{
+			IF(Term.is_second())
+				Term.second()->set_position(pos);
+		}
 
 		{
 			position: UM,

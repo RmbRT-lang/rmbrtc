@@ -83,7 +83,8 @@ INCLUDE "../util/dynunion.rl"
 	set_position(position: UM) VOID
 	{
 		Position := position;
-		FOR(it ::= Variable::InitValues.start(); it; ++it)
-			(*it)->Position := position;
+		FOR(it ::= Variable::InitValues.start(); it; ++it) {
+			(*it)->set_position(position);
+		}
 	}
 }
