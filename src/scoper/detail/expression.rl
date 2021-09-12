@@ -40,6 +40,8 @@ INCLUDE 'std/err/unimplemented'
 		RETURN std::[CastExpression]new(position, <parser::CastExpression #\>(parsed), file);
 	CASE parser::SizeofExpression:
 		RETURN std::[SizeofExpression]new(position, <parser::SizeofExpression #\>(parsed), file);
+	CASE parser::TypeofExpression:
+		RETURN std::[TypeofExpression]new(position, <parser::TypeofExpression #\>(parsed), file);
 	}
 }
 
@@ -186,6 +188,31 @@ INCLUDE 'std/err/unimplemented'
 			parsed: parser::SizeofExpression #\,
 			file: src::File #&
 		}->	Expression(position)
+		{
+			IF(parsed->Term.is_type())
+				Term := :gc(<<<Type>>>(parsed->Term.type(), file));
+			ELSE
+				Term := :gc(<<<Expression>>>(position, parsed->Term.expression(), file));
+		}
+	}
+
+	TypeofExpression -> Expression
+	{
+		Term: util::[Type; Expression]DynUnion;
+		Static: BOOL;
+
+		FINAL set_position_impl(pos: UM) VOID
+		{
+			IF(Term.is_second())
+				Term.second()->set_position(pos);
+		}
+
+		{
+			position: UM,
+			parsed: parser::TypeofExpression #\,
+			file: src::File #&
+		}->	Expression(position),
+			Static(parsed->Static)
 		{
 			IF(parsed->Term.is_type())
 				Term := :gc(<<<Type>>>(parsed->Term.type(), file));

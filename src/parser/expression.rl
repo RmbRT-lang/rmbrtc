@@ -90,7 +90,8 @@ INCLUDE 'std/vector'
 			|| [ThisExpression]parse_impl(p, ret)
 			|| [NullExpression]parse_impl(p, ret)
 			|| [CastExpression]parse_impl(p, ret)
-			|| [SizeofExpression]parse_impl(p, ret))
+			|| [SizeofExpression]parse_impl(p, ret)
+			|| [TypeofExpression]parse_impl(p, ret))
 			{
 				RETURN ret;
 			}
@@ -683,6 +684,46 @@ INCLUDE 'std/vector'
 					Term := :gc(type);
 				ELSE
 					p.fail("expected type");
+			}
+
+			p.expect(:parentheseClose);
+
+			RETURN TRUE;
+		}
+	}
+
+	TypeofExpression -> Expression
+	{
+		Term: TypeOrExpr;
+		Static: BOOL; // Only affects expressions.
+
+		# is_expression() INLINE BOOL := Term.is_expression();
+		# is_type() INLINE BOOL := Term.is_type();
+
+		parse(p: Parser&) BOOL
+		{
+			IF(!p.consume(:type))
+				RETURN FALSE;
+
+			t: Trace(&p, "type expression");
+
+			expectType ::= FALSE;
+			IF(!(Static := p.consume(:static)))
+				expectType := p.consume(:type);
+
+			p.expect(:parentheseOpen);
+			IF(expectType)
+			{
+				IF(type ::= Type::parse(p))
+					Term := :gc(type);
+				ELSE
+					p.fail("expected type");
+			} ELSE
+			{
+				IF(exp ::= Expression::parse(p))
+					Term := :gc(exp);
+				ELSE
+					p.fail("expected expression");
 			}
 
 			p.expect(:parentheseClose);

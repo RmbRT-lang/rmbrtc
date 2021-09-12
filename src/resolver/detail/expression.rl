@@ -47,6 +47,8 @@ INCLUDE "../symbol.rl"
 		RETURN std::[CastExpression]new(<scoper::CastExpression #\>(ref), scope);
 	CASE scoper::SizeofExpression:
 		RETURN std::[SizeofExpression]new(<scoper::SizeofExpression #\>(ref), scope);
+	CASE scoper::TypeofExpression:
+		RETURN std::[TypeofExpression]new(<scoper::TypeofExpression #\>(ref), scope);
 	CASE scoper::SymbolConstantExpression:
 		RETURN std::[SymbolConstantExpression]new(<scoper::SymbolConstantExpression #\>(ref));
 	}
@@ -129,6 +131,23 @@ INCLUDE "../symbol.rl"
 			ref: scoper::SizeofExpression #\,
 			scope: scoper::Scope #\
 		}
+		{
+			IF(ref->Term.is_first())
+				Term := :gc(<<<resolver::Type>>>(scope, ref->Term.first()));
+			ELSE
+				Term := :gc(<<<Expression>>>(scope, ref->Term.second()));
+		}
+	}
+
+	TypeofExpression -> Expression
+	{
+		Term: util::[resolver::Type; Expression]DynUnion;
+		Static: BOOL;
+		{
+			ref: scoper::TypeofExpression #\,
+			scope: scoper::Scope #\
+		}:
+			Static(ref->Static)
 		{
 			IF(ref->Term.is_first())
 				Term := :gc(<<<resolver::Type>>>(scope, ref->Term.first()));

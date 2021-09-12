@@ -31,7 +31,6 @@ INCLUDE "../util/dynunion.rl"
 			|| [BlockStatement]parse_impl(p, ret)
 			|| [IfStatement]parse_impl(p, ret)
 			|| [VariableStatement]parse_impl(p, ret)
-			|| [ExpressionStatement]parse_impl(p, ret)
 			|| [ReturnStatement]parse_impl(p, ret)
 			|| [TryStatement]parse_impl(p, ret)
 			|| [ThrowStatement]parse_impl(p, ret)
@@ -39,7 +38,8 @@ INCLUDE "../util/dynunion.rl"
 			|| [SwitchStatement]parse_impl(p, ret)
 			|| [TypeSwitchStatement]parse_impl(p, ret)
 			|| [BreakStatement]parse_impl(p, ret)
-			|| [ContinueStatement]parse_impl(p, ret))
+			|| [ContinueStatement]parse_impl(p, ret)
+			|| [ExpressionStatement]parse_impl(p, ret))
 				RETURN ret;
 			ELSE
 				RETURN NULL;
