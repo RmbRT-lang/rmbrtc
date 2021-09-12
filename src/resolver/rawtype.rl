@@ -6,8 +6,6 @@ INCLUDE "type.rl"
 
 ::rlc::resolver Rawtype VIRTUAL -> ScopeItem
 {
-	# FINAL type() ScopeItem::Type := :rawtype;
-
 	Size: Expression - std::Dynamic;
 	Constructors: Constructor - std::DynVector;
 	Functions: MemberFunction - std::DynVector;
@@ -23,11 +21,11 @@ INCLUDE "type.rl"
 			FOR(it ::= (*group)->Items.start(); it; ++it)
 			{
 				member # ::= <<scoper::Member #\>>(&**it);
-				SWITCH((*it)->type())
+				TYPE SWITCH(member)
 				{
-				CASE :constructor:
+				CASE scoper::Constructor:
 					Constructors += :create(<scoper::Constructor #\>(member), cache);
-				CASE :function:
+				CASE scoper::MemberFunction:
 					Functions += :create(<scoper::MemberFunction #\>(member), cache);
 				DEFAULT:
 					Others += :gc(<<<Member>>>(member, cache));

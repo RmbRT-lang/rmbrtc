@@ -5,8 +5,6 @@ INCLUDE "scopeitem.rl"
 
 ::rlc::resolver Mask VIRTUAL -> ScopeItem
 {
-	# FINAL type() ScopeItem::Type := :mask;
-
 	// Functions that other types must implement.
 	AbstractFunctions: MemberFunction - std::DynVector;
 	// Functions that the mask already implements itself.
@@ -21,9 +19,9 @@ INCLUDE "scopeitem.rl"
 			FOR(item ::= (*group)->Items.start(); item; ++item)
 			{
 				member # ::= <<scoper::Member #\>>(&**item);
-				SWITCH((*item)->type())
+				TYPE SWITCH(member)
 				{
-				CASE :function:
+				CASE scoper::MemberFunction:
 				{
 					fn ::= <scoper::MemberFunction #\>(member);
 					IF(fn->Attribute != :static

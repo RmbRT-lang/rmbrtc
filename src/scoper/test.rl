@@ -4,8 +4,6 @@ INCLUDE "scopeitem.rl"
 
 ::rlc::scoper Test -> Global, ScopeItem
 {
-	# FINAL type() ScopeItem::Type := :test;
-
 	Body: BlockStatement;
 
 	{

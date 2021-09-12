@@ -8,35 +8,27 @@ INCLUDE "controllabel.rl"
 
 INCLUDE "../util/dynunion.rl"
 
-::rlc::scoper
+::rlc::scoper Statement VIRTUAL -> ScopeOwner
 {
-	TYPE StatementType := parser::StatementType;
+	# ABSTRACT variables() UM;
 
-	Statement VIRTUAL -> ScopeOwner
+	Position: UM;
+	ParentScope: Scope \;
+
 	{
-		# FINAL owner_type() OwnerType := OwnerType::statement;
+		position: UM,
+		parentScope: Scope \
+	}:	Position(position),
+		ParentScope(parentScope);
 
-		# ABSTRACT type() StatementType;
-		# ABSTRACT variables() UM;
-
-		Position: UM;
-		ParentScope: Scope \;
-
-		{
-			position: UM,
-			parentScope: Scope \}:
-			Position(position),
-			ParentScope(parentScope);
-
-		<<<
-			position: UM,
-			parsed: parser::Statement #\,
-			file: src::File#&,
-			parentScope: Scope \
-		>>> Statement \ := detail::create_statement(
-			position,
-			parsed,
-			file,
-			parentScope);
-	}
+	<<<
+		position: UM,
+		parsed: parser::Statement #\,
+		file: src::File#&,
+		parentScope: Scope \
+	>>> Statement \ := detail::create_statement(
+		position,
+		parsed,
+		file,
+		parentScope);
 }

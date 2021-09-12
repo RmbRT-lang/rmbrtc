@@ -14,40 +14,40 @@ INCLUDE "../symbol.rl"
 		ref: scoper::Expression #\
 	) Expression \
 {
-	SWITCH(type ::= ref->type())
+	TYPE SWITCH(ref)
 	{
 	DEFAULT:
-		THROW std::err::Unimplemented(type.NAME());
-	CASE :symbol:
+		THROW <std::err::Unimplemented>(TYPE(ref));
+	CASE scoper::SymbolExpression:
 		RETURN std::[ReferenceExpression]new(<scoper::SymbolExpression #\>(ref), scope);
-	CASE :number:
+	CASE scoper::NumberExpression:
 		RETURN std::[NumberExpression]new(<scoper::NumberExpression #\>(ref));
-	CASE :bool:
+	CASE scoper::BoolExpression:
 		RETURN std::[BoolExpression]new(<scoper::BoolExpression #\>(ref));
-	CASE :char:
+	CASE scoper::CharExpression:
 		RETURN std::[CharExpression]new(<scoper::CharExpression #\>(ref));
-	CASE :string:
+	CASE scoper::StringExpression:
 		RETURN std::[StringExpression]new(<scoper::StringExpression #\>(ref));
-	CASE :operator:
+	CASE scoper::OperatorExpression:
 		{
 			op ::= <scoper::OperatorExpression #\>(ref);
 			SWITCH(op->Op)
 			{
 			DEFAULT:
 				RETURN std::[OperatorExpression]new(op, scope);
-			CASE Operator::memberReference, Operator::memberPointer:
+			CASE :memberReference, :memberPointer:
 				RETURN std::[MemberAccessExpression]new(op, scope);
 			}
 		}
-	CASE :this:
+	CASE scoper::ThisExpression:
 		RETURN std::[ThisExpression]new();
-	CASE :null:
+	CASE scoper::NullExpression:
 		RETURN std::[NullExpression]new();
-	CASE :cast:
+	CASE scoper::CastExpression:
 		RETURN std::[CastExpression]new(<scoper::CastExpression #\>(ref), scope);
-	CASE :sizeof:
+	CASE scoper::SizeofExpression:
 		RETURN std::[SizeofExpression]new(<scoper::SizeofExpression #\>(ref), scope);
-	CASE :symbolConstant:
+	CASE scoper::SymbolConstantExpression:
 		RETURN std::[SymbolConstantExpression]new(<scoper::SymbolConstantExpression #\>(ref));
 	}
 }
@@ -58,37 +58,16 @@ INCLUDE "../symbol.rl"
 	{
 		Symbol: resolver::Symbol;
 
-		# FINAL type() Expression::Type := :reference;
-
 		{
 			ref: scoper::SymbolExpression #\,
 			scope: scoper::Scope #\
 		}:	Symbol(:resolve(*scope, ref->Symbol, ref->Position));
 	}
 
-	ConstantExpression VIRTUAL -> Expression
-	{
-		ENUM Type
-		{
-			number,
-			bool,
-			char,
-			string,
-			this,
-			null,
-			sizeof,
-			symbol
-		}
-
-		# FINAL type() Expression::Type := :constant;
-
-		# ABSTRACT value_type() ConstantExpression::Type;
-	}
+	ConstantExpression VIRTUAL -> Expression { }
 
 	MemberAccessExpression -> Expression
 	{
-		# FINAL type() Expression::Type := :member;
-
 		Lhs: Expression - std::Dynamic;
 		MemberName: scoper::String;
 		MemberTemplates: TemplateArg - std::DynVector;
@@ -109,7 +88,6 @@ INCLUDE "../symbol.rl"
 
 	OperatorExpression -> Expression
 	{
-		# FINAL type() Expression::Type := :operator;
 		Op: Operator;
 		Args: Expression - std::DynVector;
 
@@ -126,7 +104,6 @@ INCLUDE "../symbol.rl"
 
 	CastExpression -> Expression
 	{
-		# FINAL type() Expression::Type := :cast;
 		TYPE Kind := scoper::CastExpression::Kind;
 
 		Method: Kind;
@@ -158,23 +135,14 @@ INCLUDE "../symbol.rl"
 			ELSE
 				Term := :gc(<<<Expression>>>(scope, ref->Term.second()));
 		}
-
-		# FINAL value_type() ConstantExpression::Type := :sizeof;
 	}
 
-	ThisExpression -> ConstantExpression
-	{
-		# FINAL value_type() ConstantExpression::Type := :this;
-	}
+	ThisExpression -> ConstantExpression { }
 
-	NullExpression -> ConstantExpression
-	{
-		# FINAL value_type() ConstantExpression::Type := :null;
-	}
+	NullExpression -> ConstantExpression { }
 
 	BoolExpression -> ConstantExpression
 	{
-		# FINAL value_type() ConstantExpression::Type := :bool;
 		Value: BOOL;
 
 		{ref: scoper::BoolExpression #\}: Value(ref->Value);
@@ -182,29 +150,24 @@ INCLUDE "../symbol.rl"
 
 	NumberExpression -> ConstantExpression
 	{
-		# FINAL value_type() ConstantExpression::Type := :number;
-
 		Number: scoper::Number;
 		{ref: scoper::NumberExpression #\}: Number(ref->Number);
 	}
 
 	StringExpression -> ConstantExpression
 	{
-		# FINAL value_type() ConstantExpression::Type := :string;
 		String: scoper::Text;
 		{ref: scoper::StringExpression #\}: String(ref->String);
 	}
 
 	CharExpression -> ConstantExpression
 	{
-		# FINAL value_type() ConstantExpression::Type := :char;
 		Char: scoper::Text;
 		{ref: scoper::CharExpression #\}: Char(ref->Char);
 	}
 
 	SymbolConstantExpression -> ConstantExpression
 	{
-		# FINAL value_type() ConstantExpression::Type := :symbol;
 		Name: scoper::String;
 		{ref: scoper::SymbolConstantExpression #\}: Name(ref->Name);
 	}

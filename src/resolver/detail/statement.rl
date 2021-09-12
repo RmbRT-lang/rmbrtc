@@ -7,33 +7,33 @@ INCLUDE 'std/err/unimplemented'
 	cache: Cache &
 ) Statement \
 {
-	SWITCH(type ::= stmt->type())
+	TYPE SWITCH(stmt)
 	{
 	DEFAULT:
-		THROW <std::err::Unimplemented>(type.NAME());
-	CASE :assert:
+		THROW <std::err::Unimplemented>(TYPE(stmt));
+	CASE scoper::AssertStatement:
 		RETURN std::[AssertStatement]new(<scoper::AssertStatement #\>(stmt));
-	CASE :block:
+	CASE scoper::BlockStatement:
 		RETURN std::[BlockStatement]new(<scoper::BlockStatement #\>(stmt), cache);
-	CASE :if:
+	CASE scoper::IfStatement:
 		RETURN std::[IfStatement]new(<scoper::IfStatement #\>(stmt), cache);
-	CASE :variable:
+	CASE scoper::VariableStatement:
 		RETURN std::[VariableStatement]new(<scoper::VariableStatement #\>(stmt), cache);
-	CASE :expression:
+	CASE scoper::ExpressionStatement:
 		RETURN std::[ExpressionStatement]new(<scoper::ExpressionStatement #\>(stmt));
-	CASE :return:
+	CASE scoper::ReturnStatement:
 		RETURN std::[ReturnStatement]new(<scoper::ReturnStatement #\>(stmt));
-	CASE :try:
+	CASE scoper::TryStatement:
 		RETURN std::[TryStatement]new(<scoper::TryStatement #\>(stmt), cache);
-	CASE :throw:
+	CASE scoper::ThrowStatement:
 		RETURN std::[ThrowStatement]new(<scoper::ThrowStatement #\>(stmt));
-	CASE :loop:
+	CASE scoper::LoopStatement:
 		RETURN std::[LoopStatement]new(<scoper::LoopStatement #\>(stmt), cache);
-	CASE :switch:
+	CASE scoper::SwitchStatement:
 		RETURN std::[SwitchStatement]new(<scoper::SwitchStatement #\>(stmt), cache);
-	CASE :break:
+	CASE scoper::BreakStatement:
 		RETURN std::[BreakStatement]new(<scoper::BreakStatement #\>(stmt));
-	CASE :continue:
+	CASE scoper::ContinueStatement:
 		RETURN std::[ContinueStatement]new(<scoper::ContinueStatement #\>(stmt));
 	}
 }
@@ -71,8 +71,6 @@ INCLUDE 'std/err/unimplemented'
 
 	AssertStatement -> Statement
 	{
-		# FINAL type() Statement::Type := :assert;
-
 		Expression: resolver::Expression - std::Dynamic;
 
 		{stmt: scoper::AssertStatement #\}
@@ -82,8 +80,6 @@ INCLUDE 'std/err/unimplemented'
 
 	BlockStatement -> Statement
 	{
-		# FINAL type() Statement::Type := :block;
-
 		Statements: Statement - std::DynVector;
 
 		{stmt: scoper::BlockStatement #\, cache: Cache &}
@@ -96,8 +92,6 @@ INCLUDE 'std/err/unimplemented'
 
 	IfStatement -> Statement
 	{
-		# FINAL type() Statement::Type := :if;
-
 		Init: VarOrExp;
 		Condition: VarOrExp;
 
@@ -117,8 +111,6 @@ INCLUDE 'std/err/unimplemented'
 
 	VariableStatement -> Statement
 	{
-		# FINAL type() Statement::Type := :variable;
-
 		Static: BOOL;
 		Variable: LocalVariable;
 
@@ -130,8 +122,6 @@ INCLUDE 'std/err/unimplemented'
 
 	ExpressionStatement -> Statement
 	{
-		# FINAL type() Statement::Type := :expression;
-
 		Expression: resolver::Expression - std::Dynamic;
 
 		{stmt: scoper::ExpressionStatement #\}
@@ -141,8 +131,6 @@ INCLUDE 'std/err/unimplemented'
 
 	ReturnStatement -> Statement
 	{
-		# FINAL type() Statement::Type := :return;
-
 		Expression: resolver::Expression - std::Dynamic;
 
 		{stmt: scoper::ReturnStatement #\}
@@ -155,8 +143,6 @@ INCLUDE 'std/err/unimplemented'
 
 	TryStatement -> Statement
 	{
-		# FINAL type() Statement::Type := :try;
-
 		Body: std::[Statement]Dynamic;
 		Catches: std::[CatchStatement]Vector;
 		Finally: std::[Statement]Dynamic;
@@ -183,8 +169,6 @@ INCLUDE 'std/err/unimplemented'
 
 	ThrowStatement -> Statement
 	{
-		# FINAL type() Statement::Type := :throw;
-
 		TYPE Type := scoper::ThrowStatement::Type;
 
 		ValueType: Type;
@@ -201,8 +185,6 @@ INCLUDE 'std/err/unimplemented'
 
 	LoopStatement -> Statement
 	{
-		# FINAL type() Statement::Type := :loop;
-
 		PostCondition: BOOL;
 		Initial: VarOrExp;
 		Condition: VarOrExp;
@@ -225,8 +207,6 @@ INCLUDE 'std/err/unimplemented'
 
 	SwitchStatement -> Statement
 	{
-		# FINAL type() Statement::Type := :switch;
-
 		Initial: VarOrExp;
 		Value: VarOrExp;
 		Cases: std::[CaseStatement]Vector;
@@ -260,8 +240,6 @@ INCLUDE 'std/err/unimplemented'
 
 	BreakStatement -> Statement
 	{
-		# FINAL type() Statement::Type := :break;
-
 		Label: scoper::ControlLabel;
 
 		{stmt: scoper::BreakStatement #\}
@@ -272,8 +250,6 @@ INCLUDE 'std/err/unimplemented'
 
 	ContinueStatement -> Statement
 	{
-		# FINAL type() Statement::Type := :continue;
-
 		Label: scoper::ControlLabel;
 
 		{stmt: scoper::ContinueStatement #\}

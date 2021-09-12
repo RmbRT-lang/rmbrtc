@@ -17,29 +17,29 @@ INCLUDE 'std/err/unimplemented'
 	file: src::File #&,
 	group: detail::ScopeItemGroup \) Member \
 {
-	SWITCH(type ::= <<parser::ScopeItem #\>>(parsed)->type())
+	TYPE SWITCH(parsed)
 	{
 	DEFAULT:
-		THROW <std::err::Unimplemented>(type.NAME());
-	CASE :class:
+		THROW <std::err::Unimplemented>(TYPE(parsed));
+	CASE parser::MemberClass:
 		RETURN std::[MemberClass]new(<parser::MemberClass #\>(parsed), file, group);
-	CASE :enum:
+	CASE parser::MemberEnum:
 		RETURN std::[MemberEnum]new(<parser::MemberEnum #\>(parsed), file, group);
-	CASE :enumConstant:
+	CASE parser::Enum::Constant:
 		RETURN std::[Enum::Constant]new(<parser::Enum::Constant #\>(parsed), file, group);
-	CASE :variable:
+	CASE parser::MemberVariable:
 		RETURN std::[MemberVariable]new(<parser::MemberVariable #\>(parsed), file, group);
-	CASE :function:
+	CASE parser::MemberFunction:
 		RETURN std::[MemberFunction]new(<parser::MemberFunction #\>(parsed), file, group);
-	CASE :rawtype:
+	CASE parser::MemberRawtype:
 		RETURN std::[MemberRawtype]new(<parser::MemberRawtype #\>(parsed), file, group);
-	CASE :constructor:
+	CASE parser::Constructor:
 		RETURN std::[Constructor]new(<parser::Constructor #\>(parsed), file, group);
-	CASE :destructor:
+	CASE parser::Destructor:
 		RETURN std::[Destructor]new(<parser::Destructor #\>(parsed), file, group);
-	CASE :union:
+	CASE parser::MemberUnion:
 		RETURN std::[MemberUnion]new(<parser::MemberUnion #\>(parsed), file, group);
-	CASE :typedef:
+	CASE parser::MemberTypedef:
 		RETURN std::[MemberTypedef]new(<parser::MemberTypedef #\>(parsed), file, group);
 	}
 }

@@ -15,7 +15,6 @@ INCLUDE 'std/memory'
 	Members: Member - std::DynVector;
 	Name: src::String;
 
-	# FINAL type() ScopeItem::Type := :mask;
 	# FINAL name() src::String#& := Name;
 	# FINAL overloadable() BOOL := FALSE;
 

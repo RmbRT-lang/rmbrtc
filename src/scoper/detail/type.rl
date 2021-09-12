@@ -9,25 +9,25 @@ INCLUDE 'std/err/unimplemented'
 	file: src::File#&
 ) Type \
 {
-	SWITCH(type ::= parsed->type())
+	TYPE SWITCH(parsed)
 	{
 	DEFAULT:
-		THROW std::err::Unimplemented(type.NAME());
-	CASE :signature:
+		THROW <std::err::Unimplemented>(TYPE(parsed));
+	CASE parser::Signature:
 		RETURN std::[Signature]new(<parser::Signature #\>(parsed), file);
-	CASE :symbolConstant:
+	CASE parser::SymbolConstantType:
 		RETURN std::[SymbolConstantType]new(<parser::SymbolConstantType #\>(parsed), file);
-	CASE :void:
+	CASE parser::Void:
 		RETURN std::[Void]new(<parser::Void #\>(parsed), file);
-	CASE :null:
+	CASE parser::Null:
 		RETURN std::[Null]new(<parser::Null #\>(parsed), file);
-	CASE :name:
+	CASE parser::TypeName:
 		RETURN std::[TypeName]new(<parser::TypeName #\>(parsed), file);
-	CASE :tuple:
+	CASE parser::TupleType:
 		RETURN std::[TupleType]new(<parser::TupleType #\>(parsed), file);
-	CASE :expression:
+	CASE parser::TypeOfExpression:
 		RETURN std::[TypeOfExpression]new(<parser::TypeOfExpression #\>(parsed), file);
-	CASE :builtin:
+	CASE parser::BuiltinType:
 		RETURN std::[BuiltinType]new(<parser::BuiltinType #\>(parsed), file);
 	}
 }
@@ -36,8 +36,6 @@ INCLUDE 'std/err/unimplemented'
 {
 	Signature -> Type
 	{
-		# FINAL type() TypeType := :signature;
-
 		Arguments: Type - std::DynVector;
 		Return: std::[Type]Dynamic;
 
@@ -54,8 +52,6 @@ INCLUDE 'std/err/unimplemented'
 
 	SymbolConstantType -> Type
 	{
-		# FINAL type() TypeType := :symbolConstant;
-
 		Name: String;
 
 		{
@@ -67,8 +63,6 @@ INCLUDE 'std/err/unimplemented'
 
 	Void -> Type
 	{
-		# FINAL type() TypeType := :void;
-
 		{
 			parsed: parser::Void #\,
 			file: src::File#&
@@ -77,8 +71,6 @@ INCLUDE 'std/err/unimplemented'
 
 	Null -> Type
 	{
-		# FINAL type() TypeType := :null;
-
 		{
 			parsed: parser::Null #\,
 			file: src::File#&
@@ -87,8 +79,6 @@ INCLUDE 'std/err/unimplemented'
 
 	TypeName -> Type
 	{
-		# FINAL type() TypeType := :name;
-
 		Name: Symbol;
 		NoDecay: BOOL;
 
@@ -102,8 +92,6 @@ INCLUDE 'std/err/unimplemented'
 
 	TupleType -> Type
 	{
-		# FINAL type() TypeType := :tuple;
-
 		Types: Type - std::DynVector;
 
 		{
@@ -118,8 +106,6 @@ INCLUDE 'std/err/unimplemented'
 
 	TypeOfExpression -> Type
 	{
-		# FINAL type() TypeType := :expression;
-
 		Expression: scoper::Expression - std::Dynamic;
 
 		{
@@ -131,8 +117,6 @@ INCLUDE 'std/err/unimplemented'
 
 	BuiltinType -> Type
 	{
-		# FINAL type() TypeType := :builtin;
-
 		TYPE Primitive := parser::BuiltinType::Primitive;
 		Kind: Primitive;
 

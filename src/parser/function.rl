@@ -40,7 +40,6 @@ INCLUDE 'std/help'
 	Name: src::String;
 	Operator: rlc::Operator;
 
-	# FINAL type() ScopeItem::Type := :function;
 	# FINAL name() src::String#& := Name;
 	# FINAL overloadable() BOOL := TRUE;
 

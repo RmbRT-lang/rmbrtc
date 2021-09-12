@@ -10,26 +10,8 @@ INCLUDE "../util/dynunion.rl"
 
 ::rlc::parser
 {
-	ENUM StatementType
-	{
-		assert,
-		block,
-		if,
-		variable,
-		expression,
-		return,
-		try,
-		throw,
-		loop,
-		switch,
-		break,
-		continue
-	}
-
 	Statement VIRTUAL
 	{
-		# ABSTRACT type() StatementType;
-
 		[T: TYPE]
 		PRIVATE STATIC parse_impl(p: Parser &, out: Statement * &) BOOL
 		{
@@ -87,8 +69,6 @@ INCLUDE "../util/dynunion.rl"
 	{
 		Expression: std::[parser::Expression]Dynamic;
 
-		# FINAL type() StatementType := StatementType::assert;
-
 		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:assert))
@@ -144,8 +124,6 @@ INCLUDE "../util/dynunion.rl"
 	{
 		Statements: Statement - std::DynVector;
 
-		# FINAL type() StatementType := StatementType::block;
-
 		parse(p: Parser&) BOOL
 		{
 			IF(!p.consume(:braceOpen))
@@ -178,8 +156,6 @@ INCLUDE "../util/dynunion.rl"
 
 		Then: std::[Statement]Dynamic;
 		Else: std::[Statement]Dynamic;
-
-		# FINAL type() StatementType := StatementType::if;
 
 		parse(p: Parser &) BOOL
 		{
@@ -221,8 +197,6 @@ INCLUDE "../util/dynunion.rl"
 		Variable: LocalVariable;
 		Static: BOOL;
 
-		# FINAL type() StatementType := StatementType::variable;
-
 		parse(p: Parser &) BOOL
 		{
 			Static := p.consume(:static);
@@ -238,8 +212,6 @@ INCLUDE "../util/dynunion.rl"
 	{
 		Expression: std::[parser::Expression]Dynamic;
 
-		# FINAL type() StatementType := StatementType::expression;
-
 		parse(p: Parser &) BOOL
 		{
 			IF(!(Expression := :gc(parser::Expression::parse(p))))
@@ -253,8 +225,6 @@ INCLUDE "../util/dynunion.rl"
 	ReturnStatement -> Statement
 	{
 		Expression: std::[parser::Expression]Dynamic;
-
-		# FINAL type() StatementType := StatementType::return;
 
 		# is_void() INLINE BOOL := !Expression;
 
@@ -276,8 +246,6 @@ INCLUDE "../util/dynunion.rl"
 		Body: std::[Statement]Dynamic;
 		Catches: std::[CatchStatement]Vector;
 		Finally: std::[Statement]Dynamic;
-
-		# FINAL type() StatementType := StatementType::try;
 
 		# has_finally() INLINE BOOL := Finally;
 
@@ -349,8 +317,6 @@ INCLUDE "../util/dynunion.rl"
 		ValueType: Type;
 		Value: std::[Expression]Dynamic;
 
-		# FINAL type() StatementType := StatementType::throw;
-
 		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:throw))
@@ -380,8 +346,6 @@ INCLUDE "../util/dynunion.rl"
 		Body: std::[Statement]Dynamic;
 		PostLoop: std::[Expression]Dynamic;
 		Label: ControlLabel;
-
-		# FINAL type() StatementType := StatementType::loop;
 
 		parse(p: Parser &) BOOL
 		{
@@ -503,8 +467,6 @@ INCLUDE "../util/dynunion.rl"
 		Cases: std::[CaseStatement]Vector;
 		Label: ControlLabel;
 
-		# FINAL type() StatementType := StatementType::switch;
-
 		parse(p: Parser &) BOOL
 		{
 			IF(!p.consume(:switch))
@@ -570,7 +532,6 @@ INCLUDE "../util/dynunion.rl"
 	BreakStatement -> Statement
 	{
 		Label: ControlLabel;
-		# FINAL type() StatementType := StatementType::break;
 
 		parse(p: Parser &) BOOL
 		{
@@ -586,7 +547,6 @@ INCLUDE "../util/dynunion.rl"
 	ContinueStatement -> Statement
 	{
 		Label: ControlLabel;
-		# FINAL type() StatementType := StatementType::continue;
 
 		parse(p: Parser &) BOOL
 		{

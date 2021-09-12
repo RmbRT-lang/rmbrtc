@@ -7,7 +7,6 @@ INCLUDE "member.rl"
 	Name: src::String;
 	Members: Member - std::DynVector;
 
-	# FINAL type() ScopeItem::Type := :union;
 	# FINAL name() src::String #& := Name;
 	# FINAL overloadable() BOOL := FALSE;
 

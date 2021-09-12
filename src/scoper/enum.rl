@@ -2,15 +2,11 @@ INCLUDE "../parser/enum.rl"
 
 ::rlc::scoper Enum VIRTUAL -> ScopeItem, Scope
 {
-	# FINAL type() ScopeItem::Type := :enum;
-
 	Constant -> ScopeItem, Member
 	{
 		Value: src::Size;
 
 		# enum() Enum #\ := <<Enum #\>>(ScopeItem::parent());
-
-		# FINAL type() ScopeItem::Type := :enumConstant;
 
 		{
 			parsed: parser::Enum::Constant #\,

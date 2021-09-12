@@ -7,7 +7,6 @@ INCLUDE "statement.rl"
 	Name: tok::Token;
 	Body: BlockStatement;
 
-	# FINAL type() ScopeItem::Type := :test;
 	# FINAL name() src::String#& := src::String::empty;
 	# FINAL overloadable() BOOL := FALSE;
 

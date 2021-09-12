@@ -6,8 +6,6 @@ INCLUDE "member.rl"
 
 ::rlc::scoper Union VIRTUAL -> ScopeItem, Scope
 {
-	# FINAL type() ScopeItem::Type := :union;
-
 	Fields: std::[MemberVariable \]Vector;
 
 	{

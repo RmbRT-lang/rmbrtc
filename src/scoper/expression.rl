@@ -1,11 +1,7 @@
 INCLUDE "../parser/expression.rl"
 
-::rlc::scoper TYPE ExpressionType := parser::ExpressionType;
-
 ::rlc::scoper Expression VIRTUAL
 {
-	# ABSTRACT type() ExpressionType;
-
 	Position: UM;
 
 	VIRTUAL set_position_impl(p: UM) VOID {}

@@ -17,31 +17,31 @@ INCLUDE 'std/err/unimplemented'
 	cache: Cache &
 ) Global \
 {
-	SWITCH(t ::= <<scoper::ScopeItem #\>>(v)->type())
+	TYPE SWITCH(v)
 	{
 	DEFAULT:
-		THROW <std::err::Unimplemented>(t.NAME());
-	CASE :namespace:
+		THROW <std::err::Unimplemented>(TYPE(v));
+	CASE scoper::Namespace:
 		RETURN std::[Namespace]new(<<scoper::Namespace #\>>(v), cache);
-	CASE :typedef:
+	CASE scoper::GlobalTypedef:
 		RETURN std::[GlobalTypedef]new(<<scoper::GlobalTypedef #\>>(v), cache);
-	CASE :function:
+	CASE scoper::GlobalFunction:
 		RETURN std::[GlobalFunction]new(<<scoper::GlobalFunction #\>>(v), cache);
-	CASE :variable:
+	CASE scoper::GlobalVariable:
 		RETURN std::[GlobalVariable]new(<<scoper::GlobalVariable #\>>(v), cache);
-	CASE :class:
+	CASE scoper::GlobalClass:
 		RETURN std::[GlobalClass]new(<<scoper::GlobalClass #\>>(v), cache);
-	CASE :mask:
+	CASE scoper::GlobalMask:
 		RETURN std::[GlobalMask]new(<<scoper::GlobalMask #\>>(v), cache);
-	CASE :rawtype:
+	CASE scoper::GlobalRawtype:
 		RETURN std::[GlobalRawtype]new(<<scoper::GlobalRawtype #\>>(v), cache);
-	CASE :union:
+	CASE scoper::GlobalUnion:
 		RETURN std::[GlobalUnion]new(<<scoper::GlobalUnion #\>>(v), cache);
-	CASE :enum:
+	CASE scoper::GlobalEnum:
 		RETURN std::[GlobalEnum]new(<<scoper::GlobalEnum #\>>(v), cache);
-	CASE :externSymbol:
+	CASE scoper::ExternSymbol:
 		RETURN std::[ExternSymbol]new(<<scoper::ExternSymbol #\>>(v), cache);
-	CASE :test:
+	CASE scoper::Test:
 		RETURN std::[Test]new(<<scoper::Test #\>>(v), cache);
 	}
 }

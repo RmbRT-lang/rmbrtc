@@ -5,8 +5,6 @@ INCLUDE "member.rl"
 
 ::rlc::resolver Typedef VIRTUAL -> ScopeItem
 {
-	# FINAL type() ScopeItem::Type := :typedef;
-
 	Type: resolver::Type - std::Dynamic;
 
 	{v: scoper::Typedef #\, cache: Cache &}

@@ -3,10 +3,6 @@ INCLUDE "../scoper/scope.rl"
 
 ::rlc::resolver Statement VIRTUAL
 {
-	TYPE Type := scoper::StatementType;
-
-	# ABSTRACT type() Type;
-
 	Position: UM;
 
 	{stmt: scoper::Statement #\}: Position(stmt->Position);

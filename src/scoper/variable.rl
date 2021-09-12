@@ -28,8 +28,6 @@ INCLUDE "../util/dynunion.rl"
 
 ::rlc::scoper Variable VIRTUAL -> ScopeItem
 {
-	# FINAL type() ScopeItem::Type := :variable;
-
 	Type: VariableType;
 	HasInitialiser: BOOL;
 	InitValues: Expression - std::DynVector;

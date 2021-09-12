@@ -10,8 +10,6 @@ INCLUDE 'std/tags'
 
 ::rlc::resolver Function VIRTUAL -> ScopeItem
 {
-	# FINAL type() ScopeItem::Type := :function;
-
 	Arguments: LocalVariable - std::DynVector;
 	Return: VariableType;
 	Body: ExprOrStmt;

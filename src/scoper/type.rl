@@ -5,12 +5,8 @@ INCLUDE "symbol.rl"
 
 ::rlc::scoper
 {
-	TYPE TypeType := parser::TypeType;
-
 	Type VIRTUAL
 	{
-		# ABSTRACT type() TypeType;
-
 		TYPE ReferenceType := parser::Type::ReferenceType;
 		TYPE Indirection := parser::Type::Indirection;
 		Qualifier

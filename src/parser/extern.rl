@@ -11,7 +11,6 @@ INCLUDE "../src/file.rl"
 	# FINAL name() src::String #& := is_variable()
 		? variable()->name()
 		: function()->name();
-	# FINAL type() ScopeItem::Type := :externSymbol;
 	# FINAL overloadable() BOOL := FALSE;
 
 	# is_variable() INLINE BOOL := Symbol.is_first();

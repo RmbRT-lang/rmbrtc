@@ -8,8 +8,6 @@ INCLUDE 'std/memory'
 
 ::rlc::scoper Rawtype VIRTUAL -> ScopeItem, Scope
 {
-	# FINAL type() ScopeItem::Type := :rawtype;
-
 	Size: Expression - std::Dynamic;
 
 	{

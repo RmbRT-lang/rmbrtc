@@ -4,20 +4,6 @@ INCLUDE "expression.rl"
 
 ::rlc::resolver Type VIRTUAL
 {
-	ENUM Kind
-	{
-		reference,
-		signature,
-		void,
-		null,
-		symbolConstant,
-		tuple,
-		expression,
-		builtin
-	}
-
-	# ABSTRACT type() Kind;
-
 	TYPE ReferenceType := scoper::Type::ReferenceType;
 	TYPE Indirection := scoper::Type::Indirection;
 	TYPE Qualifier := scoper::Type::Qualifier;
