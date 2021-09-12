@@ -58,11 +58,12 @@ main(
 		e.print(out);
 		out.write("\n");
 	}
-	(/CATCH(e: std::Error&)
+	CATCH(e: rlc::scoper::IncompatibleOverloadError&)
 	{
 		e.print(out);
 		out.write("\n");
-	}/) CATCH(e: CHAR#\)
+	}
+	CATCH(e: CHAR#\)
 		out.write_all(e, "\n");
 	FINALLY{;}
 

@@ -45,6 +45,8 @@ INCLUDE 'std/io/format'
 	Column: UINT;
 	ScopeName: std::Utf8;
 	Name: String;
+	Type: CHAR #\;
+	NewType: CHAR #*;
 
 	Reason: CHAR #\;
 
@@ -52,11 +54,15 @@ INCLUDE 'std/io/format'
 		existing: ScopeItem #\,
 		addition: parser::ScopeItem #\,
 		file: src::File #&,
-		reason: CHAR #\
+		reason: CHAR #\,
+		type: CHAR #\,
+		newType: CHAR #*
 	}:	FileName(file.Name),
 		ScopeName(existing->parent_scope()->name()),
 		Name(file.content(addition->name())),
-		Reason(reason)
+		Reason(reason),
+		Type(type),
+		NewType(newType)
 	{
 		file.position(addition->name().Start, &Line, &Column);
 	}
@@ -72,7 +78,10 @@ INCLUDE 'std/io/format'
 			o.write(Name);
 		ELSE
 			o.write("<unnamed>");
-		o.write_all(": ", Reason, '.');
+		o.write_all(": ", Reason, " (", Type);
+		IF(NewType)
+			o.write_all(", ", NewType);
+		o.write(").");
 	}
 }
 
@@ -109,9 +118,9 @@ INCLUDE 'std/io/format'
 		cmp # ::= &*group->Items.front();
 
 		IF(origin_type(cmp) != type)
-			THROW <IncompatibleOverloadError>(cmp, entry, file, "kind mismatch");
+			THROW <IncompatibleOverloadError>(cmp, entry, file, "kind mismatch", type, TYPE(cmp));
 		IF(!entry->overloadable())
-			THROW <IncompatibleOverloadError>(cmp, entry, file, "not overloadable");
+			THROW <IncompatibleOverloadError>(cmp, entry, file, "not overloadable", type, NULL);
 
 		IF(type == TYPE TYPE(parser::Namespace))
 		{
