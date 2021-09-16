@@ -127,7 +127,7 @@ INCLUDE 'std/err/unimplemented'
 		{
 			Expression::Position := position;
 			FOR(it ::= Operands.start(); it; ++it)
-				(*it)->set_position(position);
+				it!->set_position(position);
 		}
 
 		{
@@ -157,7 +157,7 @@ INCLUDE 'std/err/unimplemented'
 		FINAL set_position_impl(pos: UM) VOID
 		{
 			FOR(it ::= Values.start(); it; ++it)
-				(*it)->set_position(pos);
+				it!->set_position(pos);
 		}
 
 		{

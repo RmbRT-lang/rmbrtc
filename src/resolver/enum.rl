@@ -11,16 +11,16 @@ INCLUDE "scopeitem.rl"
 		Type: Enum #\;
 
 		{
-			constant: scoper::Enum::Constant #&,
+			constant: scoper::Enum::Constant #\,
 			enum: Enum #\,
 			cache: Cache &
-		}->	ScopeItem(&constant, cache),
-			Member(&constant)
+		}->	ScopeItem(constant, cache),
+			Member(constant)
 		:	Type(enum),
-			Value(constant.Value);
+			Value(constant->Value);
 	}
 
-	Constants: Constant - std::Vector;
+	Constants: Constant - std::DynVector;
 	Size: src::Size;
 
 	{enum: scoper::Enum #\, cache: Cache &}
@@ -28,7 +28,7 @@ INCLUDE "scopeitem.rl"
 	:	Size(enum->Size)
 	{
 		FOR(constant ::= enum->Constants.start(); constant; ++constant)
-			Constants += (**constant, &THIS, cache);
+			Constants += :create(constant!, &THIS, cache);
 	}
 }
 

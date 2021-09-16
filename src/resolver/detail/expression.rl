@@ -81,10 +81,10 @@ INCLUDE "../symbol.rl"
 		}:	Lhs(:gc(<<<Expression>>>(scope, ref->Operands[0]))),
 			IsPtr(ref->Op == Operator::memberPointer)
 		{
-			child ::= &<scoper::SymbolChildExpression #\>(&*ref->Operands[1])->Child;
+			child ::= &<scoper::SymbolChildExpression #\>(ref->Operands[1]!)->Child;
 			MemberName := child->Name;
 			FOR(tpl ::= child->Templates.start(); tpl; ++tpl)
-				MemberTemplates += :gc(<<<TemplateArg>>>(scope, *tpl));
+				MemberTemplates += :gc(<<<TemplateArg>>>(scope, tpl!));
 		}
 	}
 
@@ -120,7 +120,7 @@ INCLUDE "../symbol.rl"
 			Method(ref->Method)
 		{
 			FOR(it ::= ref->Values.start(); it; ++it)
-				Values += :gc(<<<Expression>>>(scope, *it));
+				Values += :gc(<<<Expression>>>(scope, it!));
 		}
 	}
 

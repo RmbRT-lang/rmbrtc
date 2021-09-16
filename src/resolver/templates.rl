@@ -31,7 +31,7 @@ INCLUDE "../util/dynunion.rl"
 		}
 		{
 			FOR(it ::= types.start(); it; ++it)
-				Types += :gc(<<<resolver::Type>>>(scope, it->type()));
+				Types += :gc(<<<resolver::Type>>>(scope, it!.type()));
 		}
 	}
 
@@ -45,7 +45,7 @@ INCLUDE "../util/dynunion.rl"
 		}
 		{
 			FOR(it ::= values.start(); it; ++it)
-				Values += :gc(<<<Expression>>>(scope, it->expression()));
+				Values += :gc(<<<Expression>>>(scope, it!.expression()));
 		}
 	}
 }

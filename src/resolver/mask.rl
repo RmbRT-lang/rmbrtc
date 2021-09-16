@@ -16,9 +16,9 @@ INCLUDE "scopeitem.rl"
 		ScopeItem(mask, cache)
 	{
 		FOR(group ::= mask->Items.start(); group; ++group)
-			FOR(item ::= (*group)->Items.start(); item; ++item)
+			FOR(item ::= group!->Items.start(); item; ++item)
 			{
-				member # ::= <<scoper::Member #\>>(&**item);
+				member # ::= <<scoper::Member #\>>(item!);
 				TYPE SWITCH(member)
 				{
 				CASE scoper::MemberFunction:

@@ -43,7 +43,7 @@ INCLUDE "../util/dynunion.rl"
 				Type := :gc(std::[resolver::Type::Auto]new(*v->Type.auto()));
 
 			FOR(it ::= v->InitValues.start(); it; ++it)
-				InitValues += :gc(<<<Expression>>>(scope, *it));
+				InitValues += :gc(<<<Expression>>>(scope, it!));
 		}
 	}
 

@@ -57,7 +57,7 @@ INCLUDE 'std/memory'
 		:	Result(:gc, <<<Type>>>(scope, scopedType->Return))
 		{
 			FOR(it ::= scopedType->Arguments.start(); it; ++it)
-				Arguments += :gc(<<<Type>>>(scope, *it));
+				Arguments += :gc(<<<Type>>>(scope, it!));
 		}
 	}
 

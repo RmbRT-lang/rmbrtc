@@ -18,9 +18,9 @@ INCLUDE "type.rl"
 	:	Size(:gc(<<<Expression>>>(rawtype->parent_scope(), rawtype->Size)))
 	{
 		FOR(group ::= rawtype->Items.start(); group; ++group)
-			FOR(it ::= (*group)->Items.start(); it; ++it)
+			FOR(it ::= group!->Items.start(); it; ++it)
 			{
-				member # ::= <<scoper::Member #\>>(&**it);
+				member # ::= <<scoper::Member #\>>(it!);
 				TYPE SWITCH(member)
 				{
 				CASE scoper::Constructor:

@@ -37,7 +37,7 @@ INCLUDE "../scoper/fileregistry.rl"
 				child # ::= &symbol.Children[i];
 				templates: TemplateArg - std::DynVector;
 				FOR(tpl ::= child->Templates.start(); tpl; ++tpl)
-					templates += :gc(<<<TemplateArg>>>(scope, *tpl));
+					templates += :gc(<<<TemplateArg>>>(scope, tpl!));
 				Templates += &&templates;
 			}
 		}
@@ -60,8 +60,8 @@ INCLUDE "../scoper/fileregistry.rl"
 			FOR(child ::= Symbols.start(); child; ++child)
 			{
 				templates: TemplateArg - std::DynVector;
-				FOR(tpl ::= child->Templates.start(); tpl; ++tpl)
-					templates += :gc(<<<TemplateArg>>>(scope, *tpl));
+				FOR(tpl ::= child!.Templates.start(); tpl; ++tpl)
+					templates += :gc(<<<TemplateArg>>>(scope, tpl!));
 				Templates += &&templates;
 			}
 		}

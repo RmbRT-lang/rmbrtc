@@ -33,9 +33,9 @@ INCLUDE "symbol.rl"
 	{
 		scope ::= class->parent_scope();
 		FOR(group ::= class->Items.start(); group; ++group)
-			FOR(item ::= (*group)->Items.start(); item; ++item)
+			FOR(item ::= group!->Items.start(); item; ++item)
 			{
-				member # ::= <<scoper::Member#\>>(&**item);
+				member # ::= <<scoper::Member#\>>(item!);
 				TYPE SWITCH(member)
 				{
 				CASE scoper::MemberVariable:
@@ -58,7 +58,7 @@ INCLUDE "symbol.rl"
 			}
 
 		FOR(it ::= class->Inheritances.start(); it; ++it)
-			Inheritances += (scope, *it);
+			Inheritances += (scope, it!);
 	}
 }
 

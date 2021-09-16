@@ -25,10 +25,10 @@ INCLUDE 'std/vector'
 			{
 				arg: TypeOrExpr - std::Vector;
 				FOR(it ::= parsed.Templates[i].start(); it; ++it)
-					IF(it->is_type())
-						arg += :gc(<<<Type>>>(it->type(), file));
+					IF(it!.is_type())
+						arg += :gc(<<<Type>>>(it!.type(), file));
 					ELSE
-						arg += :gc(<<<Expression>>>(it->expression(), file));
+						arg += :gc(<<<Expression>>>(it!.expression(), file));
 				Templates += &&arg;
 			}
 		}

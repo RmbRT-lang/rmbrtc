@@ -154,7 +154,7 @@ INCLUDE 'std/err/unimplemented'
 		:	Body(:gc(<<<Statement>>>(stmt->Body, cache)))
 		{
 			FOR(catch ::= stmt->Catches.start(); catch; ++catch)
-				Catches += (*catch, cache);
+				Catches += (catch!, cache);
 			IF(stmt->Finally)
 				Finally := :gc(<<<Statement>>>(stmt->Finally, cache));
 		}
@@ -221,7 +221,7 @@ INCLUDE 'std/err/unimplemented'
 			Label(stmt->Label)
 		{
 			FOR(case ::= stmt->Cases.start(); case; ++case)
-				Cases += (*case, cache);
+				Cases += (case!, cache);
 		}
 	}
 
@@ -236,7 +236,7 @@ INCLUDE 'std/err/unimplemented'
 			Body(:gc(<<<Statement>>>(case.Body, cache)))
 		{
 			FOR(value ::= case.Values.start(); value; ++value)
-				Values += :gc(<<<Expression>>>(case.Body->ParentScope, *value));
+				Values += :gc(<<<Expression>>>(case.Body->ParentScope, value!));
 		}
 	}
 
@@ -256,7 +256,7 @@ INCLUDE 'std/err/unimplemented'
 			Label(stmt->Label)
 		{
 			FOR(case ::= stmt->Cases.start(); case; ++case)
-				Cases += (*case, cache);
+				Cases += (case!, cache);
 		}
 	}
 
@@ -271,7 +271,7 @@ INCLUDE 'std/err/unimplemented'
 			Body(:gc(<<<Statement>>>(case.Body, cache)))
 		{
 			FOR(type ::= case.Types.start(); type; ++type)
-				Types += :gc(<<<Type>>>(case.Body->ParentScope, *type));
+				Types += :gc(<<<Type>>>(case.Body->ParentScope, type!));
 		}
 	}
 

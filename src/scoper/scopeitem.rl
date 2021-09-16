@@ -127,7 +127,7 @@ INCLUDE 'std/io/format'
 			ns ::= <<parser::Namespace #\>>(entry);
 			cmpns ::= <<scoper::Namespace \>>(cmp);
 			FOR(it ::= ns->Entries.start(); it; it++)
-				cmpns->insert(*it, file);
+				cmpns->insert(it!, file);
 
 			RETURN (cmp, FALSE);
 		}

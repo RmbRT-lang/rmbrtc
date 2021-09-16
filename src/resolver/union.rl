@@ -11,9 +11,9 @@ INCLUDE "type.rl"
 	->	ScopeItem(v, cache)
 	{
 		FOR(group ::= v->Items.start(); group; ++group)
-			FOR(item ::= (*group)->Items.start(); item; ++item)
+			FOR(item ::= group!->Items.start(); item; ++item)
 			{
-				member # ::= <<scoper::Member #\>>(&**item);
+				member # ::= <<scoper::Member #\>>(item!);
 				TYPE SWITCH(member)
 				{
 				CASE scoper::MemberVariable:

@@ -14,7 +14,7 @@ INCLUDE "member.rl"
 		}:	Base(:resolve(ctor->ArgScope, scoped.Base))
 		{
 			FOR(it ::= scoped.Arguments.start(); it; it++)
-				Arguments += :gc(<<<Expression>>>(&ctor->ArgScope, (*it)));
+				Arguments += :gc(<<<Expression>>>(&ctor->ArgScope, it!));
 		}
 	}
 
@@ -50,7 +50,7 @@ INCLUDE "member.rl"
 		}:	Member(resolve_member(scoped, ctor))
 		{
 			FOR(it ::= scoped.Arguments.start(); it; it++)
-				Arguments += :gc(<<<Expression>>>(&ctor->ArgScope, (*it)));
+				Arguments += :gc(<<<Expression>>>(&ctor->ArgScope, it!));
 		}
 	}
 
@@ -66,11 +66,11 @@ INCLUDE "member.rl"
 	:	Inline(ctor->Inline)
 	{
 		FOR(arg ::= ctor->Arguments.start(); arg; arg++)
-			Arguments += :create(*arg, cache);
+			Arguments += :create(arg!, cache);
 		FOR(init ::= ctor->BaseInits.start(); init; init++)
-			BaseInits += (*init, ctor);
+			BaseInits += (init!, ctor);
 		FOR(init ::= ctor->MemberInits.start(); init; init++)
-			MemberInits += (*init, ctor);
+			MemberInits += (init!, ctor);
 		IF(ctor->Body)
 			Body := :create(ctor->Body, cache);
 	}

@@ -30,7 +30,7 @@ INCLUDE 'std/tags'
 			Return := :gc(std::[resolver::Type::Auto]new(*function->Return.auto()));
 
 		FOR(arg ::= function->Arguments.start(); arg; arg++)
-			Arguments += :create(*arg, cache);
+			Arguments += :create(arg!, cache);
 
 		IF(function->Body.is_expression())
 			Body := :gc(<<<Expression>>>(&function->ArgumentScope, function->Body.expression()));

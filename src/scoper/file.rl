@@ -46,7 +46,7 @@ INCLUDE 'std/shared'
 		FOR(inc ::= parsed.Includes.start(); inc; ++inc)
 		{
 			path := Text(inc->Token, *Source).utf8();
-			TRY SWITCH(type ::= inc->Type)
+			TRY SWITCH(type ::= inc!.Type)
 			{
 			CASE :relative: path := relative_path(path.content());
 			CASE :global: path := registry.find_global(path.content());
@@ -54,7 +54,7 @@ INCLUDE 'std/shared'
 				THROW <std::err::Unimplemented>(type.NAME());
 			}
 			CATCH(std::io::FileNotFound&)
-				THROW <IncludeNotFound>(inc->Token.Position, &&path, inc->Type);
+				THROW <IncludeNotFound>(inc!.Token.Position, &&path, inc!.Type);
 
 			IF(!Includes.find(path, &loc))
 			{

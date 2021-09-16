@@ -36,11 +36,11 @@ main(
 			absolute ::= rlc::util::absolute_file(std::str::buf(argv[i]));
 			files += registry.get(std::Utf8(absolute, :cstring).content());
 		}
-		FOR(f ::= files.start(); f; f++)
+		FOR(f ::= files.start(); f; ++f)
 		{
-			FOR(group ::= (*f)->Scope->Items.start(); group; group++)
-				FOR(it ::= (*group)->Items.start(); it; it++)
-					cache += *it;
+			FOR(group ::= f!->Scope->Items.start(); group; ++group)
+				FOR(it ::= group!->Items.start(); it; ++it)
+					cache += it!;
 		}
 		out.write("success\n");
 	} CATCH(e: rlc::scoper::Error &)
