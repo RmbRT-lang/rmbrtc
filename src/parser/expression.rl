@@ -663,6 +663,7 @@ INCLUDE 'std/vector'
 	SizeofExpression -> Expression
 	{
 		Term: TypeOrExpr;
+		Variadic: BOOL;
 
 		# is_expression() INLINE BOOL := Term.is_expression();
 		# is_type() INLINE BOOL := Term.is_type();
@@ -673,6 +674,8 @@ INCLUDE 'std/vector'
 				RETURN FALSE;
 
 			t: Trace(&p, "sizeof expression");
+
+			Variadic := p.consume(:tripleDot);
 
 			p.expect(:parentheseOpen);
 			IF(p.consume(:hash))

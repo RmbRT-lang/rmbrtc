@@ -175,6 +175,7 @@ INCLUDE 'std/err/unimplemented'
 
 	SizeofExpression -> Expression
 	{
+		Variadic: BOOL;
 		Term: util::[Type; Expression]DynUnion;
 
 		FINAL set_position_impl(pos: UM) VOID
@@ -188,6 +189,7 @@ INCLUDE 'std/err/unimplemented'
 			parsed: parser::SizeofExpression #\,
 			file: src::File #&
 		}->	Expression(position)
+			: Variadic(parsed->Variadic)
 		{
 			IF(parsed->Term.is_type())
 				Term := :gc(<<<Type>>>(parsed->Term.type(), file));

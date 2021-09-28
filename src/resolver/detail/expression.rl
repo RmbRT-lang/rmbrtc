@@ -126,11 +126,12 @@ INCLUDE "../symbol.rl"
 
 	SizeofExpression -> ConstantExpression
 	{
+		Variadic: BOOL;
 		Term: util::[resolver::Type; Expression]DynUnion;
 		{
 			ref: scoper::SizeofExpression #\,
 			scope: scoper::Scope #\
-		}
+		}: Variadic(ref->Variadic)
 		{
 			IF(ref->Term.is_first())
 				Term := :gc(<<<resolver::Type>>>(scope, ref->Term.first()));
