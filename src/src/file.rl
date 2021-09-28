@@ -56,7 +56,7 @@ INCLUDE 'std/io/file'
 		}
 
 		# content(str: String #&) std::[CHAR#]Buffer
-			:= Contents.substring(str.Start, str.Length);
+			:= Contents!.range(str.Start, str.Length);
 
 		# position(
 			index: Index,
@@ -65,9 +65,8 @@ INCLUDE 'std/io/file'
 		{
 			*line := 1;
 			lineStart ::= 0;
-			content ::= Contents.content();
 			FOR(i ::= 0; i < index; i++)
-				IF(content[i] == '\n')
+				IF(Contents[i] == '\n')
 				{
 					++*line;
 					lineStart := i;

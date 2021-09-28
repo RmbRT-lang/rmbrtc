@@ -43,7 +43,7 @@ INCLUDE 'std/io/format'
 
 	# FINAL print(o: std::io::OStream &) VOID
 	{
-		o.write(File.content());
+		o.write(File!);
 		o.write(":");
 		std::io::format::dec(o, Line);
 		o.write(":");
@@ -61,7 +61,7 @@ INCLUDE 'std/io/format'
 			o.write("end of file");
 
 		o.write(" in ");
-		o.write(Context.content());
+		o.write(Context!);
 		o.write(": ");
 		reason(o);
 		o.write(".\n");
@@ -86,7 +86,7 @@ INCLUDE 'std/io/format'
 
 	# FINAL reason(o: std::io::OStream &) VOID
 	{
-		o.write(Reason.content());
+		o.write(Reason!);
 	}
 }
 ::rlc::parser ExpectedToken -> Error

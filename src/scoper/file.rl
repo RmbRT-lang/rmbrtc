@@ -48,8 +48,8 @@ INCLUDE 'std/shared'
 			path := Text(inc->Token, *Source).utf8();
 			TRY SWITCH(type ::= inc!.Type)
 			{
-			CASE :relative: path := relative_path(path.content());
-			CASE :global: path := registry.find_global(path.content());
+			CASE :relative: path := relative_path(path!);
+			CASE :global: path := registry.find_global(path!);
 			DEFAULT:
 				THROW <std::err::Unimplemented>(type.NAME());
 			}
@@ -58,7 +58,7 @@ INCLUDE 'std/shared'
 
 			IF(!Includes.find(path, &loc))
 			{
-				IF(file ::= registry.get(path.content()))
+				IF(file ::= registry.get(path!))
 				{
 					Includes.emplace_at(loc, file);
 					file->IncludedBy.insert(file);
@@ -85,20 +85,20 @@ INCLUDE 'std/shared'
 
 		# FINAL print_msg(o: std::io::OStream &) VOID
 		{
-			o.write_all(Type.NAME(), " include '", Include.content(), "' not found");
+			o.write_all(Type.NAME(), " include '", Include!, "' not found");
 		}
 	}
 
 	# relative_path(relative: String#&) std::Utf8
 		:= util::absolute_file(
 			util::concat_paths(
-				util::parent_dir(Source->Name.content()),
-				relative).content());
+				util::parent_dir(Source->Name!),
+				relative)!);
 
 	STATIC cmp(a: std::Utf8 #&, b: File \) INLINE
 		::= a.cmp(b->Source->Name);
 	STATIC cmp(a: std::[CHAR#]Buffer #&, b: File \) INLINE
-		::= std::str::cmp(a, b->Source->Name.content());
+		::= std::str::cmp(a, b->Source->Name!);
 	STATIC cmp(a: File \, b: File \) INLINE
 		::= a->Source->Name.cmp(b->Source->Name);
 }

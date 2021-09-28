@@ -19,7 +19,7 @@ INCLUDE 'std/string'
 	# OVERRIDE print(
 		o: std::io::OStream &) VOID
 	{
-		o.write(File.content());
+		o.write(File!);
 		o.write(":");
 		std::io::format::dec(o, Line);
 		o.write(":");

@@ -26,7 +26,7 @@ INCLUDE "../parser/enum.rl"
 		group: detail::ScopeItemGroup \
 	}->	ScopeItem(group, parsed, file),
 		Scope(&THIS, group->Scope)
-	:	Size(parsed->Constants.back().Value+1)
+	:	Size(parsed->Constants!.back().Value+1)
 	{
 		FOR(i ::= 0; i < ##parsed->Constants; i++)
 		{

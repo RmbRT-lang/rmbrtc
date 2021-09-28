@@ -69,11 +69,11 @@ INCLUDE 'std/io/format'
 
 	# FINAL print(o: std::io::OStream &) VOID
 	{
-		o.write_all(FileName.content(), ':');
+		o.write_all(FileName!, ':');
 		std::io::format::dec(o, Line);
 		o.write(':');
 		std::io::format::dec(o, Column);
-		o.write_all(": invalid overload of ", ScopeName.content(), "::");
+		o.write_all(": invalid overload of ", ScopeName!, "::");
 		IF(Name.Size)
 			o.write(Name);
 		ELSE
@@ -115,7 +115,7 @@ INCLUDE 'std/io/format'
 
 	IF(group->Items)
 	{
-		cmp # ::= &*group->Items.front();
+		cmp # ::= group->Items!.front(:ok)!;
 
 		IF(origin_type(cmp) != type)
 			THROW <IncompatibleOverloadError>(cmp, entry, file, "kind mismatch", type, TYPE(cmp));

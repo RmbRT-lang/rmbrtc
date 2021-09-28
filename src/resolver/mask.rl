@@ -28,7 +28,7 @@ INCLUDE "scopeitem.rl"
 					&& !fn->Body)
 					{
 						AbstractFunctions += :create(fn, cache);
-						AbstractFunctions.back()->Abstractness := :abstract;
+						AbstractFunctions!.back(:ok)->Abstractness := :abstract;
 					} ELSE
 						Functions += :create(fn, cache);
 				}

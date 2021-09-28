@@ -144,7 +144,7 @@ INCLUDE "expression.rl"
 						p.fail("expected symbol");
 
 					tplArg: TemplateArg(:emplace, :gc(t.release()));
-					next.Name.Children.back().Templates += &&tplArg;
+					next.Name.Children!.back().Templates += &&tplArg;
 					t := :gc(std::dup(&&next));
 				}
 				RETURN t.release();

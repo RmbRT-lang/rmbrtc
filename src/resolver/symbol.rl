@@ -55,12 +55,12 @@ INCLUDE "../scoper/fileregistry.rl"
 			scope: scoper::Scope #\,
 			symbol: scoper::Symbol #&,
 			resolved: UM
-		}:	Symbols(symbol.Children.content().drop_start(resolved))
+		}:	Symbols(symbol.Children!.drop_start(resolved))
 		{
-			FOR(child ::= Symbols.start(); child; ++child)
+			FOR(child ::= Symbols.start().ok(); child; ++child)
 			{
 				templates: TemplateArg - std::DynVector;
-				FOR(tpl ::= child!.Templates.start(); tpl; ++tpl)
+				FOR(tpl ::= child!.Templates.start().ok(); tpl; ++tpl)
 					templates += :gc(<<<TemplateArg>>>(scope, tpl!));
 				Templates += &&templates;
 			}
@@ -324,8 +324,8 @@ INCLUDE "../scoper/fileregistry.rl"
 
 		IF(##itemGroup->Items == 1)
 		{
-			child # ::= &reference.Children.back();
-			item # ::= &*itemGroup->Items[0];
+			child # ::= &reference.Children!.back();
+			item # ::= itemGroup->Items[0]!;
 
 			// Check template argument count.
 			IF(##child->Templates > ##item->Templates)

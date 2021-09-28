@@ -34,7 +34,7 @@ main(
 		FOR(i ::= 1; i < argc; i++)
 		{
 			absolute ::= rlc::util::absolute_file(std::str::buf(argv[i]));
-			files += registry.get(std::Utf8(absolute, :cstring).content());
+			files += registry.get(<std::Utf8>(absolute, :cstring)!);
 		}
 		FOR(f ::= files.start(); f; ++f)
 		{

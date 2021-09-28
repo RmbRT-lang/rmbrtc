@@ -183,7 +183,7 @@ INCLUDE 'std/err/unimplemented'
 
 		# FINAL variables() UM := Statements.empty()
 			? 0
-			: Statements.back().Ptr->Position + Statements.back().Ptr->variables();
+			: Statements!.back()->Position + Statements!.back()->variables();
 
 		{
 			position: UM,
@@ -197,7 +197,7 @@ INCLUDE 'std/err/unimplemented'
 			FOR(i ::= 0; i < ##parsed->Statements; i++)
 			{
 				Statements += :gc(<<<Statement>>>(p, parsed->Statements[i], file, &Scope));
-				p += Statements.back()->variables();
+				p += Statements!.back()->variables();
 			}
 		}
 	}
@@ -320,7 +320,7 @@ INCLUDE 'std/err/unimplemented'
 			FOR(i ::= 0; i < ##Catches; i++)
 			{
 				Catches += (position, &THIS, &parsed->Catches[i], file);
-				position += Catches.back().variables();
+				position += Catches!.back().variables();
 			}
 			IF(parsed->has_finally())
 				Finally := :gc(<<<Statement>>>(position, parsed->Finally, file, parentScope));
@@ -434,7 +434,7 @@ INCLUDE 'std/err/unimplemented'
 		Label: ControlLabel;
 
 		# FINAL variables() UM
-			:= Cases.back().position() + Cases.back().variables() - Statement::Position;
+			:= Cases!.back().position() + Cases!.back().variables() - Statement::Position;
 
 		{
 			position: UM,
@@ -451,7 +451,7 @@ INCLUDE 'std/err/unimplemented'
 			FOR(i ::= 0; i < ##parsed->Cases; i++)
 			{
 				Cases += (position, parsed->Cases[i], file, &ValueScope);
-				position += Cases.back().variables();
+				position += Cases!.back().variables();
 			}
 		}
 	}
@@ -488,7 +488,7 @@ INCLUDE 'std/err/unimplemented'
 		Label: ControlLabel;
 
 		# FINAL variables() UM
-			:= Cases.back().position() + Cases.back().variables() - Statement::Position;
+			:= Cases!.back().position() + Cases!.back().variables() - Statement::Position;
 
 		{
 			position: UM,
@@ -506,7 +506,7 @@ INCLUDE 'std/err/unimplemented'
 			FOR(i ::= 0; i < ##parsed->Cases; i++)
 			{
 				Cases += (position, parsed->Cases[i], file, &ValueScope);
-				position += Cases.back().variables();
+				position += Cases!.back().variables();
 			}
 		}
 	}

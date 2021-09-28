@@ -36,8 +36,5 @@ PUBLIC:
 	}
 
 	# nameByNumber(n: src::FileNo) CHAR#-std::Buffer
-	{
-		ASSERT(n < ##Files);
-		RETURN NameByNumber[n].content();
-	}
+		:= NameByNumber[n]!;
 }

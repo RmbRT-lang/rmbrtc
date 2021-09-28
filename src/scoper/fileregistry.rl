@@ -51,9 +51,7 @@ INCLUDE 'std/shared'
 	{
 		FOR(i ::= 0; i < ##IncludeDirs; i++)
 			TRY RETURN util::absolute_file(
-				util::concat_paths(
-					IncludeDirs[i].content(),
-					path).content());
+				util::concat_paths(IncludeDirs[i]!, path)!);
 			CATCH() { ; }
 
 		THROW;
@@ -67,7 +65,7 @@ INCLUDE 'std/shared'
 	STATIC cmp(
 		key: std::[CHAR#]Buffer #&,
 		entry: File #\) INLINE
-		::= std::str::cmp(key, entry->Source->Name.content());
+		::= std::str::cmp(key, entry->Source->Name!);
 	STATIC cmp(
 		key: std::[CHAR#]Buffer #&,
 		entry: std::[CHAR#]Buffer #&) INLINE

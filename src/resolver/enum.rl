@@ -34,7 +34,6 @@ INCLUDE "scopeitem.rl"
 
 ::rlc::resolver GlobalEnum -> Global, Enum
 {
-
 	{enum: scoper::GlobalEnum #\, cache: Cache &}
 	->	Enum(enum, cache);
 }

@@ -9,10 +9,10 @@ INCLUDE "../util/dynunion.rl"
 	{
 		<<<
 			scope: scoper::Scope #\,
-			args: scoper::TypeOrExpr - std::Vector #&
+			args: scoper::TypeOrExpr# - std::Buffer #&
 		>>> TemplateArg \
 		{
-			ASSERT(!args.empty());
+			ASSERT(##args);
 			IF(args.front().is_type())
 				RETURN std::[TemplateTypesArg]new(args, scope);
 			ELSE
@@ -26,7 +26,7 @@ INCLUDE "../util/dynunion.rl"
 		Types: resolver::Type - std::DynVector;
 
 		{
-			types: scoper::TypeOrExpr - std::Vector #&,
+			types: scoper::TypeOrExpr# - std::Buffer #&,
 			scope: scoper::Scope #\
 		}
 		{
@@ -40,7 +40,7 @@ INCLUDE "../util/dynunion.rl"
 		Values: Expression - std::DynVector;
 
 		{
-			values: scoper::TypeOrExpr - std::Vector #&,
+			values: scoper::TypeOrExpr# - std::Buffer #&,
 			scope: scoper::Scope #\
 		}
 		{
