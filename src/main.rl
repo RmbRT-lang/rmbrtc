@@ -30,7 +30,7 @@ main(
 	cache: rlc::resolver::Cache;
 	TRY
 	{
-		files: rlc::scoper::File \ - std::Vector;
+		files: rlc::scoper::File \ - std::NatVectorSet;
 		FOR(i ::= 1; i < argc; i++)
 		{
 			absolute ::= rlc::util::absolute_file(std::str::buf(argv[i]));
