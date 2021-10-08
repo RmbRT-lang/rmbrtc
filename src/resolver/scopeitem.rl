@@ -29,7 +29,11 @@ INCLUDE 'std/tags'
 	Resolved: std::[scoper::ScopeItem #\, ScopeItem #\]NatMap;
 
 	insert(scoped: scoper::ScopeItem #\) VOID
-		{ insert(scoped, <<<ScopeItem>>>(scoped, THIS)); }
+	{
+		IF(!THIS[scoped])
+			<<<ScopeItem>>>(scoped, THIS);
+	}
+
 	THIS+=(v: scoper::ScopeItem #\) INLINE VOID
 		{ insert(v); }
 
@@ -41,7 +45,8 @@ INCLUDE 'std/tags'
 	THIS+=(v: {scoper::ScopeItem #\, ScopeItem #\}) INLINE VOID
 		{ insert(v.(0), v.(1)); }
 
-	# find(scoped: scoper::ScopeItem #\) ScopeItem #\
+	# THIS[scoped: scoper::ScopeItem #\] INLINE BOOL := Resolved.find(scoped);
+	# get(scoped: scoper::ScopeItem #\) ScopeItem #\
 	{
 		found ::= Resolved.find(scoped);
 		ASSERT(found);
