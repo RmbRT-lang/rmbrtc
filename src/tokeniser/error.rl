@@ -36,12 +36,12 @@ INCLUDE 'std/string'
 
 ::rlc::tok UnexpectedChar -> Error
 {
-	Char: CHAR;
+	Char: std::SYM;
 	{
 		File: src::File #\,
 		Line: UINT,
 		Column: UINT,
-		Char: CHAR
+		Char: std::SYM
 	}->	Error(File, Line, Column)
 	:	Char(Char);
 
@@ -54,7 +54,11 @@ INCLUDE 'std/string'
 		CASE '\t': { o.write("\\t"); BREAK; }
 		CASE '\n': { o.write("\\n"); BREAK; }
 		DEFAULT:
-			o.write(&Char, 1);
+			{
+				u8: CHAR[4];
+				len ::= std::code::utf8::encode(Char, u8);
+				o.write(&u8, len);
+			}
 		}
 		o.write("'");
 	}
@@ -63,14 +67,29 @@ INCLUDE 'std/string'
 ::rlc::tok UnexpectedEOF -> Error
 {
 	{
-		File: src::File #\,
-		Line: UINT,
-		Column: UINT
-	}->	Error(File, Line, Column);
+		file: src::File #\,
+		line: UINT,
+		column: UINT
+	}->	Error(file, line, column);
 
 	# OVERRIDE reason(
 		o: std::io::OStream &) VOID
 	{
 		o.write("unexpected end of file");
+	}
+}
+
+::rlc::tok InvalidCharSeq -> Error
+{
+	{
+		file: src::File #\,
+		line: UINT,
+		column: UINT
+	}->	Error(file, line, column);
+
+	# OVERRIDE reason(
+		o: std::io::OStream &) VOID
+	{
+		o.write("invalid character sequence");
 	}
 }

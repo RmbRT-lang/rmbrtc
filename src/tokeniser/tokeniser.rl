@@ -1,6 +1,8 @@
 INCLUDE "token.rl"
 INCLUDE "error.rl"
 
+INCLUDE 'std/unicode'
+
 ::rlc::tok
 {
 	(// Lazy tokeniser. /)
@@ -37,6 +39,9 @@ INCLUDE "error.rl"
 				out->Content.Length := Read - out->Content.Start;
 				RETURN TRUE;
 			}
+
+			IF(!eof())
+				error();
 
 			RETURN FALSE;
 		}
@@ -118,16 +123,31 @@ INCLUDE "error.rl"
 			position(&line, &column);
 
 			IF(eof())
-				THROW UnexpectedEOF(
+				THROW <UnexpectedEOF>(
 					File,
 					line,
 					column);
 			ELSE
-				THROW UnexpectedChar(
+			{
+				ch ::= look();
+				IF(std::code::utf8::is_follow(ch))
+					THROW <InvalidCharSeq>(File, line, column);
+
+				len ::= std::code::utf8::size(ch);
+				left ::= ##File->Contents - Read;
+				IF(len > left)
+					THROW <InvalidCharSeq>(File, line, column);
+
+				buf: CHAR[4];
+				FOR(i ::= 0; i < len; i++)
+					buf[i] := look(i);
+
+				THROW <UnexpectedChar>(
 					File,
 					line,
 					column,
-					look());
+					std::code::utf8::point(buf));
+			}
 		}
 
 		comment() BOOL
@@ -382,8 +402,14 @@ INCLUDE "error.rl"
 			}
 
 			delim #::= look();
-			IF(delim != '\'' && delim != '"' && delim != '`')
+			SWITCH(delim)
+			{
+			DEFAULT:
 				RETURN FALSE;
+			CASE '\'': out->Type := :stringApostrophe;
+			CASE '"': out->Type := :stringQuote;
+			CASE '`': out->Type := :stringBacktick;
+			}
 
 			++Read;
 			c: CHAR;
@@ -392,24 +418,6 @@ INCLUDE "error.rl"
 				IF(!c) error();
 				IF(c == '\\')
 					IF(!getc()) error();
-			}
-			SWITCH(delim)
-			{
-			CASE '\'':
-				{
-					out->Type := :stringApostrophe;
-					BREAK;
-				}
-			CASE '"':
-				{
-					out->Type := :stringQuote;
-					BREAK;
-				}
-			CASE '`':
-				{
-					out->Type := :stringBacktick;
-					BREAK;
-				}
 			}
 			RETURN TRUE;
 		}

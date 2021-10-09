@@ -37,11 +37,9 @@ main(
 			files += registry.get(<std::Utf8>(absolute, :cstring)!);
 		}
 		FOR(f ::= files.start(); f; ++f)
-		{
 			FOR(group ::= f!->Scope->Items.start(); group; ++group)
 				FOR(it ::= group!->Items.start(); it; ++it)
 					cache += it!;
-		}
 		out.write("success\n");
 	} CATCH(e: rlc::scoper::Error &)
 	{
@@ -65,7 +63,6 @@ main(
 	}
 	CATCH(e: CHAR#\)
 		out.write_all(e, "\n");
-	FINALLY{;}
 
 	RETURN 0;
 }

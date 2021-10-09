@@ -38,7 +38,7 @@ INCLUDE "../util/dynunion.rl"
 		InitValues: Expression - std::DynVector;
 
 		# FINAL name() src::String#& := Name;
-		# FINAL overloadable() BOOL := !Name.exists();
+		# FINAL overloadable() BOOL := !Name;
 
 		parse_fn_arg(p: Parser&) BOOL
 			:= parse(p, FALSE, FALSE, FALSE);

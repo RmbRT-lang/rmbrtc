@@ -22,7 +22,7 @@ INCLUDE 'std/io/file'
 		Start: Index;
 		Length: Size;
 
-		# exists() INLINE ::= Length != 0;
+		# <BOOL> INLINE := Length != 0;
 	}
 
 	Position
@@ -50,7 +50,7 @@ INCLUDE 'std/io/file'
 			buf: CHAR[1024];
 			WHILE(!f.eof())
 			{
-				read ::= f.read(buf, SIZEOF(#buf));
+				read ::= f.read(buf, ##buf);
 				Contents.append(buf, read);
 			}
 		}
