@@ -286,7 +286,6 @@ INCLUDE 'std/unicode'
 				("ASSERT", :assert),
 				("BOOL", :bool),
 				("BREAK", :break),
-				("CASE", :case),
 				("CATCH", :catch),
 				("CHAR", :char),
 				("CONTINUE", :continue),
@@ -406,9 +405,9 @@ INCLUDE 'std/unicode'
 			{
 			DEFAULT:
 				RETURN FALSE;
-			CASE '\'': out->Type := :stringApostrophe;
-			CASE '"': out->Type := :stringQuote;
-			CASE '`': out->Type := :stringBacktick;
+			'\'': out->Type := :stringApostrophe;
+			'"': out->Type := :stringQuote;
+			'`': out->Type := :stringBacktick;
 			}
 
 			++Read;

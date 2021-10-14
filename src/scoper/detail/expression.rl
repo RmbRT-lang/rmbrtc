@@ -16,31 +16,31 @@ INCLUDE 'std/err/unimplemented'
 	{
 	DEFAULT:
 		THROW <std::err::Unimplemented>(TYPE(parsed));
-	CASE parser::SymbolExpression:
+	parser::SymbolExpression:
 		RETURN std::[SymbolExpression]new(position, <parser::SymbolExpression #\>(parsed), file);
-	CASE parser::SymbolChildExpression:
+	parser::SymbolChildExpression:
 		RETURN std::[SymbolChildExpression]new(<parser::SymbolChildExpression #\>(parsed), file);
-	CASE parser::SymbolConstantExpression:
+	parser::SymbolConstantExpression:
 		RETURN std::[SymbolConstantExpression]new(<parser::SymbolConstantExpression #\>(parsed), file);
-	CASE parser::NumberExpression:
+	parser::NumberExpression:
 		RETURN std::[NumberExpression]new(<parser::NumberExpression #\>(parsed), file);
-	CASE parser::BoolExpression:
+	parser::BoolExpression:
 		RETURN std::[BoolExpression]new(<parser::BoolExpression #\>(parsed));
-	CASE parser::CharExpression:
+	parser::CharExpression:
 		RETURN std::[CharExpression]new(<parser::CharExpression #\>(parsed), file);
-	CASE parser::StringExpression:
+	parser::StringExpression:
 		RETURN std::[StringExpression]new(<parser::StringExpression #\>(parsed), file);
-	CASE parser::OperatorExpression:
+	parser::OperatorExpression:
 		RETURN std::[OperatorExpression]new(position, <parser::OperatorExpression #\>(parsed), file);
-	CASE parser::ThisExpression:
+	parser::ThisExpression:
 		RETURN std::[ThisExpression]new();
-	CASE parser::NullExpression:
+	parser::NullExpression:
 		RETURN std::[NullExpression]new();
-	CASE parser::CastExpression:
+	parser::CastExpression:
 		RETURN std::[CastExpression]new(position, <parser::CastExpression #\>(parsed), file);
-	CASE parser::SizeofExpression:
+	parser::SizeofExpression:
 		RETURN std::[SizeofExpression]new(position, <parser::SizeofExpression #\>(parsed), file);
-	CASE parser::TypeofExpression:
+	parser::TypeofExpression:
 		RETURN std::[TypeofExpression]new(position, <parser::TypeofExpression #\>(parsed), file);
 	}
 }

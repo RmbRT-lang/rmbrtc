@@ -23,9 +23,9 @@ INCLUDE "type.rl"
 				member # ::= <<scoper::Member #\>>(it!);
 				TYPE SWITCH(member)
 				{
-				CASE scoper::Constructor:
+				scoper::Constructor:
 					Constructors += :create(<scoper::Constructor #\>(member), cache);
-				CASE scoper::MemberFunction:
+				scoper::MemberFunction:
 					Functions += :create(<scoper::MemberFunction #\>(member), cache);
 				DEFAULT:
 					Others += :gc(<<<Member>>>(member, cache));

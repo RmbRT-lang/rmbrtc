@@ -21,7 +21,7 @@ INCLUDE "scopeitem.rl"
 				member # ::= <<scoper::Member #\>>(item!);
 				TYPE SWITCH(member)
 				{
-				CASE scoper::MemberFunction:
+				scoper::MemberFunction:
 				{
 					fn ::= <scoper::MemberFunction #\>(member);
 					IF(fn->Attribute != :static

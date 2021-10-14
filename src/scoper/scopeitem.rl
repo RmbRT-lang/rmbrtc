@@ -91,17 +91,17 @@ INCLUDE 'std/io/format'
 	TYPE SWITCH(s)
 	{
 	DEFAULT: THROW <std::err::Unimplemented>(TYPE(s));
-	CASE Namespace: RETURN TYPE TYPE(parser::Namespace);
-	CASE Variable: RETURN TYPE TYPE(parser::Variable);
-	CASE Class: RETURN TYPE TYPE(parser::Class);
-	CASE Enum: RETURN TYPE TYPE(parser::Enum);
-	CASE Enum::Constant: RETURN TYPE TYPE(parser::Enum::Constant);
-	CASE ExternSymbol: RETURN TYPE TYPE(parser::ExternSymbol);
-	CASE Rawtype: RETURN TYPE TYPE(parser::Rawtype);
-	CASE Union: RETURN TYPE TYPE(parser::Union);
-	CASE Function: RETURN TYPE TYPE(parser::Function);
-	CASE Constructor: RETURN TYPE TYPE(parser::Constructor);
-	CASE Destructor: RETURN TYPE TYPE(parser::Destructor);
+	Namespace: RETURN TYPE TYPE(parser::Namespace);
+	Variable: RETURN TYPE TYPE(parser::Variable);
+	Class: RETURN TYPE TYPE(parser::Class);
+	Enum: RETURN TYPE TYPE(parser::Enum);
+	Enum::Constant: RETURN TYPE TYPE(parser::Enum::Constant);
+	ExternSymbol: RETURN TYPE TYPE(parser::ExternSymbol);
+	Rawtype: RETURN TYPE TYPE(parser::Rawtype);
+	Union: RETURN TYPE TYPE(parser::Union);
+	Function: RETURN TYPE TYPE(parser::Function);
+	Constructor: RETURN TYPE TYPE(parser::Constructor);
+	Destructor: RETURN TYPE TYPE(parser::Destructor);
 	}
 }
 

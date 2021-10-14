@@ -16,7 +16,6 @@ INCLUDE "../src/file.rl"
 		assert,
 		bool,
 		break,
-		case,
 		catch,
 		char,
 		continue,

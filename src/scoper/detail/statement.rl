@@ -14,79 +14,79 @@ INCLUDE 'std/err/unimplemented'
 	{
 	DEFAULT:
 		THROW <std::err::Unimplemented>(TYPE(parsed));
-	CASE parser::AssertStatement:
+	parser::AssertStatement:
 		RETURN std::[AssertStatement]new(
 			position,
 			<parser::AssertStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE parser::BlockStatement:
+	parser::BlockStatement:
 		RETURN std::[BlockStatement]new(
 			position,
 			<parser::BlockStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE parser::IfStatement:
+	parser::IfStatement:
 		RETURN std::[IfStatement]new(
 			position,
 			<parser::IfStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE parser::VariableStatement:
+	parser::VariableStatement:
 		RETURN std::[VariableStatement]new(
 			position,
 			<parser::VariableStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE parser::ExpressionStatement:
+	parser::ExpressionStatement:
 		RETURN std::[ExpressionStatement]new(
 			position,
 			<parser::ExpressionStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE parser::ReturnStatement:
+	parser::ReturnStatement:
 		RETURN std::[ReturnStatement]new(
 			position,
 			<parser::ReturnStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE parser::TryStatement:
+	parser::TryStatement:
 		RETURN std::[TryStatement]new(
 			position,
 			<parser::TryStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE parser::ThrowStatement:
+	parser::ThrowStatement:
 		RETURN std::[ThrowStatement]new(
 			position,
 			<parser::ThrowStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE parser::LoopStatement:
+	parser::LoopStatement:
 		RETURN std::[LoopStatement]new(
 			position,
 			<parser::LoopStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE parser::SwitchStatement:
+	parser::SwitchStatement:
 		RETURN std::[SwitchStatement]new(
 			position,
 			<parser::SwitchStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE parser::TypeSwitchStatement:
+	parser::TypeSwitchStatement:
 		RETURN std::[TypeSwitchStatement]new(
 			position,
 			<parser::TypeSwitchStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE parser::BreakStatement:
+	parser::BreakStatement:
 		RETURN std::[BreakStatement]new(
 			position,
 			<parser::BreakStatement #\>(parsed),
 			file,
 			parentScope);
-	CASE parser::ContinueStatement:
+	parser::ContinueStatement:
 		RETURN std::[ContinueStatement]new(
 			position,
 			<parser::ContinueStatement #\>(parsed),

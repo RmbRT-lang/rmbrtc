@@ -52,9 +52,9 @@ INCLUDE 'std/unicode'
 
 		SWITCH(lit[0])
 		{
-		CASE 'l', 'L': { Endian := rlc::Endian::little; lit := lit.drop_start(1); BREAK; }
-		CASE 'b', 'B': { Endian := rlc::Endian::big; lit := lit.drop_start(1); BREAK; }
-		DEFAULT: { Endian := rlc::Endian::native; BREAK; }
+		'l', 'L': (Endian, lit) := (rlc::Endian::little, lit.drop_start(1));
+		'b', 'B': (Endian, lit) := (rlc::Endian::big, lit.drop_start(1));
+		DEFAULT: Endian := rlc::Endian::native;
 		}
 
 		// Skip leading and trailing string delimeter character.

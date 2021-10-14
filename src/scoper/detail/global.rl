@@ -22,25 +22,25 @@ INCLUDE 'std/err/unimplemented'
 	{
 	DEFAULT:
 		THROW <std::err::Unimplemented>(TYPE(global));
-	CASE parser::Namespace:
+	parser::Namespace:
 		RETURN std::[Namespace]new(<parser::Namespace #\>(global), file, group);
-	CASE parser::GlobalClass:
+	parser::GlobalClass:
 		RETURN std::[GlobalClass]new(<parser::GlobalClass #\>(global), file, group);
-	CASE parser::GlobalEnum:
+	parser::GlobalEnum:
 		RETURN std::[GlobalEnum]new(<parser::GlobalEnum #\>(global), file, group);
-	CASE parser::GlobalFunction:
+	parser::GlobalFunction:
 		RETURN std::[GlobalFunction]new(<parser::GlobalFunction #\>(global), file, group);
-	CASE parser::GlobalVariable:
+	parser::GlobalVariable:
 		RETURN std::[GlobalVariable]new(<parser::GlobalVariable #\>(global), file, group);
-	CASE parser::ExternSymbol:
+	parser::ExternSymbol:
 		RETURN std::[ExternSymbol]new(<parser::ExternSymbol #\>(global), file, group);
-	CASE parser::GlobalRawtype:
+	parser::GlobalRawtype:
 		RETURN std::[GlobalRawtype]new(<parser::GlobalRawtype #\>(global), file, group);
-	CASE parser::GlobalTypedef:
+	parser::GlobalTypedef:
 		RETURN std::[GlobalTypedef]new(<parser::GlobalTypedef #\>(global), file, group);
-	CASE parser::GlobalUnion:
+	parser::GlobalUnion:
 		RETURN std::[GlobalUnion]new(<parser::GlobalUnion #\>(global), file, group);
-	CASE parser::GlobalMask:
+	parser::GlobalMask:
 		RETURN std::[GlobalMask]new(<parser::GlobalMask #\>(global), file, group);
 	}
 }

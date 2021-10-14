@@ -15,21 +15,21 @@ INCLUDE 'std/memory'
 	{
 	DEFAULT:
 		THROW <std::err::Unimplemented>(TYPE(scopedType));
-	CASE scoper::Signature:
+	scoper::Signature:
 		RETURN std::[Signature]new(scope, <scoper::Signature #\>(scopedType));
-	CASE scoper::Void:
+	scoper::Void:
 		RETURN std::[Void]new(scope, scopedType);
-	CASE scoper::Null:
+	scoper::Null:
 		RETURN std::[Null]new(scope, scopedType);
-	CASE scoper::TypeName:
+	scoper::TypeName:
 		RETURN std::[ReferenceType]new(scope, <scoper::TypeName #\>(scopedType));
-	CASE scoper::SymbolConstantType:
+	scoper::SymbolConstantType:
 		RETURN std::[SymbolConstantType]new(scope, <scoper::SymbolConstantType #\>(scopedType));
-	CASE scoper::TupleType:
+	scoper::TupleType:
 		RETURN std::[TupleType]new(scope, <scoper::TupleType #\>(scopedType));
-	CASE scoper::TypeOfExpression:
+	scoper::TypeOfExpression:
 		RETURN std::[TypeOfExpression]new(scope, <scoper::TypeOfExpression #\>(scopedType));
-	CASE scoper::BuiltinType:
+	scoper::BuiltinType:
 		RETURN std::[BuiltinType]new(scope, <scoper::BuiltinType #\>(scopedType));
 	}
 }

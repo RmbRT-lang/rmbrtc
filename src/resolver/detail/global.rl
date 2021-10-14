@@ -21,27 +21,27 @@ INCLUDE 'std/err/unimplemented'
 	{
 	DEFAULT:
 		THROW <std::err::Unimplemented>(TYPE(v));
-	CASE scoper::Namespace:
+	scoper::Namespace:
 		RETURN std::[Namespace]new(<<scoper::Namespace #\>>(v), cache);
-	CASE scoper::GlobalTypedef:
+	scoper::GlobalTypedef:
 		RETURN std::[GlobalTypedef]new(<<scoper::GlobalTypedef #\>>(v), cache);
-	CASE scoper::GlobalFunction:
+	scoper::GlobalFunction:
 		RETURN std::[GlobalFunction]new(<<scoper::GlobalFunction #\>>(v), cache);
-	CASE scoper::GlobalVariable:
+	scoper::GlobalVariable:
 		RETURN std::[GlobalVariable]new(<<scoper::GlobalVariable #\>>(v), cache);
-	CASE scoper::GlobalClass:
+	scoper::GlobalClass:
 		RETURN std::[GlobalClass]new(<<scoper::GlobalClass #\>>(v), cache);
-	CASE scoper::GlobalMask:
+	scoper::GlobalMask:
 		RETURN std::[GlobalMask]new(<<scoper::GlobalMask #\>>(v), cache);
-	CASE scoper::GlobalRawtype:
+	scoper::GlobalRawtype:
 		RETURN std::[GlobalRawtype]new(<<scoper::GlobalRawtype #\>>(v), cache);
-	CASE scoper::GlobalUnion:
+	scoper::GlobalUnion:
 		RETURN std::[GlobalUnion]new(<<scoper::GlobalUnion #\>>(v), cache);
-	CASE scoper::GlobalEnum:
+	scoper::GlobalEnum:
 		RETURN std::[GlobalEnum]new(<<scoper::GlobalEnum #\>>(v), cache);
-	CASE scoper::ExternSymbol:
+	scoper::ExternSymbol:
 		RETURN std::[ExternSymbol]new(<<scoper::ExternSymbol #\>>(v), cache);
-	CASE scoper::Test:
+	scoper::Test:
 		RETURN std::[Test]new(<<scoper::Test #\>>(v), cache);
 	}
 }

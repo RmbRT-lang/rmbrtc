@@ -48,8 +48,8 @@ INCLUDE 'std/shared'
 			path := Text(inc->Token, *Source).utf8();
 			TRY SWITCH(type ::= inc!.Type)
 			{
-			CASE :relative: path := relative_path(path!);
-			CASE :global: path := registry.find_global(path!);
+			:relative: path := relative_path(path!);
+			:global: path := registry.find_global(path!);
 			DEFAULT:
 				THROW <std::err::Unimplemented>(type.NAME());
 			}

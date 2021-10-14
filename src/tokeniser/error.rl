@@ -51,8 +51,8 @@ INCLUDE 'std/string'
 		o.write("unexpected character '");
 		SWITCH(Char)
 		{
-		CASE '\t': { o.write("\\t"); BREAK; }
-		CASE '\n': { o.write("\\n"); BREAK; }
+		'\t': o.write("\\t");
+		'\n': o.write("\\n");
 		DEFAULT:
 			{
 				u8: CHAR[4];

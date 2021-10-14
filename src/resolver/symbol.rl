@@ -285,14 +285,14 @@ INCLUDE "../scoper/fileregistry.rl"
 					IF(child->Templates[j])
 						SWITCH(type ::= item->Templates.Templates[j].Type)
 						{
-						CASE :number, :value:
+						:number, :value:
 							IF(!child->Templates[j][0].is_expression())
 								THROW <NotResolved>(
 									symbolScope,
 									child->Name,
 									child->Position,
 									"expression expected as template argument", j);
-						CASE :type:
+						:type:
 							IF(!child->Templates[j][0].is_type())
 								THROW <NotResolved>(
 									symbolScope,
@@ -340,14 +340,14 @@ INCLUDE "../scoper/fileregistry.rl"
 				IF(child->Templates[j])
 					SWITCH(type ::= item->Templates.Templates[j].Type)
 					{
-					CASE :number, :value:
+					:number, :value:
 						IF(!child->Templates[j][0].is_expression())
 							THROW <NotResolved>(
 								symbolScope,
 								child->Name,
 								child->Position,
 								"expression expected as template argument", j);
-					CASE :type:
+					:type:
 						IF(!child->Templates[j][0].is_type())
 							THROW <NotResolved>(
 								symbolScope,
@@ -377,23 +377,22 @@ INCLUDE "../scoper/fileregistry.rl"
 		{
 			TYPE SWITCH(item)
 			{
-			CASE scoper::Variable:
+			scoper::Variable:
 				{
 					IF(var ::= <<scoper::LocalVariable #*>>(item))
 						RETURN var->Position <= position;
 					RETURN TRUE;
 				}
-			CASE scoper::Function, scoper::ExternSymbol:
+			scoper::Function, scoper::ExternSymbol:
 				RETURN TRUE;
 			}
 		}
 
 		TYPE SWITCH(item)
 		{
-		CASE
-			scoper::Variable,
-			scoper::Function,
-			scoper::ExternSymbol:
+		scoper::Variable,
+		scoper::Function,
+		scoper::ExternSymbol:
 			RETURN FALSE;
 		}
 
@@ -408,25 +407,24 @@ INCLUDE "../scoper/fileregistry.rl"
 		{
 		DEFAULT:
 			THROW <std::err::Unimplemented>(TYPE(item));
-		CASE scoper::Class:
+		scoper::Class:
 			RETURN (<scoper::Class #\>(item), TRUE);
-		CASE scoper::Rawtype:
+		scoper::Rawtype:
 			RETURN (<scoper::Rawtype #\>(item), TRUE);
-		CASE scoper::Union:
+		scoper::Union:
 			RETURN (<scoper::Union #\>(item), TRUE);
-		CASE scoper::Enum:
+		scoper::Enum:
 			RETURN (<scoper::Enum #\>(item), TRUE);
-		CASE scoper::Namespace:
+		scoper::Namespace:
 			RETURN (<scoper::Namespace #\>(item), TRUE);
-		CASE scoper::Mask:
+		scoper::Mask:
 			RETURN (<scoper::Mask #\>(item), TRUE);
-		CASE scoper::Typedef:
+		scoper::Typedef:
 			RETURN (NULL, TRUE);
-		CASE
-			scoper::Variable,
-			scoper::Enum::Constant,
-			scoper::Function,
-			scoper::ExternSymbol:
+		scoper::Variable,
+		scoper::Enum::Constant,
+		scoper::Function,
+		scoper::ExternSymbol:
 			RETURN (NULL, FALSE);
 		}
 	}

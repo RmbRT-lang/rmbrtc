@@ -13,21 +13,21 @@ INCLUDE 'std/err/unimplemented'
 	{
 	DEFAULT:
 		THROW <std::err::Unimplemented>(TYPE(parsed));
-	CASE parser::Signature:
+	parser::Signature:
 		RETURN std::[Signature]new(<parser::Signature #\>(parsed), file);
-	CASE parser::SymbolConstantType:
+	parser::SymbolConstantType:
 		RETURN std::[SymbolConstantType]new(<parser::SymbolConstantType #\>(parsed), file);
-	CASE parser::Void:
+	parser::Void:
 		RETURN std::[Void]new(<parser::Void #\>(parsed), file);
-	CASE parser::Null:
+	parser::Null:
 		RETURN std::[Null]new(<parser::Null #\>(parsed), file);
-	CASE parser::TypeName:
+	parser::TypeName:
 		RETURN std::[TypeName]new(<parser::TypeName #\>(parsed), file);
-	CASE parser::TupleType:
+	parser::TupleType:
 		RETURN std::[TupleType]new(<parser::TupleType #\>(parsed), file);
-	CASE parser::TypeOfExpression:
+	parser::TypeOfExpression:
 		RETURN std::[TypeOfExpression]new(<parser::TypeOfExpression #\>(parsed), file);
-	CASE parser::BuiltinType:
+	parser::BuiltinType:
 		RETURN std::[BuiltinType]new(<parser::BuiltinType #\>(parsed), file);
 	}
 }

@@ -511,7 +511,7 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser &) BOOL
 		{
-			IF(p.consume(:case))
+			IF(!p.consume(:default))
 			{
 				DO(value: Expression *)
 				{
@@ -519,10 +519,7 @@ INCLUDE "../util/dynunion.rl"
 						p.fail("expected expression");
 					Values += :gc(value);
 				} WHILE(p.consume(:comma))
-			} ELSE
-				IF(!p.consume(:default))
-					RETURN FALSE;
-
+			}
 			p.expect(:colon);
 
 			Body := :gc(Statement::parse_body(p));
@@ -583,7 +580,7 @@ INCLUDE "../util/dynunion.rl"
 
 		parse(p: Parser &) BOOL
 		{
-			IF(p.consume(:case))
+			IF(!p.consume(:default))
 			{
 				DO(type: Type *)
 				{
@@ -591,10 +588,7 @@ INCLUDE "../util/dynunion.rl"
 						p.fail("expected type");
 					Types += :gc(type);
 				} WHILE(p.consume(:comma))
-			} ELSE
-				IF(!p.consume(:default))
-					RETURN FALSE;
-
+			}
 			p.expect(:colon);
 
 			Body := :gc(Statement::parse_body(p));

@@ -11,31 +11,31 @@ INCLUDE 'std/err/unimplemented'
 	{
 	DEFAULT:
 		THROW <std::err::Unimplemented>(TYPE(stmt));
-	CASE scoper::AssertStatement:
+	scoper::AssertStatement:
 		RETURN std::[AssertStatement]new(<scoper::AssertStatement #\>(stmt));
-	CASE scoper::BlockStatement:
+	scoper::BlockStatement:
 		RETURN std::[BlockStatement]new(<scoper::BlockStatement #\>(stmt), cache);
-	CASE scoper::IfStatement:
+	scoper::IfStatement:
 		RETURN std::[IfStatement]new(<scoper::IfStatement #\>(stmt), cache);
-	CASE scoper::VariableStatement:
+	scoper::VariableStatement:
 		RETURN std::[VariableStatement]new(<scoper::VariableStatement #\>(stmt), cache);
-	CASE scoper::ExpressionStatement:
+	scoper::ExpressionStatement:
 		RETURN std::[ExpressionStatement]new(<scoper::ExpressionStatement #\>(stmt));
-	CASE scoper::ReturnStatement:
+	scoper::ReturnStatement:
 		RETURN std::[ReturnStatement]new(<scoper::ReturnStatement #\>(stmt));
-	CASE scoper::TryStatement:
+	scoper::TryStatement:
 		RETURN std::[TryStatement]new(<scoper::TryStatement #\>(stmt), cache);
-	CASE scoper::ThrowStatement:
+	scoper::ThrowStatement:
 		RETURN std::[ThrowStatement]new(<scoper::ThrowStatement #\>(stmt));
-	CASE scoper::LoopStatement:
+	scoper::LoopStatement:
 		RETURN std::[LoopStatement]new(<scoper::LoopStatement #\>(stmt), cache);
-	CASE scoper::SwitchStatement:
+	scoper::SwitchStatement:
 		RETURN std::[SwitchStatement]new(<scoper::SwitchStatement #\>(stmt), cache);
-	CASE scoper::TypeSwitchStatement:
+	scoper::TypeSwitchStatement:
 		RETURN std::[TypeSwitchStatement]new(<scoper::TypeSwitchStatement #\>(stmt), cache);
-	CASE scoper::BreakStatement:
+	scoper::BreakStatement:
 		RETURN std::[BreakStatement]new(<scoper::BreakStatement #\>(stmt));
-	CASE scoper::ContinueStatement:
+	scoper::ContinueStatement:
 		RETURN std::[ContinueStatement]new(<scoper::ContinueStatement #\>(stmt));
 	}
 }

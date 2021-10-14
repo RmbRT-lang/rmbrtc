@@ -38,19 +38,19 @@ INCLUDE "symbol.rl"
 				member # ::= <<scoper::Member#\>>(item!);
 				TYPE SWITCH(member)
 				{
-				CASE scoper::MemberVariable:
+				scoper::MemberVariable:
 					Fields += :create(<scoper::MemberVariable#\>(member), cache);
-				CASE scoper::MemberFunction:
+				scoper::MemberFunction:
 					Functions += :create(<scoper::MemberFunction#\>(member), cache);
-				CASE scoper::Constructor:
+				scoper::Constructor:
 					Constructors += :create(<scoper::Constructor#\>(member), cache);
-				CASE scoper::Destructor:
+				scoper::Destructor:
 					Destructor := :create(<scoper::Destructor#\>(member), cache);
-				CASE scoper::MemberEnum,
-					scoper::MemberTypedef,
-					scoper::MemberClass,
-					scoper::MemberRawtype,
-					scoper::MemberUnion:
+				scoper::MemberEnum,
+				scoper::MemberTypedef,
+				scoper::MemberClass,
+				scoper::MemberRawtype,
+				scoper::MemberUnion:
 					Types += :gc(<<<Member>>>(member, cache));
 				DEFAULT:
 					THROW <std::err::Unimplemented>(TYPE(member));

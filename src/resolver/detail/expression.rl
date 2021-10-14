@@ -18,38 +18,38 @@ INCLUDE "../symbol.rl"
 	{
 	DEFAULT:
 		THROW <std::err::Unimplemented>(TYPE(ref));
-	CASE scoper::SymbolExpression:
+	scoper::SymbolExpression:
 		RETURN std::[ReferenceExpression]new(<scoper::SymbolExpression #\>(ref), scope);
-	CASE scoper::NumberExpression:
+	scoper::NumberExpression:
 		RETURN std::[NumberExpression]new(<scoper::NumberExpression #\>(ref));
-	CASE scoper::BoolExpression:
+	scoper::BoolExpression:
 		RETURN std::[BoolExpression]new(<scoper::BoolExpression #\>(ref));
-	CASE scoper::CharExpression:
+	scoper::CharExpression:
 		RETURN std::[CharExpression]new(<scoper::CharExpression #\>(ref));
-	CASE scoper::StringExpression:
+	scoper::StringExpression:
 		RETURN std::[StringExpression]new(<scoper::StringExpression #\>(ref));
-	CASE scoper::OperatorExpression:
+	scoper::OperatorExpression:
 		{
 			op ::= <scoper::OperatorExpression #\>(ref);
 			SWITCH(op->Op)
 			{
 			DEFAULT:
 				RETURN std::[OperatorExpression]new(op, scope);
-			CASE :memberReference, :memberPointer:
+			:memberReference, :memberPointer:
 				RETURN std::[MemberAccessExpression]new(op, scope);
 			}
 		}
-	CASE scoper::ThisExpression:
+	scoper::ThisExpression:
 		RETURN std::[ThisExpression]new();
-	CASE scoper::NullExpression:
+	scoper::NullExpression:
 		RETURN std::[NullExpression]new();
-	CASE scoper::CastExpression:
+	scoper::CastExpression:
 		RETURN std::[CastExpression]new(<scoper::CastExpression #\>(ref), scope);
-	CASE scoper::SizeofExpression:
+	scoper::SizeofExpression:
 		RETURN std::[SizeofExpression]new(<scoper::SizeofExpression #\>(ref), scope);
-	CASE scoper::TypeofExpression:
+	scoper::TypeofExpression:
 		RETURN std::[TypeofExpression]new(<scoper::TypeofExpression #\>(ref), scope);
-	CASE scoper::SymbolConstantExpression:
+	scoper::SymbolConstantExpression:
 		RETURN std::[SymbolConstantExpression]new(<scoper::SymbolConstantExpression #\>(ref));
 	}
 }

@@ -16,9 +16,9 @@ INCLUDE "type.rl"
 				member # ::= <<scoper::Member #\>>(item!);
 				TYPE SWITCH(member)
 				{
-				CASE scoper::MemberVariable:
+				scoper::MemberVariable:
 					Fields += :create(<scoper::MemberVariable #\>(member), cache);
-				CASE scoper::MemberFunction:
+				scoper::MemberFunction:
 					Functions += :create(<scoper::MemberFunction #\>(member), cache);
 				DEFAULT:
 					THROW <std::err::Unimplemented>(TYPE(member));
