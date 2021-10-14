@@ -59,8 +59,8 @@ INCLUDE 'std/streambuffer'
 		it ::= Items.find(name, &loc);
 
 		group ::= it
-			? it->Ptr
-			: Items.insert_at(loc, :gc(std::[detail::ScopeItemGroup]new(name, &THIS))).Ptr;
+			? (*it)!
+			: Items.insert_at(loc, :gc(std::[detail::ScopeItemGroup]new(name, &THIS)))!;
 
 		ret ::= <<<ScopeItem>>>(entry, file, group);
 		IF(ret.(1))
@@ -114,5 +114,5 @@ INCLUDE 'std/streambuffer'
 	}
 
 	TYPE ScopeItemGroupSet
-		:= std::[std::[detail::ScopeItemGroup]Dynamic, detail::ScopeItemGroup]VectorSet;
+		:= std::[std::[ScopeItemGroup]Dynamic, ScopeItemGroup]VectorSet;
 }

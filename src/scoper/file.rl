@@ -60,10 +60,10 @@ INCLUDE 'std/shared'
 			{
 				IF(file ::= registry.get(path!))
 				{
-					Includes.emplace_at(loc, file);
-					file->IncludedBy.insert(file);
-					IncludedBy.insert(file);
-					file->Includes.insert(&THIS);
+					Includes += (:at(loc), file);
+					file->IncludedBy += file;
+					IncludedBy += file;
+					file->Includes += &THIS;
 				}
 			}
 		}
@@ -81,7 +81,6 @@ INCLUDE 'std/shared'
 		}->	Error(position)
 		:	Include(&&path),
 			Type(type);
-
 
 		# FINAL print_msg(o: std::io::OStream &) VOID
 		{
