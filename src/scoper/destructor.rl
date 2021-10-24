@@ -7,7 +7,7 @@ INCLUDE "../parser/destructor.rl"
 
 	{
 		parsed: parser::Destructor #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	}->	Member(parsed),
 		ScopeItem(group, parsed, file)

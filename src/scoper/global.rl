@@ -5,7 +5,7 @@ INCLUDE "scopeitem.rl"
 {
 	<<<
 		parsed: parser::Global #\,
-		file: src::File #&,
+		file: parser::File #&,
 		group: detail::ScopeItemGroup \
 	>>> Global \
 		:= detail::create_global(parsed, file, group);

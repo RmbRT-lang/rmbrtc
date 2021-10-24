@@ -19,7 +19,7 @@ INCLUDE "exprorstmt.rl"
 
 	{
 		parsed: parser::Function #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	}->	ScopeItem(group, parsed, file)
 	:	Inline(parsed->IsInline),
@@ -35,12 +35,12 @@ INCLUDE "exprorstmt.rl"
 
 		ASSERT(parsed->Return);
 		IF(parsed->Return.is_type())
-			Return := :gc(<<<scoper::Type>>>(parsed->Return.type(), file));
+			Return := :gc(<<<scoper::Type>>>(parsed->Return.type(), file.Src));
 		ELSE
 			Return := :gc(std::[scoper::Type::Auto]new(*parsed->Return.auto()));
 
 		IF(parsed->Body.is_expression())
-			Body := :gc(<<<Expression>>>(0, parsed->Body.expression(), file));
+			Body := :gc(<<<Expression>>>(0, parsed->Body.expression(), file.Src));
 		ELSE IF(parsed->Body.is_statement())
 			Body := :gc(<<<Statement>>>(0, parsed->Body.statement(), file, &ArgumentScope));
 	}
@@ -50,7 +50,7 @@ INCLUDE "exprorstmt.rl"
 {
 	{
 		parsed: parser::GlobalFunction #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	}->	Function(parsed, file, group);
 }
@@ -61,7 +61,7 @@ INCLUDE "exprorstmt.rl"
 
 	{
 		parsed: parser::MemberFunction #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	}->	Function(parsed, file, group),
 		Member(parsed)

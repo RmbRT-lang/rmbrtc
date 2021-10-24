@@ -14,7 +14,7 @@ INCLUDE "../util/dynunion.rl"
 
 	{
 		parsed: parser::ExternSymbol #\,
-		file: src::File #&,
+		file: parser::File #&,
 		group: detail::ScopeItemGroup \
 	}->	ScopeItem(group, parsed, file)
 	{

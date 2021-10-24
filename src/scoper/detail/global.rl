@@ -14,7 +14,7 @@ INCLUDE 'std/err/unimplemented'
 
 ::rlc::scoper::detail create_global(
 	global: parser::Global #\,
-	file: src::File#&,
+	file: parser::File#&,
 	group:  detail::ScopeItemGroup \
 ) Global \
 {

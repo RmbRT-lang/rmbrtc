@@ -23,7 +23,7 @@ INCLUDE "symbol.rl"
 
 	{
 		parsed: parser::Class #\,
-		file: src::File #&,
+		file: parser::File #&,
 		group: detail::ScopeItemGroup \
 	}->	ScopeItem(group, parsed, file),
 		Scope(&THIS, group->Scope)
@@ -33,7 +33,7 @@ INCLUDE "symbol.rl"
 			Scope::insert(<<parser::ScopeItem #\>>(parsed->Members[i]), file);
 
 		FOR(i ::= 0; i < ##parsed->Inheritances; i++)
-			Inheritances += (parsed->Inheritances[i], file);
+			Inheritances += (parsed->Inheritances[i], file.Src);
 	}
 
 	Virtual: BOOL;
@@ -44,7 +44,7 @@ INCLUDE "symbol.rl"
 {
 	{
 		parsed: parser::GlobalClass #\,
-		file: src::File #&,
+		file: parser::File #&,
 		group: detail::ScopeItemGroup \
 	}->	Class(parsed, file, group);
 }
@@ -53,7 +53,7 @@ INCLUDE "symbol.rl"
 {
 	{
 		parsed: parser::MemberClass #\,
-		file: src::File #&,
+		file: parser::File #&,
 		group: detail::ScopeItemGroup \
 	}->	Member(parsed),
 		Class(parsed, file, group);

@@ -46,7 +46,7 @@ INCLUDE "detail/statement.rl"
 
 	{
 		parsed: parser::Constructor #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	}->	Member(parsed),
 		ScopeItem(group, parsed, file)
@@ -62,10 +62,10 @@ INCLUDE "detail/statement.rl"
 		}
 
 		FOR(i ::= 0; i < ##parsed->BaseInits; i++)
-			BaseInits += (parsed->BaseInits[i], file);
+			BaseInits += (parsed->BaseInits[i], file.Src);
 
 		FOR(i ::= 0; i < ##parsed->MemberInits; i++)
-			MemberInits += (parsed->MemberInits[i], file);
+			MemberInits += (parsed->MemberInits[i], file.Src);
 
 		IF(parsed->Body)
 			Body := :gc(std::[BlockStatement]new(0, parsed->Body, file, &ArgScope));

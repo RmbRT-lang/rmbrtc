@@ -10,7 +10,7 @@ INCLUDE "../parser/enum.rl"
 
 		{
 			parsed: parser::Enum::Constant #\,
-			file: src::File#&,
+			file: parser::File#&,
 			group: detail::ScopeItemGroup \
 		}->	ScopeItem(group, parsed, file),
 			Member(parsed)
@@ -22,7 +22,7 @@ INCLUDE "../parser/enum.rl"
 
 	{
 		parsed: parser::Enum #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	}->	ScopeItem(group, parsed, file),
 		Scope(&THIS, group->Scope)
@@ -40,7 +40,7 @@ INCLUDE "../parser/enum.rl"
 {
 	{
 		parsed: parser::GlobalEnum #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	}->	Enum(parsed, file, group);
 }
@@ -49,7 +49,7 @@ INCLUDE "../parser/enum.rl"
 {
 	{
 		parsed: parser::MemberEnum #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	}->	Member(parsed),
 		Enum(parsed, file, group);
