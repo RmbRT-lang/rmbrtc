@@ -41,6 +41,8 @@ INCLUDE "types.rl"
 			RETURN NULL;
 		}
 
+		# THIS! INLINE #& ::= Templates;
 		# ##THIS INLINE UM := ##Templates;
+		# <BOOL> INLINE := ##Templates != 0;
 	}
 }
