@@ -49,7 +49,7 @@ INCLUDE "../scoper/fileregistry.rl"
 	Unresolved
 	{
 		Symbols: scoper::Symbol::Child # - std::Buffer;
-		Templates: TemplateArg - std::DynVector - std::Vector;
+		Templates: TemplateArgs - std::Vector;
 
 		{
 			scope: scoper::Scope #\,
@@ -333,7 +333,7 @@ INCLUDE "../scoper/fileregistry.rl"
 					symbolScope,
 					child->Name,
 					child->Position,
-					"number of template arguments does not match declaration");
+					"number of template arguments exceeds declaration");
 
 			// Check template argument kind compatibility (value/type). Ignore empty and omitted template arguments
 			FOR(j ::= 0; j < ##child->Templates; j++)
