@@ -18,7 +18,7 @@ PRIVATE:
 	}
 
 	Files: std::[File - std::Dynamic, Utf8Cmp]VectorSet;
-	NameByNumber: std::Utf8-std::Vector;
+	FileByNumber: parser::File #\-std::Vector;
 
 PUBLIC:
 	get(file: std::Utf8 #&) File \
@@ -30,11 +30,18 @@ PUBLIC:
 		{
 			max_files: UM# := ~<src::FileNo>(0);
 			ASSERT(##Files < max_files);
-			NameByNumber += file;
-			RETURN Files.emplace_at(loc, :gc(std::[File]new(file, ##Files)));
+			f ::= Files.emplace_at(loc, :gc(std::[File]new(file, ##Files)))!;
+			FileByNumber += f;
+			RETURN f;
 		}
 	}
 
 	# nameByNumber(n: src::FileNo) CHAR#-std::Buffer
-		:= NameByNumber[n]!;
+		:= FileByNumber[n]->Src.Name!;
+	# positionByFileNumber(i: src::Index, n: src::FileNo) src::Position
+	{
+		pos: {UINT, UINT};
+		FileByNumber[n]->Src.position(i, &pos.(0), &pos.(1));
+		RETURN (n, pos.(0), pos.(1));
+	}
 }

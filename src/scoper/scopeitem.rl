@@ -1,5 +1,6 @@
 INCLUDE "scope.rl"
 INCLUDE "templates.rl"
+INCLUDE "fileregistry.rl"
 
 INCLUDE "../parser/scopeitem.rl"
 INCLUDE "../parser/member.rl"
@@ -15,13 +16,17 @@ INCLUDE 'std/io/format'
 {
 	Group: detail::ScopeItemGroup \;
 	Templates: TemplateDecls;
+	Position: src::Index;
+	FileNo: src::FileNo;
 
 	{
 		group: detail::ScopeItemGroup \,
 		item: parser::ScopeItem #\,
-		file: src::File#&
+		file: parser::File#&
 	}:	Group(group),
-		Templates(item->Templates, file);
+		Templates(item->Templates, file.Src),
+		Position(item->name().Start),
+		FileNo(file.Number);
 
 	(// The scope this item is contained in. /)
 	# parent_scope() INLINE Scope \ := Group->Scope;
@@ -30,9 +35,12 @@ INCLUDE 'std/io/format'
 
 	# name() INLINE String#& := Group->Name;
 
+	# position(f: FileRegistry#&) src::Position
+		:= f.positionByFileNumber(Position, FileNo);
+
 	<<<
 		entry: parser::ScopeItem #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	>>> {ScopeItem \, BOOL}
 		:= detail::create_scope_item(entry, file, group);
@@ -107,7 +115,7 @@ INCLUDE 'std/io/format'
 
 ::rlc::scoper::detail create_scope_item(
 	entry: parser::ScopeItem #\,
-	file: src::File#&,
+	file: parser::File#&,
 	group: detail::ScopeItemGroup \
 ) {ScopeItem \, BOOL}
 {
@@ -118,9 +126,9 @@ INCLUDE 'std/io/format'
 		cmp # ::= group->Items!.front(:ok)!;
 
 		IF(origin_type(cmp) != type)
-			THROW <IncompatibleOverloadError>(cmp, entry, file, "kind mismatch", type, TYPE(cmp));
+			THROW <IncompatibleOverloadError>(cmp, entry, file.Src, "kind mismatch", type, TYPE(cmp));
 		IF(!entry->overloadable())
-			THROW <IncompatibleOverloadError>(cmp, entry, file, "not overloadable", type, NULL);
+			THROW <IncompatibleOverloadError>(cmp, entry, file.Src, "not overloadable", type, NULL);
 
 		IF(type == TYPE TYPE(parser::Namespace))
 		{

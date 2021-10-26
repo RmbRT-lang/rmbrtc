@@ -28,6 +28,8 @@ INCLUDE 'std/shared'
 	}
 
 	# nameByNumber(n: src::FileNo) ::= ParsedFiles.nameByNumber(n);
+	# positionByFileNumber(i: src::Index, n: src::FileNo)
+		::= ParsedFiles.positionByFileNumber(i, n);
 
 	(// Returns pointer to file, or null if the file is currently being loaded. /)
 	get(path: std::[CHAR#]Buffer #&) File *

@@ -12,7 +12,7 @@ INCLUDE "scopeitem.rl"
 
 	<<<
 		parsed: parser::Member #\,
-		file: src::File #&,
+		file: parser::File #&,
 		group: detail::ScopeItemGroup \
 	>>> Member \
 		:= detail::create_member(parsed, file, group);

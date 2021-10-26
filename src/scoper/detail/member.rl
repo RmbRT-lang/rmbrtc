@@ -14,7 +14,7 @@ INCLUDE 'std/err/unimplemented'
 
 ::rlc::scoper::detail create_member(
 	parsed: parser::Member #\,
-	file: src::File #&,
+	file: parser::File #&,
 	group: detail::ScopeItemGroup \) Member \
 {
 	TYPE SWITCH(parsed)

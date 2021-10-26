@@ -12,11 +12,11 @@ INCLUDE 'std/memory'
 
 	{
 		parsed: parser::Rawtype #\,
-		file: src::File #&,
+		file: parser::File #&,
 		group: detail::ScopeItemGroup \
 	}->	ScopeItem(group, parsed, file),
 		Scope(&THIS, group->Scope)
-	:	Size(:gc(<<<Expression>>>(parsed->Size, file)))
+	:	Size(:gc(<<<Expression>>>(parsed->Size, file.Src)))
 	{
 		FOR(i ::= 0; i < ##parsed->Members; i++)
 			Scope::insert(<<parser::ScopeItem #\>>(parsed->Members[i]), file);
@@ -27,7 +27,7 @@ INCLUDE 'std/memory'
 {
 	{
 		parsed: parser::GlobalRawtype #\,
-		file: src::File #&,
+		file: parser::File #&,
 		group: detail::ScopeItemGroup \
 	}->	Rawtype(parsed, file, group);
 }
@@ -36,7 +36,7 @@ INCLUDE 'std/memory'
 {
 	{
 		parsed: parser::MemberRawtype #\,
-		file: src::File #&,
+		file: parser::File #&,
 		group: detail::ScopeItemGroup \
 	}->	Member(parsed),
 		Rawtype(parsed, file, group);

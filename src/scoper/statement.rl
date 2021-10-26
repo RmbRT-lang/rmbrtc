@@ -24,7 +24,7 @@ INCLUDE "../util/dynunion.rl"
 	<<<
 		position: UM,
 		parsed: parser::Statement #\,
-		file: src::File#&,
+		file: parser::File#&,
 		parentScope: Scope \
 	>>> Statement \ := detail::create_statement(
 		position,

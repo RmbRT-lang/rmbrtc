@@ -8,7 +8,7 @@ INCLUDE "scopeitem.rl"
 
 	{
 		parsed: parser::Test #\,
-		file: src::File #&,
+		file: parser::File #&,
 		group: detail::ScopeItemGroup \
 	}->	ScopeItem(group, parsed, file)
 	:	Body(0, &parsed->Body, file, group->Scope);

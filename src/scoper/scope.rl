@@ -48,9 +48,9 @@ INCLUDE 'std/streambuffer'
 
 	insert(
 		entry: parser::ScopeItem #\,
-		file: src::File #&) ScopeItem \
+		file: parser::File #&) ScopeItem \
 	{
-		name ::= file.content(entry->name());
+		name ::= file.Src.content(entry->name());
 		IF(<<ScopeItem #*>>(Owner)
 		&& <ScopeItem \>(Owner)->Templates.find(name))
 			THROW "shadowing template parameter";

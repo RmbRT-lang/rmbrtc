@@ -35,17 +35,17 @@ INCLUDE "../util/dynunion.rl"
 	{
 		group: detail::ScopeItemGroup \,
 		parsed: parser::Variable #\,
-		file: src::File#&
+		file: parser::File#&
 	}->	ScopeItem(group, parsed, file)
 	:	HasInitialiser(parsed->HasInitialiser)
 	{
 		IF(parsed->Type.is_type())
-			Type := :gc(<<<scoper::Type>>>(parsed->Type.type(), file));
+			Type := :gc(<<<scoper::Type>>>(parsed->Type.type(), file.Src));
 		ELSE
 			Type := :gc(std::[scoper::Type::Auto]new(*parsed->Type.auto()));
 
 		FOR(i ::= 0; i < ##parsed->InitValues; i++)
-			InitValues += :gc(<<<Expression>>>(parsed->InitValues[i], file));
+			InitValues += :gc(<<<Expression>>>(parsed->InitValues[i], file.Src));
 	}
 }
 
@@ -53,7 +53,7 @@ INCLUDE "../util/dynunion.rl"
 {
 	{
 		parsed: parser::GlobalVariable #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	}->	Variable(group, parsed, file);
 }
@@ -62,7 +62,7 @@ INCLUDE "../util/dynunion.rl"
 {
 	{
 		parsed: parser::MemberVariable #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	}->	Member(parsed),
 		Variable(group, parsed, file);
@@ -74,7 +74,7 @@ INCLUDE "../util/dynunion.rl"
 
 	{
 		parsed: parser::LocalVariable #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	}->	Variable(group, parsed, file);
 

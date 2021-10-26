@@ -7,7 +7,7 @@ INCLUDE "scopeitem.rl"
 {
 	{
 		parsed: parser::Namespace #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	}->	ScopeItem(group, parsed, file),
 		Scope(&THIS, group->Scope)

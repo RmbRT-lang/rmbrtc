@@ -10,7 +10,7 @@ INCLUDE "member.rl"
 
 	{
 		parsed: parser::Union #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	}->	ScopeItem(group, parsed, file),
 		Scope(&THIS, group->Scope)
@@ -29,7 +29,7 @@ INCLUDE "member.rl"
 {
 	{
 		parsed: parser::GlobalUnion #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	}->	Union(parsed, file, group);
 }
@@ -38,7 +38,7 @@ INCLUDE "member.rl"
 {
 	{
 		parsed: parser::MemberUnion #\,
-		file: src::File#&,
+		file: parser::File#&,
 		group: detail::ScopeItemGroup \
 	}->	Member(parsed),
 		Union(parsed, file, group);
