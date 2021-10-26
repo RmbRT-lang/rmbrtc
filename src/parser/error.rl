@@ -109,6 +109,6 @@ INCLUDE 'std/io/format'
 		o: std::io::OStream &) VOID
 	{
 		o.write("expected ");
-		o.write(Expected.NAME());
+		o.write(<CHAR #\>(Expected));
 	}
 }

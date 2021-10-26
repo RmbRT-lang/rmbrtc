@@ -51,7 +51,7 @@ INCLUDE 'std/shared'
 			:relative: path := relative_path(path!);
 			:global: path := registry.find_global(path!);
 			DEFAULT:
-				THROW <std::err::Unimplemented>(type.NAME());
+				THROW <std::err::Unimplemented>(<CHAR#\>(type));
 			}
 			CATCH(std::io::FileNotFound&)
 				THROW <IncludeNotFound>(inc!.Token.Position, &&path, inc!.Type);
@@ -84,7 +84,7 @@ INCLUDE 'std/shared'
 
 		# FINAL print_msg(o: std::io::OStream &) VOID
 		{
-			o.write_all(Type.NAME(), " include '", Include!, "' not found");
+			o.write_all(<CHAR#\>(Type), " include '", Include!, "' not found");
 		}
 	}
 

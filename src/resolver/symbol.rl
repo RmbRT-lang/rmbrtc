@@ -300,7 +300,7 @@ INCLUDE "../scoper/fileregistry.rl"
 									child->Position,
 									"type expected as template argument", j);
 						DEFAULT:
-							THROW <std::err::Unimplemented>(type.NAME());
+							THROW <std::err::Unimplemented>(<CHAR#\>(type));
 						}
 
 				oldSymbolScope # ::= symbolScope;
@@ -355,7 +355,7 @@ INCLUDE "../scoper/fileregistry.rl"
 								child->Position,
 								"type expected as template argument", j);
 					DEFAULT:
-						THROW <std::err::Unimplemented>(type.NAME());
+						THROW <std::err::Unimplemented>(<CHAR#\>(type));
 					}
 		}
 
