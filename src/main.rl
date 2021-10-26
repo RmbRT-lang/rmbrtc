@@ -6,6 +6,7 @@ INCLUDE "resolver/detail/global.rl"
 INCLUDE "resolver/detail/member.rl"
 INCLUDE "resolver/detail/statement.rl"
 INCLUDE "resolver/detail/type.rl"
+INCLUDE "compiler/c.rl"
 INCLUDE "util/file.rl"
 INCLUDE 'std/io/file'
 INCLUDE 'std/set'
@@ -23,27 +24,61 @@ main(
 		RETURN 1;
 	}
 
+	type ::= std::str::buf(argv[1]);
+	buildType ::= rlc::compiler::BuildType::executable;
 
-	registry: rlc::scoper::FileRegistry;
-	registry.LegacyScope := :create(NULL, NULL);
+	flags: {rlc::compiler::BuildType, CHAR#\}#[](
+		(:executable, "exe"),
+		(:library, "lib"),
+		(:sharedLibrary, "shared"),
+		(:test, "test"),
+		(:checkSyntax, "syntax"),
+		(:verifySimple, "quick-dry"),
+		(:verifyFull, "dry")
+	);
 
-	cache: rlc::resolver::Cache;
+	flag ::= 1;
+
+	FOR(i ::= 0; i < ##flags; i++)
+		IF(!std::str::cmp(type, std::str::buf(flags[i].(1))))
+		{
+			buildType := flags[i].(0);
+			++flag;
+			BREAK;
+		}
+
+	files: std::Utf8-std::Vector;
+	FOR(;flag < argc; flag++)
+		IF(!std::str::cmp(argv[flag], ":"))
+		{
+			IF(argc == ++flag)
+			{
+				<<<std::io::OStream>>>(&std::io::err).write_all(
+					argv[0],
+					": exected argument after ':'.\n");
+				RETURN 1;
+			}
+			BREAK;
+		} ELSE
+		{
+			files += (argv[flag], :cstring);
+		}
+
+
+	compiler: rlc::compiler::CCompiler;
 	TRY
 	{
-		files: rlc::scoper::File \ - std::NatVectorSet;
-		FOR(i ::= 1; i < argc; i++)
-		{
-			absolute ::= rlc::util::absolute_file(std::str::buf(argv[i]));
-			files += registry.get(<std::Utf8>(absolute, :cstring)!);
-		}
-		FOR(f ::= files.start(); f; ++f)
-			FOR(group ::= f!->Scope->Items.start(); group; ++group)
-				FOR(it ::= group!->Items.start(); it; ++it)
-					cache += it!;
-		out.write("success\n");
+		build: rlc::compiler::Build-std::Dynamic;
+		IF(flag < argc)
+			build := :create((argv[argc-1], :cstring), buildType);
+		ELSE
+			build := :create(buildType);
+		build->LegacyScoping := TRUE;
+
+		compiler.compile(&&files, &&*build);
 	} CATCH(e: rlc::scoper::Error &)
 	{
-		e.print(out, registry);
+		e.print(out, compiler.Registry);
 		out.write("\n");
 	}
 	CATCH(e: rlc::tok::Error &)
