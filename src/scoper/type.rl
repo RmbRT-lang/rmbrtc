@@ -19,6 +19,8 @@ INCLUDE "symbol.rl"
 				cpy: parser::Type::Qualifier#&
 			}:	Const(cpy.Const),
 				Volatile(cpy.Volatile);
+
+			# <BOOL> INLINE := Const || Volatile;
 		}
 
 		Modifier

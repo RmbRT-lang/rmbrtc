@@ -2,6 +2,10 @@ INCLUDE "compiler.rl"
 INCLUDE "../scoper/fileregistry.rl"
 INCLUDE "../scoper/itemmsgerror.rl"
 INCLUDE "../util/file.rl"
+INCLUDE "../instantiator/symbol.rl"
+INCLUDE "../instantiator/detail/expression.rl"
+INCLUDE "../instantiator/detail/type.rl"
+INCLUDE "../instantiator/detail/statement.rl"
 INCLUDE 'std/streambuffer'
 INCLUDE 'std/vector'
 INCLUDE 'std/set'
@@ -40,6 +44,7 @@ INCLUDE 'std/set'
 				FOR(it ::= group!->Items.start(); it; ++it)
 					resolved += it!;
 
+		instances: instantiator::Cache(&resolved);
 		SWITCH(build.Type)
 		{
 		DEFAULT: THROW <std::err::Unimplemented>(<CHAR#\>(build.Type));
@@ -66,12 +71,17 @@ INCLUDE 'std/set'
 			IF(!mainFn)
 				THROW "no ::main function found.";
 
-			THROW <std::err::Unimplemented>("executable code generation");
+			instances.insert(NULL, resolved.get(mainFn));
 		}
 		:library,
 		:sharedLibrary:
 		{
-			THROW <std::err::Unimplemented>("library code generation");
+			FOR(f ::= scoped.start(); f; ++f)
+				instances.insert_all_untemplated(f!->Scope, resolved);
+		}
+		:test:
+		{
+			THROW <std::err::Unimplemented>("test build");
 		}
 		:verifyFull:
 		{

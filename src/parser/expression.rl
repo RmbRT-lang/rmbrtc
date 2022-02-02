@@ -175,48 +175,48 @@ INCLUDE 'std/vector'
 			[N: NUMBER]
 			{
 				// (token, operator, UserOverloadable)
-				table: {tok::Type, Operator, BOOL}#[N] &,
+				table: {tok::Type, rlc::Operator, BOOL}#[N] &,
 				leftAssoc: BOOL
 			}:
 				Table(table),
 				Size(N),
 				LeftAssoc(leftAssoc);
 
-			Table: {tok::Type, Operator, BOOL}# \;
+			Table: {tok::Type, rlc::Operator, BOOL}# \;
 			Size: UM;
 			LeftAssoc: BOOL;
 		}
 
-		k_bind: {tok::Type, Operator, BOOL}#[](
+		k_bind: {tok::Type, rlc::Operator, BOOL}#[](
 			// bind operators.
 			(:dotAsterisk, :bindReference, FALSE),
 			(:minusGreaterAsterisk, :bindPointer, FALSE));
 
-		k_mul: {tok::Type, Operator, BOOL}#[](
+		k_mul: {tok::Type, rlc::Operator, BOOL}#[](
 			// multiplicative operators.
 			(:percent, :mod, TRUE),
 			(:forwardSlash, :div, TRUE),
 			(:asterisk, :mul, TRUE));
 
-		k_add: {tok::Type, Operator, BOOL}#[](
+		k_add: {tok::Type, rlc::Operator, BOOL}#[](
 			// additive operators.
 			(:minus, :sub, TRUE),
 			(:plus, :add, TRUE));
 
-		k_shift: {tok::Type, Operator, BOOL}#[](
+		k_shift: {tok::Type, rlc::Operator, BOOL}#[](
 			// bit shift operators.
 			(:doubleLess, :shiftLeft, TRUE),
 			(:doubleGreater, :shiftRight, TRUE),
 			(:tripleLess, :rotateLeft, TRUE),
 			(:tripleGreater, :rotateRight, TRUE));
 
-		k_bit: {tok::Type, Operator, BOOL}#[](
+		k_bit: {tok::Type, rlc::Operator, BOOL}#[](
 			// bit arithmetic operators.
 			(:and, :bitAnd, TRUE),
 			(:circumflex, :bitXor, TRUE),
 			(:pipe, :bitOr, TRUE));
 
-		k_cmp: {tok::Type, Operator, BOOL}#[](
+		k_cmp: {tok::Type, rlc::Operator, BOOL}#[](
 			// numeric comparisons.
 			(:less, :less, TRUE),
 			(:lessEqual, :lessEquals, TRUE),
@@ -225,16 +225,16 @@ INCLUDE 'std/vector'
 			(:doubleEqual, :equals, TRUE),
 			(:exclamationMarkEqual, :notEquals, TRUE));
 
-		k_log_and: {tok::Type, Operator, BOOL}#[](
+		k_log_and: {tok::Type, rlc::Operator, BOOL}#[](
 			// boolean arithmetic.
 			(:doubleAnd, :logAnd, TRUE),
 			(:doubleAnd, :logAnd, TRUE));
 
-		k_log_or: {tok::Type, Operator, BOOL}#[](
+		k_log_or: {tok::Type, rlc::Operator, BOOL}#[](
 			(:doublePipe, :logOr, TRUE),
 			(:doublePipe, :logOr, TRUE));
 
-		k_assign: {tok::Type, Operator, BOOL}#[](
+		k_assign: {tok::Type, rlc::Operator, BOOL}#[](
 			// assignments.
 			(:colonEqual, :assign, TRUE),
 			(:plusEqual, :addAssign, TRUE),
@@ -266,7 +266,7 @@ INCLUDE 'std/vector'
 		precedenceGroups: UM# := ##k_groups;
 
 		// (tok, op, user-overloadable)
-		k_prefix_ops: {tok::Type, Operator, BOOL}#[](
+		k_prefix_ops: {tok::Type, rlc::Operator, BOOL}#[](
 				(:minus, :neg, TRUE),
 				(:plus, :pos, TRUE),
 				(:doublePlus, :preIncrement, TRUE),
@@ -282,7 +282,7 @@ INCLUDE 'std/vector'
 				(:doubleHash, :count, TRUE),
 				(:tripleAnd, :baseAddr, FALSE));
 
-		consume_overloadable_binary_operator(p: Parser &, op: Operator &) BOOL
+		consume_overloadable_binary_operator(p: Parser &, op: rlc::Operator &) BOOL
 		{
 			FOR(i ::= 0; i < ##k_groups; i++)
 				FOR(j ::= 0; j < k_groups[i].Size; j++)
@@ -295,7 +295,7 @@ INCLUDE 'std/vector'
 			RETURN FALSE;
 		}
 
-		consume_overloadable_prefix_operator(p: Parser &, op: Operator &) BOOL
+		consume_overloadable_prefix_operator(p: Parser &, op: rlc::Operator &) BOOL
 		{
 			FOR(i ::= 0; i < ##k_prefix_ops; i++)
 				IF(k_prefix_ops[i].(2))
@@ -307,9 +307,9 @@ INCLUDE 'std/vector'
 			RETURN FALSE;
 		}
 
-		consume_overloadable_postfix_operator(p: Parser &, op: Operator &) BOOL
+		consume_overloadable_postfix_operator(p: Parser &, op: rlc::Operator &) BOOL
 		{
-			STATIC k_postfix_ops: {tok::Type, Operator}#[](
+			STATIC k_postfix_ops: {tok::Type, rlc::Operator}#[](
 				(:doublePlus, :postIncrement),
 				(:doubleMinus, :postDecrement),
 				(:exclamationMark, :valueOf));
@@ -327,7 +327,7 @@ INCLUDE 'std/vector'
 	OperatorExpression -> Expression
 	{
 		Operands: Expression - std::DynVector;
-		Op: Operator;
+		Op: rlc::Operator;
 
 		STATIC parse(p: Parser&) INLINE Expression *
 			:= parse_binary(p, detail::precedenceGroups);
@@ -418,7 +418,7 @@ INCLUDE 'std/vector'
 		}
 
 		PRIVATE STATIC make_unary(
-			op: Operator,
+			op: rlc::Operator,
 			lhs: Expression *) Expression *
 		{
 			ret ::= std::[OperatorExpression]new();
@@ -429,7 +429,7 @@ INCLUDE 'std/vector'
 		}
 
 		PRIVATE STATIC make_binary(
-			op: Operator,
+			op: rlc::Operator,
 			lhs: Expression *,
 			rhs: Expression *) Expression *
 		{
@@ -448,14 +448,14 @@ INCLUDE 'std/vector'
 			IF(!lhs)
 				RETURN NULL;
 
-			STATIC postfix: {tok::Type, Operator}#[](
+			STATIC postfix: {tok::Type, rlc::Operator}#[](
 				(:doublePlus, :postIncrement),
 				(:doubleMinus, :postDecrement),
 				(:tripleDot, :variadicExpand),
 				(:exclamationMark, :valueOf));
 
 			// (tok, op, opctor, opTuple, opDtor)
-			STATIC memberAccess: {tok::Type, Operator, Operator, Operator, Operator}#[](
+			STATIC memberAccess: {tok::Type, rlc::Operator, rlc::Operator, rlc::Operator, rlc::Operator}#[](
 				(:dot, :memberReference, :constructor, :tupleMemberReference, :destructor),
 				(:minusGreater, :memberPointer, :pointerConstructor, :tupleMemberPointer, :pointerDestructor));
 

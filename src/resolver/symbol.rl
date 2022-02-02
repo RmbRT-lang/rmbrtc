@@ -44,6 +44,8 @@ INCLUDE "../scoper/fileregistry.rl"
 
 		(// The amount of resolved items. /)
 		# depth() INLINE UM := ##Templates;
+
+		# <BOOL> INLINE := Tail;
 	}
 	(// A typedef's or template place-holder's referenced children. /)
 	Unresolved

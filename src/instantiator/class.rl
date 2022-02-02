@@ -1,15 +1,15 @@
-INCLUDE "../scoper/class.rl"
+INCLUDE "../resolver/class.rl"
 INCLUDE "member.rl"
 INCLUDE "type.rl"
 INCLUDE "symbol.rl"
 
-::rlc::resolver Class VIRTUAL -> ScopeItem
+::rlc::instantiator Class VIRTUAL -> Instance
 {
 	Inheritance
 	{
 		Visibility: rlc::Visibility;
 		IsVirtual: BOOL;
-		Type: Symbol;
+		Type: Instance \;
 
 		{scope: scoper::Scope #\, inheritance: scoper::Class::Inheritance #&}:
 			Visibility(inheritance.Visibility),
@@ -21,10 +21,10 @@ INCLUDE "symbol.rl"
 	Inheritances: Inheritance - std::Vector;
 	Fields: MemberVariable - std::DynVector;
 	Constructors: Constructor - std::DynVector;
-	Destructor: resolver::Destructor - std::Dynamic;
-	Functions: MemberFunction - std::DynVector;
-	Operators: std::[rlc::Operator; Operator]std::NatDynMap;
-	Types: Member - std::DynVector;
+	Destructor: instantiator::Destructor - std::Dynamic;
+	Functions: std::[Class; MemberFunction]NatDynMap;
+	Operators: std::[rlc::Operator; Operator\]NatMap;
+	Types: Member #\ - std::Vector;
 
 	{
 		class: scoper::Class #\,

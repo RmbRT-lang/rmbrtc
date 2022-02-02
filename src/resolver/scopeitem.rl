@@ -8,10 +8,12 @@ INCLUDE 'std/tags'
 	std::NoCopy;
 
 	Name: scoper::String;
+	Templates: scoper::TemplateDecls #\;
 
 
 	{scopeItem: scoper::ScopeItem #\, cache: Cache &}:
-		Name(scopeItem->name())
+		Name(scopeItem->name()),
+		Templates(&scopeItem->Templates)
 	{
 		cache += (scopeItem, &THIS);
 	}

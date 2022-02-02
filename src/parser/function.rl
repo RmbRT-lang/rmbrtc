@@ -28,119 +28,68 @@ INCLUDE 'std/help'
 		:= std::help::custom_assign(THIS, <T!&&>(v));
 }
 
-::rlc::parser Function VIRTUAL -> ScopeItem
+(//
+An anonymous function object that models a callable function.
+/)
+::rlc::parser Functoid VIRTUAL
 {
 	Arguments: std::[LocalVariable]Vector;
 	Return: VariableType;
 	Body: ExprOrStmt;
 	IsInline: BOOL;
 	IsCoroutine: BOOL;
-	IsOperator: BOOL;
-	IsFactory: BOOL;
-	Name: src::String;
-	Operator: rlc::Operator;
 
-	# FINAL name() src::String#& := Name;
-	# FINAL overloadable() BOOL := TRUE;
-
-	parse(
+	(//
+	Parses a comma-separated list of arguments (without surrounding parentheses).
+	Can be called multiple times to append new arguments.
+	/)
+	parse_args(
 		p: Parser &,
-		allow_body: BOOL,
-		allow_operators: BOOL) BOOL
+		allow_multiple: BOOL,
+		allow_empty: BOOL
+	) VOID
 	{
-		parOpen: tok::Type := :parentheseOpen;
-		parClose: tok::Type := :parentheseClose;
-		allowArgs ::= TRUE;
-		singleArg ::= FALSE;
-
-		IsFactory := IsOperator := FALSE;
-		IF(!p.match_ahead(:parentheseOpen)
-		|| !p.consume(:identifier, &Name))
+		readAny ::= FALSE;
+		DO(arg: LocalVariable)
 		{
-			IF(!allow_operators)
-				RETURN FALSE;
-
-			IF(p.consume(:this, &Name))
+			IF(!arg.parse_fn_arg(p))
 			{
-				IF(detail::consume_overloadable_binary_operator(p, Operator))
-				{
-					singleArg := TRUE;
-				} ELSE IF(detail::consume_overloadable_postfix_operator(p, Operator))
-				{
-					allowArgs := FALSE;
-				} ELSE IF(p.match(:parentheseOpen))
-				{
-					Operator := :call;
-				} ELSE IF(p.match(:bracketOpen))
-				{
-					Operator := :subscript;
-					(parOpen, parClose) := (:bracketOpen, :bracketClose);
-				} ELSE IF(p.match(:questionMark))
-				{
-					p.expect(:parentheseOpen);
-					arg: LocalVariable;
-					IF(!arg.parse_fn_arg(p))
-						p.fail("expected argument");
-					Arguments += &&arg;
-					p.expect(:parentheseClose);
-					p.expect(:colon);
-					singleArg := TRUE;
-				} ELSE
-					p.fail("expected operator");
-				IsOperator := TRUE;
-			} ELSE IF(p.match_ahead(:this))
-			{
-				IsOperator := TRUE;
-				IF(!detail::consume_overloadable_prefix_operator(p, Operator))
-					p.fail("expected overloadable prefix operator");
-				p.expect(:this, &Name);
-				allowArgs := FALSE;
-			} ELSE IF(p.consume(:less, &Name))
-			{
-				allowArgs := FALSE;
-				IF(!(Return := :gc(parser::Type::parse(p))))
-					p.fail("expected type");
-				p.expect(:greater);
-			} ELSE IF(p.match(:tripleLess, &Name))
-			{
-				(parOpen, parClose) := (:tripleLess, :tripleGreater);
-				IsFactory := TRUE;
-			} ELSE
-				RETURN FALSE;
-		}
-
-		t: Trace(&p, "function");
-
-		IF(!Return && allowArgs)
-		{
-			p.expect(parOpen);
-
-			IF(singleArg || !p.consume(parClose))
-			{
-				DO(arg: LocalVariable)
-				{
-					IF(!arg.parse_fn_arg(p))
-						p.fail("expected argument");
-					Arguments += &&arg;
-				} WHILE(!singleArg && p.consume(:comma))
-				p.expect(parClose);
+				IF(!readAny && !allow_empty)
+					p.fail("expected argument");
+				ELSE
+					RETURN;
 			}
-		}
+			Arguments += &&arg;
+		} WHILE(allow_multiple && p.consume(:comma))
+	}
 
+	/// Parses modifiers and return type.
+	parse_rest_of_head(p: Parser &, returnType: BOOL) VOID
+	{
 		IsInline := p.consume(:inline);
 		IsCoroutine := p.consume(:at);
 
-		IF(!Return)
-			Return := :gc(parser::Type::parse(p));
+		IF(!returnType)
+			RETURN;
 
+		IF(Return := :gc(parser::Type::parse(p)))
+			RETURN;
+
+		expectBody ::= p.consume(:questionMark);
+		auto: parser::Type::Auto;
+		auto.parse(p);
+		Return := :gc(std::dup(&&auto));
+	}
+
+	parse_body(p: Parser &, allow_body: BOOL) VOID
+	{
 		IF(!allow_body)
+		{
 			IF(!Return)
-				p.fail("expected return type");
-			ELSE
-			{
-				p.expect(:semicolon);
-				RETURN TRUE;
-			}
+				p.fail("expected explicit return type for bodyless function");
+			p.expect(:semicolon);
+			RETURN;
+		}
 
 		body: BlockStatement;
 		IF(!Return)
@@ -173,11 +122,44 @@ INCLUDE 'std/help'
 				p.expect(:semicolon);
 			}
 		}
+	}
+}
+
+(// A named functoid referrable to by name. /)
+::rlc::parser Function VIRTUAL -> ScopeItem, Functoid
+{
+	Name: src::String;
+
+	# FINAL name() src::String#& := Name;
+	# FINAL overloadable() BOOL := FALSE;
+
+	parse(
+		p: Parser &,
+		allow_body: BOOL,
+		allow_operators: BOOL) BOOL
+	{
+		parOpen: tok::Type := :parentheseOpen;
+		parClose: tok::Type := :parentheseClose;
+		IF(!p.match_ahead(:parentheseOpen)
+		|| !p.consume(:identifier, &Name))
+		{
+			RETURN FALSE;
+		}
+
+		t: Trace(&p, "function");
+
+		p.expect(parOpen);
+		Functoid::parse_args(p, TRUE, TRUE);
+		p.expect(parClose);
+
+		Functoid::parse_rest_of_head(p, TRUE);
+		Functoid::parse_body(p, allow_body);
 
 		RETURN TRUE;
 	}
 }
 
+/// Global function.
 ::rlc::parser GlobalFunction -> Global, Function
 {
 	parse(p: Parser&) INLINE BOOL := Function::parse(p, TRUE, FALSE);
@@ -193,32 +175,160 @@ INCLUDE 'std/help'
 	final
 }
 
-::rlc::parser MemberFunction -> Member, Function
+::rlc::parser Abstractable VIRTUAL -> Member
 {
 	Abstractness: rlc::Abstractness;
 
-	parse(p: Parser&) INLINE BOOL
+	STATIC parse(p: Parser &) Abstractable *
 	{
-		STATIC k_lookup: {tok::Type, rlc::Abstractness}#[](
-			(:virtual, :virtual),
-			(:abstract, :abstract),
-			(:override, :override),
-			(:final, :final));
+		ret: Abstractable * := NULL;
 
-		Abstractness := :none;
-		FOR(i ::= 0; i < ##k_lookup; i++)
-			IF(p.consume(k_lookup[i].(0)))
-			{
-				Abstractness := k_lookup[i].(1);
-				BREAK;
-			}
+		abs ::= parse_abstractness(p);
 
-		IF(!Function::parse(p, Abstractness != :abstract, TRUE))
+		IF([Operator]parse_impl(p, abs, ret)
+		|| [MemberFunction]parse_impl(p, abs, ret))
 		{
-			IF(Abstractness != :none)
-				p.fail("expected function");
-			RETURN FALSE;
+			RETURN ret;
 		}
+
+		IF(abs != :none)
+			p.fail("expected operator or function definition");
+
+		RETURN NULL;
+	}
+
+	[T:TYPE] PRIVATE STATIC parse_impl(
+		p: Parser &,
+		abs: rlc::Abstractness,
+		out: Abstractable *&) BOOL
+	{
+		v: T;
+		v.Abstractness := abs;
+		IF(v.parse(p))
+		{
+			out := std::dup(&&v);
+			RETURN TRUE;
+		}
+		RETURN FALSE;
+	}
+}
+
+::rlc::parser parse_abstractness(p: Parser &) Abstractness
+{
+	STATIC k_lookup: {tok::Type, rlc::Abstractness}#[](
+		(:virtual, :virtual),
+		(:abstract, :abstract),
+		(:override, :override),
+		(:final, :final));
+
+	FOR(i ::= 0; i < ##k_lookup; i++)
+		IF(p.consume(k_lookup[i].(0)))
+			RETURN k_lookup[i].(1);
+	RETURN :none;
+}
+
+(// Type conversion operator. /)
+::rlc::parser Converter -> Member, Functoid
+{
+	Abstractness: rlc::Abstractness;
+
+	# type() INLINE Type #\ := Functoid::Return.type();
+
+	parse(p: Parser &) BOOL
+	{
+		IF(!p.consume(:less))
+			RETURN FALSE;
+
+		t: Trace(&p, "type converter");
+
+		IF(!(Functoid::Return := :gc(Type::parse(p))))
+			p.fail("expected type name");		
+
+	}
+}
+
+::rlc::parser MemberFunction -> Abstractable, Function
+{
+	parse(p: Parser&) INLINE BOOL
+		:= Function::parse(p, Abstractness != :abstract, TRUE);
+}
+
+/// Custom operator implementation.
+::rlc::parser Operator -> Abstractable, Functoid
+{
+	Op: rlc::Operator;
+
+	parse(p: Parser &) BOOL
+	{
+		postFix ::= p.consume(:this);
+		IF(!postFix && !p.match_ahead(:this))
+			RETURN FALSE;
+
+		t: Trace(&p, "operator");
+
+		singleArg ::= FALSE;
+		allowArgs ::= TRUE;
+		parOpen ::= tok::Type::parentheseOpen;
+		parClose ::= tok::Type::parentheseClose;
+
+		IF(postFix)
+		{
+			IF(detail::consume_overloadable_binary_operator(p, Op))
+			{
+				singleArg := TRUE;
+			} ELSE IF(detail::consume_overloadable_postfix_operator(p, Op))
+			{
+				allowArgs := FALSE;
+			} ELSE IF(p.match(:parentheseOpen))
+			{
+				Op := :call;
+			} ELSE IF(p.match(:bracketOpen))
+			{
+				Op := :subscript;
+				(parOpen, parClose) := (:bracketOpen, :bracketClose);
+			} ELSE IF(p.match(:questionMark))
+			{
+				p.expect(:parentheseOpen);
+				Functoid::parse_args(p, FALSE, FALSE);
+				p.expect(:parentheseClose);
+				p.expect(:colon);
+				singleArg := TRUE;
+			} ELSE
+				p.fail("expected operator");
+		} ELSE
+		{
+			IF(!detail::consume_overloadable_prefix_operator(p, Op))
+				p.fail("expected overloadable prefix operator");
+			p.expect(:this);
+			allowArgs := FALSE;
+		}
+
+		IF(allowArgs)
+		{
+			p.expect(parOpen);
+			Functoid::parse_args(p, !singleArg, !singleArg);
+			p.expect(parClose);
+		}
+
+		Functoid::parse_rest_of_head(p, TRUE);
+		Functoid::parse_body(p, Abstractness != :abstract);
+	}
+}
+
+::rlc::parser Factory -> Member, Functoid
+{
+	parse(p: Parser &) BOOL
+	{
+		IF(!p.consume(:tripleLess))
+			RETURN FALSE;
+
+		t: Trace(&p, "factory");
+
+		Functoid::parse_args(p, TRUE, FALSE);
+		p.expect(:tripleGreater);
+		Functoid::parse_rest_of_head(p, TRUE);
+		Functoid::parse_body(p, TRUE);
+
 		RETURN TRUE;
 	}
 }
