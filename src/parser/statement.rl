@@ -1,629 +1,489 @@
-INCLUDE "parser.rl"
-INCLUDE "expression.rl"
-INCLUDE "variable.rl"
-INCLUDE "controllabel.rl"
+INCLUDE "stage.rl"
 
-INCLUDE 'std/vector'
-INCLUDE 'std/memory'
-
-INCLUDE "../util/dynunion.rl"
-
-::rlc::parser
+::rlc::parser::statement
 {
-	Statement VIRTUAL
+	parse(p: Parser&) Statement-std::Dyn
 	{
-		[T: TYPE]
-		PRIVATE STATIC parse_impl(p: Parser &, out: Statement * &) BOOL
-		{
-			v: T;
-			IF(v.parse(p))
-			{
-				out := std::dup(&&v);
-				RETURN TRUE;
-			}
-			RETURN FALSE;
-		}
-
-		STATIC parse(p: Parser&) Statement *
-		{
-			ret: Statement *;
-			IF([AssertStatement]parse_impl(p, ret)
-			|| [BlockStatement]parse_impl(p, ret)
-			|| [IfStatement]parse_impl(p, ret)
-			|| [VariableStatement]parse_impl(p, ret)
-			|| [ReturnStatement]parse_impl(p, ret)
-			|| [TryStatement]parse_impl(p, ret)
-			|| [ThrowStatement]parse_impl(p, ret)
-			|| [LoopStatement]parse_impl(p, ret)
-			|| [SwitchStatement]parse_impl(p, ret)
-			|| [TypeSwitchStatement]parse_impl(p, ret)
-			|| [BreakStatement]parse_impl(p, ret)
-			|| [ContinueStatement]parse_impl(p, ret)
-			|| [ExpressionStatement]parse_impl(p, ret))
-				RETURN ret;
-			ELSE
-				RETURN NULL;
-		}
-
-		(// A single statement, such as a loop's body or an if/else clause. /)
-		STATIC parse_body(p: Parser &) Statement *
-		{
-			ret: Statement *;
-			IF([AssertStatement]parse_impl(p, ret)
-			|| [BlockStatement]parse_impl(p, ret)
-			|| [IfStatement]parse_impl(p, ret)
-			|| [ReturnStatement]parse_impl(p, ret)
-			|| [TryStatement]parse_impl(p, ret)
-			|| [ThrowStatement]parse_impl(p, ret)
-			|| [LoopStatement]parse_impl(p, ret)
-			|| [SwitchStatement]parse_impl(p, ret)
-			|| [TypeSwitchStatement]parse_impl(p, ret)
-			|| [BreakStatement]parse_impl(p, ret)
-			|| [ContinueStatement]parse_impl(p, ret)
-			|| [ExpressionStatement]parse_impl(p, ret))
-				RETURN ret;
-			ELSE
-				RETURN NULL;
-		}
+		ret: Statement *;
+		IF(detail::parse_impl(p, ret, parse_assert)
+		|| detail::parse_impl(p, ret, parse_block)
+		|| detail::parse_impl(p, ret, parse_if)
+		|| detail::parse_impl(p, ret, parse_variable)
+		|| detail::parse_impl(p, ret, parse_return)
+		|| detail::parse_impl(p, ret, parse_try)
+		|| detail::parse_impl(p, ret, parse_throw)
+		|| detail::parse_impl(p, ret, parse_loop)
+		|| detail::parse_impl(p, ret, parse_switch)
+		|| detail::parse_impl(p, ret, parse_type_switch)
+		|| detail::parse_impl(p, ret, parse_break)
+		|| detail::parse_impl(p, ret, parse_continue)
+		|| detail::parse_impl(p, ret, parse_expression))
+			= ret;
+		ELSE
+			= NULL;
 	}
 
-	AssertStatement -> Statement
+	[T:TYPE]
+	::detail parse_impl(
+		p: Parser &,
+		ret: Statement * &,
+		parse_fn: ((Parser&, T! &) BOOL)
+	) BOOL
 	{
-		Expression: std::[parser::Expression]Dynamic;
-
-		parse(p: Parser &) BOOL
+		v: T;
+		IF(parse_fn(p, v))
 		{
-			IF(!p.consume(:assert))
-				RETURN FALSE;
+			ret := std::dup(&&v);
+			= TRUE;
+		}
+		= FALSE;
+	}
 
-			p.expect(:parentheseOpen);
+	(// A single statement, such as a loop's body or an if/else clause. /)
+	parse_body(p: Parser &) Statement - std::Dyn
+	{
+		ret: Statement *;
+		IF(detail::parse_impl(p, ret, parse_assert)
+		|| detail::parse_impl(p, ret, parse_block)
+		|| detail::parse_impl(p, ret, parse_if)
+		|| detail::parse_impl(p, ret, parse_return)
+		|| detail::parse_impl(p, ret, parse_try)
+		|| detail::parse_impl(p, ret, parse_throw)
+		|| detail::parse_impl(p, ret, parse_loop)
+		|| detail::parse_impl(p, ret, parse_switch)
+		|| detail::parse_impl(p, ret, parse_type_switch)
+		|| detail::parse_impl(p, ret, parse_break)
+		|| detail::parse_impl(p, ret, parse_continue)
+		|| detail::parse_impl(p, ret, parse_expression))
+			RETURN ret;
+		ELSE
+			RETURN NULL;
+	}
 
-			IF(!(Expression := :gc(parser::Expression::parse(p))))
+	parse_assert(p: Parser &, out: AssertStatement &) BOOL
+	{
+		IF(!p.consume(:assert))
+			= FALSE;
+
+		p.expect(:parentheseOpen);
+
+		IF(!(out.Expression := parser::expression::parse(p)))
+			p.fail("expected expression");
+
+		p.expect(:parentheseClose);
+		p.expect(:semicolon);
+		= TRUE;
+	}
+
+
+	parse_block(p: Parser&, out: BlockStatement &) BOOL
+	{
+		IF(!p.consume(:braceOpen))
+			= FALSE;
+
+		IF(p.consume(:semicolon))
+		{
+			p.expect(:braceClose);
+			= TRUE;
+		}
+
+		WHILE(!p.consume(:braceClose))
+		{
+			IF(stmt ::= parser::statement::parse(p))
+				out.Statements += &&stmt;
+			ELSE
+				p.fail("expected statement or '}'");
+		}
+
+		= TRUE;
+	}
+
+
+	parse_if(p: Parser &, out: IfStatement &) BOOL
+	{
+		IF(!p.consume(:if))
+			= FALSE;
+
+		t: Trace(&p, "if statement");
+		out.Label.parse(p);
+		p.expect(:parentheseOpen);
+
+		val: VarOrExp;
+		val.parse(p);
+
+		IF(p.consume(:semicolon))
+		{
+			out.Init := &&val;
+			val.parse(p);
+		}
+
+		Condition := &&val;
+
+		p.expect(:parentheseClose);
+
+		IF(!(out.Then := parser::statement::parse_body(p)))
+			p.fail("expected statement");
+
+		IF(p.consume(:else))
+		{
+			IF(!(out.Else := statement::parse_body(p)))
+				p.fail("expected statement");
+		}
+
+		= TRUE;
+	}
+
+
+	parse_variable(p: Parser &, out: VariableStatement &) BOOL
+	{
+		out.Static := p.consume(:static);
+		IF(parser::variable::parse_local(p, TRUE, out.Variable))
+			= TRUE;
+		ELSE IF(out.Static)
+			p.fail("expected variable");
+		= FALSE;
+	}
+
+	parse_expression(p: Parser &, out: ExpressionStatement &) BOOL
+	{
+		IF(!(out.Expression := parser::expression::parse(p)))
+			= FALSE;
+		p.expect(:semicolon);
+		= TRUE;
+	}
+
+	parse_return(p: Parser &, out: ReturnStatement &) BOOL
+	{
+		IF(!p.consume(:return))
+			= FALSE;
+
+		out.Expression := parser::expression::parse(p);
+
+		p.expect(:semicolon);
+		= TRUE;
+	}
+
+	parse_try(p: Parser &, out: TryStatement &) BOOL
+	{
+		IF(!p.consume(:try))
+			= FALSE;
+
+		IF(!(out.Body := statement::parse_body(p)))
+			p.fail("expected statement");
+
+		FOR(catch: CatchStatement; detail::parse_catch(p);)
+			out.Catches += &&catch;
+
+		IF(p.consume(:finally))
+			IF(!(out.Finally := parser::statement::parse_body(p)))
+				p.fail("expected statement");
+		ELSE
+			out.Finally := NULL;
+
+		= TRUE;
+	}
+
+
+	::detail parse_catch(p: Parser &, out: CatchStatement &) BOOL
+	{
+		IF(!p.consume(:catch))
+			RETURN FALSE;
+
+		t: Trace(&p, "catch clause");
+
+		p.expect(:parentheseOpen);
+		IF(p.match(:parentheseClose)
+		|| (p.match(:void)
+			&& p.match_ahead(:parentheseClose)))
+		{
+			IsVoid := TRUE;
+		} ELSE
+		{
+			IsVoid := FALSE;
+
+			IF(!Exception.parse_catch(p))
+				p.fail("expected variable");
+		}
+		p.expect(:parentheseClose);
+
+		IF(!(Body := :gc(Statement::parse_body(p))))
+			p.fail("expected statement");
+
+		RETURN TRUE;
+	}
+
+
+	parse_throw(p: Parser &, out: ThrowStatement &) BOOL
+	{
+		IF(!p.consume(:throw))
+			= FALSE;
+
+		IF(p.consume(:tripleDot))
+			out.ValueType := Type::rethrow;
+		ELSE IF(p.match(:semicolon))
+			out.ValueType := Type::void;
+		ELSE
+			IF(out.Value := expression::parse(p))
+				out.ValueType := Type::value;
+			ELSE
 				p.fail("expected expression");
 
-			p.expect(:parentheseClose);
-			p.expect(:semicolon);
-			RETURN TRUE;
-		}
+		p.expect(:semicolon);
+
+		= TRUE;
 	}
 
-	VarOrExp
+
+	parse_loop(p: Parser &, out: LoopStatement &) BOOL
 	{
-		PRIVATE V: util::[LocalVariable; Expression]DynUnion;
+		IF(!p.match(:do)
+		&& !p.match(:for)
+		&& !p.match(:while))
+			= FALSE;
 
-		{};
-		{:gc, v: LocalVariable \}: V(:gc(v));
-		{:gc, v: Expression \}: V(:gc(v));
+		loop::parse_loop_head(p, out);
 
-		# is_variable() INLINE BOOL := V.is_first();
-		# variable() INLINE LocalVariable \ := V.first();
-		# is_expression() INLINE BOOL := V.is_second();
-		# expression() INLINE Expression \ := V.second();
-		# <BOOL> INLINE := V;
+		IF(!(out.Body := statement::parse_body(p)))
+			p.fail("expected statement");
 
-		[T:TYPE] THIS:=(v: T! &&) VarOrExp &
-			:= std::help::custom_assign(THIS, <T!&&>(v));
+		IF(out.IsPostCondition)
+			IF(!loop::parse_for_head(p, out)
+			&& !loop::parse_while_head(p, out))
+				p.fail("expected 'FOR' or 'WHILE'");
 
-		parse(p: Parser &) VOID
-		{
-			IF(!parse_opt(p))
-				p.fail("expected variable or expression");
-		}
-
-		parse_opt(p: Parser &) BOOL
-		{
-			v: LocalVariable;
-			IF(v.parse_var_decl(p))
-				V := :gc(std::dup(&&v));
-			ELSE IF(exp ::= Expression::parse(p))
-				V := :gc(exp);
-
-			RETURN V;
-		}
+		= TRUE;
 	}
 
-	BlockStatement -> Statement
+	::loop parse_loop_head(p: Parser &, out: LoopStatement &) VOID
 	{
-		Statements: Statement - std::DynVector;
-
-		parse(p: Parser&) BOOL
-		{
-			IF(!p.consume(:braceOpen))
-				RETURN FALSE;
-
-			IF(p.consume(:semicolon))
-			{
-				p.expect(:braceClose);
-				RETURN TRUE;
-			}
-
-			WHILE(!p.consume(:braceClose))
-			{
-				IF(stmt ::= Statement::parse(p))
-					Statements += :gc(stmt);
-				ELSE
-					p.fail("expected statement or '}'");
-			}
-
-			RETURN TRUE;
-		}
+		out.IsPostCondition := FALSE;
+		IF(!parse_do_head(p, out)
+		&& !parse_for_head(p, out)
+		&& !parse_while_head(p, out))
+			p.fail("expected loop head");
 	}
 
-	IfStatement -> Statement
+	::loop parse_do_head(p: Parser &, out: LoopStatement &) BOOL
 	{
-		Label: ControlLabel;
+		IF(!p.consume(:do))
+			= FALSE;
 
-		Init: VarOrExp;
-		Condition: VarOrExp;
+		out.IsPostCondition := TRUE;
 
-		Then: std::[Statement]Dynamic;
-		Else: std::[Statement]Dynamic;
+		parse_label(p, out.Label);
+		p.expect(:parentheseOpen);
+		loop::parse_initial(p, out);
+		p.expect(:parentheseClose);
 
-		parse(p: Parser &) BOOL
-		{
-			IF(!p.consume(:if))
-				RETURN FALSE;
-
-			t: Trace(&p, "if statement");
-			Label.parse(p);
-			p.expect(:parentheseOpen);
-
-			val: VarOrExp;
-			val.parse(p);
-
-			IF(p.consume(:semicolon))
-			{
-				Init := &&val;
-				val.parse(p);
-			}
-
-			Condition := &&val;
-
-			p.expect(:parentheseClose);
-
-			IF(!(Then := :gc(Statement::parse_body(p))))
-				p.fail("expected statement");
-
-			IF(p.consume(:else))
-			{
-				IF(!(Else := :gc(Statement::parse_body(p))))
-					p.fail("expected statement");
-			}
-
-			RETURN TRUE;
-		}
+		= TRUE;
 	}
 
-	VariableStatement -> Statement
+	::loop parse_for_head(p: Parser &) BOOL
 	{
-		Variable: LocalVariable;
-		Static: BOOL;
+		IF(!p.consume(:for))
+			= FALSE;
 
-		parse(p: Parser &) BOOL
+		IF(!out.IsPostCondition)
+			out.Label.parse(p);
+		p.expect(:parentheseOpen);
+
+		IF(!out.IsPostCondition)
 		{
-			Static := p.consume(:static);
-			IF(Variable.parse(p, TRUE))
-				RETURN TRUE;
-			IF(Static)
-				p.fail("expected variable");
-			RETURN FALSE;
-		}
-	}
-
-	ExpressionStatement -> Statement
-	{
-		Expression: std::[parser::Expression]Dynamic;
-
-		parse(p: Parser &) BOOL
-		{
-			IF(!(Expression := :gc(parser::Expression::parse(p))))
-				RETURN FALSE;
-
-			p.expect(:semicolon);
-			RETURN TRUE;
-		}
-	}
-
-	ReturnStatement -> Statement
-	{
-		Expression: std::[parser::Expression]Dynamic;
-
-		# is_void() INLINE BOOL := !Expression;
-
-		parse(p: Parser &) BOOL
-		{
-			IF(!p.consume(:return))
-				RETURN FALSE;
-
-			Expression := :gc(parser::Expression::parse(p));
-
-			p.expect(:semicolon);
-
-			RETURN TRUE;
-		}
-	}
-
-	TryStatement -> Statement
-	{
-		Body: std::[Statement]Dynamic;
-		Catches: std::[CatchStatement]Vector;
-		Finally: std::[Statement]Dynamic;
-
-		# has_finally() INLINE BOOL := Finally;
-
-		parse(p: Parser &) BOOL
-		{
-			IF(!p.consume(:try))
-				RETURN FALSE;
-
-			IF(!(Body := :gc(Statement::parse_body(p))))
-				RETURN FALSE;
-
-			FOR(catch: CatchStatement; catch.parse(p);)
-				Catches += &&catch;
-
-			IF(p.consume(:finally))
-				IF(!(Finally := :gc(parser::Statement::parse_body(p))))
-					p.fail("expected statement");
-			ELSE
-				Finally := NULL;
-
-			RETURN TRUE;
-		}
-	}
-
-	CatchStatement
-	{
-		IsVoid: BOOL;
-		Exception: LocalVariable;
-		Body: std::[Statement]Dynamic;
-
-		parse(p: Parser &) BOOL
-		{
-			IF(!p.consume(:catch))
-				RETURN FALSE;
-
-			t: Trace(&p, "catch clause");
-
-			p.expect(:parentheseOpen);
-			IF(p.match(:parentheseClose)
-			|| (p.match(:void)
-				&& p.match_ahead(:parentheseClose)))
-			{
-				IsVoid := TRUE;
-			} ELSE
-			{
-				IsVoid := FALSE;
-
-				IF(!Exception.parse_catch(p))
-					p.fail("expected variable");
-			}
-			p.expect(:parentheseClose);
-
-			IF(!(Body := :gc(Statement::parse_body(p))))
-				p.fail("expected statement");
-
-			RETURN TRUE;
-		}
-	}
-
-	ThrowStatement -> Statement
-	{
-		ENUM Type
-		{
-			rethrow,
-			void,
-			value
-		}
-
-		ValueType: Type;
-		Value: std::[Expression]Dynamic;
-
-		parse(p: Parser &) BOOL
-		{
-			IF(!p.consume(:throw))
-				RETURN FALSE;
-
-			IF(p.consume(:tripleDot))
-				ValueType := Type::rethrow;
-			ELSE IF(p.match(:semicolon))
-				ValueType := Type::void;
-			ELSE
-				IF(Value := :gc(Expression::parse(p)))
-					ValueType := Type::value;
-				ELSE
-					p.fail("expected expression");
-
-			p.expect(:semicolon);
-
-			RETURN TRUE;
-		}
-	}
-
-	LoopStatement -> Statement
-	{
-		IsPostCondition: BOOL;
-		Initial: VarOrExp;
-		Condition: VarOrExp;
-		Body: std::[Statement]Dynamic;
-		PostLoop: std::[Expression]Dynamic;
-		Label: ControlLabel;
-
-		parse(p: Parser &) BOOL
-		{
-			IF(!p.match(:do)
-			&& !p.match(:for)
-			&& !p.match(:while))
-				RETURN FALSE;
-
-			parse_loop_head(p);
-
-			IF(!(Body := :gc(Statement::parse_body(p))))
-				p.fail("expected statement");
-
-			IF(IsPostCondition)
-				IF(!parse_for_head(p)
-				&& !parse_while_head(p))
-					p.fail("expected 'FOR' or 'WHILE'");
-
-			RETURN TRUE;
-		}
-
-	PRIVATE:
-		parse_loop_head(p: Parser &) VOID
-		{
-			IsPostCondition := FALSE;
-			IF(!parse_do_head(p)
-			&& !parse_for_head(p)
-			&& !parse_while_head(p))
-				p.fail("expected loop head");
-		}
-
-		parse_do_head(p: Parser &) BOOL
-		{
-			IF(!p.consume(:do))
-				RETURN FALSE;
-
-			IsPostCondition := TRUE;
-
-			Label.parse(p);
-			p.expect(:parentheseOpen);
 			parse_initial(p);
-			p.expect(:parentheseClose);
-
-			RETURN TRUE;
+			p.expect(:semicolon);
 		}
 
-		parse_for_head(p: Parser &) BOOL
+		IF(!p.consume(:semicolon))
 		{
-			IF(!p.consume(:for))
-				RETURN FALSE;
-
-			IF(!IsPostCondition)
-				Label.parse(p);
-			p.expect(:parentheseOpen);
-
-			IF(!IsPostCondition)
-			{
-				parse_initial(p);
-				p.expect(:semicolon);
-			}
-
-			IF(!p.consume(:semicolon))
-			{
-				parse_condition(p);
-				p.expect(:semicolon);
-			}
-
-			PostLoop := :gc(Expression::parse(p));
-
-			p.expect(:parentheseClose);
-			RETURN TRUE;
+			parse_condition(p);
+			p.expect(:semicolon);
 		}
 
-		parse_while_head(p: Parser &) BOOL
+		out.PostLoop := :gc(Expression::parse(p));
+
+		p.expect(:parentheseClose);
+		= TRUE;
+	}
+
+	::loop parse_while_head(p: Parser &) BOOL
+	{
+		IF(!p.consume(:while))
+			= FALSE;
+
+		IF(!out.IsPostCondition)
+			out.Label.parse(p);
+		p.expect(:parentheseOpen);
+
+		IF(!out.IsPostCondition)
 		{
-			IF(!p.consume(:while))
-				RETURN FALSE;
-
-			IF(!IsPostCondition)
-				Label.parse(p);
-			p.expect(:parentheseOpen);
-
-			IF(!IsPostCondition)
+			v: VarOrExp;
+			v.parse(p);
+			IF(p.consume(:semicolon))
 			{
-				v: VarOrExp;
+				out.Initial := &&v;
 				v.parse(p);
-				IF(p.consume(:semicolon))
-				{
-					Initial := &&v;
-					v.parse(p);
-				}
+			}
 
-				Condition := &&v;
-			} ELSE
+			out.Condition := &&v;
+		} ELSE
+		{
+			IF(!(out.Condition := expression::parse(p)))
+				p.fail("expected expression");
+		}
+
+		p.expect(:parentheseClose);
+		= TRUE;
+	}
+
+	::loop parse_initial(p: Parser &, out: LoopStatement &) VOID
+	{
+		detail::var_or_exp::parse_opt(p, out.Initial);
+	}
+
+	::loop parse_condition(p: Parser &, out: LoopStatement &) VOID
+	{
+		detail::var_or_exp::parse(p, out.Condition);
+	}
+
+	::detail::var_or_exp parse(p: Parser &, out: LoopStatement &) VOID
+	{
+		IF(!parse_opt(p, out))
+			p.fail("expected variable or expression");
+	}
+
+	::detail::var_or_exp parse_opt(p: Parser &, out: LoopStatement &) BOOL
+	{
+		v: LocalVariable;
+		IF(v.parse_var_decl(p))
+			V := std::gcdup(&&v);
+		ELSE IF(exp ::= Expression::parse(p))
+			V := &&exp;
+
+		= V;
+	}
+
+	parse_switch(p: Parser &, out: SwitchStatement) BOOL
+	{
+		IF(!p.consume(:switch))
+			= FALSE;
+
+		parse_label(p, out.Label);
+		p.expect(:parentheseOpen);
+
+		val: VarOrExp;
+		var_or_exp::parse(p, val);
+
+		IF(p.consume(:semicolon))
+		{
+			out.Initial := &&val;
+			va_or_exp::parse(p, Value);
+		} ELSE
+			out.Value := &&val;
+
+		p.expect(:parentheseClose);
+		p.expect(:braceOpen);
+
+		DO(case: CaseStatement)
+		{
+			IF(!switch::parse_case(p, case))
+				p.fail("expected case");
+
+			out.Cases += &&case;
+		} WHILE(!p.consume(:braceClose))
+
+		= TRUE;
+	}
+
+	::switch parse_case(p: Parser &) BOOL
+	{
+		IF(!p.consume(:default))
+		{
+			DO(value: Expression *)
 			{
-				IF(!(Condition := :gc(Expression::parse(p))))
+				IF(!(value := Expression::parse(p)))
 					p.fail("expected expression");
-			}
-
-			p.expect(:parentheseClose);
-			RETURN TRUE;
+				Values += :gc(value);
+			} WHILE(p.consume(:comma))
 		}
+		p.expect(:colon);
 
-		parse_initial(p: Parser &) VOID
-		{
-			Initial.parse_opt(p);
-		}
+		Body := statement::parse_body(p);
 
-		parse_condition(p: Parser &) VOID
-		{
-			Condition.parse(p);
-		}
+		= TRUE;
 	}
 
-	SwitchStatement -> Statement
+	parse_type_switch(p: Parser &, out: TypeSwitchStatement &) BOOL
 	{
-		Initial: VarOrExp;
-		Value: VarOrExp;
-		Cases: std::[CaseStatement]Vector;
-		Label: ControlLabel;
+		IF(!p.match_ahead(:switch) || !p.consume(:type))
+			= FALSE;
 
-		parse(p: Parser &) BOOL
+		p.consume(NULL);
+		out.Static := p.consume(:static);
+
+		parse_label(p, out.Label);
+		p.expect(:parentheseOpen);
+
+		val: VarOrExp;
+		var_or_exp::parse(p, val);
+
+		IF(p.consume(:semicolon))
 		{
-			IF(!p.consume(:switch))
-				RETURN FALSE;
+			out.Initial := &&val;
+			var_or_exp::parse(p, Value);
+		} ELSE
+			out.Value := &&val;
 
-			Label.parse(p);
-			p.expect(:parentheseOpen);
+		p.expect(:parentheseClose);
+		p.expect(:braceOpen);
 
-			val: VarOrExp;
-			val.parse(p);
+		DO(case: TypeCaseStatement)
+		{
+			IF(!type_switch::parse_case(p, case))
+				p.fail("expected case");
 
-			IF(p.consume(:semicolon))
-			{
-				Initial := &&val;
-				Value.parse(p);
-			} ELSE
-				Value := &&val;
+			out.Cases += &&case;
+		} WHILE(!p.consume(:braceClose))
 
-			p.expect(:parentheseClose);
-			p.expect(:braceOpen);
-
-			DO(case: CaseStatement)
-			{
-				IF(!case.parse(p))
-					p.fail("expected case");
-
-				Cases += &&case;
-			} WHILE(!p.consume(:braceClose))
-
-			RETURN TRUE;
-		}
+		= TRUE;
 	}
 
-	CaseStatement
+	::type_switch parse_case(p: Parser &, out: TypeCaseStatement &) BOOL
 	{
-		Values: Expression - std::DynVector;
-		Body: std::[Statement]Dynamic;
-
-		# is_default() INLINE BOOL := Values.empty();
-
-		parse(p: Parser &) BOOL
+		IF(!p.consume(:default))
 		{
-			IF(!p.consume(:default))
+			DO(type: Type *)
 			{
-				DO(value: Expression *)
-				{
-					IF(!(value := Expression::parse(p)))
-						p.fail("expected expression");
-					Values += :gc(value);
-				} WHILE(p.consume(:comma))
-			}
-			p.expect(:colon);
-
-			Body := :gc(Statement::parse_body(p));
-
-			RETURN TRUE;
+				IF(!(type := parser::type::parse(p)))
+					p.fail("expected type");
+				out.Types += &&type;
+			} WHILE(p.consume(:comma))
 		}
+		p.expect(:colon);
+
+		Body := :gc(Statement::parse_body(p));
+
+		= TRUE;
 	}
 
-	TypeSwitchStatement -> Statement
+
+	parse_break(p: Parser &, out: BreakStatement &) BOOL
 	{
-		Static: BOOL;
-		Initial: VarOrExp;
-		Value: VarOrExp;
-		Cases: std::[TypeCaseStatement]Vector;
-		Label: ControlLabel;
+		IF(!p.consume(:break))
+			= FALSE;
 
-		parse(p: Parser &) BOOL
-		{
-			IF(!p.match_ahead(:switch) || !p.consume(:type))
-				RETURN FALSE;
-			p.consume(NULL);
-			Static := p.consume(:static);
+		parse_label(p, out.Label);
+		p.expect(:semicolon);
 
-			Label.parse(p);
-			p.expect(:parentheseOpen);
-
-			val: VarOrExp;
-			val.parse(p);
-
-			IF(p.consume(:semicolon))
-			{
-				Initial := &&val;
-				Value.parse(p);
-			} ELSE
-				Value := &&val;
-
-			p.expect(:parentheseClose);
-			p.expect(:braceOpen);
-
-			DO(case: TypeCaseStatement)
-			{
-				IF(!case.parse(p))
-					p.fail("expected case");
-
-				Cases += &&case;
-			} WHILE(!p.consume(:braceClose))
-
-			RETURN TRUE;
-		}
+		= TRUE;
 	}
 
-	TypeCaseStatement
+	parse_continue(p: Parser &, out: ContinueStatement &) BOOL
 	{
-		Types: Type - std::DynVector;
-		Body: std::[Statement]Dynamic;
+		IF(!p.consume(:continue))
+			= FALSE;
 
-		# is_default() INLINE BOOL := Types.empty();
-
-		parse(p: Parser &) BOOL
-		{
-			IF(!p.consume(:default))
-			{
-				DO(type: Type *)
-				{
-					IF(!(type := Type::parse(p)))
-						p.fail("expected type");
-					Types += :gc(type);
-				} WHILE(p.consume(:comma))
-			}
-			p.expect(:colon);
-
-			Body := :gc(Statement::parse_body(p));
-
-			RETURN TRUE;
-		}
-	}
-
-	BreakStatement -> Statement
-	{
-		Label: ControlLabel;
-
-		parse(p: Parser &) BOOL
-		{
-			IF(!p.consume(:break))
-				RETURN FALSE;
-
-			Label.parse(p);
-			p.expect(:semicolon);
-			RETURN TRUE;
-		}
-	}
-
-	ContinueStatement -> Statement
-	{
-		Label: ControlLabel;
-
-		parse(p: Parser &) BOOL
-		{
-			IF(!p.consume(:continue))
-				RETURN FALSE;
-
-			Label.parse(p);
-			p.expect(:semicolon);
-			RETURN TRUE;
-		}
+		parse_label(p, out.Label);
+		p.expect(:semicolon);
+		= TRUE;
 	}
 }

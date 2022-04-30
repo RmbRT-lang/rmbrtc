@@ -1,5 +1,3 @@
-INCLUDE "parser.rl"
-
 ::rlc ENUM IncludeType
 {
 	// #include ""
@@ -10,31 +8,28 @@ INCLUDE "parser.rl"
 	remote
 }
 
-::rlc::parser
+::rlc::parser Include
 {
-	Include
+	Token: tok::Token;
+	Type: IncludeType;
+
+	parse(
+		p: Parser &) BOOL
 	{
-		Token: tok::Token;
-		Type: IncludeType;
+		IF(!p.consume(:include))
+			RETURN FALSE;
 
-		parse(
-			p: Parser &) BOOL
-		{
-			IF(!p.consume(:include))
-				RETURN FALSE;
+		t: Trace(&p, "include statement");
 
-			t: Trace(&p, "include statement");
+		IF(p.consume(:stringApostrophe, &Token))
+			Type := IncludeType::global;
+		ELSE IF(p.consume(:stringQuote, &Token))
+			Type := IncludeType::relative;
+		ELSE IF(p.consume(:stringBacktick, &Token))
+			Type := IncludeType::remote;
+		ELSE
+			p.fail("expected ', \", or `");
 
-			IF(p.consume(:stringApostrophe, &Token))
-				Type := IncludeType::global;
-			ELSE IF(p.consume(:stringQuote, &Token))
-				Type := IncludeType::relative;
-			ELSE IF(p.consume(:stringBacktick, &Token))
-				Type := IncludeType::remote;
-			ELSE
-				p.fail("expected ', \", or `");
-
-			RETURN TRUE;
-		}
+		RETURN TRUE;
 	}
 }

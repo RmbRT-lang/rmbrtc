@@ -16,7 +16,7 @@ INCLUDE 'std/string'
 		Line(Line),
 		Column(Column);
 
-	# OVERRIDE print(
+	# OVERRIDE stream(
 		o: std::io::OStream &) VOID
 	{
 		o.write(File!);
@@ -42,7 +42,7 @@ INCLUDE 'std/string'
 		Line: UINT,
 		Column: UINT,
 		Char: std::SYM
-	}->	Error(File, Line, Column)
+	} -> (File, Line, Column)
 	:	Char(Char);
 
 	# OVERRIDE reason(
@@ -70,7 +70,7 @@ INCLUDE 'std/string'
 		file: src::File #\,
 		line: UINT,
 		column: UINT
-	}->	Error(file, line, column);
+	} -> (file, line, column);
 
 	# OVERRIDE reason(
 		o: std::io::OStream &) VOID
@@ -85,7 +85,7 @@ INCLUDE 'std/string'
 		file: src::File #\,
 		line: UINT,
 		column: UINT
-	}->	Error(file, line, column);
+	} -> (file, line, column);
 
 	# OVERRIDE reason(
 		o: std::io::OStream &) VOID

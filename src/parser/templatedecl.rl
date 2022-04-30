@@ -1,70 +1,51 @@
 INCLUDE "type.rl"
-INCLUDE "parser.rl"
-
+INCLUDE "stage.rl"
 INCLUDE 'std/vector'
 
 ::rlc::parser
 {
-	ENUM TemplateDeclType
+	TYPE TemplateDecl := Config-ast::TemplateDecl;
+
+	parse_template_decl(
+		p: Parser &,
+		out: TemplateDecl &) BOOL
 	{
-		number,
-		type,
-		value
-	}
+		IF(!p.consume(:bracketOpen))
+			RETURN FALSE;
 
-	TemplateDecl
-	{
-		Child
+		IF(!p.consume(:bracketClose))
 		{
-			{};
+			DO()
 			{
-				type: TemplateDeclType,
-				name: src::String #&}:
-				Type(type),
-				Name(name);
+				name: tok::Token;
+				p.expect(:identifier, &name);
+				variadic ::= p.consume(:tripleDot);
+				c.Name := name.Content;
+				p.expect(:colon);
 
-			Type: TemplateDeclType;
-			TypeName: std::[parser::Type]Dynamic;
-			Name: src::String;
-			Variadic: BOOL;
-		}
-		Children: std::[Child]Vector;
-
-		parse(
-			p: Parser &) BOOL
-		{
-			IF(!p.consume(:bracketOpen))
-				RETURN FALSE;
-
-			IF(!p.consume(:bracketClose))
-			{
-				DO()
+				arg: Config-ast::TemplateArgDecl-std::Dyn;
+				IF(p.consume(:type))
+					ast := :dup(<Config-ast::TypeTemplateArgDecl>());
+				ELSE IF(p.consume(:number))
+					ast := :dup(<Config-ast::NumberTemplateArgDecl>());
+				ELSE IF(t ::= type::parse(p))
 				{
-					c: Child;
-					name: tok::Token;
-					p.expect(:identifier, &name);
-					c.Name := name.Content;
-					c.Variadic := p.consume(:tripleDot);
-					p.expect(:colon);
+					vArg: Config-ast::ValueTemplateArgDecl;
+					vArg.Type := &&t;
+					ast := :dup(&&vArg);
+				}
+				ELSE
+					p.fail("expected 'TYPE', 'NUMBER', or type");
 
-					IF(p.consume(:type))
-						c.Type := :type;
-					ELSE IF(p.consume(:number))
-						c.Type := :number;
-					ELSE IF(c.TypeName := :gc(Type::parse(p)))
-						c.Type := :value;
-					ELSE
-						p.fail("expected 'TYPE', 'NUMBER', or type");
+				ast->Name := name.Content;
+				ast->Variadic := variadic;
 
-					Children += &&c;
-				} WHILE(p.consume(:semicolon))
+				out.Arguments += &&ast;
+			} WHILE(p.consume(:semicolon))
 
-				p.expect(:bracketClose);
-			}
-
-			RETURN TRUE;
+			p.expect(:bracketClose);
 		}
 
-		# exists() BOOL := ##Children != 0;
+		RETURN TRUE;
 	}
 }

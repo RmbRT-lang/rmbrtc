@@ -8,7 +8,7 @@ INCLUDE 'std/io/format'
 	Line: UINT;
 	Column: UINT;
 	Tokens: tok::Token[2];
-	TokenContent: std::[CHAR]Buffer[2];
+	TokenContent: std::Utf8[2];
 	TokenCount: UINT;
 	Context: std::Utf8;
 
@@ -20,7 +20,7 @@ INCLUDE 'std/io/format'
 		tokenIndex: UINT,
 		tokenCount: UINT,
 		p: Parser#&}:
-		File(std::Utf8(file->Name)),
+		File(file->Name),
 		Line(line),
 		Column(column),
 		TokenCount(tokenCount),
@@ -29,22 +29,21 @@ INCLUDE 'std/io/format'
 		IF(tokenCount)
 		{
 			Tokens[0] := tokens[tokenIndex];
-			TokenContent[0] := std::clone(file->content(Tokens[0].Content));
+			TokenContent[0] := file->content(Tokens[0].Content);
 		}
 		IF(tokenCount == 2)
 		{
 			Tokens[1] := tokens[tokenIndex^1];
-			TokenContent[1] := std::clone(file->content(Tokens[1].Content));
+			TokenContent[1] := file->content(Tokens[1].Content);
 
 		}
 	}
 
 	# ABSTRACT reason(std::io::OStream &) VOID;
 
-	# FINAL print(o: std::io::OStream &) VOID
+	# FINAL stream(o: std::io::OStream &) VOID
 	{
-		o.write(File!);
-		o.write(":");
+		o.write(File!, ':');
 		std::io::format::dec(o, Line);
 		o.write(":");
 		std::io::format::dec(o, Column);
@@ -53,18 +52,13 @@ INCLUDE 'std/io/format'
 		{
 			o.write(TokenContent[0]);
 			IF(TokenCount > 1)
-			{
-				o.write(" ");
-				o.write(TokenContent[1]);
-			}
+				o.write(:ch(' '), TokenContent[1]);
 		} ELSE
 			o.write("end of file");
 
-		o.write(" in ");
-		o.write(Context!);
-		o.write(": ");
+		o.write(" in ", Context!, ": ");
 		reason(o);
-		o.write(".\n");
+		o.write(:ch('.'));
 	}
 }
 
@@ -80,15 +74,17 @@ INCLUDE 'std/io/format'
 		tokenIndex: UINT,
 		tokenCount: UINT,
 		p: Parser#&,
-		reason: CHAR #\
-	}->	Error(file, line, column, tokens, tokenIndex, tokenCount, p)
-	:	Reason(reason, :cstring);
+		reason: std::str::C8CView#&
+	} ->
+		(file, line, column, tokens, tokenIndex, tokenCount, p):
+		Reason(reason);
 
 	# FINAL reason(o: std::io::OStream &) VOID
 	{
 		o.write(Reason!);
 	}
 }
+
 ::rlc::parser ExpectedToken -> Error
 {
 	Expected: tok::Type;
@@ -102,13 +98,13 @@ INCLUDE 'std/io/format'
 		tokenCount: UINT,
 		p: Parser#&,
 		expected: tok::Type
-	}->	Error(file, line, column, tokens, tokenIndex, tokenCount, p)
-	:	Expected(expected);
+	} ->
+		(file, line, column, tokens, tokenIndex, tokenCount, p):
+		Expected(expected);
 
 	# OVERRIDE reason(
 		o: std::io::OStream &) VOID
 	{
-		o.write("expected ");
-		o.write(<CHAR #\>(Expected));
+		o.write("expected ", <CHAR #\>(Expected));
 	}
 }

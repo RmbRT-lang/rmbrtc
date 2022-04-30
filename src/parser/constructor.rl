@@ -1,104 +1,75 @@
-INCLUDE "variable.rl"
-INCLUDE "expression.rl"
-INCLUDE "symbol.rl"
-INCLUDE "statement.rl"
+INCLUDE "parser.rl"
+INCLUDE "../ast/constructor.rl"
+INCLUDE "stage.rl"
 
-INCLUDE 'std/vector'
-INCLUDE 'std/memory'
-
-::rlc::parser Constructor -> Member, ScopeItem
+::rlc::parser parse_constructor(p: Parser&, out: ast::[Config]Constructor) BOOL
 {
-	BaseInit
-	{
-		Base: Symbol;
-		Arguments: Expression - std::DynVector;
-	}
+	IF(!p.consume(:braceOpen, &out.Position))
+		= FALSE;
+	t: Trace(&p, "constructor");
 
-	MemberInit
-	{
-		Member: src::String;
-		Position: src::Position;
-		Arguments: Expression - std::DynVector;
-	}
-
-	Name: src::String; // Always {.
-	Arguments: std::[LocalVariable]Vector;
-	BaseInits: std::[BaseInit]Vector;
-	MemberInits: std::[MemberInit]Vector;
-	Body: std::[BlockStatement]Dynamic;
-	Inline: BOOL;
-
-	# FINAL name() src::String#& := Name;
-	# FINAL overloadable() BOOL := TRUE;
-
-	parse(p: Parser&) BOOL
-	{
-		IF(!p.consume(:braceOpen, &Name))
-			RETURN FALSE;
-		t: Trace(&p, "constructor");
-
-		IF(!p.match(:braceClose))
-			DO(arg: LocalVariable)
-			{
-				IF(!arg.parse_fn_arg(p))
-					p.fail("expected argument");
-				Arguments += &&arg;
-			} WHILE(p.consume(:comma))
-
-		p.expect(:braceClose);
-
-		Inline := p.consume(:inline);
-
-		IF(p.consume(:minusGreater))
+	IF(!p.match(:braceClose))
+		DO(arg: LocalVariable)
 		{
-			DO(init: BaseInit)
-			{
-				IF(!init.Base.parse(p))
-					p.fail("expected base class name");
-				p.expect(:parentheseOpen);
-				IF(!p.consume(:parentheseClose))
-				{
-					DO()
-					{
-						IF(exp ::= Expression::parse(p))
-							init.Arguments += :gc(exp);
-						ELSE
-							p.fail("expected expression");
-					} WHILE(p.consume(:comma))
-					p.expect(:parentheseClose);
-				}
-				BaseInits += &&init;
-			} WHILE(p.consume(:comma))
-		}
+			IF(!function::parse_arg(p, arg))
+				p.fail("expected argument");
+			out.Arguments += &&arg;
+		} WHILE(p.consume(:comma))
 
-		IF(p.consume(:colon)){
-			DO(init: MemberInit)
-			{
-				p.expect(:identifier, &init.Member, &init.Position);
-				p.expect(:parentheseOpen);
-				IF(!p.consume(:parentheseClose))
-				{
-					DO()
-					{
-						IF(exp ::= Expression::parse(p))
-							init.Arguments += :gc(exp);
-						ELSE
-							p.fail("expected expression");
-					} WHILE(p.consume(:comma))
-					p.expect(:parentheseClose);
-				}
-				MemberInits += &&init;
-			} WHILE(p.consume(:comma))
-		}
+	p.expect(:braceClose);
 
-		IF(!p.consume(:semicolon))
+	out.Inline := p.consume(:inline);
+
+	IF(p.consume(:minusGreater))
+	{
+		DO(init: BaseInit)
 		{
-			body: BlockStatement;
-			IF(!body.parse(p))
-				p.fail("expected constructor body");
-			Body := :gc(std::dup(&&body));
-		}
-
-		RETURN TRUE;
+			IF(!parse_symbol(p, init.Base))
+				p.fail("expected base class name");
+			p.expect(:parentheseOpen);
+			IF(!p.consume(:parentheseClose))
+			{
+				DO()
+				{
+					IF(exp ::= expression::parse(p))
+						init.Arguments += :gc(exp);
+					ELSE
+						p.fail("expected expression");
+				} WHILE(p.consume(:comma))
+				p.expect(:parentheseClose);
+			}
+			out.BaseInits += &&init;
+		} WHILE(p.consume(:comma))
 	}
+
+	IF(p.consume(:colon))
+	{
+		DO(init: MemberInit)
+		{
+			p.expect(:identifier, &init.Member, &init.Position);
+			p.expect(:parentheseOpen);
+			IF(!p.consume(:parentheseClose))
+			{
+				DO()
+				{
+					IF(exp ::= expression::parse(p))
+						init.Arguments += :gc(exp);
+					ELSE
+						p.fail("expected expression");
+				} WHILE(p.consume(:comma))
+				p.expect(:parentheseClose);
+			}
+			out.MemberInits += &&init;
+		} WHILE(p.consume(:comma))
+	}
+
+	IF(!p.consume(:semicolon))
+	{
+		body: BlockStatement;
+		IF(!body.parse(p))
+			p.fail("expected constructor body");
+		out.Body := std::gcdup(&&body);
+	}
+
+	= TRUE;
 }

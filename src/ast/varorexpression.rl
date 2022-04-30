@@ -1,0 +1,1 @@
+::rlc::ast [Stage: TYPE] VarOrExpr VIRTUAL {}

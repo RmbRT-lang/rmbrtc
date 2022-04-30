@@ -1,17 +1,9 @@
-INCLUDE "type.rl"
-INCLUDE "scopeitem.rl"
-INCLUDE "global.rl"
-INCLUDE "member.rl"
+INCLUDE "stage.rl"
+INCLUDE "../ast/typedef.rl"
 
-::rlc::parser Typedef VIRTUAL -> ScopeItem
+::rlc::parser::typedef
 {
-	Type: std::[parser::Type]Dynamic;
-	Name: src::String;
-
-	# FINAL name() src::String#& := Name;
-	# FINAL overloadable() BOOL := FALSE;
-
-	parse(p: Parser&) BOOL
+	parse(p: Parser&, out: Config-ast::Typedef &) BOOL
 	{
 		IF(!p.consume(:type))
 			RETURN FALSE;
@@ -19,25 +11,20 @@ INCLUDE "member.rl"
 
 		name: tok::Token;
 		p.expect(:identifier, &name);
-		Name := name.Content;
+		out.Name := name.Content;
 		p.expect(:colonEqual);
 
-		Type := :gc(parser::Type::parse(p));
-		IF(!Type)
+		out.Type := type::parse(p);
+		IF(!out.Type)
 			p.fail("expected type");
 
 		p.expect(:semicolon);
 
 		RETURN TRUE;
 	}
-}
 
-::rlc::parser GlobalTypedef -> Global, Typedef
-{
-	parse(p: Parser&) INLINE ::= Typedef::parse(p);
-}
-
-::rlc::parser MemberTypedef -> Member, Typedef
-{
-	parse(p: Parser&) INLINE ::= Typedef::parse(p);
+	parse_global(p: Parser&, out: Config-ast::GlobalTypedef &) INLINE BOOL
+		:= parse(p, out);
+	parse_member(p: Parser&, out: Config-ast::MemberTypedef &) INLINE BOOL
+		:= parse(p, out);
 }

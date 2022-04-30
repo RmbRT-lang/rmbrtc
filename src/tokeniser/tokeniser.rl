@@ -106,13 +106,12 @@ INCLUDE 'std/unicode'
 			}
 		}
 
-		eatString(str: CHAR#\) BOOL {
-			buf# ::= std::str::buf(str);
-			FOR(i ::= 0; i < buf.Size; i++)
-				IF(look(i) != buf.Data[i])
+		eatString(str: std::str::C8CView#&) BOOL {
+			FOR(i ::= 0; i < ##str; i++)
+				IF(look(i) != str[:ok(i)])
 					RETURN FALSE;
-			Read += buf.Size;
-			Position.Column += buf.Size;
+			Read += ##str;
+			Position.Column += ##str;
 			RETURN TRUE;
 		}
 
@@ -281,7 +280,7 @@ INCLUDE 'std/unicode'
 			++Position.Column;
 			WHILE(is_alnum(look())) (++Read, ++Position.Column);
 
-			STATIC keywords: {CHAR#\, Type}#[](
+			STATIC keywords: {std::str::C8CView, Type}#[](
 				("ABSTRACT", :abstract),
 				("ASSERT", :assert),
 				("BOOL", :bool),
@@ -342,9 +341,7 @@ INCLUDE 'std/unicode'
 
 			str ::= tok_str();
 			FOR(i: UM := 0; i < ##keywords; i++)
-				IF(!std::str::cmp(
-					str,
-					std::str::buf(keywords[i].(0))))
+				IF(keywords[i].(0) == str)
 				{
 					out->Type := keywords[i].(1);
 					RETURN TRUE;

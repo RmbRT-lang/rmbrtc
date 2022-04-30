@@ -1,24 +1,10 @@
-INCLUDE "parser.rl"
-INCLUDE "../src/file.rl"
-INCLUDE "../tokeniser/token.rl"
-
-::rlc::parser ControlLabel
+::rlc::parser parse(p: Parser &, out: Stage-ast::ControlLabel) VOID
 {
-	{}:
-		Exists(FALSE);
-
-	Exists: BOOL;
-	(// Identifier or string. /)
-	Name: tok::Token;
-
-	parse(p: Parser &) VOID
+	IF(out.Exists := p.consume(:bracketOpen))
 	{
-		IF(Exists := p.consume(:bracketOpen))
-		{
-			IF(!p.consume(:stringBacktick, &Name)
-			&& !p.consume(:stringQuote, &Name))
-				p.fail("expected \"\" or `` string");
-			p.expect(:bracketClose);
-		}
+		IF(!p.consume(:stringBacktick, &out.Name)
+		&& !p.consume(:stringQuote, &out.Name))
+			p.fail("expected \"\" or `` string");
+		p.expect(:bracketClose);
 	}
 }

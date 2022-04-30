@@ -1,30 +1,46 @@
-INCLUDE "scoper/fileregistry.rl"
-INCLUDE "scoper/error.rl"
-INCLUDE "resolver/detail/scopeitem.rl"
-INCLUDE "resolver/detail/expression.rl"
-INCLUDE "resolver/detail/global.rl"
-INCLUDE "resolver/detail/member.rl"
-INCLUDE "resolver/detail/statement.rl"
-INCLUDE "resolver/detail/type.rl"
 INCLUDE "compiler/c.rl"
-INCLUDE "util/file.rl"
+INCLUDE "cli/cli.rl"
+INCLUDE "error.rl"
 INCLUDE 'std/io/file'
 INCLUDE 'std/set'
 INCLUDE 'std/map'
+
+
+::app
+{
+	version: CHAR#[] := "pre-alpha";
+	repo: CHAR#[] := "https://github.com/RmbRT-lang/rmbrtc";
+}
 
 main(
 	argc: INT,
 	argv: CHAR **) INT
 {
 	out ::= <<<std::io::OStream>>>(&std::io::out);
+	cli::main := (&out);
 
 	IF(argc < 2)
 	{
-		out.write_all(argv[0], ": expected arguments\n");
+		cli::main.error(
+			:w(argv[0]), ": expected arguments.\n"
+		).info("run ", :e(argv[0]), :e(" help"), " for help.\n");
 		RETURN 1;
+	} ELSE IF(argc == 2)
+	{
+		STATIC cli: {std::str::C8CView, ((CHAR#\) VOID) *}#[](
+			("help", &app::cmd::help),
+			("version", &app::cmd::version),
+			("license", &app::cmd::license)
+		);
+		FOR(i ::= 0; i < ##cli; i++)
+			IF(cli[i].(0) == argv[1])
+			{
+				cli[i].(1)(argv[0]);
+				= 0;
+			}
 	}
 
-	type ::= std::str::buf(argv[1]);
+	type: std::str::C8CView := argv[1];
 	buildType ::= rlc::compiler::BuildType::executable;
 
 	flags: {rlc::compiler::BuildType, CHAR#\}#[](
@@ -40,7 +56,7 @@ main(
 	flag ::= 1;
 
 	FOR(i ::= 0; i < ##flags; i++)
-		IF(!std::str::cmp(type, std::str::buf(flags[i].(1))))
+		IF(type == flags[i].(1))
 		{
 			buildType := flags[i].(0);
 			++flag;
@@ -49,55 +65,105 @@ main(
 
 	files: std::Utf8-std::Vector;
 	FOR(;flag < argc; flag++)
-		IF(!std::str::cmp(argv[flag], ":"))
+		IF(<std::str::C8CView>(argv[flag]) == ":")
 		{
-			IF(argc == ++flag)
+			++flag;
+			IF(argc == flag)
 			{
-				<<<std::io::OStream>>>(&std::io::err).write_all(
-					argv[0],
-					": exected argument after ':'.\n");
-				RETURN 1;
+				cli::main.error(
+					:w(argv[0]), ": exected argument after ':'.\n"
+				).info("run ", :e(argv[0]), :e(" help"), " for help.\n");
+				= 1;
+			} ELSE IF(argc > flag+1)
+			{
+				cli::main.error(
+					:w(argv[0]), ": expected only one argument after ':'.\n"
+				).info("run ", :e(argv[0]), :e(" help"), " for help.\n");
+				= 1;
 			}
 			BREAK;
 		} ELSE
 		{
-			files += (argv[flag], :cstring);
+			files += argv[flag];
 		}
 
+	IF(!files)
+	{
+		cli::main.error(
+			:w(argv[0]), ": no input files provided.\n"
+		).info("run ", :e(argv[0]), :e(" help"), " for help.\n");
+		= 1;
+	}
 
-	compiler: rlc::compiler::CCompiler;
+	compiler: rlc::compiler::Compiler *;
 	TRY
 	{
-		build: rlc::compiler::Build-std::Dynamic;
+		build: rlc::compiler::Build-std::Dyn;
 		IF(flag < argc)
-			build := :create((argv[argc-1], :cstring), buildType);
+		{
+			str: std::Utf8 := <std::str::C8CView>(argv[argc-1]);
+			b: rlc::compiler::Build := :withOutput(&&str, buildType);
+			build := :gc(std::heap::[rlc::compiler::Build]new(&&b));
+		}
 		ELSE
-			build := :create(buildType);
+			build := :new(buildType);
 		build->LegacyScoping := TRUE;
 
-		compiler.compile(&&files, &&*build);
-	} CATCH(e: rlc::scoper::Error &)
-	{
-		e.print(out, compiler.Registry);
-		out.write("\n");
-	}
-	CATCH(e: rlc::tok::Error &)
-	{
-		e.print(out);
-		out.write("\n");
-	}
-	CATCH(e: rlc::parser::Error &)
-	{
-		e.print(out);
-		out.write("\n");
-	}
-	CATCH(e: rlc::scoper::IncompatibleOverloadError&)
-	{
-		e.print(out);
-		out.write("\n");
-	}
-	CATCH(e: CHAR#\)
-		out.write_all(e, "\n");
+//		compiler->compile(&&files, &&*build);
 
-	RETURN 0;
+		= 0;
+	} CATCH(e: rlc::Error &)
+		cli::main.error(:stream(e), "\n");
+	CATCH(e: CHAR#\)
+		cli::main.error(e, "\n");
+
+	= 1;
+}
+
+::app::cmd help(exe: CHAR#\) VOID
+{
+	cli::main(
+"Usage:\n"
+"\t", :e(exe), " [help|license|version]\n"
+"\t", :e(exe), " [<mode>] <source>... [: <output>]\n"
+"\n"
+"modes: exe|lib|shared|test|syntax|dry|quick-dry\n"
+"\t", :e("exe"), ":       build an executable.\n"
+"\t", :e("lib"), ":       build static library.\n"
+"\t", :e("shared"), ":    build a shared library (DLL).\n"
+"\t", :e("test"), ":      compile all tests into an executable.\n"
+"\t", :e("syntax"), ":    only perform syntax checks.\n"
+"\t", :e("dry"), ":       dry compilation without an output.\n"
+"\t", :e("quick-dry"), ": check symbols, do not process templates or type system.\n"
+"output:\n"
+"\t" "for modes producing an output file, specifies the output. The default\n"
+"\t" "output name is ", :w("rl-out"), " in the current working directory.\n"
+	);
+}
+
+::app::cmd version(exe: CHAR#\) VOID
+{
+	cli::main(
+		:e(exe), " - RmbRT language compiler (", :w(app::version), ")\n"
+		"<", :w(app::repo), ">\n");
+}
+
+::app::cmd license(exe: CHAR#\) VOID
+{
+	version(exe);
+	cli::main(
+"\n"
+"This program is free software: you can redistribute it and/or modify\n"
+"it under the terms of the GNU Affero General Public License as published by\n"
+"the Free Software Foundation, either version 3 of the License, or\n"
+"(at your option) any later version.\n"
+"\n"
+"This program is distributed in the hope that it will be useful,\n"
+"but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
+"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n"
+"GNU Affero General Public License for more details.\n"
+"\n"
+"You should have received a copy of the GNU Affero General Public License\n"
+"along with this program.  If not, see <https://www.gnu.org/licenses/>.\n"
+		);
 }

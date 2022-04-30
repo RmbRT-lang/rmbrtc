@@ -1,5 +1,6 @@
 INCLUDE 'std/string'
 INCLUDE 'std/vector'
+INCLUDE 'std/optional'
 
 ::rlc::compiler
 {
@@ -16,7 +17,7 @@ INCLUDE 'std/vector'
 
 	Build
 	{
-		Output: std::Utf8;
+		Output: std::Utf8 - std::Opt;
 		Type: BuildType;
 		Debug: BOOL;
 		AdditionalIncludePaths: std::Utf8-std::Vector;
@@ -28,7 +29,8 @@ INCLUDE 'std/vector'
 		/)
 		LegacyScoping: BOOL;
 
-		{type: BuildType} INLINE -> Build(<std::Utf8>(), type)
+		{type: BuildType} INLINE:
+			Type(type)
 		{
 			SWITCH(type) {
 			:checkSyntax, :verifySimple, :verifyFull: {;}
@@ -36,11 +38,9 @@ INCLUDE 'std/vector'
 			}
 		}
 
-		{output: std::Utf8, type: BuildType}:
-			Output(&&output),
-			Type(type),
-			Debug(FALSE),
-			LegacyScoping(FALSE);
+		:withOutput{output: std::Utf8, type: BuildType}:
+			Output(:some(&&output)),
+			Type(type);
 	}
 
 	MASK Compiler

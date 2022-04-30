@@ -1,740 +1,175 @@
-INCLUDE "symbol.rl"
-INCLUDE "parser.rl"
-INCLUDE "type.rl"
+INCLUDE "stage.rl"
 
-INCLUDE "../util/dynunion.rl"
+INCLUDE "expression/operator.rl"
 
-INCLUDE 'std/vector'
-
-::rlc ENUM Operator
+::rlc::parser::expression
 {
-	add, sub, mul, div, mod,
-	equals, notEquals, less, lessEquals, greater, greaterEquals, cmp,
-	bitAnd, bitOr, bitXor, bitNot,
-	logAnd, logOr, logNot,
-	shiftLeft, shiftRight, rotateLeft, rotateRight,
-	neg, pos,
-	subscript, call, visit, conditional,
-	memberReference, memberPointer, tupleMemberReference, tupleMemberPointer,
-	bindReference, bindPointer,
-	dereference, address, move,
-	preIncrement, preDecrement,
-	postIncrement, postDecrement,
-	count,
-	baseAddr,
-	valueOf,
+	parse(p: Parser &) INLINE Expression-std::Dyn
+		:= operator::parse(p);
 
-	async,
-	fullAsync,
-	await,
-	expectDynamic,
-	maybeDynamic,
-
-	assign,
-	addAssign, subAssign, mulAssign, divAssign, modAssign,
-	bitAndAssign, bitOrAssign, bitXorAssign, bitNotAssign,
-	logAndAssign, logOrAssign, logNotAssign,
-	shiftLeftAssign, shiftRightAssign, rotateLeftAssign, rotateRightAssign,
-	negAssign,
-
-	tuple,
-	variadicExpand,
-	constructor,
-	pointerConstructor,
-	destructor,
-	pointerDestructor
-}
-
-::rlc::parser
-{
-	Expression VIRTUAL
+	/// Parses a non-operator expression.
+	parse_atom(p: Parser &) Expression-std::Dyn
 	{
-		Range: src::String;
-		Position: src::Position;
+		start: src::String;
+		position: src::Position;
 
-		STATIC parse_atom(
-			p: Parser &) Expression *
+		// Is this a (...) expression?
+		IF(p.consume(:parentheseOpen, &start, &position))
 		{
-			IF(p.consume(:parentheseOpen))
+			exp ::= expression::parse(p);
+			IF(!exp)
+				p.fail("expected expression");
+
+			tuple: OperatorExpression-std::Dyn := NULL;
+			WHILE(p.consume(:comma))
 			{
-				exp ::= Expression::parse(p);
-				IF(!exp)
+				IF(!op)
+				{
+					tuple := std::[OperatorExpression]new();
+					tuple->Op := :tuple;
+					tuple->Operands += &&exp;
+				}
+
+				IF(!(exp := expression::parse(p)))
 					p.fail("expected expression");
-
-				op: OperatorExpression * := NULL;
-				WHILE(p.consume(:comma))
-				{
-					IF(!op)
-					{
-						op := std::[OperatorExpression]new();
-						op->Op := :tuple;
-						op->Operands += :gc(exp);
-					}
-
-					IF(!(exp := Expression::parse(p)))
-						p.fail("expected expression");
-					op->Operands += :gc(exp);
-				}
-				p.expect(:parentheseClose);
-
-				RETURN op ? op : exp;
+				tuple->Operands += &&exp;
 			}
 
-			ret: Expression *;
-			IF([SymbolExpression]parse_impl(p, ret)
-			|| [SymbolChildExpression]parse_impl(p, ret)
-			|| [SymbolConstantExpression]parse_impl(p, ret)
-			|| [NumberExpression]parse_impl(p, ret)
-			|| [BoolExpression]parse_impl(p, ret)
-			|| [CharExpression]parse_impl(p, ret)
-			|| [StringExpression]parse_impl(p, ret)
-			|| [ThisExpression]parse_impl(p, ret)
-			|| [NullExpression]parse_impl(p, ret)
-			|| [CastExpression]parse_impl(p, ret)
-			|| [SizeofExpression]parse_impl(p, ret)
-			|| [TypeofExpression]parse_impl(p, ret))
-			{
-				RETURN ret;
-			}
+			end: src::String;
+			p.expect(:parentheseClose, &end);
 
-			RETURN NULL;
+			(/
+	For readability, do not track ordinary parentheses, as they are irrelevant to the inner expression, but track tuples' parentheses, as they are essential.
+			/)
+			IF(tuple)
+				(tuple->Position, tuple->Range) := (position, start.span(end));
+
+			RETURN tuple ? &&tuple : &&exp;
 		}
 
-		STATIC parse(p: Parser &) INLINE Expression *
-			:= OperatorExpression::parse(p);
-
-		[T:TYPE]
-		PRIVATE STATIC parse_impl(p: Parser &, ret: Expression * &) BOOL
+		ret: Expression *;
+		IF(detail::parse_impl(p, ret, parse_reference)
+		|| detail::parse_impl(p, ret, parse_member_reference)
+		|| detail::parse_impl(p, ret, parse_symbol_constant)
+		|| detail::parse_impl(p, ret, parse_number)
+		|| detail::parse_impl(p, ret, parse_bool)
+		|| detail::parse_impl(p, ret, parse_char)
+		|| detail::parse_impl(p, ret, parse_string)
+		|| detail::parse_impl(p, ret, parse_this)
+		|| detail::parse_impl(p, ret, parse_null)
+		|| detail::parse_impl(p, ret, parse_cast)
+		|| detail::parse_impl(p, ret, parse_sizeof)
+		|| detail::parse_impl(p, ret, parse_typeof))
 		{
-			v: T;
-			IF(v.parse(p))
-			{
-				ret := std::dup(&&v);
-				RETURN TRUE;
-			}
-			RETURN FALSE;
+			RETURN :gc(ret);
 		}
+
+		RETURN NULL;
 	}
 
-	SymbolConstantExpression -> Expression
+	::detail [T:TYPE] parse_impl(
+		p: Parser &,
+		ret: Expression * &,
+		parse_fn: ((Parser&, T! &) BOOL)
+	) BOOL
 	{
-		Symbol: src::String;
-
-		parse(p: Parser &) BOOL
+		v: T;
+		IF(parse_fn(p, v))
 		{
-			IF(!p.consume(:colon))
-				RETURN FALSE;
-			p.expect(:identifier, &Symbol, &THIS.Position);
+			ret := std::dup(&&v);
 			RETURN TRUE;
 		}
+		RETURN FALSE;
 	}
 
-	NumberExpression -> Expression
+	parse_cast(p: Parser&, out: CastExpression &) BOOL
 	{
-		Number: src::String;
-
-		parse(p: Parser &) BOOL := p.consume(:numberLiteral, &Number, &THIS.Position);
-	}
-
-	BoolExpression -> Expression
-	{
-		Value: BOOL;
-
-		parse(p: Parser&) BOOL
-		{
-			IF(p.consume(:true, &THIS.Position))
-			{
-				Value := TRUE;
-			} ELSE IF(p.consume(:false, &THIS.Position))
-			{
-				Value := FALSE;
-			} ELSE
-				RETURN FALSE;
-			RETURN TRUE;
-		}
-	}
-
-	CharExpression -> Expression
-	{
-		Char: src::String;
-
-		parse(p: Parser &) BOOL := p.consume(:stringApostrophe, &Char, &THIS.Position);
-	}
-
-	StringExpression -> Expression
-	{
-		String: src::String;
-
-		parse(p: Parser &) BOOL := p.consume(:stringQuote, &String, &THIS.Position);
-	}
-
-	::detail
-	{
-		BinOpDesc
-		{
-			[N: NUMBER]
-			{
-				// (token, operator, UserOverloadable)
-				table: {tok::Type, rlc::Operator, BOOL}#[N] &,
-				leftAssoc: BOOL
-			}:
-				Table(table),
-				Size(N),
-				LeftAssoc(leftAssoc);
-
-			Table: {tok::Type, rlc::Operator, BOOL}# \;
-			Size: UM;
-			LeftAssoc: BOOL;
-		}
-
-		k_bind: {tok::Type, rlc::Operator, BOOL}#[](
-			// bind operators.
-			(:dotAsterisk, :bindReference, FALSE),
-			(:minusGreaterAsterisk, :bindPointer, FALSE));
-
-		k_mul: {tok::Type, rlc::Operator, BOOL}#[](
-			// multiplicative operators.
-			(:percent, :mod, TRUE),
-			(:forwardSlash, :div, TRUE),
-			(:asterisk, :mul, TRUE));
-
-		k_add: {tok::Type, rlc::Operator, BOOL}#[](
-			// additive operators.
-			(:minus, :sub, TRUE),
-			(:plus, :add, TRUE));
-
-		k_shift: {tok::Type, rlc::Operator, BOOL}#[](
-			// bit shift operators.
-			(:doubleLess, :shiftLeft, TRUE),
-			(:doubleGreater, :shiftRight, TRUE),
-			(:tripleLess, :rotateLeft, TRUE),
-			(:tripleGreater, :rotateRight, TRUE));
-
-		k_bit: {tok::Type, rlc::Operator, BOOL}#[](
-			// bit arithmetic operators.
-			(:and, :bitAnd, TRUE),
-			(:circumflex, :bitXor, TRUE),
-			(:pipe, :bitOr, TRUE));
-
-		k_cmp: {tok::Type, rlc::Operator, BOOL}#[](
-			// numeric comparisons.
-			(:less, :less, TRUE),
-			(:lessEqual, :lessEquals, TRUE),
-			(:greater, :greater, TRUE),
-			(:greaterEqual, :greaterEquals, TRUE),
-			(:doubleEqual, :equals, TRUE),
-			(:exclamationMarkEqual, :notEquals, TRUE));
-
-		k_log_and: {tok::Type, rlc::Operator, BOOL}#[](
-			// boolean arithmetic.
-			(:doubleAnd, :logAnd, TRUE),
-			(:doubleAnd, :logAnd, TRUE));
-
-		k_log_or: {tok::Type, rlc::Operator, BOOL}#[](
-			(:doublePipe, :logOr, TRUE),
-			(:doublePipe, :logOr, TRUE));
-
-		k_assign: {tok::Type, rlc::Operator, BOOL}#[](
-			// assignments.
-			(:colonEqual, :assign, TRUE),
-			(:plusEqual, :addAssign, TRUE),
-			(:minusEqual, :subAssign, TRUE),
-			(:asteriskEqual, :mulAssign, TRUE),
-			(:forwardSlashEqual, :divAssign, TRUE),
-			(:percentEqual, :modAssign, TRUE),
-			(:andEqual, :bitAndAssign, TRUE),
-			(:pipeEqual, :bitOrAssign, TRUE),
-			(:circumflexEqual, :bitXorAssign, TRUE),
-			(:doubleAndEqual, :logAndAssign, TRUE),
-			(:doublePipeEqual, :logOrAssign, TRUE),
-			(:doubleLessEqual, :shiftLeftAssign, TRUE),
-			(:doubleGreaterEqual, :shiftRightAssign, TRUE),
-			(:tripleLessEqual, :rotateLeftAssign, TRUE),
-			(:tripleGreaterEqual, :rotateRightAssign, TRUE));
-
-		k_groups: BinOpDesc#[](
-			(k_bind, TRUE),
-			(k_mul, TRUE),
-			(k_add, TRUE),
-			(k_shift, TRUE),
-			(k_bit, TRUE),
-			(k_cmp, TRUE),
-			(k_log_and, TRUE),
-			(k_log_or, TRUE),
-			(k_assign, FALSE));
-
-		precedenceGroups: UM# := ##k_groups;
-
-		// (tok, op, user-overloadable)
-		k_prefix_ops: {tok::Type, rlc::Operator, BOOL}#[](
-				(:minus, :neg, TRUE),
-				(:plus, :pos, TRUE),
-				(:doublePlus, :preIncrement, TRUE),
-				(:doubleMinus, :preDecrement, TRUE),
-				(:tilde, :bitNot, TRUE),
-				(:tildeColon, :bitNotAssign, TRUE),
-				(:exclamationMark, :logNot, TRUE),
-				(:exclamationMarkColon, :logNotAssign, TRUE),
-				(:and, :address, FALSE),
-				(:doubleAnd, :move, FALSE),
-				(:asterisk, :dereference, TRUE),
-				(:lessMinus, :await, TRUE),
-				(:doubleHash, :count, TRUE),
-				(:tripleAnd, :baseAddr, FALSE));
-
-		consume_overloadable_binary_operator(p: Parser &, op: rlc::Operator &) BOOL
-		{
-			FOR(i ::= 0; i < ##k_groups; i++)
-				FOR(j ::= 0; j < k_groups[i].Size; j++)
-					IF(k_groups[i].Table[j].(2))
-						IF(p.consume(k_groups[i].Table[j].(0)))
-						{
-							op := k_groups[i].Table[j].(1);
-							RETURN TRUE;
-						}
-			RETURN FALSE;
-		}
-
-		consume_overloadable_prefix_operator(p: Parser &, op: rlc::Operator &) BOOL
-		{
-			FOR(i ::= 0; i < ##k_prefix_ops; i++)
-				IF(k_prefix_ops[i].(2))
-					IF(p.consume(k_prefix_ops[i].(0)))
-					{
-						op := k_prefix_ops[i].(1);
-						RETURN TRUE;
-					}
-			RETURN FALSE;
-		}
-
-		consume_overloadable_postfix_operator(p: Parser &, op: rlc::Operator &) BOOL
-		{
-			STATIC k_postfix_ops: {tok::Type, rlc::Operator}#[](
-				(:doublePlus, :postIncrement),
-				(:doubleMinus, :postDecrement),
-				(:exclamationMark, :valueOf));
-
-			FOR(i ::= 0; i < ##k_postfix_ops; i++)
-				IF(p.consume(k_postfix_ops[i].(0)))
-				{
-					op := k_postfix_ops[i].(1);
-					RETURN TRUE;
-				}
-			RETURN FALSE;
-		}
-	}
-
-	OperatorExpression -> Expression
-	{
-		Operands: Expression - std::DynVector;
-		Op: rlc::Operator;
-
-		STATIC parse(p: Parser&) INLINE Expression *
-			:= parse_binary(p, detail::precedenceGroups);
-
-		STATIC parse_binary_rhs(
-			p: Parser&,
-			lhs: Expression *,
-			level: UINT) Expression *
-		{
-			IF(level == 0)
-				RETURN lhs;
-
-			group ::= &detail::k_groups[level-1];
-			FOR(i ::= 0; i < group->Size; i++)
-			{
-				IF(p.consume(group->Table[i].(0)))
-				{
-					op ::= group->Table[i].(1);
-					ret ::= std::[OperatorExpression]new();
-					ret->Op := op;
-					ret->Operands += :gc(lhs);
-
-					IF(group->LeftAssoc)
-					{
-						// a + b + c
-						// (a + b) + c
-						rhs ::= parse_binary(p, level-1);
-						IF(!rhs)
-							p.fail("expected expression");
-						ret->Operands += :gc(rhs);
-						RETURN parse_binary_rhs(p, ret, level);
-					} ELSE
-					{
-						// a := b := c
-						// a := (b := c)
-						rhs ::= parse_binary(p, level);
-						IF(!rhs)
-							p.fail("expected expression");
-
-						ret->Operands += :gc(rhs);
-						RETURN ret;
-					}
-				}
-			}
-
-			RETURN lhs;
-		}
-
-		STATIC parse_binary(
-			p: Parser&,
-			level: UINT) Expression *
-		{
-			lhs ::= level
-				? parse_binary(p, level-1)
-				: parse_prefix(p);
-			IF(!lhs)
-				RETURN NULL;
-
-			IF(level == detail::precedenceGroups
-			&& p.consume(:questionMark))
-			{
-				then ::= Expression::parse(p);
-				p.expect(:colon);
-				else ::= Expression::parse(p);
-
-				ret ::= std::[OperatorExpression]new();
-				ret->Op := :conditional;
-				ret->Operands += :gc(lhs);
-				ret->Operands += :gc(then);
-				ret->Operands += :gc(else);
-				RETURN ret;
-			} ELSE
-				RETURN parse_binary_rhs(p, lhs, level);
-		}
-
-		STATIC parse_prefix(p: Parser&) Expression *
-		{
-			FOR(i ::= 0; i < ##detail::k_prefix_ops; i++)
-				IF(p.consume(detail::k_prefix_ops[i].(0)))
-				{
-					xp ::= std::[OperatorExpression]new();
-					xp->Op := detail::k_prefix_ops[i].(1);
-					xp->Operands += :gc(parse_prefix(p));
-					RETURN xp;
-				}
-
-			RETURN parse_postfix(p);
-		}
-
-		PRIVATE STATIC make_unary(
-			op: rlc::Operator,
-			lhs: Expression *) Expression *
-		{
-			ret ::= std::[OperatorExpression]new();
-			ret->Op := op;
-			ret->Operands += :gc(lhs);
-			ret->Position := lhs->Position;
-			RETURN ret;
-		}
-
-		PRIVATE STATIC make_binary(
-			op: rlc::Operator,
-			lhs: Expression *,
-			rhs: Expression *) Expression *
-		{
-			ret ::= std::[OperatorExpression]new();
-			ret->Op := op;
-			ret->Operands += :gc(lhs);
-			ret->Operands += :gc(rhs);
-			ret->Position := lhs->Position;
-			RETURN ret;
-		}
-
-		STATIC parse_postfix(
-			p: Parser&) Expression *
-		{
-			lhs ::= Expression::parse_atom(p);
-			IF(!lhs)
-				RETURN NULL;
-
-			STATIC postfix: {tok::Type, rlc::Operator}#[](
-				(:doublePlus, :postIncrement),
-				(:doubleMinus, :postDecrement),
-				(:tripleDot, :variadicExpand),
-				(:exclamationMark, :valueOf));
-
-			// (tok, op, opctor, opTuple, opDtor)
-			STATIC memberAccess: {tok::Type, rlc::Operator, rlc::Operator, rlc::Operator, rlc::Operator}#[](
-				(:dot, :memberReference, :constructor, :tupleMemberReference, :destructor),
-				(:minusGreater, :memberPointer, :pointerConstructor, :tupleMemberPointer, :pointerDestructor));
-
-			FOR["outer"](;;)
-			{
-				FOR(i ::= 0; i < ##postfix; i++)
-				{
-					IF(p.consume(postfix[i].(0)))
-					{
-						lhs := make_unary(postfix[i].(1), lhs);
-						CONTINUE["outer"];
-					}
-				}
-
-				IF(p.consume(:bracketOpen))
-				{
-					sub ::= std::[OperatorExpression]new();
-					sub->Op := :subscript;
-					sub->Operands += :gc(lhs);
-
-					DO()
-					{
-						rhs ::= Expression::parse(p);
-						IF(!rhs)
-							p.fail("expected expression");
-						sub->Operands += :gc(rhs);
-					} WHILE(p.consume(:comma))
-					p.expect(:bracketClose);
-
-					lhs := sub;
-					CONTINUE["outer"];
-				}
-
-				IF(p.consume(:visit))
-				{
-					p.expect(:parentheseOpen);
-					visit ::= std::[OperatorExpression]new();
-					visit->Op := :visit;
-					visit->Operands += :gc(lhs);
-
-					DO(comma ::= FALSE)
-					{
-						IF(comma)
-							p.expect(:comma);
-						IF(rhs ::= Expression::parse(p))
-							visit->Operands += :gc(rhs);
-						ELSE
-							p.fail("expected expression");
-					} FOR(!p.consume(:parentheseClose); comma := TRUE)
-
-					lhs := visit;
-					CONTINUE["outer"];
-				}
-
-				IF(p.consume(:parentheseOpen))
-				{
-					call ::= std::[OperatorExpression]new();
-					call->Op := :call;
-					call->Operands += :gc(lhs);
-
-					FOR(comma ::= FALSE;
-						!p.consume(:parentheseClose);
-						comma := TRUE)
-					{
-						IF(comma)
-							p.expect(:comma);
-						IF(rhs ::= Expression::parse(p))
-							call->Operands += :gc(rhs);
-						ELSE
-							p.fail("expected expression");
-					}
-
-					lhs := call;
-					CONTINUE["outer"];
-				}
-
-				FOR(i ::= 0; i < ##memberAccess; i++)
-				{
-					IF(p.consume(memberAccess[i].(0)))
-					{
-						IF(p.consume(:braceOpen))
-						{
-							lhs := make_unary(memberAccess[i].(2), lhs);
-							IF(!p.consume(:braceClose))
-							{
-								DO()
-								{
-									IF(arg ::= Expression::parse(p))
-										<OperatorExpression \>(lhs)->Operands += :gc(arg);
-									ELSE
-										p.fail("expected expression");
-								} WHILE(p.consume(:comma))
-								p.expect(:braceClose);
-							}
-						}
-						ELSE IF(p.consume(:parentheseOpen))
-						{
-							IF(index ::= Expression::parse(p))
-								lhs := make_binary(memberAccess[i].(3), lhs, index);
-							ELSE p.fail("expected expression");
-							p.expect(:parentheseClose);
-						} ELSE IF(p.consume(:tilde))
-						{
-							lhs := make_unary(memberAccess[i].(4), lhs);
-						}
-						ELSE
-						{
-							member: SymbolChildExpression;
-							IF(!member.parse(p))
-								p.fail("expected member name");
-
-							lhs := make_binary(
-								memberAccess[i].(1),
-								lhs,
-								std::[TYPE(member)]new(&&member));
-						}
-						CONTINUE["outer"];
-					}
-				}
-
+		// (method, open, close, allow multiple args, expect args)
+		STATIC lookup: {CastExpression::Kind, tok::Type, tok::Type, BOOL, BOOL}#[](
+			(:static, :less, :greater, TRUE, FALSE),
+			(:dynamic, :doubleLess, :doubleGreater, FALSE, TRUE),
+			(:mask, :tripleLess, :tripleGreater, TRUE, TRUE)
+		);
+		type: UM;
+		FOR(type := 0; type < ##lookup; type++)
+			IF(p.consume(lookup[type].(1), &out.Position))
 				BREAK;
-			}
+		IF(type == ##lookup)
+			RETURN FALSE;
 
-			RETURN lhs;
-		}
-	}
+		t: Trace(&p, "cast expression");
 
+		out.Method := lookup[type].(0);
 
-	ThisExpression -> Expression
-	{
-		parse(p: Parser&) BOOL := p.consume(:this, &THIS.Position);
-	}
+		IF(!(out.Type := :gc(parser::type::parse(p))))
+			p.fail("expected type");
 
-	NullExpression -> Expression
-	{
-		parse(p: Parser&) BOOL := p.consume(:null, &THIS.Position);
-	}
-
-	CastExpression -> Expression
-	{
-		ENUM Kind { static, dynamic, mask }
-		Method: Kind;
-		Type: std::[parser::Type]Dynamic;
-		Values: Expression - std::DynVector;
-
-		parse(p: Parser&) BOOL
+		p.expect(lookup[type].(2));
+		p.expect(:parentheseOpen);
+		IF(lookup[type].(4) || !p.consume(:parentheseClose))
 		{
-			// (method, open, close, allow multiple args, expect args)
-			STATIC lookup: {Kind, tok::Type, tok::Type, BOOL, BOOL}#[](
-				(:static, :less, :greater, TRUE, FALSE),
-				(:dynamic, :doubleLess, :doubleGreater, FALSE, TRUE),
-				(:mask, :tripleLess, :tripleGreater, TRUE, TRUE)
-			);
-			type: UM;
-			FOR(type := 0; type < ##lookup; type++)
-				IF(p.consume(lookup[type].(1), &THIS.Position))
-					BREAK;
-			IF(type == ##lookup)
-				RETURN FALSE;
+			DO()
+				IF(value ::= expression::parse(p))
+					out.Values += :gc(value);
+				ELSE
+					p.fail("expected expression");
+				WHILE(lookup[type].(3) && p.consume(:comma))
 
-			t: Trace(&p, "cast expression");
+			p.expect(:parentheseClose);
+		}
 
-			IF(!(Type := :gc(parser::Type::parse(p))))
+		RETURN TRUE;
+	}
+
+	parse_sizeof(p: Parser&, out: SizeofExpression&) BOOL
+	{
+		IF(!p.consume(:sizeof))
+			RETURN FALSE;
+
+		t: Trace(&p, "sizeof expression");
+
+		out.Variadic := p.consume(:tripleDot);
+
+		p.expect(:parentheseOpen);
+		IF(p.consume(:hash))
+		{
+			IF(!(out.Term := expression::parse(p)))
+				p.fail("expected expression");
+		} ELSE
+		{
+			IF(!(out.Term := type::parse(p)))
 				p.fail("expected type");
-
-			p.expect(lookup[type].(2));
-			p.expect(:parentheseOpen);
-			IF(lookup[type].(4) || !p.consume(:parentheseClose))
-			{
-				DO()
-					IF(value ::= Expression::parse(p))
-						Values += :gc(value);
-					ELSE
-						p.fail("expected expression");
-					WHILE(lookup[type].(3) && p.consume(:comma))
-
-				p.expect(:parentheseClose);
-			}
-
-			RETURN TRUE;
 		}
+
+		p.expect(:parentheseClose);
+
+		RETURN TRUE;
 	}
 
-	TypeOrExpr
+	parse_typeof(p: Parser&, out: TypeofExpression&) BOOL
 	{
-		PRIVATE V: util::[Expression; Type]DynUnion;
+		IF(!p.consume(:type))
+			RETURN FALSE;
 
-		{};
-		{:gc, v: Expression \}: V(:gc, v);
-		{:gc, v: Type \}: V(:gc, v);
-		{v: TypeOrExpr &&}: V(&&v.V);
-		
-		# is_type() INLINE BOOL := V.is_second();
-		# type() Type \ := V.second();
-		# is_expression() INLINE BOOL := V.is_first();
-		# expression() INLINE Expression \ := V.first();
+		t: Trace(&p, "type expression");
 
-		# <BOOL> INLINE := V;
-		# !THIS INLINE BOOL := !V;
+		expectType ::= FALSE;
+		IF(!(out.Static := p.consume(:static)))
+			expectType := p.consume(:type);
 
-		[T:TYPE] THIS:=(v: T! &&) TypeOrExpr &
-			:= std::help::custom_assign(THIS, <T!&&>(v));
-	}
-
-	SizeofExpression -> Expression
-	{
-		Term: TypeOrExpr;
-		Variadic: BOOL;
-
-		# is_expression() INLINE BOOL := Term.is_expression();
-		# is_type() INLINE BOOL := Term.is_type();
-
-		parse(p: Parser&) BOOL
+		p.expect(:parentheseOpen);
+		IF(expectType)
 		{
-			IF(!p.consume(:sizeof))
-				RETURN FALSE;
-
-			t: Trace(&p, "sizeof expression");
-
-			Variadic := p.consume(:tripleDot);
-
-			p.expect(:parentheseOpen);
-			IF(p.consume(:hash))
-			{
-				IF(exp ::= Expression::parse(p))
-					Term := :gc(exp);
-				ELSE
-					p.fail("expected expression");
-			} ELSE
-			{
-				IF(type ::= Type::parse(p))
-					Term := :gc(type);
-				ELSE
-					p.fail("expected type");
-			}
-
-			p.expect(:parentheseClose);
-
-			RETURN TRUE;
-		}
-	}
-
-	TypeofExpression -> Expression
-	{
-		Term: TypeOrExpr;
-		Static: BOOL; // Only affects expressions.
-
-		# is_expression() INLINE BOOL := Term.is_expression();
-		# is_type() INLINE BOOL := Term.is_type();
-
-		parse(p: Parser&) BOOL
+			IF(!(out.Term := :gc(type::parse(p))))
+				p.fail("expected type");
+		} ELSE
 		{
-			IF(!p.consume(:type))
-				RETURN FALSE;
-
-			t: Trace(&p, "type expression");
-
-			expectType ::= FALSE;
-			IF(!(Static := p.consume(:static)))
-				expectType := p.consume(:type);
-
-			p.expect(:parentheseOpen);
-			IF(expectType)
-			{
-				IF(type ::= Type::parse(p))
-					Term := :gc(type);
-				ELSE
-					p.fail("expected type");
-			} ELSE
-			{
-				IF(exp ::= Expression::parse(p))
-					Term := :gc(exp);
-				ELSE
-					p.fail("expected expression");
-			}
-
-			p.expect(:parentheseClose);
-
-			RETURN TRUE;
+			IF(!(out.Term := :gc(expression::parse(p))))
+				p.fail("expected expression");
 		}
+
+		p.expect(:parentheseClose);
+
+		RETURN TRUE;
 	}
 }

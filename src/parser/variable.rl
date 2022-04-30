@@ -1,276 +1,221 @@
-INCLUDE "parser.rl"
+INCLUDE "../ast/variable.rl"
+INCLUDE "../ast/type.rl"
+INCLUDE "expression.rl"
 INCLUDE "type.rl"
-INCLUDE "symbol.rl"
-INCLUDE "global.rl"
-INCLUDE "member.rl"
+INCLUDE "stage.rl"
 
-INCLUDE 'std/memory'
-INCLUDE 'std/vector'
-
-INCLUDE "../util/dynunion.rl"
-
-::rlc::parser
+::rlc::parser::variable
 {
-	VariableType
+	parse_global(p: Parser&, out: ast::[Config]GlobalVariable&) BOOL
 	{
-		PRIVATE V: util::[Type; Type::Auto]DynUnion;
-
-		{};
-		{:gc, t: Type \}: V(:gc(t));
-		{:gc, t: Type::Auto \}: V(:gc(t));
-
-		# is_type() INLINE BOOL := V.is_first();
-		# type() INLINE Type \ := V.first();
-		# is_auto() INLINE BOOL := V.is_second();
-		# auto() INLINE Type::Auto \ := V.second();
-
-		# <BOOL> INLINE := V;
-
-		[T:TYPE] THIS:=(v: T!&&) VariableType &
-			:= std::help::custom_assign(THIS, <T!&&>(v));
+		IF(!parse_var_decl(p, out))
+			= FALSE;
+		p.expect(:semicolon);
+		= TRUE;
 	}
 
-	Variable VIRTUAL -> ScopeItem
+	parse_extern(p: Parser&, out: ast::[Config]GlobalVariable &) BOOL
 	{
-		Name: src::String;
-		Type: VariableType;
-		HasInitialiser: BOOL;
-		InitValues: Expression - std::DynVector;
+		IF(!parse(p, out, TRUE, FALSE, FALSE))
+			= FALSE;
+		p.expect(:semicolon);
+		= TRUE;
+	}
 
-		# FINAL name() src::String#& := Name;
-		# FINAL overloadable() BOOL := !Name;
-
-		parse_fn_arg(p: Parser&) BOOL
-			:= parse(p, FALSE, FALSE, FALSE);
-		parse_var_decl(p: Parser &) BOOL
-			:= parse(p, TRUE, TRUE, FALSE);
-		parse_extern(p: Parser&) BOOL
-			:= parse(p, TRUE, FALSE, FALSE);
-
-		parse(p: Parser&,
-			needs_name: BOOL,
-			allow_initialiser: BOOL,
-			force_initialiser: BOOL) BOOL
+	parse_member(p: Parser&, out: ast::[Config]MemberVariable &, static: BOOL) BOOL
+	{
+		IF(static)
 		{
-			STATIC k_needed_without_name: tok::Type#[](
-				:bracketOpen,
-				:braceOpen,
-				:doubleColon,
-				:colon,
-				:void,
-				:bool,
-				:char,
-				:int,
-				:uint,
-				:sm,
-				:um,
-				:null);
+			IF(!parse_var_decl(p))
+				= FALSE;
+		}
+		ELSE
+		{
+			IF(!parse_fn_arg(p))
+				= FALSE;
+		}
+		p.expect(:semicolon);
+		= TRUE;
+	}
 
-			STATIC k_needed_after_name: {tok::Type, BOOL}#[](
-				(:colon, TRUE),
-				(:colonEqual, TRUE),
-				(:doubleColonEqual, TRUE),
-				(:hash, TRUE),
-				(:dollar, TRUE),
-				(:exclamationMark, FALSE),
-				(:and, FALSE),
-				(:doubleAnd, FALSE),
-				(:asterisk, FALSE),
-				(:backslash, FALSE),
-				(:at, FALSE),
-				(:doubleAt, FALSE),
-				(:doubleDotExclamationMark, FALSE),
-				(:doubleDotQuestionMark, FALSE),
-				(:doubleColon, FALSE),
-				(:semicolon, FALSE),
-				(:comma, FALSE),
-				(:parentheseClose, FALSE),
-				(:braceClose, FALSE));
+	parse_catch(p: Parser &, out: ast::[Config]LocalVariable &) BOOL := parse_fn_arg(p, out);
 
-			IF(needs_name
-			&& !p.match(:identifier))
-				RETURN FALSE;
-			ELSE
-			{
-				found ::= FALSE;
-				IF(p.match(:identifier))
-				{
-					FOR(i ::= 0; i < ##k_needed_after_name; i++)
-						IF((!needs_name || k_needed_after_name[i].(1))
-						&& p.match_ahead(k_needed_after_name[i].(0)))
-						{
-							found := TRUE;
-							BREAK;
-						}
-				}
-				ELSE
-					FOR(i ::= 0; i < ##k_needed_without_name; i++)
-						IF(p.match(k_needed_without_name[i]))
-						{
-							found := TRUE;
-							BREAK;
-						}
+	parse_local(p: Parser &, out: ast::[Config]LocalVariable &, expect_semicolon: BOOL) BOOL
+	{
+		IF(!parse_var_decl(p, out))
+			= FALSE;
+		IF(expect_semicolon)
+			p.expect(:semicolon);
+		= TRUE;
+	}
 
-				IF(!found)
-					RETURN FALSE;
-			}
+	parse_fn_arg(p: Parser&, out: ast::[Config]Variable &) BOOL
+		:= parse(p, out, FALSE, FALSE, FALSE);
+	parse_var_decl(p: Parser &, out: ast::[Config]Variable &) BOOL
+		:= parse(p, out, TRUE, TRUE, FALSE);
 
-			needs_type ::= TRUE;
-			has_name ::= FALSE;
+	parse(
+		p: Parser&,
+		out: ast::[Config]Variable &,
+		needs_name: BOOL,
+		allow_initialiser: BOOL,
+		force_initialiser: BOOL) BOOL
+	{
+		STATIC k_needed_without_name: tok::Type#[](
+			:bracketOpen, :braceOpen,
+			:doubleColon, :colon,
+			:void, :bool, :char, :int, :uint, :sm, :um, :null);
 
-			t: Trace(&p, "variable");
+		// (token, onlyIfNeedsName)
+		STATIC k_needed_after_name: {tok::Type, BOOL}#[](
+			(:colon, TRUE),
+			(:colonEqual, TRUE),
+			(:doubleColonEqual, TRUE),
+			(:hash, TRUE),
+			(:dollar, TRUE),
+			(:exclamationMark, FALSE),
+			(:and, FALSE),
+			(:doubleAnd, FALSE),
+			(:asterisk, FALSE),
+			(:backslash, FALSE),
+			(:at, FALSE),
+			(:doubleAt, FALSE),
+			(:doubleDotExclamationMark, FALSE),
+			(:doubleDotQuestionMark, FALSE),
+			(:doubleColon, FALSE),
+			(:semicolon, FALSE),
+			(:comma, FALSE),
+			(:parentheseClose, FALSE),
+			(:braceClose, FALSE));
 
-			name: tok::Token;
+		IF(needs_name
+		&& !p.match(:identifier))
+			= FALSE;
+		ELSE
+		{
+			found ::= FALSE;
 			IF(p.match(:identifier))
 			{
-				// "name: type" style variable?
-				IF(p.match_ahead(:colon))
-				{
-					has_name := TRUE;
-
-					p.expect(:identifier, &name);
-					p.consume(NULL);
-
-					IF(p.consume(:questionMark))
+				FOR(i ::= 0; i < ##k_needed_after_name; i++)
+					IF((!needs_name || k_needed_after_name[i].(1))
+					&& p.match_ahead(k_needed_after_name[i].(0)))
 					{
-						Type := :gc(std::[parser::Type::Auto]new());
-						Type.auto()->parse(p);
-						p.expect(:colonEqual);
-						needs_type := FALSE;
+						found := TRUE;
+						BREAK;
 					}
-				} ELSE IF(allow_initialiser)
-				{
-					STATIC k_need_ahead: tok::Type#[](
-						:hash,
-						:dollar,
-						:doubleColonEqual);
-
-					FOR(i ::= 0; i < ##k_need_ahead; i++)
-					{
-						IF(p.match_ahead(k_need_ahead[i]))
-						{
-							p.expect(:identifier, &name);
-
-							Type := :gc(std::[parser::Type::Auto]new());
-							Type.auto()->parse(p, FALSE);
-
-							// "name ::=" style variable?
-							p.expect(:doubleColonEqual);
-
-							has_name := TRUE;
-							needs_type := FALSE;
-							BREAK;
-						}
-					}
-				}
-			} // If !isArgument, "name: type" is expected.
-			IF(!has_name && needs_name)
-				RETURN FALSE;
-
-			Name := has_name
-				? name.Content
-				: (p.position(), 0);
-
-
-			IF(!needs_type)
-			{
-				init ::= Expression::parse(p);
-				IF(!init)
-					p.fail("expected expression");
-				InitValues += :gc(init);
-			} ELSE
-			{
-				IF(!(Type := :gc(parser::Type::parse(p))))
-				{
-					IF(needs_name)
-						p.fail("expected name");
-					ELSE
-						RETURN FALSE;
-				}
-
-				IF(allow_initialiser)
-				{
-					isParenthese ::= 0;
-					IF(p.consume(:colonEqual)
-					|| (isParenthese := p.consume(:parentheseOpen)))
-					{
-						// check for empty initialiser.
-						IF(!isParenthese
-						|| !p.consume(:parentheseClose))
-						{
-							DO()
-							{
-								arg ::= Expression::parse(p);
-								IF(!arg)
-									p.fail("expected expression");
-								InitValues += :gc(arg);
-							} WHILE(isParenthese && p.consume(:comma))
-
-							IF(isParenthese)
-								p.expect(:parentheseClose);
-						}
-					} ELSE IF(force_initialiser)
-					{
-						p.fail("expected ':=' or '('");
-					}
-				}
-			}
-
-			RETURN TRUE;
-		}
-	}
-
-	GlobalVariable -> Global, Variable
-	{
-		parse(p: Parser&) BOOL
-		{
-			IF(!Variable::parse_var_decl(p))
-				RETURN FALSE;
-			p.expect(:semicolon);
-			RETURN TRUE;
-		}
-
-		parse_extern(p: Parser&) BOOL
-		{
-			IF(!Variable::parse_extern(p))
-				RETURN FALSE;
-			p.expect(:semicolon);
-			RETURN TRUE;
-		}
-	}
-
-	MemberVariable -> Member, Variable
-	{
-		parse(p: Parser&, static: BOOL) BOOL
-		{
-			IF(static)
-			{
-				IF(!Variable::parse_var_decl(p))
-					RETURN FALSE;
 			}
 			ELSE
-			{
-				IF(!Variable::parse_fn_arg(p))
-					RETURN FALSE;
-			}
-			p.expect(:semicolon);
-			RETURN TRUE;
+				FOR(i ::= 0; i < ##k_needed_without_name; i++)
+					IF(p.match(k_needed_without_name[i]))
+					{
+						found := TRUE;
+						BREAK;
+					}
+
+			IF(!found)
+				= FALSE;
 		}
-	}
 
-	Local VIRTUAL {}
+		needs_type ::= TRUE;
+		has_name ::= FALSE;
 
-	LocalVariable -> Local, Variable
-	{
-		parse(p: Parser &, expect_semicolon: BOOL) BOOL
+		t: Trace(&p, "variable");
+
+		name: tok::Token;
+		IF(p.match(:identifier))
 		{
-			IF(!Variable::parse_var_decl(p))
-				RETURN FALSE;
-			IF(expect_semicolon)
-				p.expect(:semicolon);
-			RETURN TRUE;
+			// "name: type" style variable?
+			IF(p.match_ahead(:colon))
+			{
+				has_name := TRUE;
+
+				p.expect(:identifier, &name);
+				p.consume(NULL);
+
+				IF(p.consume(:questionMark))
+				{
+					auto: Auto;
+					parse_auto(p, auto);
+					out.Type := :dup(&&auto);
+					p.expect(:colonEqual);
+					needs_type := FALSE;
+				}
+			} ELSE IF(allow_initialiser)
+			{
+				STATIC k_need_ahead: tok::Type#[](
+					:hash,
+					:dollar,
+					:doubleColonEqual);
+
+				FOR(i ::= 0; i < ##k_need_ahead; i++)
+				{
+					IF(p.match_ahead(k_need_ahead[i]))
+					{
+						auto: Auto;
+						p.expect(:identifier, &name);
+						parse_auto_no_ref(p, auto);
+						p.expect(:doubleColonEqual);
+						out.Type := :dup(&&auto);
+
+						has_name := TRUE;
+						needs_type := FALSE;
+						BREAK;
+					}
+				}
+			}
+		} // If !isArgument, "name: type" is expected.
+		IF(!has_name && needs_name)
+			= FALSE;
+
+		out.Name := has_name
+			? name.Content
+			: (p.position(), 0);
+
+
+		IF(!needs_type)
+		{
+			IF(init ::= expression::parse(p))
+				out.InitValues += &&init;
+			ELSE
+				p.fail("expected expression");
+		} ELSE
+		{
+			IF(!(out.Type := type::parse(p)))
+			{
+				IF(needs_name)
+					p.fail("expected name");
+				ELSE
+					= FALSE;
+			}
+
+			IF(allow_initialiser)
+			{
+				isParenthese ::= 0;
+				IF(p.consume(:colonEqual)
+				|| (isParenthese := p.consume(:parentheseOpen)))
+				{
+					// check for empty initialiser.
+					IF(!isParenthese
+					|| !p.consume(:parentheseClose))
+					{
+						DO()
+						{
+							IF(arg ::= expression::parse(p))
+								out.InitValues += &&arg;
+							ELSE
+								p.fail("expected expression");
+						} WHILE(isParenthese && p.consume(:comma))
+
+						IF(isParenthese)
+							p.expect(:parentheseClose);
+					}
+				} ELSE IF(force_initialiser)
+				{
+					p.fail("expected ':=' or '('");
+				}
+			}
 		}
 
-		parse_catch(p: Parser &) BOOL := Variable::parse_fn_arg(p);
+		= TRUE;
 	}
 }

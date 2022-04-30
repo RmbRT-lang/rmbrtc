@@ -1,219 +1,168 @@
-INCLUDE "parser.rl"
-INCLUDE "global.rl"
-INCLUDE "member.rl"
-INCLUDE "variable.rl"
-INCLUDE "templatedecl.rl"
-INCLUDE "statement.rl"
-
-INCLUDE "../util/dynunion.rl"
-
-INCLUDE 'std/help'
-
-::rlc::parser ExprOrStmt
-{
-	PRIVATE V: util::[Expression; Statement]DynUnion;
-
-	{};
-	{:gc, v: Expression \}: V(:gc(v));
-	{:gc, v: Statement \}: V(:gc(v));
-
-	# is_expression() INLINE BOOL := V.is_first();
-	# expression() INLINE Expression \ := V.first();
-	# is_statement() INLINE BOOL := V.is_second();
-	# statement() INLINE Statement \ := V.second();
-
-	# <BOOL> INLINE := V;
-
-	[T:TYPE] THIS:=(v: T! &&) ExprOrStmt &
-		:= std::help::custom_assign(THIS, <T!&&>(v));
-}
+INCLUDE "../ast/function.rl"
+INCLUDE "stage.rl"
 
 (//
-An anonymous function object that models a callable function.
+Parses a comma-separated list of arguments (without surrounding parentheses).
+Can be called multiple times to append new arguments.
 /)
-::rlc::parser Functoid VIRTUAL
+::rlc::parser::function parse_args(
+	p: Parser &,
+	out: ast::[Config]Functoid &,
+	allow_multiple: BOOL,
+	allow_empty: BOOL
+) VOID
 {
-	Arguments: std::[LocalVariable]Vector;
-	Return: VariableType;
-	Body: ExprOrStmt;
-	IsInline: BOOL;
-	IsCoroutine: BOOL;
-
-	(//
-	Parses a comma-separated list of arguments (without surrounding parentheses).
-	Can be called multiple times to append new arguments.
-	/)
-	parse_args(
-		p: Parser &,
-		allow_multiple: BOOL,
-		allow_empty: BOOL
-	) VOID
+	readAny ::= FALSE;
+	DO(arg: ast::[Config]LocalVariable)
 	{
-		readAny ::= FALSE;
-		DO(arg: LocalVariable)
+		IF(!arg.parse_fn_arg(p))
 		{
-			IF(!arg.parse_fn_arg(p))
-			{
-				IF(!readAny && !allow_empty)
-					p.fail("expected argument");
-				ELSE
-					RETURN;
-			}
-			Arguments += &&arg;
-		} WHILE(allow_multiple && p.consume(:comma))
+			IF(!readAny && !allow_empty)
+				p.fail("expected argument");
+			ELSE
+				RETURN;
+		}
+		out.Arguments += &&arg;
+	} WHILE(allow_multiple && p.consume(:comma))
+}
+
+::rlc::parser::function parse_arg(
+	p: Parser &
+) ast::[Config]TypeOrArgument-std::Dyn
+{
+	IF(var ::= variable::parse(p))
+		= &&var;
+	ELSE IF(type ::= type::parse(p))
+		= &&type;
+	= NULL;
+}
+
+
+/// Parses modifiers and return type.
+::rlc::parser::function parse_rest_of_head(
+	p: Parser &,
+	out: ast::[Config]Function &,
+	returnType: BOOL) VOID
+{
+	out.IsInline := p.consume(:inline);
+	out.IsCoroutine := p.consume(:at);
+
+	IF(!returnType)
+		RETURN;
+
+	IF(out.Return := parser::Type::parse(p))
+		RETURN;
+
+	expectBody ::= p.consume(:questionMark);
+	auto: parser::Type::Auto;
+	auto.parse(p);
+	out.Return := :dup(&&auto);
+}
+
+::rlc::parser::function parse_body(p: Parser &, allow_body: BOOL) VOID
+{
+	IF(!allow_body)
+	{
+		IF(!Return)
+			p.fail("expected explicit return type for bodyless function");
+		p.expect(:semicolon);
+		RETURN;
 	}
 
-	/// Parses modifiers and return type.
-	parse_rest_of_head(p: Parser &, returnType: BOOL) VOID
+	body: BlockStatement;
+	IF(!Return)
 	{
-		IsInline := p.consume(:inline);
-		IsCoroutine := p.consume(:at);
-
-		IF(!returnType)
-			RETURN;
-
-		IF(Return := :gc(parser::Type::parse(p)))
-			RETURN;
-
 		expectBody ::= p.consume(:questionMark);
 		auto: parser::Type::Auto;
 		auto.parse(p);
 		Return := :gc(std::dup(&&auto));
-	}
 
-	parse_body(p: Parser &, allow_body: BOOL) VOID
-	{
-		IF(!allow_body)
+		IF(expectBody)
 		{
-			IF(!Return)
-				p.fail("expected explicit return type for bodyless function");
+			IF(!body.parse(p))
+				p.fail("expected block statement");
+			Body := :gc(std::dup(&&body));
+		} ELSE
+		{
+			p.expect(:doubleColonEqual);
+			Body := :gc(Expression::parse(p));
 			p.expect(:semicolon);
-			RETURN;
 		}
-
-		body: BlockStatement;
-		IF(!Return)
+	} ELSE IF(!p.consume(:semicolon))
+	{
+		IF(body.parse(p))
+			Body := :gc(std::dup(&&body));
+		ELSE
 		{
-			expectBody ::= p.consume(:questionMark);
-			auto: parser::Type::Auto;
-			auto.parse(p);
-			Return := :gc(std::dup(&&auto));
+			p.expect(tok::Type::colonEqual);
 
-			IF(expectBody)
-			{
-				IF(!body.parse(p))
-					p.fail("expected block statement");
-				Body := :gc(std::dup(&&body));
-			} ELSE
-			{
-				p.expect(:doubleColonEqual);
-				Body := :gc(Expression::parse(p));
-				p.expect(:semicolon);
-			}
-		} ELSE IF(!p.consume(:semicolon))
-		{
-			IF(body.parse(p))
-				Body := :gc(std::dup(&&body));
-			ELSE
-			{
-				p.expect(tok::Type::colonEqual);
-
-				Body := :gc(Expression::parse(p));
-				p.expect(:semicolon);
-			}
+			Body := :gc(Expression::parse(p));
+			p.expect(:semicolon);
 		}
 	}
 }
 
-(// A named functoid referrable to by name. /)
-::rlc::parser Function VIRTUAL -> ScopeItem, Functoid
+
+::rlc::parser::function parse(
+	p: Parser &,
+	allow_body: BOOL,
+	allow_operators: BOOL,
+	out: ast::[Config]Function &) BOOL
 {
-	Name: src::String;
-
-	# FINAL name() src::String#& := Name;
-	# FINAL overloadable() BOOL := FALSE;
-
-	parse(
-		p: Parser &,
-		allow_body: BOOL,
-		allow_operators: BOOL) BOOL
+	parOpen: tok::Type := :parentheseOpen;
+	parClose: tok::Type := :parentheseClose;
+	IF(!p.match_ahead(:parentheseOpen)
+	|| !p.consume(:identifier, &out.Name))
 	{
-		parOpen: tok::Type := :parentheseOpen;
-		parClose: tok::Type := :parentheseClose;
-		IF(!p.match_ahead(:parentheseOpen)
-		|| !p.consume(:identifier, &Name))
-		{
-			RETURN FALSE;
-		}
-
-		t: Trace(&p, "function");
-
-		p.expect(parOpen);
-		Functoid::parse_args(p, TRUE, TRUE);
-		p.expect(parClose);
-
-		Functoid::parse_rest_of_head(p, TRUE);
-		Functoid::parse_body(p, allow_body);
-
-		RETURN TRUE;
-	}
-}
-
-/// Global function.
-::rlc::parser GlobalFunction -> Global, Function
-{
-	parse(p: Parser&) INLINE BOOL := Function::parse(p, TRUE, FALSE);
-	parse_extern(p: Parser&) INLINE BOOL := Function::parse(p, FALSE, FALSE);
-}
-
-::rlc ENUM Abstractness
-{
-	none,
-	virtual,
-	abstract,
-	override,
-	final
-}
-
-::rlc::parser Abstractable VIRTUAL -> Member
-{
-	Abstractness: rlc::Abstractness;
-
-	STATIC parse(p: Parser &) Abstractable *
-	{
-		ret: Abstractable * := NULL;
-
-		abs ::= parse_abstractness(p);
-
-		IF([Operator]parse_impl(p, abs, ret)
-		|| [MemberFunction]parse_impl(p, abs, ret))
-		{
-			RETURN ret;
-		}
-
-		IF(abs != :none)
-			p.fail("expected operator or function definition");
-
-		RETURN NULL;
-	}
-
-	[T:TYPE] PRIVATE STATIC parse_impl(
-		p: Parser &,
-		abs: rlc::Abstractness,
-		out: Abstractable *&) BOOL
-	{
-		v: T;
-		v.Abstractness := abs;
-		IF(v.parse(p))
-		{
-			out := std::dup(&&v);
-			RETURN TRUE;
-		}
 		RETURN FALSE;
 	}
+
+	t: Trace(&p, "function");
+
+	p.expect(parOpen);
+	Functoid::parse_args(p, TRUE, TRUE, out);
+	p.expect(parClose);
+
+	Functoid::parse_rest_of_head(p, TRUE, out);
+	Functoid::parse_body(p, allow_body, out);
+
+	RETURN TRUE;
 }
 
-::rlc::parser parse_abstractness(p: Parser &) Abstractness
+::rlc::parser::abstractable parse(p: Parser &) ast::[Config]Abstractable *
+{
+	ret: ast::[Config]Abstractable *;
+
+	abs ::= parse_abstractness(p);
+
+	IF([Operator]parse_impl(p, abs, ret)
+	|| [MemberFunction]parse_impl(p, abs, ret))
+	{
+		RETURN ret;
+	}
+
+	IF(abs != :none)
+		p.fail("expected operator or function definition");
+
+	RETURN NULL;
+}
+
+::rlc::parser::abstractable::detail [T:TYPE] parse_impl(
+	p: Parser &,
+	abs: rlc::Abstractness,
+	out: ast::[Config]Abstractable *&) BOOL
+{
+	v: T;
+	v.Abstractness := abs;
+	IF(v.parse(p))
+	{
+		out := std::dup(&&v);
+		RETURN TRUE;
+	}
+	RETURN FALSE;
+}
+
+::rlc::parser::abstractable parse_abstractness(p: Parser &) Abstractness
 {
 	STATIC k_lookup: {tok::Type, rlc::Abstractness}#[](
 		(:virtual, :virtual),
@@ -227,108 +176,97 @@ An anonymous function object that models a callable function.
 	RETURN :none;
 }
 
-(// Type conversion operator. /)
-::rlc::parser Converter -> Member, Functoid
+::rlc::parser::abstractable parse_converter(p: Parser &, out: ast::[Config]Converter &) BOOL
 {
-	Abstractness: rlc::Abstractness;
+	IF(!p.consume(:less, &out.Position))
+		RETURN FALSE;
 
-	# type() INLINE Type #\ := Functoid::Return.type();
+	t: Trace(&p, "type converter");
 
-	parse(p: Parser &) BOOL
-	{
-		IF(!p.consume(:less))
-			RETURN FALSE;
+	IF(!(out.Return := :gc(Type::parse(p))))
+		p.fail("expected type name");		
 
-		t: Trace(&p, "type converter");
+	p.expect(:greater);
 
-		IF(!(Functoid::Return := :gc(Type::parse(p))))
-			p.fail("expected type name");		
+	function::parse_rest_of_head(p, FALSE, out);
 
-	}
+	RETURN TRUE;
 }
 
-::rlc::parser MemberFunction -> Abstractable, Function
-{
-	parse(p: Parser&) INLINE BOOL
-		:= Function::parse(p, Abstractness != :abstract, TRUE);
-}
+::rlc::parser::abstractable parse_member_function(
+	p: Parser&,
+	out: ast::[Config]MemberFunction &
+) INLINE BOOL := function::parse(p, Abstractness != :abstract, TRUE, out);
 
-/// Custom operator implementation.
-::rlc::parser Operator -> Abstractable, Functoid
+::rlc::parser::abstractable parse_operator(p: Parser &, out: Operator &) BOOL
 {
-	Op: rlc::Operator;
+	postFix ::= p.consume(:this);
+	IF(!postFix && !p.match_ahead(:this))
+		RETURN FALSE;
 
-	parse(p: Parser &) BOOL
+	t: Trace(&p, "operator");
+
+	singleArg ::= FALSE;
+	allowArgs ::= TRUE;
+	parOpen ::= tok::Type::parentheseOpen;
+	parClose ::= tok::Type::parentheseClose;
+
+	nothing: :nothing := :nothing;
+
+	IF(postFix)
 	{
-		postFix ::= p.consume(:this);
-		IF(!postFix && !p.match_ahead(:this))
-			RETURN FALSE;
-
-		t: Trace(&p, "operator");
-
-		singleArg ::= FALSE;
-		allowArgs ::= TRUE;
-		parOpen ::= tok::Type::parentheseOpen;
-		parClose ::= tok::Type::parentheseClose;
-
-		IF(postFix)
+		IF(detail::consume_overloadable_binary_operator(p, Op))
 		{
-			IF(detail::consume_overloadable_binary_operator(p, Op))
-			{
-				singleArg := TRUE;
-			} ELSE IF(detail::consume_overloadable_postfix_operator(p, Op))
-			{
-				allowArgs := FALSE;
-			} ELSE IF(p.match(:parentheseOpen))
-			{
-				Op := :call;
-			} ELSE IF(p.match(:bracketOpen))
-			{
-				Op := :subscript;
-				(parOpen, parClose) := (:bracketOpen, :bracketClose);
-			} ELSE IF(p.match(:questionMark))
-			{
-				p.expect(:parentheseOpen);
-				Functoid::parse_args(p, FALSE, FALSE);
-				p.expect(:parentheseClose);
-				p.expect(:colon);
-				singleArg := TRUE;
-			} ELSE
-				p.fail("expected operator");
-		} ELSE
+			singleArg := TRUE;
+		} ELSE IF(detail::consume_overloadable_postfix_operator(p, Op))
 		{
-			IF(!detail::consume_overloadable_prefix_operator(p, Op))
-				p.fail("expected overloadable prefix operator");
-			p.expect(:this);
 			allowArgs := FALSE;
-		}
-
-		IF(allowArgs)
+		} ELSE IF(p.match(:parentheseOpen))
 		{
-			p.expect(parOpen);
-			Functoid::parse_args(p, !singleArg, !singleArg);
-			p.expect(parClose);
-		}
-
-		Functoid::parse_rest_of_head(p, TRUE);
-		Functoid::parse_body(p, Abstractness != :abstract);
+			Op := :call;
+		} ELSE IF(p.match(:bracketOpen))
+		{
+			Op := :subscript;
+			(parOpen, parClose) := (:bracketOpen, :bracketClose);
+		} ELSE IF(p.match(:questionMark))
+		{
+			p.expect(:parentheseOpen);
+			Functoid::parse_args(p, FALSE, FALSE);
+			p.expect(:parentheseClose);
+			p.expect(:colon);
+			singleArg := TRUE;
+		} ELSE
+			p.fail("expected operator");
+	} ELSE
+	{
+		IF(!detail::consume_overloadable_prefix_operator(p, Op))
+			p.fail("expected overloadable prefix operator");
+		p.expect(:this);
+		allowArgs := FALSE;
 	}
+
+	IF(allowArgs)
+	{
+		p.expect(parOpen);
+		Functoid::parse_args(p, !singleArg, !singleArg);
+		p.expect(parClose);
+	}
+
+	Functoid::parse_rest_of_head(p, TRUE);
+	Functoid::parse_body(p, Abstractness != :abstract);
 }
 
-::rlc::parser Factory -> Member, Functoid
+::rlc::parser::function parse_factory(p: Parser &, out: ast::[Config]Factory &) BOOL
 {
-	parse(p: Parser &) BOOL
-	{
-		IF(!p.consume(:tripleLess))
-			RETURN FALSE;
+	IF(!p.consume(:tripleLess, &out.Position))
+		RETURN FALSE;
 
-		t: Trace(&p, "factory");
+	t: Trace(&p, "factory");
 
-		Functoid::parse_args(p, TRUE, FALSE);
-		p.expect(:tripleGreater);
-		Functoid::parse_rest_of_head(p, TRUE);
-		Functoid::parse_body(p, TRUE);
+	function::parse_args(p, TRUE, FALSE);
+	p.expect(:tripleGreater);
+	function::parse_rest_of_head(p, TRUE);
+	function::parse_body(p, TRUE);
 
-		RETURN TRUE;
-	}
+	RETURN TRUE;
 }

@@ -1,25 +1,25 @@
 INCLUDE "compiler.rl"
-INCLUDE "../scoper/fileregistry.rl"
-INCLUDE "../scoper/itemmsgerror.rl"
+INCLUDE "../ast/fileregistry.rl"
 INCLUDE "../util/file.rl"
-INCLUDE "../instantiator/symbol.rl"
-INCLUDE "../instantiator/detail/expression.rl"
-INCLUDE "../instantiator/detail/type.rl"
-INCLUDE "../instantiator/detail/statement.rl"
+INCLUDE "../ast/symbol.rl"
 INCLUDE 'std/streambuffer'
 INCLUDE 'std/vector'
 INCLUDE 'std/set'
 
+INCLUDE "../parser/templatedecl.rl"
+INCLUDE "../parser/type.rl"
+INCLUDE "../parser/stage.rl"
+
 ::rlc::compiler CCompiler -> Compiler
 {
-	Registry: scoper::FileRegistry;
+	Registry: parser::Config-ast::FileRegistry;
 	FINAL compile(
 		files: std::Utf8 - std::Vector,
 		build: Build
 	) VOID
 	{
 		// Processed input files.
-		scoped: scoper::File \ - std::NatVectorSet;
+		scoped: parser::Stage - ast::File \ - std::NatVectorSet;
 
 		IF(build.LegacyScoping)
 			Registry.LegacyScope := :create(NULL, NULL);

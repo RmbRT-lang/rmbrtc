@@ -1,370 +1,280 @@
-INCLUDE "symbol.rl"
-INCLUDE "parser.rl"
-INCLUDE "expression.rl"
+INCLUDE "../ast/type.rl"
+INCLUDE "stage.rl"
 
-::rlc::parser
+::rlc::parser::type
 {
-	Type VIRTUAL
+	TYPE Type := Config-ast::Type;
+	TYPE Modifier := Config-ast::type::Modifier;
+	TYPE Auto := Config-ast::type::Auto;
+	TYPE ReferenceType := ast::type::ReferenceType;
+	TYPE Indirection := ast::type::Indirection;
+	TYPE Qualifier := ast::type::Qualifier;
+	TYPE Signature := Config-ast::Signature;
+	TYPE Void := Config-ast::Void;
+	TYPE Null := Config-ast::Null;
+	TYPE SymbolConstantType := Config-ast::SymbolConstantType;
+	TYPE Tuple := Config-ast::TupleType;
+	TYPE TypeOfExpression := Config-ast::TypeOfExpression;
+	TYPE TypeName := Config-ast::TypeName;
+	TYPE BuiltinType := Config-ast::BuiltinType;
+
+	parse_reference_type(p: Parser&) ReferenceType
 	{
-		ENUM ReferenceType
-		{
-			none,
-			reference,
-			tempReference
-		}
+		STATIC table: {tok::Type, ReferenceType}#[](
+			(:and, :reference),
+			(:doubleAnd, :tempReference));
 
-		PRIVATE STATIC parse_reference_type(
-			p: Parser&) Type::ReferenceType
-		{
-			STATIC table: {tok::Type, ReferenceType}#[](
-				(:and, ReferenceType::reference),
-				(:doubleAnd, ReferenceType::tempReference));
+		FOR(i ::= 0; i < ##table; i++)
+			IF(p.consume(table[i].(0)))
+				= table[i].(1);
 
-			FOR(i ::= 0; i < ##table; i++)
-				IF(p.consume(table[i].(0)))
-					RETURN table[i].(1);
-
-			RETURN ReferenceType::none;
-		}
-
-		ENUM Indirection
-		{
-			plain,
-			pointer,
-			nonnull,
-			expectDynamic,
-			maybeDynamic,
-			future
-		}
-
-		PRIVATE STATIC parse_indirection(
-			p: Parser&) Type::Indirection
-		{
-			STATIC table: {tok::Type, Indirection}#[](
-				(:asterisk, Indirection::pointer),
-				(:backslash, Indirection::nonnull),
-				(:doubleDotExclamationMark, Indirection::expectDynamic),
-				(:doubleDotQuestionMark, Indirection::maybeDynamic),
-				(:at, Indirection::future));
-
-			FOR(i ::= 0; i < ##table; i++)
-				IF(p.consume(table[i].(0)))
-					RETURN table[i].(1);
-
-			RETURN Indirection::plain;
-		}
-
-
-		Qualifier
-		{
-			Const: BOOL;
-			Volatile: BOOL;
-
-			parse(
-				p: Parser&) BOOL
-			{
-				start ::= p.progress();
-				IF((Const := p.consume(:hash)))
-					Volatile := p.consume(:dollar);
-				ELSE IF((Volatile := p.consume(:dollar)))
-					Const := p.consume(:hash);
-				
-				RETURN p.progress() != start;
-			}
-		}
-
-		(// Modifiers to be applied to auto types. /)
-		Auto
-		{
-			Qualifier: Type::Qualifier;
-			Reference: Type::ReferenceType;
-
-			parse(p: Parser &) INLINE VOID { parse(p, TRUE); }
-			parse(
-				p: Parser&,
-				allowReferences: BOOL) VOID
-			{
-				Qualifier.parse(p);
-				IF(allowReferences)
-					Reference := parse_reference_type(p);
-				ELSE
-					Reference := :none;
-			}
-		}
-
-		Modifier
-		{
-			Indirection: Type::Indirection;
-			Qualifier: Type::Qualifier;
-			IsArray: BOOL;
-			ArraySize: Expression - std::DynVector;
-
-			parse(
-				p: Parser&) BOOL
-			{
-				start ::= p.progress();
-				Indirection := Type::parse_indirection(p);
-				Qualifier.parse(p);
-
-				IF(IsArray := p.consume(:bracketOpen))
-				{
-					IF(!p.consume(:bracketClose))
-					{
-						DO()
-						{
-							bounds ::= Expression::parse(p);
-							IF(!bounds)
-								p.fail("expected expression");
-							ArraySize += :gc(bounds);
-						} WHILE(p.consume(:comma))
-
-						p.expect(:bracketClose);
-					}
-				}
-
-				RETURN p.progress() != start;
-			}
-		}
-
-		Modifiers: std::[Modifier]Vector;
-		Reference: Type::ReferenceType;
-		Variadic: BOOL;
-
-		[T:TYPE] PRIVATE STATIC parse_impl(
-			p: Parser &) Type *
-		{
-			v: T;
-			IF(v.parse(p))
-			{
-				t: Type-std::Dynamic := :gc(std::dup(&&v));
-				WHILE(p.consume(:minus))
-				{
-					next: TypeName;
-					IF(!next.parse(p))
-						p.fail("expected symbol");
-
-					tplArg: TemplateArg(:emplace, :gc(t.release()));
-					next.Name.Children!.back().Templates += &&tplArg;
-					t := :gc(std::dup(&&next));
-				}
-				RETURN t.release();
-			}
-			ELSE
-				RETURN NULL;
-		}
-
-		STATIC parse(
-			p: Parser &) Type! *
-		{
-			IF(v ::= [TypeOfExpression]parse_impl(p))
-				RETURN v;
-			IF(v ::= [TupleType]parse_impl(p))
-				RETURN v;
-			IF(v ::= [Signature]parse_impl(p))
-				RETURN v;
-			IF(v ::= [Void]parse_impl(p))
-				RETURN v;
-			IF(v ::= [Null]parse_impl(p))
-				RETURN v;
-			IF(v ::= [TypeName]parse_impl(p))
-				RETURN v;
-			IF(v ::= [BuiltinType]parse_impl(p))
-				RETURN v;
-			IF(v ::= [SymbolConstantType]parse_impl(p))
-				RETURN v;
-
-			RETURN NULL;
-		}
-
-		PROTECTED parse_generic_part(
-			p: Parser&) VOID
-		{
-			mod: Modifier;
-			WHILE(mod.parse(p))
-				Modifiers += &&mod;
-
-			Reference := parse_reference_type(p);
-			Variadic := p.consume(:tripleDot);
-		}
+		= :none;
 	}
 
-	Signature -> Type
+	parse_indirection(p: Parser&) Indirection
 	{
-		{};
+		STATIC table: {tok::Type, Indirection}#[](
+			(:asterisk, :pointer),
+			(:backslash, :nonnull),
+			(:doubleDotExclamationMark, :expectDynamic),
+			(:doubleDotQuestionMark, :maybeDynamic),
+			(:at, :future));
 
-		Args: Type - std::DynVector;
-		Ret: std::[Type]Dynamic;
+		FOR(i ::= 0; i < ##table; i++)
+			IF(p.consume(table[i].(0)))
+				= table[i].(1);
 
-		parse(p: Parser&) BOOL
+		= :plain;
+	}
+
+	parse_qualifier(
+		p: Parser&,
+		out: Qualifier &) BOOL
+	{
+		start ::= p.progress();
+		IF((out.Const := p.consume(:hash)))
+			out.Volatile := p.consume(:dollar);
+		ELSE IF((out.Volatile := p.consume(:dollar)))
+			out.Const := p.consume(:hash);
+		
+		= p.progress() != start;
+	}
+
+	parse_modifier(
+		p: Parser&,
+		out: Modifier &) BOOL
+	{
+		start ::= p.progress();
+		out.Indirection := parse_indirection(p);
+		parse_qualifier(p, out.Qualifier);
+
+		IF(out.IsArray := p.consume(:bracketOpen))
 		{
-			t: Trace(&p, "signature");
-			// ((T1, T2) Ret)
-			IF(!p.consume(:parentheseOpen))
-				RETURN FALSE;
-
-			p.expect(:parentheseOpen);
-
-			IF(!p.consume(:parentheseClose))
+			IF(!p.consume(:bracketClose))
 			{
-				DO(arg: Type *)
+				DO()
 				{
-					IF(arg := Type::parse(p))
-						Args += :gc(arg);
-					ELSE
-						p.fail("expected type");
+					bounds ::= expression::parse(p);
+					IF(!bounds)
+						p.fail("expected expression");
+					out.ArraySize += &&bounds;
 				} WHILE(p.consume(:comma))
-				p.expect(:parentheseClose);
+
+				p.expect(:bracketClose);
+			}
+		}
+
+		= p.progress() != start;
+	}
+
+	::detail [T:TYPE] parse_impl(
+		p: Parser &,
+		ret: ast::[Config]Type - std::Dyn &,
+		parse_fn: ((Parser &, T &) BOOL)) BOOL
+	{
+		v: T;
+		IF(parse_fn(p, v))
+		{
+			ret := :dup(&&v);
+			WHILE(p.consume(:minus))
+			{
+				next: TypeName;
+				IF(!next.parse(p))
+					p.fail("expected symbol");
+
+				tplArg: TemplateArg(:emplace, &&ret);
+				next.Name.Children!.back().Templates += &&tplArg;
+				ret := :dup(&&next);
+			}
+			= TRUE;
+		}
+		ELSE
+			= FALSE;
+	}
+
+	parse(
+		p: Parser &) Type - std::Dyn
+	{
+		ret: Type-std::Dyn;
+		IF(parse_impl(p, ret, parse_typeof)
+		|| parse_impl(p, ret, parse_tuple)
+		|| parse_impl(p, ret, parse_signature)
+		|| parse_impl(p, ret, parse_void)
+		|| parse_impl(p, ret, parse_null)
+		|| parse_impl(p, ret, parse_type_name)
+		|| parse_impl(p, ret, parse_builtin)
+		|| parse_impl(p, ret, parse_symbol_constant))
+			= &&ret;
+		= NULL;
+	}
+
+	::detail parse_generic_part(
+		p: Parser&,
+		out: Type &) VOID
+	{
+		FOR(mod: Modifier; parse_modifier(p, mod);)
+			out.Modifiers += &&mod;
+
+		out.Reference := parse_reference_type(p);
+		out.Variadic := p.consume(:tripleDot);
+	}
+
+	parse_auto_no_ref(p: Parser &, out: Auto &) VOID
+	{
+		parse_qualifier(p, out.Qualifier);
+		out.Reference := :none;
+	}
+
+	parse_auto(p: Parser&, out: Auto &) VOID
+	{
+		parse_qualifier(p, out.Qualifier);
+		out.Reference := parse_reference_type(p);
+	}
+
+	parse_signature(p: Parser&, out: type::Signature &) BOOL
+	{
+		t: Trace(&p, "signature");
+		// ((T1, T2) Ret)
+		IF(!p.consume(:parentheseOpen))
+			= FALSE;
+
+		p.expect(:parentheseOpen);
+
+		IF(!p.consume(:parentheseClose))
+		{
+			DO(arg: Type *)
+			{
+				IF(arg := type::parse(p))
+					out.Args += &&arg;
+				ELSE
+					p.fail("expected type");
+			} WHILE(p.consume(:comma))
+			p.expect(:parentheseClose);
+		}
+
+		type ::= type::parse(p);
+		IF(!type)
+			p.fail("expected type");
+		Ret := &&type;
+
+		p.expect(:parentheseClose);
+
+		detail::parse_generic_part(p, out);
+
+		= TRUE;
+	}
+
+	parse_void(p: Parser&, out: Void &) BOOL
+	{
+		IF(!p.consume(:void))
+			= FALSE;
+		detail::parse_generic_part(p, out);
+		= TRUE;
+	}
+
+	parse_null(p: Parser &, out: Null &) BOOL
+	{
+		IF(!p.consume(:null))
+			= FALSE;
+		detail::parse_generic_part(p, out);
+		= TRUE;
+	}
+
+	parse_symbol_constant(p: Parser &, out: SymbolConstantType &) BOOL
+	{
+		IF(!parse_symbol_constant(p, out.Name))
+			= FALSE;
+
+		detail::parse_generic_part(p, out);
+
+		= TRUE;
+	}
+
+	parse_tuple(p: Parser &, out: Tuple &) BOOL
+	{
+		IF(!p.consume(:braceOpen))
+			= FALSE;
+
+		IF(t ::= type::parse(p))
+			out.Types += :gc(t);
+		ELSE p.fail("expected type");
+		p.expect(:comma);
+		DO()
+			IF(t ::= type::parse(p))
+				out.Types += &&t;
+			ELSE p.fail("expected type");
+			WHILE(p.consume(:comma))
+		p.expect(:braceClose);
+
+		detail::parse_generic_part(p, out);
+		= TRUE;
+	}
+
+	parse_typeof(p: Parser &, out: TypeOfExpression &) BOOL
+	{
+		IF(!p.consume(:type))
+			= FALSE;
+		p.expect(:parentheseOpen);
+		IF(!(out.Expression := expression::parse(p)))
+			p.fail("expected expression");
+		p.expect(:parentheseClose);
+
+		detail::parse_generic_part(p, out);
+
+		= TRUE;
+	}
+
+
+	parse_type_name(p: Parser&, out: TypeName &) BOOL
+	{
+		IF(!parse_symbol(p, out.Name))
+			= FALSE;
+		NoDecay := p.consume(:exclamationMark);
+		detail::parse_generic_part(p, out);
+		= TRUE;
+	}
+
+	parse_builtin(p: Parser&, out: BuiltinType &) BOOL
+	{
+		STATIC table: {tok::Type, Primitive}#[](
+			(:bool, :bool),
+			(:char, :char), (:uchar, :uchar),
+			(:int, :int), (:uint,:uint),
+			(:sm, :sm), (:um, :um),
+
+			(:s1, :s1), (:u1, :u1),
+			(:s2, :s2), (:u2, :u2),
+			(:s4, :s4), (:u4, :u4),
+			(:s8, :s8), (:u8, :u8));
+
+		FOR(i ::= 0; i < ##table; i++)
+			IF(p.consume(table[i].(0)))
+			{
+				out.Kind := table[i].(1);
+				detail::parse_generic_part(p, out);
+				= TRUE;
 			}
 
-			type ::= Type::parse(p);
-			IF(!type)
-				p.fail("expected type");
-			Ret := :gc(type);
-
-			p.expect(:parentheseClose);
-
-			Type::parse_generic_part(p);
-
-			RETURN TRUE;
-		}
-	}
-
-	Void -> Type
-	{
-		parse(p: Parser&) BOOL
-		{
-			IF(!p.consume(:void))
-				RETURN FALSE;
-			Type::parse_generic_part(p);
-			RETURN TRUE;
-		}
-	}
-
-	Null -> Type
-	{
-		parse(p: Parser &) BOOL
-		{
-			IF(!p.consume(:null))
-				RETURN FALSE;
-			Type::parse_generic_part(p);
-			RETURN TRUE;
-		}
-	}
-
-	SymbolConstantType -> Type
-	{
-		Name: src::String;
-
-		parse(p: Parser &) BOOL
-		{
-			IF(!p.consume(:colon))
-				RETURN FALSE;
-			p.expect(:identifier, &Name);
-
-			Type::parse_generic_part(p);
-
-			RETURN TRUE;
-		}
-	}
-
-	TupleType -> Type
-	{
-		Types: Type - std::DynVector;
-
-		parse(p: Parser &) BOOL
-		{
-			IF(!p.consume(:braceOpen))
-				RETURN FALSE;
-
-			IF(t ::= Type::parse(p))
-				Types += :gc(t);
-			ELSE p.fail("expected type");
-			p.expect(:comma);
-			DO()
-				IF(t ::= Type::parse(p))
-					Types += :gc(t);
-				ELSE p.fail("expected type");
-				WHILE(p.consume(:comma))
-			p.expect(:braceClose);
-
-			Type::parse_generic_part(p);
-			RETURN TRUE;
-		}
-	}
-
-	TypeOfExpression -> Type
-	{
-		Expression: std::[parser::Expression]Dynamic;
-
-		parse(p: Parser &) BOOL
-		{
-			IF(!p.consume(:type))
-				RETURN FALSE;
-			p.expect(:parentheseOpen);
-			IF(!(Expression := :gc(parser::Expression::parse(p))))
-				p.fail("expected expression");
-			p.expect(:parentheseClose);
-
-			Type::parse_generic_part(p);
-
-			RETURN TRUE;
-		}
-	}
-
-	TypeName -> Type
-	{
-		Name: Symbol;
-		NoDecay: BOOL;
-
-		parse(p: Parser&) BOOL
-		{
-			IF(!Name.parse(p))
-				RETURN FALSE;
-			NoDecay := p.consume(:exclamationMark);
-			Type::parse_generic_part(p);
-			RETURN TRUE;
-		}
-	}
-
-	BuiltinType -> Type
-	{
-		ENUM Primitive
-		{
-			bool,
-			char, uchar,
-			int, uint,
-			sm, um,
-
-			s1, u1,
-			s2, u2,
-			s4, u4,
-			s8, u8
-		}
-
-		Kind: Primitive;
-
-		parse(p: Parser&) BOOL
-		{
-			STATIC table: {tok::Type, Primitive}#[](
-				(:bool, :bool),
-				(:char, :char), (:uchar, :uchar),
-				(:int, :int), (:uint,:uint),
-				(:sm, :sm), (:um, :um),
-
-				(:s1, :s1), (:u1, :u1),
-				(:s2, :s2), (:u2, :u2),
-				(:s4, :s4), (:u4, :u4),
-				(:s8, :s8), (:u8, :u8));
-
-			FOR(i ::= 0; i < ##table; i++)
-				IF(p.consume(table[i].(0)))
-				{
-					Kind := table[i].(1);
-					Type::parse_generic_part(p);
-					RETURN TRUE;
-				}
-
-			RETURN FALSE;
-		}
+		= FALSE;
 	}
 }
