@@ -84,54 +84,34 @@ INCLUDE "stage.rl"
 			(:parentheseClose, FALSE),
 			(:braceClose, FALSE));
 
-	::help parse_expected_name() Stage::Name -std::Opt
+	::help is_named_variable_start(p: Parser &, needs_name: BOOL) BOOL
 	{
-
+		IF(!p.match(:identifier))
+			= FALSE;
+		FOR(i ::= 0; i < ##help::needed_after_name; i++)
+			IF((!needs_name || help::needed_after_name[i].(1))
+			&& p.match_ahead(help::needed_after_name[i].(0)))
+				= TRUE;
+		= FALSE;
 	}
 
-	::help is_optionally_named_variable_start() BOOL
+	::help is_optionally_named_variable_start(p: Parser &) BOOL
 	{
+		IF(is_named_variable_start(p, FALSE))
+			= TRUE;
 		FOR(i ::= 0; i < ##k_needed_without_name; i++)
 			IF(p.match(help::needed_without_name[i]))
 				= TRUE;
 		= FALSE;
 	}
 
-	parse(
-		p: Parser&,
-		out: ast::[Config]Variable &,
-		needs_name: BOOL,
-		allow_initialiser: BOOL,
-		force_initialiser: BOOL) BOOL
-	{
-		IF(needs_name
-		&& !p.match(:identifier))
-			= FALSE;
-		ELSE
-		{
-			found ::= FALSE;
-			IF(p.match(:identifier))
-			{
-				FOR(i ::= 0; i < ##k_needed_after_name; i++)
-					IF((!needs_name || k_needed_after_name[i].(1))
-					&& p.match_ahead(k_needed_after_name[i].(0)))
-					{
-						found := TRUE;
-						BREAK;
-					}
-			}
-			ELSE
-				
-
-			IF(!found)
-				= FALSE;
-		}
-
-		needs_type ::= TRUE;
-		has_name ::= FALSE;
-
-		t: Trace(&p, "variable");
-
+	::help parse_variable_name_and_type(
+		p: Parser &,
+		allow_initialiser: BOOL
+	) {
+		tok::Token - std::Opt,
+		ast::[Config]Type - std::Dyn
+	} {
 		name: tok::Token;
 		IF(p.match(:identifier))
 		{
@@ -145,11 +125,10 @@ INCLUDE "stage.rl"
 
 				IF(p.consume(:questionMark))
 				{
-					auto: Auto;
+					auto: type::[Config]Auto;
 					parse_auto(p, auto);
-					out.Type := :dup(&&auto);
 					p.expect(:colonEqual);
-					needs_type := FALSE;
+					= (:a(&&name), :dup(&&auto));
 				}
 			} ELSE IF(allow_initialiser)
 			{
@@ -166,15 +145,34 @@ INCLUDE "stage.rl"
 						p.expect(:identifier, &name);
 						parse_auto_no_ref(p, auto);
 						p.expect(:doubleColonEqual);
-						out.Type := :dup(&&auto);
-
-						has_name := TRUE;
-						needs_type := FALSE;
-						BREAK;
+						= (:a(name), :dup(&&auto));
 					}
 				}
 			}
 		} // If !isArgument, "name: type" is expected.
+	}
+
+	parse(
+		p: Parser&,
+		out: ast::[Config]Variable &,
+		needs_name: BOOL,
+		allow_initialiser: BOOL,
+		force_initialiser: BOOL) BOOL
+	{
+		IF(needs_name)
+		{
+			IF(!is_named_variable_start(p, TRUE))
+				= FALSE;
+		} ELSE IF(!is_optionally_named_variable_start(p))
+			= FALSE;
+
+		needs_type ::= TRUE;
+		has_name ::= FALSE;
+
+		t: Trace(&p, "variable");
+
+		...;
+
 		IF(!has_name && needs_name)
 			= FALSE;
 
