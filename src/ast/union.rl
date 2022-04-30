@@ -4,9 +4,9 @@ INCLUDE "member.rl"
 
 ::rlc::ast [Stage:TYPE] Union VIRTUAL -> [Stage]ScopeItem
 {
-	Members: Member - std::DynVector;
+	Members: [Stage]Member - std::DynVec;
 }
 
-::rlc::ast GlobalUnion -> Global, Union { }
+::rlc::ast [Stage:TYPE] GlobalUnion -> [Stage]Global, [Stage]Union { }
 
-::rlc::ast MemberUnion -> Member, Union { }
+::rlc::ast [Stage:TYPE] MemberUnion -> [Stage]Member, [Stage]Union { }

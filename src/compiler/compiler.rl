@@ -17,10 +17,10 @@ INCLUDE 'std/optional'
 
 	Build
 	{
-		Output: std::Utf8 - std::Opt;
+		Output: std::Str - std::Opt;
 		Type: BuildType;
 		Debug: BOOL;
-		AdditionalIncludePaths: std::Utf8-std::Vector;
+		AdditionalIncludePaths: std::Str-std::Vec;
 		Verbose: BOOL;
 
 		(//
@@ -38,8 +38,8 @@ INCLUDE 'std/optional'
 			}
 		}
 
-		:withOutput{output: std::Utf8, type: BuildType}:
-			Output(:some(&&output)),
+		:withOutput{output: std::Str, type: BuildType}:
+			Output(:a(&&output)),
 			Type(type);
 	}
 
@@ -49,7 +49,7 @@ INCLUDE 'std/optional'
 			Compiles the given input files according to the specified build flags.
 		/)
 		compile(
-			files: std::Utf8 - std::Vector,
+			files: std::Str - std::Vec,
 			build: Build
 		) VOID;
 	}

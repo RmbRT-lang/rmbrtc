@@ -10,7 +10,7 @@ INCLUDE 'std/vector'
 ::rlc::parser Rawtype VIRTUAL -> ScopeItem
 {
 	Size: Expression-std::Dyn;
-	Members: Member - std::DynVector;
+	Members: Member - std::DynVec;
 	Name: src::String;
 
 	# FINAL name() src::String #& := Name;

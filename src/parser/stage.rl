@@ -18,7 +18,7 @@ INCLUDE "global.rl"
 		TYPE Inheritance := Symbol;
 		MemberReference { Member: src::String; Position: src::Position; }
 
-		TYPE Includes := Include - std::Vector;
+		TYPE Includes := Include - std::Vec;
 
 		STATIC transform_includes(:nothing, p: Parser \) Includes
 		{
@@ -31,9 +31,9 @@ INCLUDE "global.rl"
 			= &&ret;
 		}
 
-		STATIC transform_globals(:nothing, p: Parser \) ast::[Config]Global - std::DynVector
+		STATIC transform_globals(:nothing, p: Parser \) ast::[Config]Global - std::DynVec
 		{
-			ret: ast::[Config]Global - std::DynVector;
+			ret: ast::[Config]Global - std::DynVec;
 
 			WHILE(glob ::= global::parse(p))
 				ret += &&glob;

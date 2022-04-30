@@ -49,25 +49,21 @@ INCLUDE "stage.rl"
 		= TRUE;
 	}
 
-	parse_fn_arg(p: Parser&, out: ast::[Config]Variable &) BOOL
-		:= parse(p, out, FALSE, FALSE, FALSE);
+	parse_fn_arg(p: Parser&, out: ast::[Config]Variable &) [Stage]TypeOrArgument-std::Dyn
+	{
+		DIE;
+	}
+
 	parse_var_decl(p: Parser &, out: ast::[Config]Variable &) BOOL
 		:= parse(p, out, TRUE, TRUE, FALSE);
 
-	parse(
-		p: Parser&,
-		out: ast::[Config]Variable &,
-		needs_name: BOOL,
-		allow_initialiser: BOOL,
-		force_initialiser: BOOL) BOOL
-	{
-		STATIC k_needed_without_name: tok::Type#[](
+	::help needed_without_name: tok::Type#[](
 			:bracketOpen, :braceOpen,
 			:doubleColon, :colon,
 			:void, :bool, :char, :int, :uint, :sm, :um, :null);
 
-		// (token, onlyIfNeedsName)
-		STATIC k_needed_after_name: {tok::Type, BOOL}#[](
+	// (token, onlyIfNeedsName)
+	::help needed_after_name: {tok::Type, BOOL}#[](
 			(:colon, TRUE),
 			(:colonEqual, TRUE),
 			(:doubleColonEqual, TRUE),
@@ -88,6 +84,26 @@ INCLUDE "stage.rl"
 			(:parentheseClose, FALSE),
 			(:braceClose, FALSE));
 
+	::help parse_expected_name() Stage::Name -std::Opt
+	{
+
+	}
+
+	::help is_optionally_named_variable_start() BOOL
+	{
+		FOR(i ::= 0; i < ##k_needed_without_name; i++)
+			IF(p.match(help::needed_without_name[i]))
+				= TRUE;
+		= FALSE;
+	}
+
+	parse(
+		p: Parser&,
+		out: ast::[Config]Variable &,
+		needs_name: BOOL,
+		allow_initialiser: BOOL,
+		force_initialiser: BOOL) BOOL
+	{
 		IF(needs_name
 		&& !p.match(:identifier))
 			= FALSE;
@@ -105,12 +121,7 @@ INCLUDE "stage.rl"
 					}
 			}
 			ELSE
-				FOR(i ::= 0; i < ##k_needed_without_name; i++)
-					IF(p.match(k_needed_without_name[i]))
-					{
-						found := TRUE;
-						BREAK;
-					}
+				
 
 			IF(!found)
 				= FALSE;

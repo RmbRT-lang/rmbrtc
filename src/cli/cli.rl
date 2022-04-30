@@ -1,4 +1,5 @@
 INCLUDE 'std/io/stream'
+INCLUDE 'std/io/streamutil'
 INCLUDE 'std/dyn'
 INCLUDE 'std/err/unimplemented'
 
@@ -71,13 +72,13 @@ INCLUDE 'std/err/unimplemented'
 		Printable
 		{
 			Style: Console::Style;
-			Input: std::io::StreamInput;
+			Input: std::io::detail::StreamInput;
 
-			{i: std::io::StreamInput} INLINE: Style(:normal), Input(i);
-			:e{i: std::io::StreamInput} INLINE: Style(:bold), Input(i);
-			:emph{i: std::io::StreamInput} INLINE: Style(:bold), Input(i);
-			:w{i: std::io::StreamInput} INLINE: Style(:dim), Input(i);
-			:weak{i: std::io::StreamInput} INLINE: Style(:dim), Input(i);
+			{i: std::io::detail::StreamInput} INLINE: Style(:normal), Input(i);
+			:e{i: std::io::detail::StreamInput} INLINE: Style(:bold), Input(i);
+			:emph{i: std::io::detail::StreamInput} INLINE: Style(:bold), Input(i);
+			:w{i: std::io::detail::StreamInput} INLINE: Style(:dim), Input(i);
+			:weak{i: std::io::detail::StreamInput} INLINE: Style(:dim), Input(i);
 		}
 
 		PRIVATE print_printable(p: Printable) VOID

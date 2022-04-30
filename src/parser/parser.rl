@@ -16,6 +16,7 @@ INCLUDE 'std/tags'
 			File(file),
 			Tokeniser(file, fileIndex),
 			Ctx(NULL),
+			Buffer(NOINIT),
 			BufferSize(0),
 			BufferIndex(0),
 			Progress(0)

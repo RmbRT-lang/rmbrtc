@@ -1,7 +1,7 @@
 INCLUDE "stage.rl"
 INCLUDE "../ast/destructor.rl"
 
-::rlc::parser::destructor parse(p: Parser&, out: ast::[Stage]Destructor &) BOOL
+::rlc::parser::destructor parse(p: Parser&, out: ast::[Config]Destructor &) BOOL
 {
 	IF(!p.consume(:destructor))
 		= FALSE;

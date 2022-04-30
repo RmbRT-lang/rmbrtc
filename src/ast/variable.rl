@@ -17,12 +17,12 @@ INCLUDE 'std/vector'
 	[Stage:TYPE] InitialisedVariable VIRTUAL -> [Stage]Variable
 	{
 		Type: [Stage]MaybeAutoType - std::Dyn;
-		InitValues: Stage-Expression - std::DynVector;
+		InitValues: Stage-Expression - std::DynVec;
 		
 		{
 			name: Stage::Name,
 			type: [Stage]MaybeAutoType - std::Dyn,
-			initValues: [Stage]Expression - std::DynVector
+			initValues: [Stage]Expression - std::DynVec
 		} ->
 			(&&name):
 			Type(&&type),
@@ -50,7 +50,7 @@ INCLUDE 'std/vector'
 		{
 			name: Stage::Name,
 			type: [Stage]MaybeAutoType - std::Dyn,
-			initValues: [Stage]Expression - std::DynVector
+			initValues: [Stage]Expression - std::DynVec
 		} -> (), (&&name, &&type, &&initValues);
 	}
 
@@ -93,7 +93,7 @@ INCLUDE 'std/vector'
 			name: Stage::Name,
 			position: LocalPosition,
 			type: [Stage]MaybeAutoType-std::Dyn,
-			initValues: [Stage]Expression-std::DynVector
+			initValues: [Stage]Expression-std::DynVec
 		} -> (position), (&&name, &&type, &&initValues);
 	}
 }

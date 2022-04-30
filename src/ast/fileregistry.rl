@@ -8,22 +8,22 @@ INCLUDE "file.rl"
 ::rlc::ast [Stage:TYPE] FileRegistry -> PRIVATE std::sync::Mutex
 {
 PRIVATE:
-	Utf8Cmp
+	StrCmp
 	{
 		STATIC cmp(
-			a: std::Utf8 #&,
+			a: std::Str #&,
 			b: Stage-File # \
 		) INLINE INT
 			:= a!.cmp(b->name());
 	}
 
-	Files: Stage-File-std::DynVector;
-	FileFutures: Stage-File\^-std::DynVector;
-	FileByName: std::[std::Utf8, Stage-File\^\]HashMap;
-	FileByNumber: Stage-File^\-std::Vector;
+	Files: Stage-File-std::DynVec;
+	FileFutures: Stage-File\^-std::DynVec;
+	FileByName: std::[std::Str, Stage-File\^\]HashMap;
+	FileByNumber: Stage-File^\-std::Vec;
 
 PUBLIC:
-	get(file: std::Utf8 #&) Stage-File \
+	get(file: std::Str #&) Stage-File \
 	{
 		STATIC max_files: UM# := ~<src::FileNo>(0);
 

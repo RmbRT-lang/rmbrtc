@@ -119,7 +119,7 @@ INCLUDE 'std/vector'
 	(// Expression containing a user-overloadable operator. /)
 	[Stage: TYPE] OperatorExpression -> [Stage]Expression
 	{
-		Operands: [Stage]Expression - std::DynVector;
+		Operands: [Stage]Expression - std::DynVec;
 		Op: rlc::Operator;
 
 		STATIC make_unary(
@@ -165,7 +165,7 @@ INCLUDE 'std/vector'
 		ENUM Kind { static, dynamic, mask }
 		Method: Kind;
 		Type: ast::[Stage]Type-std::Dyn;
-		Values: [Stage]Expression - std::DynVector;
+		Values: [Stage]Expression - std::DynVec;
 	}
 
 	/// `SIZEOF` expression.

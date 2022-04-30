@@ -47,7 +47,7 @@ INCLUDE "expression.rl"
 		Indirection: type::Indirection;
 		Qualifier: type::Qualifier;
 		IsArray: BOOL;
-		ArraySize: [Stage]Expression - std::DynVector;
+		ArraySize: [Stage]Expression - std::DynVec;
 
 		{}: Indirection(:plain), IsArray(FALSE);
 		:const{}: Indirection(:plain), Qualifier(:const), IsArray(FALSE);
@@ -58,14 +58,14 @@ INCLUDE "expression.rl"
 		[Stage]MaybeAutoType,
 		[Stage]TypeOrArgument
 	{
-		Modifiers: type::[Stage]Modifier-std::Vector;
+		Modifiers: type::[Stage]Modifier-std::Vec;
 		Reference: type::ReferenceType;
 		Variadic: BOOL;
 	}
 
 	[Stage: TYPE] Signature -> [Stage]Type
 	{
-		Args: [Stage]Type - std::DynVector;
+		Args: [Stage]Type - std::DynVec;
 		Ret: [Stage]Type-std::Dyn;
 	}
 
@@ -84,7 +84,7 @@ INCLUDE "expression.rl"
 
 	[Stage: TYPE] TupleType -> [Stage]Type
 	{
-		Types: [Stage]Type - std::DynVector;
+		Types: [Stage]Type - std::DynVec;
 	}
 
 	[Stage: TYPE] TypeOfExpression -> [Stage]Type

@@ -13,9 +13,9 @@ Can be called multiple times to append new arguments.
 ) VOID
 {
 	readAny ::= FALSE;
-	DO(arg: ast::[Config]LocalVariable)
+	DO(arg: ast::[Config]LocalVariable-std::Dyn)
 	{
-		IF(!arg.parse_fn_arg(p))
+		IF(!(arg := parse_arg(p)))
 		{
 			IF(!readAny && !allow_empty)
 				p.fail("expected argument");
@@ -30,7 +30,7 @@ Can be called multiple times to append new arguments.
 	p: Parser &
 ) ast::[Config]TypeOrArgument-std::Dyn
 {
-	IF(var ::= variable::parse(p))
+	IF(var ::= parse_fn_arg)
 		= &&var;
 	ELSE IF(type ::= type::parse(p))
 		= &&type;

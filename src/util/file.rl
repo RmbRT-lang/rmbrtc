@@ -6,13 +6,13 @@ INCLUDE 'std/err/filenotfound'
 
 ::rlc::util
 {
-	absolute_file(name: std::str::C8CView #&) std::Utf8
+	absolute_file(name: std::str::CV #&) std::Str
 	{
-		n: std::Utf8(name);
+		n: std::Str(name);
 		n.append(0);
 
 		IF(real ::= detail::realpath(n.data(), &detail::path_buf[0]))
-			RETURN <std::Utf8>(real);
+			RETURN <std::Str>(real);
 
 		THROW <std::io::FileNotFound>(name);
 	}
@@ -29,9 +29,9 @@ INCLUDE 'std/err/filenotfound'
 	concat_paths(
 		base: std::[CHAR#]Buffer #&,
 		relative: std::[CHAR#]Buffer #&
-	) std::Utf8
+	) std::Str
 	{
-		path: std::Utf8(<std::str::C8CView>(base));
+		path: std::Str(<std::str::CV>(base));
 		IF(!base.Size)
 			THROW;
 		IF(base[base.Size-1] != '/')
@@ -44,6 +44,6 @@ INCLUDE 'std/err/filenotfound'
 
 ::rlc::util::detail
 {
-	path_buf: std::[CHAR]Vector := :move(std::heap::[CHAR]alloc(4097));
+	path_buf: std::[CHAR]Vec := :move(std::heap::[CHAR]alloc(4097));
 	EXTERN realpath(CHAR #\, CHAR \) CHAR #*;
 }

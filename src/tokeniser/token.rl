@@ -165,7 +165,7 @@ INCLUDE "../src/file.rl"
 		Content: src::String;
 		Position: src::Position;
 
-		{} INLINE;
+		{} INLINE: Type(NOINIT);
 		{
 			type: tok::Type,
 			content: src::String#&,

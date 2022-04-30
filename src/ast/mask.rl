@@ -11,7 +11,7 @@ INCLUDE 'std/memory'
 
 ::rlc::ast [Stage:TYPE] Mask VIRTUAL -> [Stage]ScopeItem
 {
-	Members: Member - std::DynVector;
+	Members: Member - std::DynVec;
 }
 
 ::rlc::parser GlobalMask -> Global, Mask

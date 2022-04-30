@@ -52,13 +52,13 @@ INCLUDE 'std/math/limit'
 	(// Source file. /)
 	File
 	{
-		Name: std::Utf8;
-		PUBLIC Contents: std::Utf8;
+		Name: std::Str;
+		PUBLIC Contents: std::Str;
 
-		{name: std::Utf8}: Name(name)
+		{name: std::Str}: Name(name)
 		{
 			f: std::io::File(Name.data(), "r");
-			buf: CHAR[1024];
+			buf: CHAR[1024] (NOINIT);
 			WHILE(!f.eof())
 			{
 				read ::= f.read(buf, ##buf);

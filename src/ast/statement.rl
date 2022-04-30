@@ -18,7 +18,7 @@ INCLUDE 'std/memory'
 
 	[Stage: TYPE] BlockStatement -> [Stage]Statement
 	{
-		Statements: [Stage]Statement - std::DynVector;
+		Statements: [Stage]Statement - std::DynVec;
 	}
 
 	[Stage: TYPE] IfStatement -> [Stage]Statement
@@ -59,7 +59,7 @@ INCLUDE 'std/memory'
 	[Stage: TYPE] TryStatement -> [Stage]Statement
 	{
 		Body: [Stage]Statement - std::Dyn;
-		Catches: [Stage]CatchStatement - std::Vector;
+		Catches: [Stage]CatchStatement - std::Vec;
 		Finally: [Stage]Statement - std::Dyn;
 
 		# has_finally() INLINE BOOL := Finally;
@@ -106,13 +106,13 @@ INCLUDE 'std/memory'
 	{
 		Initial: [Stage]VarOrExpr - std::Dyn;
 		Value: [Stage]VarOrExpr - std::Dyn;
-		Cases: [Stage]CaseStatement - std::Vector;
+		Cases: [Stage]CaseStatement - std::Vec;
 		Label: [Stage]ControlLabel;
 	}
 
 	[Stage: TYPE] CaseStatement
 	{
-		Values: [Stage]Expression - std::DynVector;
+		Values: [Stage]Expression - std::DynVec;
 		Body: [Stage]Statement-std::Dyn;
 
 		# is_default() INLINE BOOL := Values.empty();
@@ -123,13 +123,13 @@ INCLUDE 'std/memory'
 		Static: BOOL;
 		Initial: [Stage]VarOrExpr - std::Dyn;
 		Value: [Stage]VarOrExpr - std::Dyn;
-		Cases: [Stage]TypeCaseStatement - std::Vector;
+		Cases: [Stage]TypeCaseStatement - std::Vec;
 		Label: [Stage]ControlLabel;
 	}
 
 	[Stage: TYPE] TypeCaseStatement
 	{
-		Types: [Stage]Type - std::DynVector;
+		Types: [Stage]Type - std::DynVec;
 		Body: [Stage]Statement-std::Dyn;
 
 		# is_default() INLINE BOOL := Types.empty();

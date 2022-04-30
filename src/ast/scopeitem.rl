@@ -4,14 +4,19 @@ INCLUDE "templatedecl.rl"
 ::rlc::ast [Stage: TYPE] ScopeItem VIRTUAL
 {
 	(// The scope item's name. /)
-	Name: Stage::String;
+	Name: Stage::Name;
 }
+
+::rlc::ast [Stage: TYPE] MergeError {
+}
+
+::rlc::ast [Stage: TYPE] VariantMergeError {}
 
 /// An overloadable scope item that can hold multiple definitions.
 ::rlc::ast [Stage: TYPE] MergeableScopeItem VIRTUAL -> [Stage]ScopeItem
 {
-	PrivateIncluded: [Stage]MergeableScopeItem# \ - std::Vector;
-	PublicIncluded: [Stage]MergeableScopeItem# \ - std::Vector;
+	PrivateIncluded: [Stage]MergeableScopeItem# \ - std::Vec;
+	PublicIncluded: [Stage-Type]MergeableScopeItem# \ - std::Vec;
 
 	/// Include definitions from another file.
 	include(

@@ -1,16 +1,17 @@
 INCLUDE 'std/error'
 INCLUDE 'std/string'
 INCLUDE 'std/io/format'
+INCLUDE 'std/io/streamutil'
 
 ::rlc::parser Error -> std::Error
 {
-	File: std::Utf8;
+	File: std::Str;
 	Line: UINT;
 	Column: UINT;
 	Tokens: tok::Token[2];
-	TokenContent: std::Utf8[2];
+	TokenContent: std::Str[2];
 	TokenCount: UINT;
-	Context: std::Utf8;
+	Context: std::Str;
 
 	{
 		file: src::File #\,
@@ -24,7 +25,9 @@ INCLUDE 'std/io/format'
 		Line(line),
 		Column(column),
 		TokenCount(tokenCount),
-		Context(p.context())
+		Context(p.context()),
+		Tokens(NOINIT),
+		TokenContent(NOINIT)
 	{
 		IF(tokenCount)
 		{
@@ -35,7 +38,6 @@ INCLUDE 'std/io/format'
 		{
 			Tokens[1] := tokens[tokenIndex^1];
 			TokenContent[1] := file->content(Tokens[1].Content);
-
 		}
 	}
 
@@ -43,28 +45,25 @@ INCLUDE 'std/io/format'
 
 	# FINAL stream(o: std::io::OStream &) VOID
 	{
-		o.write(File!, ':');
-		std::io::format::dec(o, Line);
-		o.write(":");
-		std::io::format::dec(o, Column);
-		o.write(": unexpected ");
+		std::io::write(o,
+			File!, ':', :dec(Line), ":", :dec(Column), ": unexpected ");
 		IF(TokenCount)
 		{
-			o.write(TokenContent[0]);
+			std::io::write(o, TokenContent[0]);
 			IF(TokenCount > 1)
-				o.write(:ch(' '), TokenContent[1]);
+				std::io::write(o, :ch(' '), TokenContent[1]);
 		} ELSE
-			o.write("end of file");
+			std::io::write(o, "end of file");
 
-		o.write(" in ", Context!, ": ");
+		std::io::write(o, " in ", Context!, ": ");
 		reason(o);
-		o.write(:ch('.'));
+		std::io::write(o, :ch('.'));
 	}
 }
 
 ::rlc::parser ReasonError -> Error
 {
-	Reason: std::Utf8;
+	Reason: std::Str;
 
 	{
 		file: src::File #\,
@@ -74,14 +73,14 @@ INCLUDE 'std/io/format'
 		tokenIndex: UINT,
 		tokenCount: UINT,
 		p: Parser#&,
-		reason: std::str::C8CView#&
+		reason: std::str::CV#&
 	} ->
 		(file, line, column, tokens, tokenIndex, tokenCount, p):
 		Reason(reason);
 
 	# FINAL reason(o: std::io::OStream &) VOID
 	{
-		o.write(Reason!);
+		std::io::write(o, Reason!);
 	}
 }
 
@@ -105,6 +104,6 @@ INCLUDE 'std/io/format'
 	# OVERRIDE reason(
 		o: std::io::OStream &) VOID
 	{
-		o.write("expected ", <CHAR #\>(Expected));
+		std::io::write(o, "expected ", <CHAR #\>(Expected));
 	}
 }

@@ -3,20 +3,20 @@ INCLUDE "../src/file.rl"
 
 INCLUDE 'std/vector'
 
-::rlc::parser [Stage: TYPE] Enum VIRTUAL -> [Stage]ScopeItem, CodeObject
+::rlc::ast [Stage: TYPE] Enum VIRTUAL -> [Stage]ScopeItem, CodeObject
 {
 	Constant -> [Stage]ScopeItem, [Stage]Member, CodeObject
 	{
 		Value: src::Index;
 	}
 
-	Constants: std::[Constant]Vector;
+	Constants: std::[Constant]Vec;
 }
 
-::rlc::parser [Stage: TYPE] GlobalEnum -> [Stage]Global, [Stage]Enum
+::rlc::ast [Stage: TYPE] GlobalEnum -> [Stage]Global, [Stage]Enum
 {
 }
 
-::rlc::parser [Stage: TYPE] MemberEnum -> [Stage]Member, [Stage]Enum
+::rlc::ast [Stage: TYPE] MemberEnum -> [Stage]Member, [Stage]Enum
 {
 }

@@ -9,6 +9,6 @@ INCLUDE "../src/file.rl"
 
 ::rlc::ast [Stage: TYPE] ExternFunction -> [Stage]Global, [Stage]ScopeItem
 {
-	Arguments: [Stage]Type - std::DynVector;
+	Arguments: [Stage]Type - std::DynVec;
 	Return: [Stage]Type - std::Dyn;
 }

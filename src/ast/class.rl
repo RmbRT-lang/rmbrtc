@@ -18,8 +18,8 @@ INCLUDE 'std/hashset'
 ::rlc::ast [Stage: TYPE] Class VIRTUAL -> [Stage]ScopeItem, CodeObject
 {
 	Virtual: BOOL;
-	Members: [Stage]Member - std::DynVector;
-	Inheritances: class::[Stage]Inheritance - std::Vector;
+	Members: [Stage]Member - std::DynVec;
+	Inheritances: class::[Stage]Inheritance - std::Vec;
 
 	DefaultCtor: [Stage]DefaultConstructor-std::Dyn;
 	CopyCtor: [Stage]CopyConstructor-std::Dyn;

@@ -5,7 +5,7 @@ INCLUDE "global.rl"
 	/// The file's includes.
 	Includes: Config::Includes;
 	/// The file's global scope.
-	Globals: [Config]Global - std::DynVector;
+	Globals: [Config]Global - std::DynVec;
 
 	/// Used for manually creating a file.
 	{};

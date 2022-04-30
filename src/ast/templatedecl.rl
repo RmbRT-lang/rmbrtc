@@ -7,7 +7,7 @@ INCLUDE "type.rl"
 
 	[Stage:TYPE] TemplateDecl
 	{
-		Arguments: Stage-TemplateArgDecl-std::DynVector;
+		Arguments: Stage-TemplateArgDecl-std::DynVec;
 	
 		# exists() INLINE BOOL := ##Arguments != 0;
 	}

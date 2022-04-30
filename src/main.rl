@@ -27,7 +27,7 @@ main(
 		RETURN 1;
 	} ELSE IF(argc == 2)
 	{
-		STATIC cli: {std::str::C8CView, ((CHAR#\) VOID) *}#[](
+		STATIC cli: {std::str::CV, ((CHAR#\) VOID) *}#[](
 			("help", &app::cmd::help),
 			("version", &app::cmd::version),
 			("license", &app::cmd::license)
@@ -40,7 +40,7 @@ main(
 			}
 	}
 
-	type: std::str::C8CView := argv[1];
+	type: std::str::CV := argv[1];
 	buildType ::= rlc::compiler::BuildType::executable;
 
 	flags: {rlc::compiler::BuildType, CHAR#\}#[](
@@ -63,9 +63,9 @@ main(
 			BREAK;
 		}
 
-	files: std::Utf8-std::Vector;
+	files: std::Str-std::Vec;
 	FOR(;flag < argc; flag++)
-		IF(<std::str::C8CView>(argv[flag]) == ":")
+		IF(<std::str::CV>(argv[flag]) == ":")
 		{
 			++flag;
 			IF(argc == flag)
@@ -101,7 +101,7 @@ main(
 		build: rlc::compiler::Build-std::Dyn;
 		IF(flag < argc)
 		{
-			str: std::Utf8 := <std::str::C8CView>(argv[argc-1]);
+			str: std::Str := <std::str::CV>(argv[argc-1]);
 			b: rlc::compiler::Build := :withOutput(&&str, buildType);
 			build := :gc(std::heap::[rlc::compiler::Build]new(&&b));
 		}

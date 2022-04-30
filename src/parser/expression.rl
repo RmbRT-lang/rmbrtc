@@ -1,14 +1,15 @@
 INCLUDE "stage.rl"
 
+INCLUDE "../ast/expression.rl"
 INCLUDE "expression/operator.rl"
 
 ::rlc::parser::expression
 {
-	parse(p: Parser &) INLINE Expression-std::Dyn
+	parse(p: Parser &) INLINE ast::[Config]Expression-std::Dyn
 		:= operator::parse(p);
 
 	/// Parses a non-operator expression.
-	parse_atom(p: Parser &) Expression-std::Dyn
+	parse_atom(p: Parser &) ast::[Config]Expression-std::Dyn
 	{
 		start: src::String;
 		position: src::Position;
@@ -20,12 +21,12 @@ INCLUDE "expression/operator.rl"
 			IF(!exp)
 				p.fail("expected expression");
 
-			tuple: OperatorExpression-std::Dyn := NULL;
+			tuple: ast::[Config]OperatorExpression-std::Dyn := NULL;
 			WHILE(p.consume(:comma))
 			{
 				IF(!op)
 				{
-					tuple := std::[OperatorExpression]new();
+					tuple := std::[ast::[Config]OperatorExpression]new();
 					tuple->Op := :tuple;
 					tuple->Operands += &&exp;
 				}
@@ -47,7 +48,7 @@ INCLUDE "expression/operator.rl"
 			RETURN tuple ? &&tuple : &&exp;
 		}
 
-		ret: Expression *;
+		ret: ast::[Config]Expression *;
 		IF(detail::parse_impl(p, ret, parse_reference)
 		|| detail::parse_impl(p, ret, parse_member_reference)
 		|| detail::parse_impl(p, ret, parse_symbol_constant)
@@ -69,7 +70,7 @@ INCLUDE "expression/operator.rl"
 
 	::detail [T:TYPE] parse_impl(
 		p: Parser &,
-		ret: Expression * &,
+		ret: ast::[Config]Expression * &,
 		parse_fn: ((Parser&, T! &) BOOL)
 	) BOOL
 	{
@@ -82,10 +83,10 @@ INCLUDE "expression/operator.rl"
 		RETURN FALSE;
 	}
 
-	parse_cast(p: Parser&, out: CastExpression &) BOOL
+	parse_cast(p: Parser&, out: ast::[Config]CastExpression &) BOOL
 	{
 		// (method, open, close, allow multiple args, expect args)
-		STATIC lookup: {CastExpression::Kind, tok::Type, tok::Type, BOOL, BOOL}#[](
+		STATIC lookup: {ast::[Config]CastExpression::Kind, tok::Type, tok::Type, BOOL, BOOL}#[](
 			(:static, :less, :greater, TRUE, FALSE),
 			(:dynamic, :doubleLess, :doubleGreater, FALSE, TRUE),
 			(:mask, :tripleLess, :tripleGreater, TRUE, TRUE)
@@ -121,7 +122,7 @@ INCLUDE "expression/operator.rl"
 		RETURN TRUE;
 	}
 
-	parse_sizeof(p: Parser&, out: SizeofExpression&) BOOL
+	parse_sizeof(p: Parser&, out: ast::[Config]SizeofExpression&) BOOL
 	{
 		IF(!p.consume(:sizeof))
 			RETURN FALSE;
@@ -146,7 +147,7 @@ INCLUDE "expression/operator.rl"
 		RETURN TRUE;
 	}
 
-	parse_typeof(p: Parser&, out: TypeofExpression&) BOOL
+	parse_typeof(p: Parser&, out: ast::[Config]TypeofExpression&) BOOL
 	{
 		IF(!p.consume(:type))
 			RETURN FALSE;

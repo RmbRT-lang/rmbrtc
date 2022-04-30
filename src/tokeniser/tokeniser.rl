@@ -93,20 +93,16 @@ INCLUDE 'std/unicode'
 		{
 			c: CHAR;
 			WHILE(c := look())
-			{
-				IF(c == ' '
-				|| c == '\t'
-				|| c =='\r'
-				|| c == '\n')
+				SWITCH(c)
 				{
+				' ', '\t', '\r', '\n':
 					getc();
-				}
-				ELSE
+				DEFAULT:
 					RETURN;
-			}
+				}
 		}
 
-		eatString(str: std::str::C8CView#&) BOOL {
+		eatString(str: std::str::CV#&) BOOL {
 			FOR(i ::= 0; i < ##str; i++)
 				IF(look(i) != str[:ok(i)])
 					RETURN FALSE;
@@ -137,7 +133,7 @@ INCLUDE 'std/unicode'
 				IF(len > left)
 					THROW <InvalidCharSeq>(File, line, column);
 
-				buf: CHAR[4];
+				buf: CHAR[4] (NOINIT);
 				FOR(i ::= 0; i < len; i++)
 					buf[i] := look(i);
 
@@ -280,7 +276,7 @@ INCLUDE 'std/unicode'
 			++Position.Column;
 			WHILE(is_alnum(look())) (++Read, ++Position.Column);
 
-			STATIC keywords: {std::str::C8CView, Type}#[](
+			STATIC keywords: {std::str::CV, Type}#[](
 				("ABSTRACT", :abstract),
 				("ASSERT", :assert),
 				("BOOL", :bool),

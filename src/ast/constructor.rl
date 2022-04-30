@@ -12,17 +12,17 @@ INCLUDE 'std/memory'
 	BaseInit -> CodeObject
 	{
 		Base: Stage::Inheritance;
-		Arguments: [Stage]Expression - std::DynVector;
+		Arguments: [Stage]Expression - std::DynVec;
 	}
 
 	MemberInit -> CodeObject
 	{
 		Member: Stage::MemberReference;
-		Arguments: [Stage]Expression - std::DynVector;
+		Arguments: [Stage]Expression - std::DynVec;
 	}
 
-	BaseInits: BaseInit - std::Vector;
-	MemberInits: MemberInit - std::Vector;
+	BaseInits: BaseInit - std::Vec;
+	MemberInits: MemberInit - std::Vec;
 	Body: [Stage]BlockStatement - std::Dyn;
 	Inline: BOOL;
 }
@@ -54,7 +54,7 @@ INCLUDE 'std/memory'
 ::rlc::ast [Stage: TYPE] CustomConstructor -> [Stage]Constructor
 {
 	Name: [Stage]SymbolConstant - std::Dyn;
-	Arguments: [Stage]LocalVariable - std::Vector;
+	Arguments: [Stage]LocalVariable - std::Vec;
 
 	# named() INLINE BOOL := Name!;
 }

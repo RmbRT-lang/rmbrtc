@@ -13,6 +13,8 @@
 	Token: tok::Token;
 	Type: IncludeType;
 
+	{}: Type(NOINIT);
+
 	parse(
 		p: Parser &) BOOL
 	{

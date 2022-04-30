@@ -14,7 +14,7 @@ INCLUDE "../parser/stage.rl"
 {
 	Registry: parser::Config-ast::FileRegistry;
 	FINAL compile(
-		files: std::Utf8 - std::Vector,
+		files: std::Str - std::Vec,
 		build: Build
 	) VOID
 	{
@@ -31,7 +31,7 @@ INCLUDE "../parser/stage.rl"
 		FOR(f ::= files.start(); f; ++f)
 		{
 			abs ::= util::absolute_file(f!);
-			scoped += Registry.get(<std::Utf8>(abs, :cstring)!);
+			scoped += Registry.get(<std::Str>(abs, :cstring)!);
 		}
 
 		IF(build.Type == :checkSyntax)
