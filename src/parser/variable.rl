@@ -6,39 +6,78 @@ INCLUDE "stage.rl"
 
 ::rlc::parser::variable
 {
-	parse_global(p: Parser&, out: ast::[Config]GlobalVariable&) BOOL
+	parse_global(p: Parser&) ast::[Config]GlobalVariable - std::Dyn
 	{
-		IF(!parse_var_decl(p, out))
-			= FALSE;
+		_: Trace(p, "global variable");
+
+		nt ::= help::parse_initialised_name_and_type(p);
+		IF(!nt) = NULL;
+
+		inits: ast::[Config]Expression - std::DynVec;
+
+		IF(<<ast::type::[Config]Auto *>>(nt->Type!))
+			inits += help::parse_auto_init(p);
+		ELSE
+			inits := help::parse_initialisers(p);
+
 		p.expect(:semicolon);
-		= TRUE;
+
+		= :new(nt->Name, &&nt->Type, &&inits);
 	}
 
-	parse_extern(p: Parser&, out: ast::[Config]GlobalVariable &) BOOL
+	parse_extern(p: Parser&) ast::[Config]GlobalVariable - std::Dyn
 	{
-		IF(!parse(p, out, TRUE, FALSE, FALSE))
-			= FALSE;
+		_: Trace(p, "extern variable");
+
+		nt ::= help::parse_uninitialised_name_and_type(p);
+		IF(!nt) = NULL;
 		p.expect(:semicolon);
-		= TRUE;
+		= :new(&&nt->(0).Content, &&nt->(1));
 	}
 
 	parse_member(
 		p: Parser&,
 		out: ast::[Config]MemberVariable &,
 		static: BOOL
-	) BOOL
+	) ast::[Config]MaybeAnonMemberVar - std::Dyn
 	{
+		_: Trace(p, "member variable");
+
+		ret: ast::[Stage]MaybeAnonMemberVar - std::Dyn;
+
 		IF(static)
 		{
-			IF(!parse_var_decl(p))
-				= FALSE;
+			IF(nt ::= help::parse_initialised_name_and_type(p))
+			{
+				inits: ast::[Config]Expression - std::DynVec;
+
+				IF(<<ast::type::[Config]Auto *>>(nt->Type!))
+					inits += help::parse_auto_init(p);
+				ELSE
+					inits := help::parse_initialisers(p);
+
+				p.expect(:semicolon);
+
+				= :gc(std::heap::[ast::[Config]StaticMemberVariable]new(
+					&&nt->(0).Content, &&nt->(1), &&inits));
+			} ELSE = NULL;
 		}
 		ELSE
 		{
-			IF(!parse_fn_arg(p))
-				= FALSE;
+			help::parse_variable_opt_name_and_type(p);
+			IF(nt ::= help::parse_uninitialised_name_and_type(p))
+			{
+				p.expect(:semicolon);
+				= :gc(std::heap::[ast::[Config]MemberVariable]new(
+					&&nt->(0).Content, &&nt->(1)));
+			} ELSE IF(is_optionally_named_variable_start(p))
+			{	// Anonymous member variable.
+				t ::= type::parse(p);
+				IF(!t) p.fail("expected type");
+				p.expect(:semicolon);
+				= :gc(std::heap::[ast::[Config]AnonMemberVariable]new(t));
+			}
 		}
-		p.expect(:semicolon);
 		= TRUE;
 	}
 
@@ -46,18 +85,20 @@ INCLUDE "stage.rl"
 		p: Parser &
 	) ast::[Config]TypeOrCatchVariable - std::Dyn
 	{
-		IF(parse_variable_opt_name_and_type(p, FALSE))
-		IF(!start)
-			= NULL;
+		_: Trace(p, "catch variable");
 
-		name: tok::Token - std::Opt;
-		type: ast::[Config]Type - std::Dyn;
-		(name, type) := &&*start;
-
-		IF(name)
-			= std::heap::[CatchVariable]new(name->Content, &&type);
-		ELSE
-			= &&type;
+		IF(nt ::= help::parse_uninitialised_name_and_type(p))
+		{
+			p.expect(:semicolon);
+			= :gc(std::heap::[ast::[Config]MemberVariable]new(
+				&&nt->(0).Content, &&nt->(1)));
+		} ELSE IF(is_optionally_named_variable_start(p))
+		{	// Anonymous member variable.
+			t ::= type::parse(p);
+			IF(!t) p.fail("expected type");
+			p.expect(:semicolon);
+			= :gc(std::heap::[ast::[Config]AnonMemberVariable]new(t));
+		}
 	}
 
 	parse_local(
@@ -93,47 +134,43 @@ INCLUDE "stage.rl"
 		out: ast::[Config]Variable &
 	) [Stage]TypeOrArgument-std::Dyn
 	{
-		IF(parse_variable_opt_name_and_type(p, FALSE))
+		start ::= help::parse_variable_opt_name_and_type(p);
 		IF(!start)
 			= NULL;
 
-		name: tok::Token - std::Opt;
-		type: ast::[Config]Type - std::Dyn;
-		(name, type) := &&*start;
-
-		IF(name)
-			= std::heap::[Argument]new(name->Content, &&type);
+		IF(start.Name)
+			= :gc(std::heap::[Argument]new(start.Name->Content, &&start.Type));
 		ELSE
-			= &&type;
+			= &&start.Type;
 	}
 
 	::help needed_without_name: tok::Type#[](
-			:bracketOpen, :braceOpen,
-			:doubleColon, :colon,
-			:void, :bool, :char, :int, :uint, :sm, :um, :null);
+		:bracketOpen, :braceOpen,
+		:doubleColon, :colon,
+		:void, :bool, :char, :int, :uint, :sm, :um, :null);
 
 	// (token, onlyIfNeedsName)
 	::help needed_after_name: {tok::Type, BOOL}#[](
-			(:colon, TRUE),
-			(:colonEqual, TRUE),
-			(:doubleColonEqual, TRUE),
-			(:hash, TRUE),
-			(:dollar, TRUE),
-			(:exclamationMark, FALSE),
-			(:and, FALSE),
-			(:doubleAnd, FALSE),
-			(:asterisk, FALSE),
-			(:backslash, FALSE),
-			(:at, FALSE),
-			(:doubleAt, FALSE),
-			(:doubleDotExclamationMark, FALSE),
-			(:doubleDotQuestionMark, FALSE),
-			(:doubleColon, FALSE),
-			(:minus, FALSE),
-			(:semicolon, FALSE),
-			(:comma, FALSE),
-			(:parentheseClose, FALSE),
-			(:braceClose, FALSE));
+		(:colon, TRUE),
+		(:colonEqual, TRUE),
+		(:doubleColonEqual, TRUE),
+		(:hash, TRUE),
+		(:dollar, TRUE),
+		(:exclamationMark, FALSE),
+		(:and, FALSE),
+		(:doubleAnd, FALSE),
+		(:asterisk, FALSE),
+		(:backslash, FALSE),
+		(:at, FALSE),
+		(:doubleAt, FALSE),
+		(:doubleDotExclamationMark, FALSE),
+		(:doubleDotQuestionMark, FALSE),
+		(:doubleColon, FALSE),
+		(:minus, FALSE),
+		(:semicolon, FALSE),
+		(:comma, FALSE),
+		(:parentheseClose, FALSE),
+		(:braceClose, FALSE));
 
 	::help is_named_variable_start(p: Parser &, needs_name: BOOL) BOOL
 	{
@@ -175,10 +212,13 @@ INCLUDE "stage.rl"
 		= :a(:a(name), &&p);
 	}
 
-	::help parse_initialised_name_and_type(p: Parser) {
-		tok::Token,
-		ast::[Config]MaybeAutoType
-	} - std::Opt
+
+	::help NameAndInitType
+	{
+		Name: tok::Token;
+		Type: ast::[Config]MaybeAutoType;
+	}
+	::help parse_initialised_name_and_type(p: Parser) NameAndInitType - std::Opt
 	{
 		IF(!is_named_variable_start(p, TRUE))
 			= NULL;
@@ -220,7 +260,8 @@ INCLUDE "stage.rl"
 		DIE;
 	}
 
-	::help OptNameAndType {
+	::help OptNameAndType
+	{
 		Name: tok::Token - std::Opt;
 		Type: ast::[Config]Type - std::Dyn;
 	}
@@ -233,15 +274,9 @@ INCLUDE "stage.rl"
 		{
 			name ::= p.consume(:identifier)!;
 			p.eat_token()!;
-
-			IF(p.consume(:questionMark))
-			{
-				auto: type::[Config]Auto;
-				parse_auto(p, auto);
-				p.expect(:colonEqual);
-				= :a(:a(name), :dup(&&auto));
-			} ELSE
-				= :a(:a(name), type::parse(p));
+			t ::= type::parse(p);
+			IF(!t) p.fail("expected type");
+			= :a(:a(name), &&t);
 		}
 
 		IF(t ::= type::parse(p))
@@ -249,62 +284,36 @@ INCLUDE "stage.rl"
 		= NULL;
 	}
 
-	parse(
-		p: Parser&,
-		out: ast::[Config]Variable &,
-		needs_name: BOOL,
-		allow_initialiser: BOOL,
-		force_initialiser: BOOL) BOOL
+	::help parse_auto_init(p: Parser &) ast::[Config]Expression-std::Dyn
 	{
-		...;
+		p.expect(:doubleColonEqual);
+		init ::= expression::parse(p);
+		IF(!init) p.fail("expected expression");
+		= &&init;
+	}
 
-		IF(!has_name && needs_name)
-			= FALSE;
-
-		IF(!needs_type)
+	::help parse_initialisers(p: Parser &) ast::[Config]Expression - std::DynVec
+	{
+		inits: ast::[Config]Expression - std::DynVec;
+		IF(p.consume(:colonEqual))
 		{
-			IF(init ::= expression::parse(p))
-				out.InitValues += &&init;
-			ELSE
-				p.fail("expected expression");
-		} ELSE
+			init ::= expression::parse(p);
+			IF(!init) p.fail("expected expression");
+			inits += &&init;
+		} ELSE IF(p.consume(:parentheseOpen))
 		{
-			IF(!(out.Type := type::parse(p)))
+			IF(!p.consume(:parentheseClose))
 			{
-				IF(needs_name)
-					p.fail("expected name");
-				ELSE
-					= FALSE;
-			}
-
-			IF(allow_initialiser)
-			{
-				isParenthese ::= 0;
-				IF(p.consume(:colonEqual)
-				|| (isParenthese := p.consume(:parentheseOpen)))
+				DO()
 				{
-					// check for empty initialiser.
-					IF(!isParenthese
-					|| !p.consume(:parentheseClose))
-					{
-						DO()
-						{
-							IF(arg ::= expression::parse(p))
-								out.InitValues += &&arg;
-							ELSE
-								p.fail("expected expression");
-						} WHILE(isParenthese && p.consume(:comma))
-
-						IF(isParenthese)
-							p.expect(:parentheseClose);
-					}
-				} ELSE IF(force_initialiser)
-				{
-					p.fail("expected ':=' or '('");
-				}
+					init ::= expression::parse(p);
+					IF(!init) p.fail("expected expression");
+					inits += &&init;
+				} WHILE(!p.consume(:comma))
+				p.expect(:parentheseClose);
 			}
 		}
 
-		= TRUE;
+		= &&inits;
 	}
 }

@@ -64,13 +64,36 @@ INCLUDE 'std/vector'
 		} -> (), (&&name, &&type, &&initValues);
 	}
 
-	/// Member variable of a class or union.
-	[Stage:TYPE] MemberVariable -> [Stage]Member, [Stage]UninitialisedVariable
+	[Stage: TYPE] ExternVariable -> [Stage]Global, [Stage]UninitialisedVariable
 	{
 		{
 			name: Stage::Name,
 			type: [Stage]Type - std::Dyn
 		} -> (), (&&name, &&type);
+	}
+
+	[Stage: TYPE] MaybeAnonMemberVar VIRTUAL -> [Stage]Member {}
+	/// Member variable of a class or union.
+	[Stage:TYPE] MemberVariable ->
+		[Stage]UninitialisedVariable,
+		[Stage]MaybeAnonMemberVar
+	{
+		{
+			name: Stage::Name,
+			type: [Stage]Type - std::Dyn
+		} -> (), (&&name, &&type), ();
+	}
+
+	[Stage:TYPE] AnonMemberVariable -> [Stage]MaybeAnonMemberVar
+	{
+		Type: ast::[Stage]Type - std::Dyn;
+	}
+
+	[Stage:TYPE] StaticMemberVariable ->
+		[Stage]MaybeAnonMemberVar,
+		[Stage]InitialisedVariable
+	{
+		{}
 	}
 
 	TYPE LocalPosition := U2;
