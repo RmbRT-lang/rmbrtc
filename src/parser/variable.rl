@@ -8,7 +8,7 @@ INCLUDE "stage.rl"
 {
 	parse_global(p: Parser&) ast::[Config]GlobalVariable - std::Dyn
 	{
-		_: Trace(p, "global variable");
+		t: Trace(&p, "global variable");
 
 		nt ::= help::parse_initialised_name_and_type(p);
 		IF(!nt) = NULL;
@@ -27,7 +27,7 @@ INCLUDE "stage.rl"
 
 	parse_extern(p: Parser&) ast::[Config]GlobalVariable - std::Dyn
 	{
-		_: Trace(p, "extern variable");
+		_: Trace(&p, "extern variable");
 
 		nt ::= help::parse_uninitialised_name_and_type(p);
 		IF(!nt) = NULL;
@@ -41,7 +41,7 @@ INCLUDE "stage.rl"
 		static: BOOL
 	) ast::[Config]MaybeAnonMemberVar - std::Dyn
 	{
-		_: Trace(p, "member variable");
+		_: Trace(&p, "member variable");
 
 		ret: ast::[Config]MaybeAnonMemberVar - std::Dyn;
 
@@ -59,7 +59,7 @@ INCLUDE "stage.rl"
 				p.expect(:semicolon);
 
 				= :gc(std::heap::[ast::[Config]StaticMemberVariable]new(
-					&&nt->(0).Content, &&nt->(1), &&inits));
+					&&nt->Name.Content, &&nt->Type, &&inits));
 			} ELSE = NULL;
 		}
 		ELSE
@@ -70,7 +70,7 @@ INCLUDE "stage.rl"
 				p.expect(:semicolon);
 				= :gc(std::heap::[ast::[Config]MemberVariable]new(
 					&&nt->(0).Content, &&nt->(1)));
-			} ELSE IF(is_optionally_named_variable_start(p))
+			} ELSE IF(help::is_optionally_named_variable_start(p))
 			{	// Anonymous member variable.
 				t ::= type::parse(p);
 				IF(!t) p.fail("expected type");
@@ -82,22 +82,23 @@ INCLUDE "stage.rl"
 	}
 
 	parse_catch(
-		p: Parser &
+		p: Parser &,
+		locals: ast::LocalPosition &
 	) ast::[Config]TypeOrCatchVariable - std::Dyn
 	{
-		_: Trace(p, "catch variable");
+		_: Trace(&p, "catch variable");
 
 		IF(nt ::= help::parse_uninitialised_name_and_type(p))
 		{
 			p.expect(:semicolon);
-			= :gc(std::heap::[ast::[Config]MemberVariable]new(
-				&&nt->(0).Content, &&nt->(1)));
-		} ELSE IF(is_optionally_named_variable_start(p))
+			= :gc(std::heap::[ast::[Config]CatchVariable]new(
+				&&nt->(0).Content, ++locals, &&nt->(1)));
+		} ELSE IF(help::is_optionally_named_variable_start(p))
 		{	// Anonymous member variable.
 			t ::= type::parse(p);
 			IF(!t) p.fail("expected type");
 			p.expect(:semicolon);
-			= :gc(std::heap::[ast::[Config]AnonMemberVariable]new(t));
+			= &&t;
 		}
 	}
 
@@ -107,11 +108,11 @@ INCLUDE "stage.rl"
 		locals: ast::LocalPosition &
 	) ast::[Config]LocalVariable - std::Dyn
 	{
-		nt ::= help::parse_variable_name_and_type(p, TRUE);
+		nt ::= help::parse_initialised_name_and_type(p);
 		IF(!nt)
 			= NULL;
 
-		_: Trace(p, "local variable");
+		_: Trace(&p, "local variable");
 
 		inits: ast::[Config]Expression - std::DynVec;
 
@@ -123,7 +124,7 @@ INCLUDE "stage.rl"
 		IF(expect_semicolon)
 			p.expect(:semicolon);
 
-		= :new(nt->(0).Content, ++locals, &&nt->(1), &&inits);
+		= :new(nt->Name.Content, ++locals, &&nt->Type, &&inits);
 	}
 
 	parse_fn_arg(
@@ -134,10 +135,10 @@ INCLUDE "stage.rl"
 		IF(!nt)
 			= NULL;
 
-		IF(nt.Name)
-			= :gc(std::heap::[Argument]new(nt.Name->Content, &&nt.Type));
+		IF(nt->Name)
+			= :gc(std::heap::[ast::[Config]Argument]new(nt->Name->Content, &&nt->Type));
 		ELSE
-			= &&nt.Type;
+			= &&nt->Type;
 	}
 
 	::help needed_without_name: tok::Type#[](
@@ -183,7 +184,7 @@ INCLUDE "stage.rl"
 	{
 		IF(is_named_variable_start(p, FALSE))
 			= TRUE;
-		FOR(i ::= 0; i < ##k_needed_without_name; i++)
+		FOR(i ::= 0; i < ##help::needed_without_name; i++)
 			IF(p.match(help::needed_without_name[i]))
 				= TRUE;
 		= FALSE;
@@ -214,7 +215,7 @@ INCLUDE "stage.rl"
 		Name: tok::Token;
 		Type: ast::[Config]MaybeAutoType - std::Dyn;
 	}
-	::help parse_initialised_name_and_type(p: Parser) NameAndInitType - std::Opt
+	::help parse_initialised_name_and_type(p: Parser &) NameAndInitType - std::Opt
 	{
 		IF(!is_named_variable_start(p, TRUE))
 			= NULL;
@@ -224,16 +225,14 @@ INCLUDE "stage.rl"
 		// "name: type" style variable?
 		IF(p.consume(:colon))
 		{
-			has_name := TRUE;
-
 			IF(p.consume(:questionMark))
 			{
-				auto: type::[Config]Auto;
-				parse_auto(p, auto);
+				auto: ast::type::[Config]Auto;
+				type::parse_auto(p, auto);
 				= :a(:a(name), :dup(&&auto));
 			}
 			= :a(:a(name), type::parse(p));
-		} ELSE IF(allow_initialiser)
+		} ELSE
 		{
 			STATIC k_need_ahead: tok::Type#[](
 				:hash,
@@ -244,8 +243,8 @@ INCLUDE "stage.rl"
 			{
 				IF(p.match(k_need_ahead[i]))
 				{
-					auto: Auto;
-					parse_auto_no_ref(p, auto);
+					auto: ast::type::[Config]Auto;
+					type::parse_auto_no_ref(p, auto);
 					p.expect(:doubleColonEqual);
 					= :a(:a(name), :dup(&&auto));
 				}

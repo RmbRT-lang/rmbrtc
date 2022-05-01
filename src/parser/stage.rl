@@ -15,11 +15,14 @@ INCLUDE "global.rl"
 
 		TYPE Symbol := Config-ast::Symbol;
 		TYPE String := src::String;
+		TYPE CharLiteral := tok::Token;
+		TYPE StringLiteral := tok::Token;
 		TYPE Name := src::String;
 		TYPE ControlLabelName := src::String;
+		TYPE Number := tok::Token;
 
 		TYPE Inheritance := Symbol;
-		MemberReference { Member: src::String; Position: src::Position; }
+		TYPE MemberReference := Symbol::Child;
 
 		TYPE Includes := Include - std::Vec;
 

@@ -1,5 +1,6 @@
 INCLUDE "../ast/type.rl"
 INCLUDE "stage.rl"
+INCLUDE "symbolconstant.rl"
 
 ::rlc::parser::type
 {
@@ -202,7 +203,9 @@ INCLUDE "stage.rl"
 
 	parse_symbol_constant(p: Parser &, out: SymbolConstantType &) BOOL
 	{
-		IF(!parse_symbol_constant(p, out.Name))
+		IF(c ::= symbol_constant::parse(p))
+			out->Name := &&*c;
+		ELSE
 			= FALSE;
 
 		detail::parse_generic_part(p, out);

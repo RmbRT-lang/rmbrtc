@@ -2,11 +2,12 @@ INCLUDE "stage.rl"
 
 INCLUDE "../ast/expression.rl"
 INCLUDE "expression/operator.rl"
+INCLUDE "symbolconstant.rl"
 
 ::rlc::parser::expression
 {
 	parse(p: Parser &) INLINE ast::[Config]Expression-std::Dyn
-		:= operator::parse(p);
+		:= op::parse(p);
 
 	/// Parses a non-operator expression.
 	parse_atom(p: Parser &) ast::[Config]Expression-std::Dyn
@@ -15,8 +16,9 @@ INCLUDE "expression/operator.rl"
 		position: src::Position;
 
 		// Is this a (...) expression?
-		IF(p.consume(:parentheseOpen, &start, &position))
+		IF(tok ::= p.consume(:parentheseOpen))
 		{
+			(start, position) := (tok->Content, tok->Position);
 			exp ::= expression::parse(p);
 			IF(!exp)
 				p.fail("expected expression");
@@ -24,9 +26,9 @@ INCLUDE "expression/operator.rl"
 			tuple: ast::[Config]OperatorExpression-std::Dyn := NULL;
 			WHILE(p.consume(:comma))
 			{
-				IF(!op)
+				IF(!tuple)
 				{
-					tuple := std::[ast::[Config]OperatorExpression]new();
+					tuple: ast::[Config]OperatorExpression-std::Dyn := :new();
 					tuple->Op := :tuple;
 					tuple->Operands += &&exp;
 				}
@@ -36,8 +38,7 @@ INCLUDE "expression/operator.rl"
 				tuple->Operands += &&exp;
 			}
 
-			end: src::String;
-			p.expect(:parentheseClose, &end);
+			end ::= p.expect(:parentheseClose).Content;
 
 			(/
 	For readability, do not track ordinary parentheses, as they are irrelevant to the inner expression, but track tuples' parentheses, as they are essential.
@@ -45,12 +46,13 @@ INCLUDE "expression/operator.rl"
 			IF(tuple)
 				(tuple->Position, tuple->Range) := (position, start.span(end));
 
-			RETURN tuple ? &&tuple : &&exp;
+			IF(tuple)
+				= &&tuple;
+			= &&exp;
 		}
 
 		ret: ast::[Config]Expression *;
 		IF(detail::parse_impl(p, ret, parse_reference)
-		|| detail::parse_impl(p, ret, parse_member_reference)
 		|| detail::parse_impl(p, ret, parse_symbol_constant)
 		|| detail::parse_impl(p, ret, parse_number)
 		|| detail::parse_impl(p, ret, parse_bool)
@@ -77,11 +79,64 @@ INCLUDE "expression/operator.rl"
 		v: T;
 		IF(parse_fn(p, v))
 		{
-			ret := std::dup(&&v);
-			RETURN TRUE;
+			ret := :dup(&&v);
+			= TRUE;
 		}
-		RETURN FALSE;
+		= FALSE;
 	}
+
+	parse_reference(p: Parser &, out: ast::[Config]ReferenceExpression &) BOOL
+		:= symbol::parse(p, out.Symbol);
+
+	parse_symbol_constant(p: Parser &, out: ast::[Config]SymbolConstantExpression &) BOOL
+	{
+		IF(sym ::= symbol_constant::parse(p))
+		{
+			out.Symbol := sym!;
+			= TRUE;
+		}
+		= FALSE;
+	}
+
+	parse_number(p: Parser &, out: ast::[Config]NumberExpression &) BOOL
+	{
+		n ::= p.consume(:numberLiteral);
+		IF(n) out.Number := n!;
+		= n;
+	}
+
+	parse_bool(p: Parser &, out: ast::[Config]BoolExpression &) BOOL
+	{
+		IF(p.consume(:true))
+			out.Value := TRUE;
+		ELSE IF(p.consume(:false))
+			out.Value := FALSE;
+		ELSE
+			= FALSE;
+		= TRUE;
+	}
+
+	parse_char(p: Parser &, out: ast::[Config]CharExpression &) BOOL
+	{
+		c ::= p.consume(:stringApostrophe);
+		IF(c)
+			out.Char := c!;
+		= c;
+	}
+
+	parse_string(p: Parser &, out: ast::[Config]StringExpression &) BOOL
+	{
+		s ::= p.consume(:stringQuote);
+		IF(s)
+			out.String := s!;
+		= s;
+	}
+
+	parse_this(p: Parser &, out: ast::[Config]ThisExpression &) BOOL
+		:= p.consume(:this);
+
+	parse_null(p: Parser &, out: ast::[Config]NullExpression &) BOOL
+		:= p.consume(:null);
 
 	parse_cast(p: Parser&, out: ast::[Config]CastExpression &) BOOL
 	{
@@ -93,8 +148,11 @@ INCLUDE "expression/operator.rl"
 		);
 		type: UM;
 		FOR(type := 0; type < ##lookup; type++)
-			IF(p.consume(lookup[type].(1), &out.Position))
+			IF(tok ::= p.consume(lookup[type].(1)))
+			{
+				out.Position := tok->Position;
 				BREAK;
+			}
 		IF(type == ##lookup)
 			RETURN FALSE;
 
@@ -155,7 +213,7 @@ INCLUDE "expression/operator.rl"
 		t: Trace(&p, "type expression");
 
 		expectType ::= FALSE;
-		IF(!(out.Static := p.consume(:static)))
+		IF(!(out.StaticExp := p.consume(:static)))
 			expectType := p.consume(:type);
 
 		p.expect(:parentheseOpen);

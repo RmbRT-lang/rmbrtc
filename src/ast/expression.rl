@@ -89,7 +89,7 @@ INCLUDE 'std/vector'
 	/// A symbolic constant value.
 	[Stage: TYPE] SymbolConstantExpression -> [Stage]Expression
 	{
-		Symbol: Stage::SymbolConstant;
+		Symbol: [Stage]SymbolConstant;
 	}
 
 	/// A numeric expression.

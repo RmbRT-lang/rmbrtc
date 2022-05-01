@@ -141,8 +141,7 @@ INCLUDE 'std/vector'
 		{
 			name: Stage::Name,
 			position: LocalPosition,
-			type: [Stage]MaybeAutoType-std::Dyn,
-			initValues: [Stage]Expression-std::DynVec
-		} -> (position), (&&name, &&type, &&initValues), ();
+			type: [Stage]MaybeAutoType-std::Dyn
+		} -> (position), (&&name, &&type), ();
 	}
 }

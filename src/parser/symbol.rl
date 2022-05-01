@@ -4,7 +4,7 @@ INCLUDE "parser.rl"
 
 ::rlc::parser::symbol::detail [Symbol: TYPE] TYPE Child := Symbol::Child;
 
-::rlc::parser::symbol [Symbol:TYPE] parse(p: Parser&, out: Symbol &) BOOL
+::rlc::parser::symbol [Symbol:TYPE] parse(p: Parser&, out: Symbol! &) BOOL
 {
 	t: Trace(&p, "symbol");
 
@@ -28,7 +28,7 @@ INCLUDE "parser.rl"
 
 ::rlc::parser::symbol [SymbolChild:TYPE] parse_child(
 	p: Parser&,
-	out: SymbolChild &
+	out: SymbolChild! &
 ) BOOL
 {
 	IF(p.consume(:bracketOpen))
