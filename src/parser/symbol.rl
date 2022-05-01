@@ -1,14 +1,17 @@
-INCLUDE "stage.rl"
+INCLUDE "../ast/symbol.rl"
 INCLUDE "parser.rl"
 
-::rlc::parser::symbol parse(p: Parser&, Stage::Symbol &) BOOL
+
+::rlc::parser::symbol::detail [Symbol: TYPE] TYPE Child := Symbol::Child;
+
+::rlc::parser::symbol [Symbol:TYPE] parse(p: Parser&, out: Symbol &) BOOL
 {
 	t: Trace(&p, "symbol");
 
-	IsRoot := p.consume(:doubleColon);
-	expect ::= IsRoot;
+	out.IsRoot := p.consume(:doubleColon);
+	expect ::= out.IsRoot;
 
-	DO(child: Child)
+	DO(child: Symbol-detail::Child)
 	{
 		IF(!child.parse(p))
 		{
@@ -17,13 +20,16 @@ INCLUDE "parser.rl"
 			RETURN FALSE;
 		}
 
-		Children += &&child;
+		out.Children += &&child;
 	} FOR(p.consume(:doubleColon); expect := TRUE)
 
 	RETURN TRUE;
 }
 
-::rlc::parser::symbol parse_child(p: Parser&) BOOL
+::rlc::parser::symbol [SymbolChild:TYPE] parse_child(
+	p: Parser&,
+	out: SymbolChild &
+) BOOL
 {
 	IF(p.consume(:bracketOpen))
 	{
@@ -31,29 +37,35 @@ INCLUDE "parser.rl"
 		{
 			DO()
 			{
-				tArg: [Stage]TemplateArg;
+				tArg: ast::[Config]TemplateArg;
 				IF(p.consume(:semicolon))
 					{ ; }
 				ELSE IF(p.consume(:hash))
-					DO(arg: Expression *)
+					DO(arg: ast::[Config]Expression - std::Dyn)
 					{
-						IF(!(arg := Expression::parse(p)))
+						IF(!(arg := expression::parse(p)))
 							p.fail("expected expression");
-						tArg += :gc(arg);
+						tArg += &&arg;
 					} WHILE(p.consume(:comma))
 				ELSE
-					DO(arg: Type *)
+					DO(arg: ast::[Config]Type - std::Dyn)
 					{
-						IF(!(arg := Type::parse(p)))
+						IF(!(arg := type::parse(p)))
 							p.fail("expected type");
-						tArg += :gc(arg);
+						tArg += &&arg;
 					} WHILE(p.consume(:comma))
-				Templates += &&tArg;
+				out.Templates += &&tArg;
 			} WHILE(p.consume(:semicolon))
 			p.expect(:bracketClose);
 		}
-		p.expect(:identifier, &Name, &Position);
-		RETURN TRUE;
-	} ELSE
-		RETURN p.consume(:identifier, &Name, &Position);
+		id ::= p.expect(:identifier);
+		(out.Name, &out.Position) := (id.Content, id.Position);
+		= TRUE;
+	} ELSE IF(id ::= p.consume(:identifier))
+	{
+		(out.Name, &out.Position) := (id->Content, id->Position);
+		= TRUE;
+	}
+
+	= FALSE;
 }

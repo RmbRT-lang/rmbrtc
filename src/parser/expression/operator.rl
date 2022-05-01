@@ -1,4 +1,5 @@
 INCLUDE "operators.rl"
+INCLUDE "../symbol.rl"
 
 ::rlc::parser::expression::op
 {
@@ -50,7 +51,7 @@ INCLUDE "operators.rl"
 		RETURN &&lhs;
 	}
 
-	::op parse_binary(
+	parse_binary(
 		p: Parser&,
 		level: UINT) ast::[Config]Expression-std::Dyn
 	{
@@ -67,22 +68,22 @@ INCLUDE "operators.rl"
 			p.expect(:colon);
 			else ::= expression::parse(p);
 
-			ret ::= std::heap::[ast::[Config]OperatorExpression]new();
+			ret: ast::[Config]OperatorExpression-std::Dyn := :new();
 			ret->Op := :conditional;
 			ret->Operands += :gc(lhs);
 			ret->Operands += :gc(then);
 			ret->Operands += :gc(else);
-			RETURN ret;
+			RETURN &&ret;
 		} ELSE
-			RETURN parse_binary_rhs(p, lhs, level);
+			RETURN parse_binary_rhs(p, &&lhs, level);
 	}
 
-	::op parse_prefix(p: Parser&) ast::[Config]Expression-std::Dyn
+	parse_prefix(p: Parser&) ast::[Config]Expression-std::Dyn
 	{
 		FOR(i ::= 0; i < ##detail::k_prefix_ops; i++)
 			IF(p.consume(detail::k_prefix_ops[i].(0)))
 			{
-				xp: OperatorExpression-std::Dyn(:create);
+				xp: ast::[Config]OperatorExpression-std::Dyn := :new();
 				xp->Op := detail::k_prefix_ops[i].(1);
 				xp->Operands += :gc(parse_prefix(p));
 				RETURN xp;
@@ -114,58 +115,61 @@ INCLUDE "operators.rl"
 	{
 		FOR(i ::= 0; i < ##postfix; i++)
 		{
-			IF(p.consume(postfix[i].(0)))
+			IF(tok ::= p.consume(postfix[i].(0)))
 			{
-				lhs := make_unary(postfix[i].(1), lhs);
+				lhs := ast::[Config]OperatorExpression::make_unary(
+					postfix[i].(1),
+					tok->Position,
+					&&lhs);
 				CONTINUE["outer"];
 			}
 		}
 
 		IF(p.consume(:bracketOpen))
 		{
-			sub ::= std::[OperatorExpression]new();
+			sub: ast::[Config]OperatorExpression-std::Dyn := :new();
 			sub->Op := :subscript;
-			sub->Operands += :gc(lhs);
+			sub->Operands += &&lhs;
 
 			DO()
 			{
-				rhs ::= Expression::parse(p);
+				rhs ::= expression::parse(p);
 				IF(!rhs)
 					p.fail("expected expression");
-				sub->Operands += :gc(rhs);
+				sub->Operands += &&rhs;
 			} WHILE(p.consume(:comma))
 			p.expect(:bracketClose);
 
-			lhs := sub;
+			lhs := &&sub;
 			CONTINUE["outer"];
 		}
 
 		IF(p.consume(:visit))
 		{
 			p.expect(:parentheseOpen);
-			visit ::= std::[OperatorExpression]new();
+			visit: ast::[Config]OperatorExpression-std::Dyn := :new();
 			visit->Op := :visit;
-			visit->Operands += :gc(lhs);
+			visit->Operands += &&lhs;
 
 			DO(comma ::= FALSE)
 			{
 				IF(comma)
 					p.expect(:comma);
-				IF(rhs ::= Expression::parse(p))
-					visit->Operands += :gc(rhs);
+				IF(rhs ::= expression::parse(p))
+					visit->Operands += &&rhs;
 				ELSE
 					p.fail("expected expression");
 			} FOR(!p.consume(:parentheseClose); comma := TRUE)
 
-			lhs := visit;
+			lhs := &&visit;
 			CONTINUE["outer"];
 		}
 
 		IF(p.consume(:parentheseOpen))
 		{
-			call ::= std::[OperatorExpression]new();
+			call: ast::[Config]OperatorExpression-std::Dyn := :new();
 			call->Op := :call;
-			call->Operands += :gc(lhs);
+			call->Operands += &&lhs;
 
 			FOR(comma ::= FALSE;
 				!p.consume(:parentheseClose);
@@ -173,13 +177,13 @@ INCLUDE "operators.rl"
 			{
 				IF(comma)
 					p.expect(:comma);
-				IF(rhs ::= Expression::parse(p))
-					call->Operands += :gc(rhs);
+				IF(rhs ::= expression::parse(p))
+					call->Operands += &&rhs;
 				ELSE
 					p.fail("expected expression");
 			}
 
-			lhs := call;
+			lhs := &&call;
 			CONTINUE["outer"];
 		}
 
@@ -187,44 +191,48 @@ INCLUDE "operators.rl"
 		{
 			IF(p.consume(memberAccess[i].(0)))
 			{
-				IF(p.consume(:braceOpen))
+				IF(tok ::= p.consume(:braceOpen))
 				{
-					lhs := make_unary(memberAccess[i].(2), &&lhs);
+					lhs := ast::[Config]OperatorExpression::make_unary(
+						memberAccess[i].(1), tok->Position, &&lhs);
+
 					IF(!p.consume(:braceClose))
 					{
 						DO()
 						{
 							IF(arg ::= expression::parse(p))
-								<OperatorExpression \>(lhs!)->Operands += &&arg;
+								<ast::[Config]OperatorExpression \>(lhs!)->Operands += &&arg;
 							ELSE
 								p.fail("expected expression");
 						} WHILE(p.consume(:comma))
 						p.expect(:braceClose);
 					}
 				}
-				ELSE IF(p.consume(:parentheseOpen))
+				ELSE IF(tok ::= p.consume(:parentheseOpen))
 				{
 					IF(index ::= expression::parse(p))
-						lhs := OperatorExpression::make_binary(
-							memberAccess[i].(3),
+						lhs := ast::[Config]OperatorExpression::make_binary(
+							memberAccess[i].(2),
+							tok->Position,
 							&&lhs,
 							&&index);
 					ELSE p.fail("expected expression");
 					p.expect(:parentheseClose);
-				} ELSE IF(p.consume(:tilde))
+				} ELSE IF(tok ::= p.consume(:tilde))
 				{
-					lhs := make_unary(memberAccess[i].(4), &&lhs);
+					lhs := ast::[Config]OperatorExpression::make_unary(
+						memberAccess[i].(3), tok->Position, &&lhs);
 				}
 				ELSE
 				{
-					exp: MemberReferenceExpression;
-					exp.Object := &&lhs;
-					exp.IsArrowAccess := (i != 0);
+					exp: ast::[Config]MemberReferenceExpression-std::Dyn := :new();
+					exp->Object := &&lhs;
+					exp->IsArrowAccess := (i != 0);
 
-					IF(!parse_member_reference(p, exp.Member))
+					IF(!symbol::parse_child(p, exp->Member))
 						p.fail("expected member name");
 
-					lhs := std::gcdup(&&exp);
+					lhs := &&exp;
 				}
 				CONTINUE["outer"];
 			}
@@ -233,5 +241,5 @@ INCLUDE "operators.rl"
 		BREAK;
 	}
 
-	RETURN lhs;
+	= &&lhs;
 }

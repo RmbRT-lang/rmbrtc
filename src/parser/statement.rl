@@ -1,5 +1,6 @@
 INCLUDE "stage.rl"
 INCLUDE "controllabel.rl"
+INCLUDE "varorexpression.rl"
 
 ::rlc::parser::statement
 {
@@ -108,8 +109,7 @@ INCLUDE "controllabel.rl"
 		out.Label := control_label::parse(p);
 		p.expect(:parentheseOpen);
 
-		val: ast::[Config]VarOrExpr - std::Dyn;
-		val.parse(p);
+		val ::= var_or_exp::parse(p);
 
 		IF(p.consume(:semicolon))
 		{
@@ -305,7 +305,7 @@ INCLUDE "controllabel.rl"
 		= TRUE;
 	}
 
-	::loop parse_while_head(p: Parser &) BOOL
+	::loop parse_while_head(p: Parser &, locals: ast::LocalPosition&, out: ast::[Config]LoopStatement &) BOOL
 	{
 		IF(!p.consume(:while))
 			= FALSE;
@@ -316,13 +316,23 @@ INCLUDE "controllabel.rl"
 
 		IF(!out.IsPostCondition)
 		{
-			IF(variable::help::is_named_variable_start(p))
 			v: ast::[Config]VarOrExpr - std::Dyn;
-			v.parse(p);
+			IF(variable::help::is_named_variable_start(p))
+			{
+				IF(!(v := variable::parse_local(p, FALSE, locals)))
+					p.fail("expected variable");
+			} ELSE
+				v := expression::parse(p);
+
 			IF(p.consume(:semicolon))
 			{
 				out.Initial := &&v;
-				v.parse(p);
+				IF(variable::help::is_named_variable_start(p))
+				{
+					IF(!(v := variable::parse_local(p, FALSE, locals)))
+						p.fail("expected variable");
+				} ELSE
+					v := expression::parse(p);
 			}
 
 			out.Condition := &&v;

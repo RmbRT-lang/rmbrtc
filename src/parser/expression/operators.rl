@@ -2,12 +2,12 @@
 {
 	consume_overloadable_binary_operator(p: Parser &, op: rlc::Operator &) BOOL
 	{
-		FOR(i ::= 0; i < ##k_groups; i++)
-			FOR(j ::= 0; j < k_groups[i].Size; j++)
-				IF(k_groups[i].Table[j].(2))
-					IF(p.consume(k_groups[i].Table[j].(0)))
+		FOR(i ::= 0; i < ##detail::k_groups; i++)
+			FOR(j ::= 0; j < detail::k_groups[i].Size; j++)
+				IF(detail::k_groups[i].Table[j].(2))
+					IF(p.consume(detail::k_groups[i].Table[j].(0)))
 					{
-						op := k_groups[i].Table[j].(1);
+						op := detail::k_groups[i].Table[j].(1);
 						RETURN TRUE;
 					}
 		RETURN FALSE;
@@ -15,11 +15,11 @@
 
 	consume_overloadable_prefix_operator(p: Parser &, op: rlc::Operator &) BOOL
 	{
-		FOR(i ::= 0; i < ##k_prefix_ops; i++)
-			IF(k_prefix_ops[i].(2))
-				IF(p.consume(k_prefix_ops[i].(0)))
+		FOR(i ::= 0; i < ##detail::k_prefix_ops; i++)
+			IF(detail::k_prefix_ops[i].(2))
+				IF(p.consume(detail::k_prefix_ops[i].(0)))
 				{
-					op := k_prefix_ops[i].(1);
+					op := detail::k_prefix_ops[i].(1);
 					RETURN TRUE;
 				}
 		RETURN FALSE;
