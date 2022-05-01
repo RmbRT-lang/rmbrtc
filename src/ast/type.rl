@@ -3,7 +3,11 @@ INCLUDE "expression.rl"
 
 ::rlc::ast
 {
+	/// Type | Argument union.
 	[Stage: TYPE] TypeOrArgument VIRTUAL {}
+	/// Type | CatchVariable union.
+	[Stage: TYPE] TypeOrCatchVariable VIRTUAL {}
+	/// Either a specific type or a deduced type.
 	[Stage: TYPE] MaybeAutoType VIRTUAL {}
 
 	::type
@@ -53,10 +57,12 @@ INCLUDE "expression.rl"
 		:const{}: Indirection(:plain), Qualifier(:const), IsArray(FALSE);
 	}
 
+	/// A specific type.
 	[Stage: TYPE] Type VIRTUAL ->
 		[Stage]TypeOrExpr,
 		[Stage]MaybeAutoType,
-		[Stage]TypeOrArgument
+		[Stage]TypeOrArgument,
+		[Stage]TypeOrCatchVariable
 	{
 		Modifiers: type::[Stage]Modifier-std::Vec;
 		Reference: type::ReferenceType;

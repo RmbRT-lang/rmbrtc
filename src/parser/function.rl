@@ -30,7 +30,7 @@ Can be called multiple times to append new arguments.
 	p: Parser &
 ) ast::[Config]TypeOrArgument-std::Dyn
 {
-	IF(var ::= parse_fn_arg)
+	IF(var ::= variable::parse_fn_arg(p))
 		= &&var;
 	ELSE IF(type ::= type::parse(p))
 		= &&type;

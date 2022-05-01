@@ -53,93 +53,44 @@ INCLUDE 'std/tags'
 				reason);
 		}
 
-		consume(type: tok::Type) BOOL
-			:= consume(type, <tok::Token*>(NULL));
-
-		consume(type: tok::Type, pos: src::Position \) BOOL
+		consume(type: tok::Type) tok::Token - std::Opt
 		{
-			token: tok::Token;
-			IF(consume(type, &token))
-			{
-				*pos := token.Position;
-				RETURN TRUE;
-			}
-			RETURN FALSE;
-		}
-
-		consume(
-			type: tok::Type,
-			out: tok::Token *) BOOL
-		{
+			t: tok::Token;
 			IF(match(type))
 			{
-				consume(out);
-				RETURN TRUE;
+				eat_token(&t);
+				= :a(&&t);
 			}
-
-			RETURN FALSE;
+			= NULL;
 		}
 
-		consume(type: tok::Type, out: src::String \) BOOL
+		expect(type: tok::Type) tok::Token
 		{
-			token: tok::Token;
-			IF(consume(type, &token))
-			{
-				*out := token.Content;
-				RETURN TRUE;
-			}
-			RETURN FALSE;
+			IF(tok ::= consume(type))
+				= &&*tok;
+
+			line: UINT;
+			column: UINT;
+			IF(BufferSize)
+				File->position(
+					Buffer[BufferIndex].Content.Start,
+					&line,
+					&column);
+			ELSE
+				Tokeniser.position(&line, &column);
+
+			THROW <ExpectedToken>(
+				File, line, column,
+				Buffer, BufferIndex, BufferSize,
+				THIS,
+				type);
 		}
 
-		consume(type: tok::Type, out: src::String \, pos: src::Position \) BOOL
+		match_seq(tok1: tok::Type, tok2: tok::Type) BOOL
 		{
-			token: tok::Token;
-			IF(consume(type, &token))
-			{
-				*out := token.Content;
-				*pos := token.Position;
-				RETURN TRUE;
-			}
-			RETURN FALSE;
-		}
-
-		expect(type: tok::Type) VOID
-			:= expect(type, <tok::Token *>(NULL));
-
-		expect(type: tok::Type, out: tok::Token *) VOID
-		{
-			IF(!consume(type, out))
-			{
-				line: UINT;
-				column: UINT;
-				IF(BufferSize)
-				{
-					File->position(
-						Buffer[BufferIndex].Content.Start,
-						&line,
-						&column);
-				}
-				ELSE
-				{
-					Tokeniser.position(&line, &column);
-				}
-				THROW ExpectedToken(File, line, column, Buffer, BufferIndex, BufferSize, THIS, type);
-			}
-		}
-
-		expect(type: tok::Type, out: src::String \) VOID
-		{
-			token: tok::Token;
-			expect(type, &token);
-			*out := token.Content;
-		}
-
-		expect(type: tok::Type, out: src::String \, pos: src::Position \) VOID
-		{
-			token: tok::Token;
-			expect(type, &token);
-			*out := token.Content;
-			*pos := token.Position;
+			IF(BufferSize < 2) = FALSE;
+			= Buffer[BufferIndex].Type == tok1
+				&& Buffer[BufferIndex^1].Type == tok2;
 		}
 
 		match(type: tok::Type) BOOL
@@ -150,14 +101,6 @@ INCLUDE 'std/tags'
 			RETURN Buffer[BufferIndex].Type == type;
 		}
 
-		match(type: tok::Type, out: src::String \) BOOL
-		{
-			ret: BOOL;
-			IF(ret := match(type))
-				*out := Buffer[BufferIndex].Content;
-			RETURN ret;
-		}
-
 		match_ahead(type: tok::Type) BOOL
 		{
 			IF(BufferSize != 2)
@@ -166,13 +109,12 @@ INCLUDE 'std/tags'
 			RETURN Buffer[BufferIndex^1].Type == type;
 		}
 
-		consume(out: tok::Token *) BOOL
+		eat_token() tok::Token - std::Opt
 		{
 			IF(!BufferSize)
-				RETURN FALSE;
+				RETURN NULL;
 
-			IF(out)
-				*out := Buffer[BufferIndex];
+			out ::= Buffer[BufferIndex];
 
 			IF(!Tokeniser.parse_next(&Buffer[BufferIndex]))
 				--BufferSize;
@@ -180,7 +122,7 @@ INCLUDE 'std/tags'
 			BufferIndex := BufferIndex ^ 1;
 			++Progress;
 
-			RETURN TRUE;
+			= :a(&&out);
 		}
 
 		# eof() BOOL := BufferSize == 0;
