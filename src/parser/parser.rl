@@ -58,7 +58,7 @@ INCLUDE 'std/tags'
 			t: tok::Token;
 			IF(match(type))
 			{
-				eat_token(&t);
+				t := eat_token()!;
 				= :a(&&t);
 			}
 			= NULL;

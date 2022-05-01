@@ -3,6 +3,7 @@ INCLUDE "expression.rl"
 INCLUDE "global.rl"
 INCLUDE "member.rl"
 INCLUDE "scopeitem.rl"
+INCLUDE "varorexpression.rl"
 
 INCLUDE 'std/memory'
 INCLUDE 'std/vector'
@@ -81,7 +82,7 @@ INCLUDE 'std/vector'
 		{
 			name: Stage::Name,
 			type: [Stage]Type - std::Dyn
-		} -> (), (&&name, &&type), ();
+		} -> (), (&&name, &&type);
 	}
 
 	[Stage:TYPE] AnonMemberVariable -> [Stage]MaybeAnonMemberVar
@@ -93,7 +94,6 @@ INCLUDE 'std/vector'
 		[Stage]MaybeAnonMemberVar,
 		[Stage]InitialisedVariable
 	{
-		{}
 	}
 
 	TYPE LocalPosition := U2;
@@ -121,14 +121,15 @@ INCLUDE 'std/vector'
 	/// A local variable inside a function.
 	[Stage:TYPE] LocalVariable ->
 		[Stage]Local,
-		[Stage]InitialisedVariable
+		[Stage]InitialisedVariable,
+		[Stage]VarOrExpr
 	{
 		{
 			name: Stage::Name,
 			position: LocalPosition,
 			type: [Stage]MaybeAutoType-std::Dyn,
 			initValues: [Stage]Expression-std::DynVec
-		} -> (position), (&&name, &&type, &&initValues);
+		} -> (position), (&&name, &&type, &&initValues), ();
 	}
 
 	/// The named exception variable of a CATCH statement.

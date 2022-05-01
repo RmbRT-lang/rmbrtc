@@ -21,14 +21,14 @@
 		IF(!p.consume(:include))
 			RETURN FALSE;
 
-		t: Trace(&p, "include statement");
+		_: Trace(&p, "include statement");
 
-		IF(p.consume(:stringApostrophe, &Token))
-			Type := IncludeType::global;
-		ELSE IF(p.consume(:stringQuote, &Token))
-			Type := IncludeType::relative;
-		ELSE IF(p.consume(:stringBacktick, &Token))
-			Type := IncludeType::remote;
+		IF(t ::= p.consume(:stringApostrophe))
+			(Token, Type) := (t!, :global);
+		ELSE IF(t ::= p.consume(:stringQuote))
+			(Token, Type) := (t!, :relative);
+		ELSE IF(t ::= p.consume(:stringBacktick))
+			(Token, Type) := (t!, :remote);
 		ELSE
 			p.fail("expected ', \", or `");
 

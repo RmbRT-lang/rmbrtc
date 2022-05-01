@@ -10,11 +10,14 @@ INCLUDE "global.rl"
 	Config
 	{
 		TYPE Previous := :nothing;
+		TYPE PrevExpression := :nothing;
 		TYPE Context := Parser \;
 
 		TYPE Symbol := Config-ast::Symbol;
 		TYPE String := src::String;
 		TYPE Name := src::String;
+		TYPE ControlLabelName := src::String;
+
 		TYPE Inheritance := Symbol;
 		MemberReference { Member: src::String; Position: src::Position; }
 

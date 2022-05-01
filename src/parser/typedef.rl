@@ -9,9 +9,7 @@ INCLUDE "../ast/typedef.rl"
 			RETURN FALSE;
 		t: Trace(&p, "typedef");
 
-		name: tok::Token;
-		p.expect(:identifier, &name);
-		out.Name := name.Content;
+		out.Name := p.expect(:identifier).Content;
 		p.expect(:colonEqual);
 
 		out.Type := type::parse(p);

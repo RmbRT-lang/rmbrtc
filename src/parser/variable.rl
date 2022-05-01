@@ -43,7 +43,7 @@ INCLUDE "stage.rl"
 	{
 		_: Trace(p, "member variable");
 
-		ret: ast::[Stage]MaybeAnonMemberVar - std::Dyn;
+		ret: ast::[Config]MaybeAnonMemberVar - std::Dyn;
 
 		IF(static)
 		{
@@ -78,7 +78,7 @@ INCLUDE "stage.rl"
 				= :gc(std::heap::[ast::[Config]AnonMemberVariable]new(t));
 			}
 		}
-		= TRUE;
+		= &&ret;
 	}
 
 	parse_catch(
@@ -103,45 +103,41 @@ INCLUDE "stage.rl"
 
 	parse_local(
 		p: Parser &,
-		expect_semicolon: BOOL
+		expect_semicolon: BOOL,
+		locals: ast::LocalPosition &
 	) ast::[Config]LocalVariable - std::Dyn
 	{
-		name: tok::Token;
-		type: ast::[Config]Type - std::Dyn;
-
-		IF(start ::= help::parse_variable_name_and_type(p, TRUE))
-			(name, type) := &&*start;
-		ELSE
+		nt ::= help::parse_variable_name_and_type(p, TRUE);
+		IF(!nt)
 			= NULL;
 
 		_: Trace(p, "local variable");
 
+		inits: ast::[Config]Expression - std::DynVec;
 
-		TYPE SWITCH(type!)
-		{
-		DEFAULT: {}
-		}
-		
+		IF(<<ast::type::[Config]Auto *>>(nt->Type!))
+			inits += help::parse_auto_init(p);
+		ELSE
+			inits := help::parse_initialisers(p);
 
 		IF(expect_semicolon)
 			p.expect(:semicolon);
 
-		= TRUE;
+		= :new(nt->(0).Content, ++locals, &&nt->(1), &&inits);
 	}
 
 	parse_fn_arg(
-		p: Parser&,
-		out: ast::[Config]Variable &
-	) [Stage]TypeOrArgument-std::Dyn
+		p: Parser&
+	) ast::[Config]TypeOrArgument-std::Dyn
 	{
-		start ::= help::parse_variable_opt_name_and_type(p);
-		IF(!start)
+		nt ::= help::parse_variable_opt_name_and_type(p);
+		IF(!nt)
 			= NULL;
 
-		IF(start.Name)
-			= :gc(std::heap::[Argument]new(start.Name->Content, &&start.Type));
+		IF(nt.Name)
+			= :gc(std::heap::[Argument]new(nt.Name->Content, &&nt.Type));
 		ELSE
-			= &&start.Type;
+			= &&nt.Type;
 	}
 
 	::help needed_without_name: tok::Type#[](
@@ -216,7 +212,7 @@ INCLUDE "stage.rl"
 	::help NameAndInitType
 	{
 		Name: tok::Token;
-		Type: ast::[Config]MaybeAutoType;
+		Type: ast::[Config]MaybeAutoType - std::Dyn;
 	}
 	::help parse_initialised_name_and_type(p: Parser) NameAndInitType - std::Opt
 	{

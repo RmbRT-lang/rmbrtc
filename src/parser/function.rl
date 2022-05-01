@@ -1,5 +1,6 @@
 INCLUDE "../ast/function.rl"
 INCLUDE "stage.rl"
+INCLUDE "statement.rl"
 
 (//
 Parses a comma-separated list of arguments (without surrounding parentheses).
@@ -29,19 +30,13 @@ Can be called multiple times to append new arguments.
 ::rlc::parser::function parse_arg(
 	p: Parser &
 ) ast::[Config]TypeOrArgument-std::Dyn
-{
-	IF(var ::= variable::parse_fn_arg(p))
-		= &&var;
-	ELSE IF(type ::= type::parse(p))
-		= &&type;
-	= NULL;
-}
+	:= variable::parse_fn_arg(p);
 
 
 /// Parses modifiers and return type.
 ::rlc::parser::function parse_rest_of_head(
 	p: Parser &,
-	out: ast::[Config]Function &,
+	out: ast::[Config]Functoid &,
 	returnType: BOOL) VOID
 {
 	out.IsInline := p.consume(:inline);
@@ -50,53 +45,58 @@ Can be called multiple times to append new arguments.
 	IF(!returnType)
 		RETURN;
 
-	IF(out.Return := parser::Type::parse(p))
+	IF(out.Return := parser::type::parse(p))
 		RETURN;
 
 	expectBody ::= p.consume(:questionMark);
-	auto: parser::Type::Auto;
-	auto.parse(p);
+	auto: ast::type::[Config]Auto;
+	type::parse_auto(p, auto);
 	out.Return := :dup(&&auto);
 }
 
-::rlc::parser::function parse_body(p: Parser &, allow_body: BOOL) VOID
+::rlc::parser::function parse_body(
+	p: Parser &,
+	allow_body: BOOL,
+	out: ast::[Config]Functoid &) VOID
 {
 	IF(!allow_body)
 	{
-		IF(!Return)
+		IF(!out.Return)
 			p.fail("expected explicit return type for bodyless function");
 		p.expect(:semicolon);
 		RETURN;
 	}
 
-	body: BlockStatement;
-	IF(!Return)
+	body: ast::[Config]BlockStatement;
+	IF(!out.Return)
 	{
 		expectBody ::= p.consume(:questionMark);
-		auto: parser::Type::Auto;
-		auto.parse(p);
-		Return := :gc(std::dup(&&auto));
+		auto: ast::type::[Config]Auto;
+		type::parse_auto(p, auto);
+		out.Return := :dup(&&auto);
 
 		IF(expectBody)
 		{
-			IF(!body.parse(p))
+			IF(!statement::parse_block(p, &body))
 				p.fail("expected block statement");
-			Body := :gc(std::dup(&&body));
+			out.Body := :dup(&&body);
 		} ELSE
 		{
 			p.expect(:doubleColonEqual);
-			Body := :gc(Expression::parse(p));
+			IF(!(out.Body := expression::parse(p)))
+				p.fail("expected expression");
 			p.expect(:semicolon);
 		}
 	} ELSE IF(!p.consume(:semicolon))
 	{
 		IF(body.parse(p))
-			Body := :gc(std::dup(&&body));
+			out.Body := :dup(&&body);
 		ELSE
 		{
-			p.expect(tok::Type::colonEqual);
+			p.expect(:colonEqual);
 
-			Body := :gc(Expression::parse(p));
+			IF(!(out.Body := expression::parse(p)))
+				p.fail("expected expression");
 			p.expect(:semicolon);
 		}
 	}

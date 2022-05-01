@@ -1,10 +1,11 @@
 INCLUDE "stage.rl"
+INCLUDE "controllabel.rl"
 
 ::rlc::parser::statement
 {
-	parse(p: Parser&) Statement-std::Dyn
+	parse(p: Parser&) ast::[Config]Statement-std::Dyn
 	{
-		ret: Statement *;
+		ret: ast::[Config]Statement - std::Dyn;
 		IF(detail::parse_impl(p, ret, parse_assert)
 		|| detail::parse_impl(p, ret, parse_block)
 		|| detail::parse_impl(p, ret, parse_if)
@@ -23,26 +24,25 @@ INCLUDE "stage.rl"
 			= NULL;
 	}
 
-	[T:TYPE]
-	::detail parse_impl(
+	::detail [T:TYPE] parse_impl(
 		p: Parser &,
-		ret: Statement * &,
+		ret: ast::[Config]Statement - std::Dyn &,
 		parse_fn: ((Parser&, T! &) BOOL)
 	) BOOL
 	{
 		v: T;
 		IF(parse_fn(p, v))
 		{
-			ret := std::dup(&&v);
+			ret := :dup(&&v);
 			= TRUE;
 		}
 		= FALSE;
 	}
 
 	(// A single statement, such as a loop's body or an if/else clause. /)
-	parse_body(p: Parser &) Statement - std::Dyn
+	parse_body(p: Parser &) ast::[Config]Statement - std::Dyn
 	{
-		ret: Statement *;
+		ret: ast::[Config]Statement - std::Dyn;
 		IF(detail::parse_impl(p, ret, parse_assert)
 		|| detail::parse_impl(p, ret, parse_block)
 		|| detail::parse_impl(p, ret, parse_if)
@@ -60,7 +60,7 @@ INCLUDE "stage.rl"
 			RETURN NULL;
 	}
 
-	parse_assert(p: Parser &, out: AssertStatement &) BOOL
+	parse_assert(p: Parser &, out: ast::[Config]AssertStatement &) BOOL
 	{
 		IF(!p.consume(:assert))
 			= FALSE;
@@ -76,7 +76,7 @@ INCLUDE "stage.rl"
 	}
 
 
-	parse_block(p: Parser&, out: BlockStatement &) BOOL
+	parse_block(p: Parser&, out: ast::[Config]BlockStatement &) BOOL
 	{
 		IF(!p.consume(:braceOpen))
 			= FALSE;
@@ -99,16 +99,16 @@ INCLUDE "stage.rl"
 	}
 
 
-	parse_if(p: Parser &, out: IfStatement &) BOOL
+	parse_if(p: Parser &, out: ast::[Config]IfStatement &) BOOL
 	{
 		IF(!p.consume(:if))
 			= FALSE;
 
 		t: Trace(&p, "if statement");
-		out.Label.parse(p);
+		out.Label := control_label::parse(p);
 		p.expect(:parentheseOpen);
 
-		val: VarOrExp;
+		val: ast::[Config]VarOrExpr - std::Dyn;
 		val.parse(p);
 
 		IF(p.consume(:semicolon))
@@ -134,7 +134,7 @@ INCLUDE "stage.rl"
 	}
 
 
-	parse_variable(p: Parser &, out: VariableStatement &) BOOL
+	parse_variable(p: Parser &, out: ast::[Config]VariableStatement &) BOOL
 	{
 		out.Static := p.consume(:static);
 		IF(parser::variable::parse_local(p, TRUE, out.Variable))
@@ -144,7 +144,7 @@ INCLUDE "stage.rl"
 		= FALSE;
 	}
 
-	parse_expression(p: Parser &, out: ExpressionStatement &) BOOL
+	parse_expression(p: Parser &, out: ast::[Config]ExpressionStatement &) BOOL
 	{
 		IF(!(out.Expression := parser::expression::parse(p)))
 			= FALSE;
@@ -152,7 +152,7 @@ INCLUDE "stage.rl"
 		= TRUE;
 	}
 
-	parse_return(p: Parser &, out: ReturnStatement &) BOOL
+	parse_return(p: Parser &, out: ast::[Config]ReturnStatement &) BOOL
 	{
 		IF(!p.consume(:return))
 			= FALSE;
@@ -163,7 +163,7 @@ INCLUDE "stage.rl"
 		= TRUE;
 	}
 
-	parse_try(p: Parser &, out: TryStatement &) BOOL
+	parse_try(p: Parser &, out: ast::[Config]TryStatement &) BOOL
 	{
 		IF(!p.consume(:try))
 			= FALSE;
@@ -171,7 +171,7 @@ INCLUDE "stage.rl"
 		IF(!(out.Body := statement::parse_body(p)))
 			p.fail("expected statement");
 
-		FOR(catch: CatchStatement; detail::parse_catch(p);)
+		FOR(catch: ast::[Config]CatchStatement; detail::parse_catch(p);)
 			out.Catches += &&catch;
 
 		IF(p.consume(:finally))
@@ -184,7 +184,7 @@ INCLUDE "stage.rl"
 	}
 
 
-	::detail parse_catch(p: Parser &, out: CatchStatement &) BOOL
+	::detail parse_catch(p: Parser &, out: ast::[Config]CatchStatement &) BOOL
 	{
 		IF(!p.consume(:catch))
 			RETURN FALSE;
@@ -206,14 +206,14 @@ INCLUDE "stage.rl"
 		}
 		p.expect(:parentheseClose);
 
-		IF(!(Body := :gc(Statement::parse_body(p))))
+		IF(!(Body := :gc(ast::[Config]Statement::parse_body(p))))
 			p.fail("expected statement");
 
 		RETURN TRUE;
 	}
 
 
-	parse_throw(p: Parser &, out: ThrowStatement &) BOOL
+	parse_throw(p: Parser &, out: ast::[Config]ThrowStatement &) BOOL
 	{
 		IF(!p.consume(:throw))
 			= FALSE;
@@ -234,7 +234,7 @@ INCLUDE "stage.rl"
 	}
 
 
-	parse_loop(p: Parser &, out: LoopStatement &) BOOL
+	parse_loop(p: Parser &, out: ast::[Config]LoopStatement &) BOOL
 	{
 		IF(!p.match(:do)
 		&& !p.match(:for)
@@ -254,7 +254,7 @@ INCLUDE "stage.rl"
 		= TRUE;
 	}
 
-	::loop parse_loop_head(p: Parser &, out: LoopStatement &) VOID
+	::loop parse_loop_head(p: Parser &, out: ast::[Config]LoopStatement &) VOID
 	{
 		out.IsPostCondition := FALSE;
 		IF(!parse_do_head(p, out)
@@ -263,7 +263,7 @@ INCLUDE "stage.rl"
 			p.fail("expected loop head");
 	}
 
-	::loop parse_do_head(p: Parser &, out: LoopStatement &) BOOL
+	::loop parse_do_head(p: Parser &, out: ast::[Config]LoopStatement &) BOOL
 	{
 		IF(!p.consume(:do))
 			= FALSE;
@@ -316,7 +316,8 @@ INCLUDE "stage.rl"
 
 		IF(!out.IsPostCondition)
 		{
-			v: VarOrExp;
+			IF(variable::help::is_named_variable_start(p))
+			v: ast::[Config]VarOrExpr - std::Dyn;
 			v.parse(p);
 			IF(p.consume(:semicolon))
 			{
@@ -335,23 +336,23 @@ INCLUDE "stage.rl"
 		= TRUE;
 	}
 
-	::loop parse_initial(p: Parser &, out: LoopStatement &) VOID
+	::loop parse_initial(p: Parser &, out: ast::[Config]LoopStatement &) VOID
 	{
 		detail::var_or_exp::parse_opt(p, out.Initial);
 	}
 
-	::loop parse_condition(p: Parser &, out: LoopStatement &) VOID
+	::loop parse_condition(p: Parser &, out: ast::[Config]LoopStatement &) VOID
 	{
 		detail::var_or_exp::parse(p, out.Condition);
 	}
 
-	::detail::var_or_exp parse(p: Parser &, out: LoopStatement &) VOID
+	::detail::var_or_exp parse(p: Parser &, out: ast::[Config]LoopStatement &) VOID
 	{
 		IF(!parse_opt(p, out))
 			p.fail("expected variable or expression");
 	}
 
-	::detail::var_or_exp parse_opt(p: Parser &, out: LoopStatement &) BOOL
+	::detail::var_or_exp parse_opt(p: Parser &, out: ast::[Config]LoopStatement &) BOOL
 	{
 		v: LocalVariable;
 		IF(v.parse_var_decl(p))
@@ -362,7 +363,7 @@ INCLUDE "stage.rl"
 		= V;
 	}
 
-	parse_switch(p: Parser &, out: SwitchStatement) BOOL
+	parse_switch(p: Parser &, out: ast::[Config]SwitchStatement &) BOOL
 	{
 		IF(!p.consume(:switch))
 			= FALSE;
@@ -370,7 +371,7 @@ INCLUDE "stage.rl"
 		parse_label(p, out.Label);
 		p.expect(:parentheseOpen);
 
-		val: VarOrExp;
+		val: ast::[Config]VarOrExpr - std::Dyn;
 		var_or_exp::parse(p, val);
 
 		IF(p.consume(:semicolon))
@@ -383,7 +384,7 @@ INCLUDE "stage.rl"
 		p.expect(:parentheseClose);
 		p.expect(:braceOpen);
 
-		DO(case: CaseStatement)
+		DO(case: ast::[Config]CaseStatement)
 		{
 			IF(!switch::parse_case(p, case))
 				p.fail("expected case");
@@ -412,7 +413,7 @@ INCLUDE "stage.rl"
 		= TRUE;
 	}
 
-	parse_type_switch(p: Parser &, out: TypeSwitchStatement &) BOOL
+	parse_type_switch(p: Parser &, out: ast::[Config]TypeSwitchStatement &) BOOL
 	{
 		IF(!p.match_ahead(:switch) || !p.consume(:type))
 			= FALSE;
@@ -423,7 +424,7 @@ INCLUDE "stage.rl"
 		parse_label(p, out.Label);
 		p.expect(:parentheseOpen);
 
-		val: VarOrExp;
+		val: ast::[Config]VarOrExpr - std::Dyn;
 		var_or_exp::parse(p, val);
 
 		IF(p.consume(:semicolon))
@@ -436,7 +437,7 @@ INCLUDE "stage.rl"
 		p.expect(:parentheseClose);
 		p.expect(:braceOpen);
 
-		DO(case: TypeCaseStatement)
+		DO(case: ast::[Config]TypeCaseStatement)
 		{
 			IF(!type_switch::parse_case(p, case))
 				p.fail("expected case");
@@ -447,7 +448,7 @@ INCLUDE "stage.rl"
 		= TRUE;
 	}
 
-	::type_switch parse_case(p: Parser &, out: TypeCaseStatement &) BOOL
+	::type_switch parse_case(p: Parser &, out: ast::[Config]TypeCaseStatement &) BOOL
 	{
 		IF(!p.consume(:default))
 		{
@@ -460,13 +461,13 @@ INCLUDE "stage.rl"
 		}
 		p.expect(:colon);
 
-		Body := :gc(Statement::parse_body(p));
+		Body := :gc(ast::[Config]Statement::parse_body(p));
 
 		= TRUE;
 	}
 
 
-	parse_break(p: Parser &, out: BreakStatement &) BOOL
+	parse_break(p: Parser &, out: ast::[Config]BreakStatement &) BOOL
 	{
 		IF(!p.consume(:break))
 			= FALSE;
@@ -477,7 +478,7 @@ INCLUDE "stage.rl"
 		= TRUE;
 	}
 
-	parse_continue(p: Parser &, out: ContinueStatement &) BOOL
+	parse_continue(p: Parser &, out: ast::[Config]ContinueStatement &) BOOL
 	{
 		IF(!p.consume(:continue))
 			= FALSE;

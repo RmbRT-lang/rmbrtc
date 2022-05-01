@@ -28,15 +28,14 @@ An anonymous function object that models a callable function.
 	Default: [Stage]Functoid-std::Shared;
 
 	ENUM SpecialVariant {
-		null,
-		noinit
+		null
 	}
 
 	SpecialVariants: std::[SpecialVariant; [Stage]Functoid-std::Shared]NatMap;
 	(// The function's variant implementations. /)
 	Variants: std::[Stage-Name; [Stage]Functoid-std::Shared]NatMap;
 
-	PRIVATE FINAL merge_impl(rhs: [Stage]MergeableScopeItem #&) VOID
+	PRIVATE FINAL merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID
 	{
 		from: ?& := <<[Stage]Function &>>(rhs);
 		IF(from.Default)
