@@ -7,50 +7,17 @@ INCLUDE "../src/file.rl"
 INCLUDE 'std/memory'
 INCLUDE 'std/vector'
 
-::rlc::parser Rawtype VIRTUAL -> ScopeItem
+::rlc::ast [Stage:TYPE] Rawtype VIRTUAL -> [Stage]ScopeItem, CodeObject
 {
-	Size: Expression-std::Dyn;
-	Members: Member - std::DynVec;
-	Name: src::String;
-
-	# FINAL name() src::String #& := Name;
-	# FINAL overloadable() BOOL := FALSE;
-
-	parse(p: Parser &) BOOL
-	{
-		IF(!p.consume(:parentheseOpen))
-			RETURN FALSE;
-
-		t: Trace(&p, "rawtype");
-
-		IF(!(Size := :gc(Expression::parse(p))))
-			p.fail("expected expression");
-
-		p.expect(:parentheseClose);
-
-		p.expect(:identifier, &Name);
-
-		IF(p.consume(:semicolon))
-			RETURN TRUE;
-
-		p.expect(:braceOpen);
-
-		visibility ::= Visibility::public;
-		WHILE(member ::= Member::parse(p, visibility))
-			Members += :gc(member);
-
-		p.expect(:braceClose);
-
-		RETURN TRUE;
-	}
+	Size: [Stage]Expression-std::Dyn;
+	Alignment: [Stage]Expression-std::Dyn;
+	Members: [Stage]Member - std::DynVec;
 }
 
-::rlc::parser GlobalRawtype -> Global, Rawtype
+::rlc::ast [Stage:TYPE] GlobalRawtype -> [Stage]Global, [Stage]Rawtype
 {
-	parse(p: Parser &) INLINE BOOL := Rawtype::parse(p);
 }
 
-::rlc::parser MemberRawtype -> Member, Rawtype
+::rlc::ast [Stage:TYPE] MemberRawtype -> [Stage]Member, [Stage]Rawtype
 {
-	parse(p: Parser &) INLINE BOOL := Rawtype::parse(p);
 }
