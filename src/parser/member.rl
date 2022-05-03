@@ -43,11 +43,15 @@ INCLUDE "templatedecl.rl"
 		|| parse_impl(p, ret, destructor::parse))
 		{
 			ret->Visibility := visibility;
-			<<ScopeItem \>>(ret)->Templates := &&templates;
+			IF(templates.exists())
+				IF(t ::= <<ast::[Config]Templateable *>>(ret))
+					t->Templates := &&templates;
+				ELSE
+					p.fail("preceding member must not have templates");
 			ret->Attribute := attr;
 		}
 
-		RETURN ret;
+		= &&ret;
 	}
 
 	parse_class_member(
@@ -73,17 +77,6 @@ INCLUDE "templatedecl.rl"
 		default_visibility: Visibility &
 	) ast::[Config]Member-std::Dyn
 		:= parse_generic(p, default_visibility, FALSE, FALSE);
-
-	parse_member_variable(p: Parser &, ret: ast::[Config]Member-std::Dyn &, static: BOOL) BOOL
-	{
-		v: MemberVariable-std::Dyn := :gc(std::[MemberVariable]new());
-		IF(v->parse(p, static))
-		{
-			ret := v.release();
-			RETURN TRUE;
-		}
-		RETURN FALSE;
-	}
 
 	[T:TYPE] parse_impl(
 		p: Parser &,
