@@ -9,6 +9,8 @@ INCLUDE 'std/memory'
 
 ::rlc::ast [Stage: TYPE] Constructor VIRTUAL -> [Stage]Member, CodeObject
 {
+	Initialisers VIRTUAL {}
+
 	BaseInit -> CodeObject
 	{
 		Base: Stage::Inheritance;
@@ -21,8 +23,18 @@ INCLUDE 'std/memory'
 		Arguments: [Stage]Expression - std::DynVec;
 	}
 
-	BaseInits: BaseInit - std::Vec;
-	MemberInits: MemberInit - std::Vec;
+	ExplicitInits -> Initialisers
+	{
+		BaseInits: BaseInit - std::Vec;
+		MemberInits: MemberInit - std::Vec;
+	}
+
+	CtorAlias -> Initialisers
+	{
+		Arguments: [Stage]Expression - std::DynVec;
+	}
+
+	Inits: Initialisers - std::Dyn;
 	Body: [Stage]BlockStatement - std::Dyn;
 	Inline: BOOL;
 }
@@ -36,7 +48,7 @@ INCLUDE 'std/memory'
 	Argument: [Stage]LocalVariable;
 
 	:named_arg{
-		name: Stage::Identifier
+		name: Stage::Name
 	}: Argument(0, name, std::heap::[[Stage]ThisType]new(:cref));
 	:unnamed_arg{}: Argument(:unnamed(0, std::heap::[[Stage]ThisType]new(:cref)));
 }
@@ -46,14 +58,14 @@ INCLUDE 'std/memory'
 	Argument: [Stage]LocalVariable;
 
 	:named_arg{
-		name: Stage::Identifier
+		name: Stage::Name
 	}: Argument(0, name, std::heap::[[Stage]ThisType]new(:tempRef));
 	:unnamed_arg{}: Argument(:unnamed(0, std::heap::[[Stage]ThisType]new(:tempRef)));
 }
 
 ::rlc::ast [Stage: TYPE] CustomConstructor -> [Stage]Constructor
 {
-	Name: [Stage]SymbolConstant - std::Dyn;
+	Name: [Stage]SymbolConstant - std::Opt;
 	Arguments: [Stage]LocalVariable - std::Vec;
 
 	# named() INLINE BOOL := Name!;

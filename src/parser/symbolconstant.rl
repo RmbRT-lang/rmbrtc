@@ -1,6 +1,8 @@
 INCLUDE 'std/range'
 
-::rlc::parser::symbol_constant parse(p: Parser &) ast::[Config]SymbolConstant - std::Opt
+::rlc::parser::symbol_constant parse(
+	p: Parser &
+) ast::[Config]SymbolConstant - std::Opt
 {
 	STATIC specials: {tok::Type, ast::[Config]SymbolConstant::Type}#[](
 		(:less, :less),
