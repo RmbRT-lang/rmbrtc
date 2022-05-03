@@ -2,13 +2,14 @@ INCLUDE "parser.rl"
 INCLUDE "stage.rl"
 INCLUDE "templatedecl.rl"
 INCLUDE "class.rl"
+INCLUDE "namespace.rl"
 
 ::rlc::parser::global
 {
 	parse(p: Parser &) ast::[Config]Global - std::Dyn
 	{
 		templates: TemplateDecl;
-		templates.parse(p);
+		parse_template_decl(p, templates);
 
 		ret: ast::[Config]Global - std::Dyn := NULL;
 		IF(parse_global_impl(p, ret, namespace::parse)
@@ -20,12 +21,12 @@ INCLUDE "class.rl"
 		|| parse_global_impl(p, ret, rawtype::parse)
 		|| parse_global_impl(p, ret, enum::parse)
 		|| parse_global_impl(p, ret, extern::parse)
-		|| (!templates.exists() && parse_global_impl(p, ret, test::parse)))
+		|| parse_global_impl(p, ret, test::parse))
 		{
-			IF(t ::= <<[Config]Templateable *>>(ret!))
+			IF(t ::= <<ast::[Config]Templateable *>>(ret!))
 				t->Templates := &&templates;
-			ELSE
-				ASSERT(!templates.exists());
+			ELSE IF(templates.exists())
+				p.fail("preceding item must not have templates");
 		}
 
 		RETURN ret;

@@ -1,33 +1,33 @@
+INCLUDE "../ast/namespace.rl"
+INCLUDE "parser.rl"
 
 
 ::rlc::parser::namespace parse(
 	p: Parser &,
-	out: ast::[Config]Namespace) BOOL
+	out: ast::[Config]Namespace &) BOOL
 {
 	IF(!p.consume(:doubleColon))
-		RETURN FALSE;
+		= FALSE;
 
 	t: Trace(&p, "namespace");
-	name: tok::Token;
-	p.expect(:identifier, &name);
-	Name := name.Content;
+	out.Name := p.expect(:identifier).Content;
 
 	IF(p.consume(:braceOpen))
 	{
-		WHILE(entry ::= Global::parse(p))
-			Entries += :gc(<<ScopeItem \>>(entry));
+		WHILE(entry ::= global::parse(p))
+			out.Entries += &&entry;
 
 		p.expect(:braceClose);
 
-		RETURN TRUE;
+		= TRUE;
 	}
 
-	IF(entry ::= Global::parse(p))
+	IF(entry ::= global::parse(p))
 	{
-		Entries += :gc(<<ScopeItem \>>(entry));
-		RETURN TRUE;
+		out.Entries += &&entry;
+		= TRUE;
 	}
 
 	p.fail("expected scope entry");
-	RETURN FALSE;
+	= FALSE;
 }
