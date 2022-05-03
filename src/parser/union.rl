@@ -1,24 +1,26 @@
 INCLUDE "stage.rl"
 INCLUDE "../ast/union.rl"
+INCLUDE "member.rl"
 
 ::rlc::parser::union
 {
 	parse(p: Parser &, out: ast::[Config]Union &) BOOL
 	{
 		IF(!p.consume(:union))
-			RETURN FALSE;
+			= FALSE;
 
-		p.expect(:identifier, &Name);
+		tok ::= p.expect(:identifier);
+		(out.Name, out.Position) := (tok.Content, tok.Position);
 
 		p.expect(:braceOpen);
 
 		visibility ::= Visibility::public;
-		WHILE(member ::= Member::parse(p, visibility))
-			Members += :gc(member);
+		WHILE(member ::= member::parse(p, visibility))
+			out.Members += :gc(member);
 
 		p.expect(:braceClose);
 
-		RETURN TRUE;
+		= TRUE;
 	}
 
 	parse_global(p: Parser &, out: ast::[Config]GlobalUnion &) INLINE BOOL

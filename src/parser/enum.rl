@@ -4,18 +4,20 @@ INCLUDE "../ast/enum.rl"
 
 ::rlc::parser::enum parse(p: Parser &, out: ast::[Config]Enum &) BOOL
 {
-	IF(!p.consume(:enum, &out.Position))
-		RETURN FALSE;
+	IF(tok ::= p.consume(:enum))
+		out.Position := tok->Position;
+	ELSE = FALSE;
 
 	t: Trace(&p, "enum");
 
-	p.expect(:identifier, &out.Name);
+	out.Name := p.expect(:identifier).Content;
 	p.expect(:braceOpen);
 
-	DO(c: Constant)
+	DO(c: ast::[Config]Enum::Constant)
 		DO()
 		{
-			p.expect(:identifier, &c.Name, &c.Position);
+			tok ::= p.expect(:identifier);
+			(c.Name, c.Position) := (tok.Content, tok.Position);
 			out.Constants += &&c;
 		} WHILE(p.consume(:colonEqual))
 	FOR(p.consume(:comma); c.Value++)
