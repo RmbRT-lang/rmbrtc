@@ -17,21 +17,22 @@ INCLUDE "../ast/class.rl"
 
 		t: Trace(&p, "class");
 
-		p.expect(:identifier, &Name);
+		tok ::= p.expect(:identifier);
+		(out.Name, out.Position) := (tok.Content, tok.Position);
 
 		out.Virtual := p.consume(:virtual);
 
 		IF(p.consume(:minusGreater))
 			DO(i: ast::class::[Config]Inheritance)
 			{
-				i.parse(p);
+				parse_inheritance(p, i);
 				out.Inheritances += &&i;
 			} WHILE(p.consume(:comma))
 
 		p.expect(:braceOpen);
 
 		default ::= Visibility::public;
-		WHILE(member ::= parse_member(p, default))
+		WHILE(member ::= member::parse_class_member(p, default))
 			out.Members += :gc(member);
 
 		p.expect(:braceClose);
@@ -58,7 +59,7 @@ INCLUDE "../ast/class.rl"
 
 		out.IsVirtual := p.consume(:virtual);
 
-		IF(!Type.parse(p))
+		IF(!symbol::parse(p, out.Type))
 			p.fail("expected type");
 	}
 
