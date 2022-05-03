@@ -75,7 +75,7 @@ INCLUDE 'std/memory'
 		}
 
 		ExceptionType: Type;
-		Exception: [Stage]LocalVariable;
+		Exception: [Stage]TypeOrCatchVariable - std::Dyn;
 		Body: [Stage]Statement - std::Dyn;
 	}
 

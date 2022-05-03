@@ -58,6 +58,14 @@ An anonymous function object that models a callable function.
 /// Global function.
 ::rlc::ast [Stage:TYPE] GlobalFunction -> [Stage]Global, [Stage]Function { }
 
+::rlc::ast [Stage:TYPE] DefaultVariant -> [Stage]Functoid { }
+::rlc::ast [Stage:TYPE] SpecialVariant -> [Stage]Functoid {
+	Variant: [Stage]Function::SpecialVariant;
+}
+::rlc::ast [Stage:TYPE] Variant -> [Stage]Functoid {
+	Name: ast::[Stage]Name;
+}
+
 ::rlc ENUM Abstractness
 {
 	none,

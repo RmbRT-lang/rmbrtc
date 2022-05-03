@@ -59,6 +59,8 @@ Can be called multiple times to append new arguments.
 	allow_body: BOOL,
 	out: ast::[Config]Functoid &) VOID
 {
+	locals: ast::LocalPosition;
+
 	IF(!allow_body)
 	{
 		IF(!out.Return)
@@ -77,7 +79,7 @@ Can be called multiple times to append new arguments.
 
 		IF(expectBody)
 		{
-			IF(!statement::parse_block(p, &body))
+			IF(!statement::parse_block(p, locals, body))
 				p.fail("expected block statement");
 			out.Body := :dup(&&body);
 		} ELSE
@@ -89,7 +91,7 @@ Can be called multiple times to append new arguments.
 		}
 	} ELSE IF(!p.consume(:semicolon))
 	{
-		IF(body.parse(p))
+		IF(statement::parse_block(p, locals, body))
 			out.Body := :dup(&&body);
 		ELSE
 		{
@@ -111,20 +113,26 @@ Can be called multiple times to append new arguments.
 {
 	parOpen: tok::Type := :parentheseOpen;
 	parClose: tok::Type := :parentheseClose;
+	nameTok: tok::Token-std::Opt;
 	IF(!p.match_ahead(:parentheseOpen)
-	|| !p.consume(:identifier, &out.Name))
+	|| !(nameTok := p.consume(:identifier)))
 	{
 		RETURN FALSE;
 	}
+	out.Name := nameTok!.Content;
+
+	default: ast::[Config]DefaultVariant;
 
 	t: Trace(&p, "function");
 
 	p.expect(parOpen);
-	Functoid::parse_args(p, TRUE, TRUE, out);
+	parse_args(p, default, TRUE, TRUE);
 	p.expect(parClose);
 
-	Functoid::parse_rest_of_head(p, TRUE, out);
-	Functoid::parse_body(p, allow_body, out);
+	parse_rest_of_head(p, default, TRUE);
+	parse_body(p, allow_body, default);
+
+	out.Default := :dup(&&default);
 
 	RETURN TRUE;
 }
@@ -135,8 +143,8 @@ Can be called multiple times to append new arguments.
 
 	abs ::= parse_abstractness(p);
 
-	IF([Operator]parse_impl(p, abs, ret)
-	|| [MemberFunction]parse_impl(p, abs, ret))
+	IF(detail::[ast::[Config]Operator]parse_impl(p, abs, ret)
+	|| detail::[ast::[Config]MemberFunction]parse_impl(p, abs, ret))
 	{
 		RETURN ret;
 	}
@@ -156,7 +164,7 @@ Can be called multiple times to append new arguments.
 	v.Abstractness := abs;
 	IF(v.parse(p))
 	{
-		out := std::dup(&&v);
+		out := :dup(&&v);
 		RETURN TRUE;
 	}
 	RETURN FALSE;
@@ -178,17 +186,19 @@ Can be called multiple times to append new arguments.
 
 ::rlc::parser::abstractable parse_converter(p: Parser &, out: ast::[Config]Converter &) BOOL
 {
-	IF(!p.consume(:less, &out.Position))
-		RETURN FALSE;
+	IF(tok ::= p.consume(:less))
+		out.Position := tok->Position;
+	ELSE = FALSE;
 
 	t: Trace(&p, "type converter");
 
-	IF(!(out.Return := :gc(Type::parse(p))))
-		p.fail("expected type name");		
+	IF(!(out.Return := type::parse(p)))
+		p.fail("expected type name");
 
 	p.expect(:greater);
 
-	function::parse_rest_of_head(p, FALSE, out);
+	function::parse_rest_of_head(p, out, FALSE);
+	function::parse_body(p, out.Abstractness != :abstract, out);
 
 	RETURN TRUE;
 }
@@ -196,9 +206,9 @@ Can be called multiple times to append new arguments.
 ::rlc::parser::abstractable parse_member_function(
 	p: Parser&,
 	out: ast::[Config]MemberFunction &
-) INLINE BOOL := function::parse(p, Abstractness != :abstract, TRUE, out);
+) INLINE BOOL := function::parse(p, out.Abstractness != :abstract, TRUE, out);
 
-::rlc::parser::abstractable parse_operator(p: Parser &, out: Operator &) BOOL
+::rlc::parser::abstractable parse_operator(p: Parser &, out: ast::[Config]Operator &) BOOL
 {
 	postFix ::= p.consume(:this);
 	IF(!postFix && !p.match_ahead(:this))
@@ -215,23 +225,23 @@ Can be called multiple times to append new arguments.
 
 	IF(postFix)
 	{
-		IF(detail::consume_overloadable_binary_operator(p, Op))
+		IF(expression::consume_overloadable_binary_operator(p, out.Op))
 		{
 			singleArg := TRUE;
-		} ELSE IF(detail::consume_overloadable_postfix_operator(p, Op))
+		} ELSE IF(expression::consume_overloadable_postfix_operator(p, out.Op))
 		{
 			allowArgs := FALSE;
 		} ELSE IF(p.match(:parentheseOpen))
 		{
-			Op := :call;
+			out.Op := :call;
 		} ELSE IF(p.match(:bracketOpen))
 		{
-			Op := :subscript;
+			out.Op := :subscript;
 			(parOpen, parClose) := (:bracketOpen, :bracketClose);
 		} ELSE IF(p.match(:questionMark))
 		{
 			p.expect(:parentheseOpen);
-			Functoid::parse_args(p, FALSE, FALSE);
+			function::parse_args(p, out, FALSE, FALSE);
 			p.expect(:parentheseClose);
 			p.expect(:colon);
 			singleArg := TRUE;
@@ -239,7 +249,7 @@ Can be called multiple times to append new arguments.
 			p.fail("expected operator");
 	} ELSE
 	{
-		IF(!detail::consume_overloadable_prefix_operator(p, Op))
+		IF(!expression::consume_overloadable_prefix_operator(p, out.Op))
 			p.fail("expected overloadable prefix operator");
 		p.expect(:this);
 		allowArgs := FALSE;
@@ -248,25 +258,26 @@ Can be called multiple times to append new arguments.
 	IF(allowArgs)
 	{
 		p.expect(parOpen);
-		Functoid::parse_args(p, !singleArg, !singleArg);
+		function::parse_args(p, out, !singleArg, !singleArg);
 		p.expect(parClose);
 	}
 
-	Functoid::parse_rest_of_head(p, TRUE);
-	Functoid::parse_body(p, Abstractness != :abstract);
+	function::parse_rest_of_head(p, out, TRUE);
+	function::parse_body(p, out.Abstractness != :abstract, out);
 }
 
 ::rlc::parser::function parse_factory(p: Parser &, out: ast::[Config]Factory &) BOOL
 {
-	IF(!p.consume(:tripleLess, &out.Position))
-		RETURN FALSE;
+	IF(tok ::= p.consume(:tripleLess))
+		out.Position := tok->Position;
+	ELSE = FALSE;
 
 	t: Trace(&p, "factory");
 
-	function::parse_args(p, TRUE, FALSE);
+	function::parse_args(p, out, TRUE, FALSE);
 	p.expect(:tripleGreater);
-	function::parse_rest_of_head(p, TRUE);
-	function::parse_body(p, TRUE);
+	function::parse_rest_of_head(p, out, TRUE);
+	function::parse_body(p, TRUE, out);
 
 	RETURN TRUE;
 }
