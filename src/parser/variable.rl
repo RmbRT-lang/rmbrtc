@@ -37,7 +37,6 @@ INCLUDE "stage.rl"
 
 	parse_member(
 		p: Parser&,
-		out: ast::[Config]MemberVariable &,
 		static: BOOL
 	) ast::[Config]MaybeAnonMemberVar - std::Dyn
 	{

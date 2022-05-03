@@ -15,7 +15,7 @@ INCLUDE "member.rl"
 		p.expect(:braceOpen);
 
 		visibility ::= Visibility::public;
-		WHILE(member ::= member::parse(p, visibility))
+		WHILE(member ::= member::parse_union_member(p, visibility))
 			out.Members += :gc(member);
 
 		p.expect(:braceClose);

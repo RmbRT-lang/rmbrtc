@@ -6,22 +6,11 @@ INCLUDE "class.rl"
 INCLUDE "union.rl"
 INCLUDE "enum.rl"
 INCLUDE "destructor.rl"
+INCLUDE "templatedecl.rl"
 
 
 ::rlc::parser::member
 {
-	parse(
-		p: Parser&,
-		default_visibility: rlc::Visibility &
-	) ast::[Config]Member-std::Dyn
-		:= parse_opt_var(p, default_visibility, TRUE);
-
-	parse_no_vars(
-		p: Parser&,
-		default_visibility: rlc::Visibility &
-	) ast::[Config]Member-std::Dyn
-		:= parse_opt_var(p, default_visibility, FALSE);
-
 	parse_generic(
 		p: Parser&,
 		default_visibility: Visibility &,
@@ -29,19 +18,23 @@ INCLUDE "destructor.rl"
 		allow_abstract_fn: BOOL
 	) ast::[Config]Member-std::Dyn
 	{
+		parse_visibility(p, default_visibility, TRUE);
+
 		templates: TemplateDecl;
-		visibility: Visibility;
-		attr: MemberAttribute;
-		parse_member_intro(p, default_visibility, visibility, templates, attr);
+		parse_template_decl(p, templates);
+
+		visibility ::= parse_visibility(p, default_visibility, FALSE);
+		attr ::= parse_attribute(p);
+
 		ret: ast::[Config]Member-std::Dyn := NULL;
 
 		IF(parse_impl(p, ret, typedef::parse_member)
-		|| ((allow_abstract_fn || p.match(:abstract))
+		|| ((allow_abstract_fn && p.match(:abstract))
 			&& parse_impl(p, ret, abstractable::parse_member_function))
-		|| parse_impl(p, ret, constructor::parse)
+		|| (ret := parse_constructor(p))
 		|| (attr == :static
-			? parse_impl(p, ret, variable::parse_static_member)
-			: allow_variable && parse_impl(p, ret, variable::parse_member))
+			? (ret := variable::parse_member(p, TRUE))
+			: allow_variable && (ret := variable::parse_member(p, FALSE)))
 		|| parse_impl(p, ret, class::parse_member)
 		|| parse_impl(p, ret, rawtype::parse_member)
 		|| parse_impl(p, ret, union::parse_member)
@@ -56,47 +49,29 @@ INCLUDE "destructor.rl"
 		RETURN ret;
 	}
 
-	parse_member_intro(
+	parse_class_member(
 		p: Parser &,
-		default_visibility: Visibility &,
-		visibility: Visibility &,
-		templates: TemplateDecl &,
-		attribute: MemberAttribute &) VOID
-	{
-		parse_visibility(p, default_visibility, TRUE);
-		templates.parse(p);
-		visibility := parse_visibility(p, default_visibility, FALSE);
+		default_visibility: Visibility &
+	) ast::[Config]Member-std::Dyn
+		:= parse_generic(p, default_visibility, TRUE, TRUE);
 
-		attribute := parse_attribute(p);
-	}
+	parse_union_member(
+		p: Parser &,
+		default_visibility: Visibility &
+	) ast::[Config]Member - std::Dyn
+		:= parse_generic(p, default_visibility, TRUE, FALSE);
+
+	parse_rawtype_member(
+		p: Parser &,
+		default_visibility: Visibility &
+	) ast::[Config]Member - std::Dyn
+		:= parse_generic(p, default_visibility, FALSE, FALSE);
 
 	parse_mask_member(
 		p: Parser &,
-		default_visibility: Visibility &) ast::[Config]Member-std::Dyn
-	{
-		templates: TemplateDecl;
-		visibility: Visibility;
-		attr: MemberAttribute;
-		parse_member_intro(p, default_visibility, visibility, templates, attr);
-		ret: ast::[Config]Member-std::Dyn := NULL;
-
-		IF([MemberTypedef]parse_impl(p, ret)
-		|| (p.match(:identifier) // Ignore abstract functions.
-			&& [MemberFunction]parse_impl(p, ret))
-		|| (attr == :static && parse_member_variable(p, ret, TRUE))
-		|| [MemberClass]parse_impl(p, ret)
-		|| [MemberRawtype]parse_impl(p, ret)
-		|| [MemberUnion]parse_impl(p, ret)
-		|| [MemberEnum]parse_impl(p, ret)
-		|| [Constructor]parse_impl(p, ret))
-		{
-			ret->Visibility := visibility;
-			<<ScopeItem \>>(ret)->Templates := &&templates;
-			ret->Attribute := attr;
-		}
-
-		RETURN ret;
-	}
+		default_visibility: Visibility &
+	) ast::[Config]Member-std::Dyn
+		:= parse_generic(p, default_visibility, FALSE, FALSE);
 
 	parse_member_variable(p: Parser &, ret: ast::[Config]Member-std::Dyn &, static: BOOL) BOOL
 	{

@@ -13,7 +13,7 @@ INCLUDE "../ast/class.rl"
 		|| (!p.match_ahead(:braceOpen)
 			&& !p.match_ahead(:minusGreater)
 			&& !p.match_ahead(:virtual)))
-			RETURN FALSE;
+			= FALSE;
 
 		t: Trace(&p, "class");
 
@@ -36,7 +36,7 @@ INCLUDE "../ast/class.rl"
 
 		p.expect(:braceClose);
 
-		RETURN TRUE;
+		= TRUE;
 	}
 
 	parse_inheritance(p: Parser &, out: ast::class::[Config]Inheritance &) VOID
@@ -61,4 +61,9 @@ INCLUDE "../ast/class.rl"
 		IF(!Type.parse(p))
 			p.fail("expected type");
 	}
+
+	parse_member(p: Parser &, out: ast::[Config]MemberClass &) BOOL
+		:= parse(p, out);
+	parse_global(p: Parser &, out: ast::[Config]GlobalClass &) BOOL
+		:= parse(p, out);
 }
