@@ -21,7 +21,7 @@ INCLUDE "templatedecl.rl"
 	/// Include definitions from another file.
 	include(
 		rhs: [Stage]MergeableScopeItem# \,
-		public: BOOL) INLINE VOID
+		public: BOOL) VOID INLINE
 	{
 		(public ? PublicIncluded : PrivateIncluded) += rhs;
 	}

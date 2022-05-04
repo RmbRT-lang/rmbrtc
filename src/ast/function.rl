@@ -5,16 +5,29 @@ INCLUDE "name.rl"
 INCLUDE "templatedecl.rl"
 INCLUDE "statement.rl"
 
-(//
-An anonymous function object that models a callable function.
-/)
-::rlc::ast [Stage:TYPE] Functoid VIRTUAL -> CodeObject
+
+::rlc::ast [Stage:TYPE] FnSignature VIRTUAL
 {
 	Arguments: [Stage]TypeOrArgument-std::DynVec;
-	Return: [Stage]MaybeAutoType-std::Dyn;
+	IsCoroutine: BOOL;
+}
+
+::rlc::ast [Stage:TYPE] UnresolvedSig -> FnSignature
+{
+	Return: [Stage]Auto;
+}
+
+::rlc::ast [Stage:TYPE] ResolvedSig -> FnSignature
+{
+	Return: [Stage]Type-std::Dyn;
+}
+
+/// An anonymous function object.
+::rlc::ast [Stage:TYPE] Functoid VIRTUAL -> [Stage]Callable, CodeObject
+{
+	Signature: FnSignature - std::Dyn;
 	Body: [Stage]Statement - std::Dyn;
 	IsInline: BOOL;
-	IsCoroutine: BOOL;
 
 	STATIC short_hand_body(e: [Stage]Expression-std::Dyn) [Stage]Statement-std::Dyn
 	{
@@ -22,7 +35,7 @@ An anonymous function object that models a callable function.
 	}
 }
 
-(// A named functoid referrable to by name. /)
+(// A named function with potential callable variants. /)
 ::rlc::ast [Stage:TYPE] Function VIRTUAL -> [Stage]MergeableScopeItem
 {
 	Default: [Stage]Functoid-std::Shared;
@@ -58,6 +71,15 @@ An anonymous function object that models a callable function.
 /// Global function.
 ::rlc::ast [Stage:TYPE] GlobalFunction -> [Stage]Global, [Stage]Function { }
 
+/// A reference to an external function. Cannot have variants.
+::rlc::ast [Stage:TYPE] ExternFunction ->
+	[Stage]Global,
+	[Stage]ScopeItem,
+	[Stage]ExternSymbol
+{
+	Signature: ResolvedSig;
+}
+
 ::rlc::ast [Stage:TYPE] DefaultVariant -> [Stage]Functoid { }
 ::rlc::ast [Stage:TYPE] SpecialVariant -> [Stage]Functoid {
 	Variant: [Stage]Function::SpecialVariant;
@@ -86,7 +108,7 @@ An anonymous function object that models a callable function.
 (// Type conversion operator. /)
 ::rlc::ast [Stage:TYPE] Converter -> [Stage]Abstractable, [Stage]Functoid
 {
-	# type() INLINE [Stage]Type #\ := <<[Stage]Type #\>>([Stage]Functoid::Return!);
+	# type() [Stage]Type #\ INLINE := <<[Stage]Type #\>>([Stage]Functoid::Return!);
 }
 
 ::rlc::ast [Stage:TYPE] MemberFunction -> [Stage]Abstractable, [Stage]Function

@@ -1,24 +1,26 @@
-::rlc::parser::extern parse(p: Parser &, out: ExternSymbol &) BOOL
+INCLUDE "../ast/extern.rl"
+INCLUDE "parser.rl"
+INCLUDE "variable.rl"
+INCLUDE "function.rl"
+INCLUDE "stage.rl"
+
+::rlc::parser::extern parse(p: Parser &) ast::[Config]Global - std::Dyn
 {
 	IF(!p.consume(:extern))
-		RETURN FALSE;
+		= NULL;
 
 	t: Trace(&p, "external symbol");
 	IF(p.match_ahead(:colon))
 	{
-		var: GlobalVariable;
-		IF(!variable::parse_extern(p, var))
+		var ::= variable::parse_extern(p);
+		IF(!var)
 			p.fail("expected variable");
-		out.Name := var.Name;
-		out.Symbol := :gc(std::dup(&&var));
+		= &&var;
 	} ELSE
 	{
-		f: GlobalFunction;
-		IF(!function::parse_extern(p, f))
+		f ::= function::parse_extern(p);
+		IF(!f)
 			p.fail("expected function");
-		out.Name := f.Name;
-		out.Symbol := :gc(std::dup(&&f));
+		= &&f;
 	}
-
-	RETURN TRUE;
 }

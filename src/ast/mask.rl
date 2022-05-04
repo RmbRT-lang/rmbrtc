@@ -9,11 +9,11 @@ INCLUDE "member.rl"
 INCLUDE 'std/vector'
 INCLUDE 'std/memory'
 
-::rlc::ast [Stage:TYPE] Mask VIRTUAL -> [Stage]ScopeItem
+::rlc::ast [Stage:TYPE] Mask VIRTUAL -> [Stage]ScopeItem, CodeObject
 {
-	Members: Member - std::DynVec;
+	Members: [Stage]Member - std::DynVec;
 }
 
-::rlc::parser GlobalMask -> Global, Mask
+::rlc::ast [Stage:TYPE] GlobalMask -> [Stage]Global, [Stage]Mask
 {
 }

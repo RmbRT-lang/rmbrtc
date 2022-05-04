@@ -65,12 +65,22 @@ INCLUDE 'std/vector'
 		} -> (), (&&name, &&type, &&initValues);
 	}
 
-	[Stage: TYPE] ExternVariable -> [Stage]Global, [Stage]UninitialisedVariable
+	[Stage: TYPE] ExternVariable ->
+		[Stage]Global,
+		[Stage]UninitialisedVariable,
+		[Stage]ExternSymbol
 	{
 		{
 			name: Stage::Name,
+			linkName: Stage::Name,
 			type: [Stage]Type - std::Dyn
-		} -> (), (&&name, &&type);
+		} -> (), (&&linkName), (&&name, &&type);
+
+		:auto_named
+		{
+			name: Stage::Name#&,
+			type: [Stage]Type - std::Dyn
+		} -> (), (name), (name, &&type);
 	}
 
 	[Stage: TYPE] MaybeAnonMemberVar VIRTUAL -> [Stage]Member {}

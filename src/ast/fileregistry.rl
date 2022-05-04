@@ -13,7 +13,7 @@ PRIVATE:
 		STATIC cmp(
 			a: std::Str #&,
 			b: Stage-File # \
-		) INLINE INT
+		) INT INLINE
 			:= a!.cmp(b->name());
 	}
 

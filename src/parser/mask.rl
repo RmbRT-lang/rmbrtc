@@ -4,26 +4,27 @@ INCLUDE "stage.rl"
 
 ::rlc::parser::mask
 {
-	parse(p: Parser&, out: Config-ast::Mask &) BOOL
+	parse(p: Parser&, out: ast::[Config]Mask &) BOOL
 	{
-		IF(!p.consume(:mask))
-			RETURN FALSE;
+		IF(tok ::= p.consume(:mask))
+			out.Position := tok->Position;
+		ELSE = FALSE;
 
 		t: Trace(&p, "mask");
 
-		p.expect(:identifier, &out.Name);
+		out.Name := p.expect(:identifier).Content;
 		p.expect(:braceOpen);
 
 		DO(default_visibility: Visibility := Visibility::public)
 			IF(member ::= parser::member::parse_mask_member(p, default_visibility))
-				Members += &&member;
+				out.Members += &&member;
 			ELSE
 				p.fail("expected member");
 			WHILE(!p.consume(:braceClose))
 
-		RETURN TRUE;
+		= TRUE;
 	}
 
-	parse_global(p: Parser&, out: Config-ast::GlboalMask &) INLINE BOOL
+	parse_global(p: Parser&, out: ast::[Config]GlobalMask &) BOOL INLINE
 		:= mask::parse(p, out);
 }

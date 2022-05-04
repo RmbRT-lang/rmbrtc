@@ -109,13 +109,13 @@ INCLUDE 'std/err/unimplemented'
 			= THIS;
 		}
 
-		[Msg...: TYPE] THIS(msg: Msg!&&...) INLINE &
+		[Msg...: TYPE] THIS(msg: Msg!&&...) & INLINE
 			::= as(:normal, <Msg!&&>(msg)...);
-		[Msg...: TYPE] error(msg: Msg!&&...) INLINE &
+		[Msg...: TYPE] error(msg: Msg!&&...) & INLINE
 			::= as(:error, <Msg!&&>(msg)...);
-		[Msg...: TYPE] warn(msg: Msg!&&...) INLINE &
+		[Msg...: TYPE] warn(msg: Msg!&&...) & INLINE
 			::= as(:warn, <Msg!&&>(msg)...);
-		[Msg...: TYPE] info(msg: Msg!&&...) INLINE &
+		[Msg...: TYPE] info(msg: Msg!&&...) & INLINE
 			::= as(:info, <Msg!&&>(msg)...);
 	}
 

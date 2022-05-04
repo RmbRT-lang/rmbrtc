@@ -3,7 +3,7 @@ INCLUDE "../symbol.rl"
 
 ::rlc::parser::expression::op
 {
-	parse(p: Parser&) INLINE ast::[Config]Expression-std::Dyn
+	parse(p: Parser&) ast::[Config]Expression-std::Dyn INLINE
 		:= parse_binary(p, detail::precedenceGroups);
 
 	parse_binary_rhs(

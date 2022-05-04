@@ -6,7 +6,7 @@ INCLUDE "symbolconstant.rl"
 
 ::rlc::parser::expression
 {
-	parse(p: Parser &) INLINE ast::[Config]Expression-std::Dyn
+	parse(p: Parser &) ast::[Config]Expression-std::Dyn INLINE
 		:= op::parse(p);
 
 	/// Parses a non-operator expression.

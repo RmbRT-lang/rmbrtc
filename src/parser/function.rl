@@ -8,23 +8,21 @@ Can be called multiple times to append new arguments.
 /)
 ::rlc::parser::function parse_args(
 	p: Parser &,
-	out: ast::[Config]Functoid &,
 	allow_multiple: BOOL,
 	allow_empty: BOOL
-) VOID
+) [Config]TypeOrArgument-std::DynVec
 {
+	ret: [Config]TypeOrArgument-std::DynVec;
 	readAny ::= FALSE;
-	DO(arg: ast::[Config]LocalVariable-std::Dyn)
-	{
-		IF(!(arg := parse_arg(p)))
-		{
-			IF(!readAny && !allow_empty)
+	DO()
+		IF(arg ::= parse_arg(p))
+			ret += &&arg;
+		ELSE IF(!readAny && !allow_empty)
 				p.fail("expected argument");
-			ELSE
-				RETURN;
-		}
-		out.Arguments += &&arg;
-	} WHILE(allow_multiple && p.consume(:comma))
+		ELSE BREAK;
+		WHILE(allow_multiple && p.consume(:comma))
+
+	= &&ret;
 }
 
 ::rlc::parser::function parse_arg(
@@ -104,15 +102,11 @@ Can be called multiple times to append new arguments.
 	}
 }
 
-
 ::rlc::parser::function parse(
 	p: Parser &,
 	allow_body: BOOL,
-	allow_operators: BOOL,
 	out: ast::[Config]Function &) BOOL
 {
-	parOpen: tok::Type := :parentheseOpen;
-	parClose: tok::Type := :parentheseClose;
 	nameTok: tok::Token-std::Opt;
 	IF(!p.match_ahead(:parentheseOpen)
 	|| !(nameTok := p.consume(:identifier)))
@@ -125,9 +119,9 @@ Can be called multiple times to append new arguments.
 
 	t: Trace(&p, "function");
 
-	p.expect(parOpen);
-	parse_args(p, default, TRUE, TRUE);
-	p.expect(parClose);
+	p.expect(:parentheseOpen);
+	default.Arguments := parse_args(p, TRUE, TRUE);
+	p.expect(:parentheseClose);
 
 	parse_rest_of_head(p, default, TRUE);
 	parse_body(p, allow_body, default);
@@ -135,6 +129,44 @@ Can be called multiple times to append new arguments.
 	out.Default := :dup(&&default);
 
 	RETURN TRUE;
+}
+
+/// Parses an extern function (without the EXTERN keyword, use extern::parse()).
+::rlc::parser::function parse_extern(
+	p: Parser &,
+	linkName: tok::Token - std::Opt
+) ast::[Config]ExternFunction - std::Dyn
+{
+	nameTok: tok::Token-std::Opt;
+	IF(!p.match_ahead(:parentheseOpen)) = FALSE;
+	tok ::= p.consume(:identifier);
+	IF(!tok) = FALSE;
+	
+	name ::= tok->Content;
+
+	t: Trace(&p, "function");
+
+	ret: ast::[Config]ExternFunction;
+
+	p.expect(:parentheseOpen);
+	args ::= parse_args(p, default, TRUE, TRUE);
+	p.expect(:parentheseClose);
+
+	IsCoroutine ::= p.consume(:at);
+
+	IF(!returnType)
+		RETURN;
+
+	IF(out.Return := parser::type::parse(p))
+		RETURN;
+
+	expectBody ::= p.consume(:questionMark);
+	auto: ast::type::[Config]Auto;
+	type::parse_auto(p, auto);
+	out.Return := :dup(&&auto);
+	parse_body(p, allow_body, default);
+
+	out.Default := :dup(&&default);
 }
 
 ::rlc::parser::abstractable parse(p: Parser &) ast::[Config]Abstractable *
@@ -206,7 +238,7 @@ Can be called multiple times to append new arguments.
 ::rlc::parser::abstractable parse_member_function(
 	p: Parser&,
 	out: ast::[Config]MemberFunction &
-) INLINE BOOL := function::parse(p, out.Abstractness != :abstract, TRUE, out);
+) BOOL INLINE := function::parse(p, out.Abstractness != :abstract, out);
 
 ::rlc::parser::abstractable parse_operator(p: Parser &, out: ast::[Config]Operator &) BOOL
 {

@@ -21,8 +21,8 @@ INCLUDE "../ast/typedef.rl"
 		RETURN TRUE;
 	}
 
-	parse_global(p: Parser&, out: Config-ast::GlobalTypedef &) INLINE BOOL
+	parse_global(p: Parser&, out: Config-ast::GlobalTypedef &) BOOL INLINE
 		:= parse(p, out);
-	parse_member(p: Parser&, out: Config-ast::MemberTypedef &) INLINE BOOL
+	parse_member(p: Parser&, out: Config-ast::MemberTypedef &) BOOL INLINE
 		:= parse(p, out);
 }

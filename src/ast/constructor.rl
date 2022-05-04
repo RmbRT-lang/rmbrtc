@@ -68,5 +68,5 @@ INCLUDE 'std/memory'
 	Name: [Stage]SymbolConstant - std::Opt;
 	Arguments: [Stage]LocalVariable - std::Vec;
 
-	# named() INLINE BOOL := Name!;
+	# named() BOOL INLINE := Name!;
 }

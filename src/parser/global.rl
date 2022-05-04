@@ -2,6 +2,8 @@ INCLUDE "parser.rl"
 INCLUDE "stage.rl"
 INCLUDE "templatedecl.rl"
 INCLUDE "class.rl"
+INCLUDE "mask.rl"
+INCLUDE "extern.rl"
 INCLUDE "namespace.rl"
 
 ::rlc::parser::global
@@ -14,13 +16,13 @@ INCLUDE "namespace.rl"
 		ret: ast::[Config]Global - std::Dyn := NULL;
 		IF(parse_global_impl(p, ret, namespace::parse)
 		|| parse_global_impl(p, ret, typedef::parse)
-		|| parse_global_impl(p, ret, function::parse)
-		|| parse_global_impl(p, ret, variable::parse_global)
+		|| parse_global_impl(p, ret, function::parse_global)
+		|| (ret := variable::parse_global(p))
 		|| parse_global_impl(p, ret, class::parse)
 		|| parse_global_impl(p, ret, mask::parse)
 		|| parse_global_impl(p, ret, rawtype::parse)
 		|| parse_global_impl(p, ret, enum::parse)
-		|| parse_global_impl(p, ret, extern::parse)
+		|| (ret := extern::parse(p))
 		|| parse_global_impl(p, ret, test::parse))
 		{
 			IF(t ::= <<ast::[Config]Templateable *>>(ret!))

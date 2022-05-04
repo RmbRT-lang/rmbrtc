@@ -53,7 +53,7 @@ INCLUDE 'std/memory'
 			e: ast::[Stage]Expression - std::Dyn
 		}:	Expression(&&e);
 
-		# is_void() INLINE BOOL := !Expression;
+		# is_void() BOOL INLINE := !Expression;
 	}
 
 	[Stage: TYPE] TryStatement -> [Stage]Statement
@@ -62,7 +62,7 @@ INCLUDE 'std/memory'
 		Catches: [Stage]CatchStatement - std::Vec;
 		Finally: [Stage]Statement - std::Dyn;
 
-		# has_finally() INLINE BOOL := Finally;
+		# has_finally() BOOL INLINE := Finally;
 	}
 
 	[Stage: TYPE] CatchStatement
@@ -115,7 +115,7 @@ INCLUDE 'std/memory'
 		Values: [Stage]Expression - std::DynVec;
 		Body: [Stage]Statement-std::Dyn;
 
-		# is_default() INLINE BOOL := Values.empty();
+		# is_default() BOOL INLINE := Values.empty();
 	}
 
 	[Stage: TYPE] TypeSwitchStatement -> [Stage]Statement
@@ -132,7 +132,7 @@ INCLUDE 'std/memory'
 		Types: [Stage]Type - std::DynVec;
 		Body: [Stage]Statement-std::Dyn;
 
-		# is_default() INLINE BOOL := Types.empty();
+		# is_default() BOOL INLINE := Types.empty();
 	}
 
 	[Stage: TYPE] BreakStatement -> [Stage]Statement

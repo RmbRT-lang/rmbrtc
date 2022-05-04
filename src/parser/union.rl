@@ -23,9 +23,9 @@ INCLUDE "member.rl"
 		= TRUE;
 	}
 
-	parse_global(p: Parser &, out: ast::[Config]GlobalUnion &) INLINE BOOL
+	parse_global(p: Parser &, out: ast::[Config]GlobalUnion &) BOOL INLINE
 		:= parse(p, out);
 
-	parse_member(p: Parser &, out: ast::[Config]MemberUnion &) INLINE BOOL
+	parse_member(p: Parser &, out: ast::[Config]MemberUnion &) BOOL INLINE
 		:= parse(p, out);
 }

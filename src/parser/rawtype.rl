@@ -37,8 +37,8 @@ INCLUDE "expression.rl"
 		= TRUE;
 	}
 	
-	parse_global(p: Parser &, out: ast::[Config]GlobalRawtype &) INLINE BOOL
+	parse_global(p: Parser &, out: ast::[Config]GlobalRawtype &) BOOL INLINE
 		:= parse(p, out);
-	parse_member(p: Parser &, out: ast::[Config]MemberRawtype &) INLINE BOOL
+	parse_member(p: Parser &, out: ast::[Config]MemberRawtype &) BOOL INLINE
 		:= parse(p, out);
 }

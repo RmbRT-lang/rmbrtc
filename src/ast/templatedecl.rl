@@ -9,7 +9,7 @@ INCLUDE "type.rl"
 	{
 		Arguments: Stage-TemplateArgDecl-std::DynVec;
 	
-		# exists() INLINE BOOL := ##Arguments != 0;
+		# exists() BOOL INLINE := ##Arguments != 0;
 	}
 
 	[Stage:TYPE] TemplateArgDecl VIRTUAL {
