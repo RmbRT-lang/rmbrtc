@@ -139,8 +139,7 @@ Can be called multiple times to append new arguments.
 {
 	nameTok: tok::Token-std::Opt;
 	IF(!p.match_ahead(:parentheseOpen)) = FALSE;
-	tok ::= p.consume(:identifier);
-	IF(!tok) = FALSE;
+	IF:!(tok ::= p.consume(:identifier)) = FALSE;
 	
 	name ::= tok->Content;
 

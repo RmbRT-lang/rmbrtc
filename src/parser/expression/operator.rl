@@ -29,8 +29,7 @@ INCLUDE "../symbol.rl"
 				{
 					// a + b + c
 					// (a + b) + c
-					rhs ::= parse_binary(p, level-1);
-					IF(!rhs)
+					IF:!(rhs ::= parse_binary(p, level-1))
 						p.fail("expected expression");
 					ret->Operands += &&rhs;
 					RETURN parse_binary_rhs(p, &&ret, level);
@@ -38,8 +37,7 @@ INCLUDE "../symbol.rl"
 				{
 					// a := b := c
 					// a := (b := c)
-					rhs ::= parse_binary(p, level);
-					IF(!rhs)
+					IF:!(rhs ::= parse_binary(p, level))
 						p.fail("expected expression");
 
 					ret->Operands += &&rhs;
@@ -55,11 +53,10 @@ INCLUDE "../symbol.rl"
 		p: Parser&,
 		level: UINT) ast::[Config]Expression-std::Dyn
 	{
-		lhs ::= level
-			? parse_binary(p, level-1)
-			: parse_prefix(p);
-		IF(!lhs)
-			RETURN NULL;
+		IF:!(lhs ::= level
+				? parse_binary(p, level-1)
+				: parse_prefix(p))
+			= NULL;
 
 		IF(level == detail::precedenceGroups
 		&& p.consume(:questionMark))
@@ -96,9 +93,8 @@ INCLUDE "../symbol.rl"
 ::rlc::parser::expression::op parse_postfix(
 	p: Parser&) ast::[Config]Expression - std::Dyn
 {
-	lhs ::= parse_atom(p);
-	IF(!lhs)
-		RETURN NULL;
+	IF:!(lhs ::= parse_atom(p))
+		= NULL;
 
 	STATIC postfix: {tok::Type, rlc::Operator}#[](
 		(:doublePlus, :postIncrement),
@@ -133,8 +129,7 @@ INCLUDE "../symbol.rl"
 
 			DO()
 			{
-				rhs ::= expression::parse(p);
-				IF(!rhs)
+				IF:!(rhs ::= expression::parse(p))
 					p.fail("expected expression");
 				sub->Operands += &&rhs;
 			} WHILE(p.consume(:comma))

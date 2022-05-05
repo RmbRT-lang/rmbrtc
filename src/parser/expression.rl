@@ -19,8 +19,7 @@ INCLUDE "symbolconstant.rl"
 		IF(tok ::= p.consume(:parentheseOpen))
 		{
 			(start, position) := (tok->Content, tok->Position);
-			exp ::= expression::parse(p);
-			IF(!exp)
+			IF:!(exp ::= expression::parse(p))
 				p.fail("expected expression");
 
 			tuple: ast::[Config]OperatorExpression-std::Dyn := NULL;

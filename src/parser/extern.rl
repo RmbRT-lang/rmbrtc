@@ -12,14 +12,12 @@ INCLUDE "stage.rl"
 	t: Trace(&p, "external symbol");
 	IF(p.match_ahead(:colon))
 	{
-		var ::= variable::parse_extern(p);
-		IF(!var)
+		IF:!(var ::= variable::parse_extern(p))
 			p.fail("expected variable");
 		= &&var;
 	} ELSE
 	{
-		f ::= function::parse_extern(p);
-		IF(!f)
+		IF:!(f ::= function::parse_extern(p))
 			p.fail("expected function");
 		= &&f;
 	}

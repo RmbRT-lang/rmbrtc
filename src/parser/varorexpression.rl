@@ -19,7 +19,7 @@ INCLUDE 'std/dyn'
 
 ::rlc::parser::var_or_exp parse(p: Parser &, locals: ast::LocalPosition&) ast::[Config]VarOrExpr-std::Dyn
 {
-	ret ::= parse_opt(p, locals);
-	IF(!ret) p.fail("expected variable or expression");
+	IF:!(ret ::= parse_opt(p, locals))
+		p.fail("expected variable or expression");
 	= &&ret;
 }

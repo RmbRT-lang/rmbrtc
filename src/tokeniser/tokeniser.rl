@@ -383,8 +383,7 @@ INCLUDE 'std/unicode'
 				out->Type := :stringTick;
 				WHILE(!eatString("´"))
 				{
-					c ::= getc();
-					IF(!c)
+					IF:!(c ::= getc())
 						error();
 					IF(c == '\\')
 						IF(!getc())
@@ -404,8 +403,7 @@ INCLUDE 'std/unicode'
 			}
 
 			++Read;
-			c: CHAR;
-			WHILE((c := getc()) != delim)
+			FOR(c: CHAR; (c := getc()) != delim;)
 			{
 				IF(!c) error();
 				IF(c == '\\')

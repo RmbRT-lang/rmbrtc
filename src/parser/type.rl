@@ -75,8 +75,7 @@ INCLUDE "symbolconstant.rl"
 			{
 				DO()
 				{
-					bounds ::= expression::parse(p);
-					IF(!bounds)
+					IF:!(bounds ::= expression::parse(p))
 						p.fail("expected expression");
 					out.ArraySize += &&bounds;
 				} WHILE(p.consume(:comma))
@@ -173,8 +172,7 @@ INCLUDE "symbolconstant.rl"
 			p.expect(:parentheseClose);
 		}
 
-		type ::= type::parse(p);
-		IF(!type)
+		IF:!(type ::= type::parse(p))
 			p.fail("expected type");
 		Ret := &&type;
 
