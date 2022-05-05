@@ -10,6 +10,8 @@ INCLUDE 'std/hashset'
 
 ::rlc::ast::class [Stage: TYPE] Inheritance -> CodeObject
 {
+	{}: Visibility := :public;
+
 	Visibility: rlc::Visibility;
 	IsVirtual: BOOL;
 	Type: Stage::Inheritance;

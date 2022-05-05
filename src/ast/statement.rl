@@ -74,6 +74,8 @@ INCLUDE 'std/memory'
 			specific
 		}
 
+		{}: ExceptionType (NOINIT);
+
 		ExceptionType: Type;
 		Exception: [Stage]TypeOrCatchVariable - std::Dyn;
 		Body: [Stage]Statement - std::Dyn;

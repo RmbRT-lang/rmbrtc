@@ -43,7 +43,7 @@ INCLUDE "symbolconstant.rl"
 			Qualifier: type::Qualifier;
 			Reference: type::ReferenceType;
 
-			{}: Reference(:plain);
+			{}: Reference(:none);
 		}
 	}
 

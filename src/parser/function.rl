@@ -169,32 +169,35 @@ Can be called multiple times to append new arguments.
 	= :new(&&name, &&signature, &&linkName);
 }
 
-::rlc::parser::abstractable parse(p: Parser &) ast::[Config]Abstractable *
+::rlc::parser::abstractable parse(
+	p: Parser &
+) ast::[Config]Abstractable - std::Dyn
 {
-	ret: ast::[Config]Abstractable *;
+	ret: ast::[Config]Abstractable - std::Dyn;
 
 	abs ::= parse_abstractness(p);
 
-	IF(detail::[ast::[Config]Operator]parse_impl(p, abs, ret)
-	|| detail::[ast::[Config]MemberFunction]parse_impl(p, abs, ret))
+	IF(detail::parse_impl(p, abs, ret, parse_operator)
+	|| detail::parse_impl(p, abs, ret, parse_member_function))
 	{
-		RETURN ret;
+		= &&ret;
 	}
 
 	IF(abs != :none)
 		p.fail("expected operator or function definition");
 
-	RETURN NULL;
+	= NULL;
 }
 
 ::rlc::parser::abstractable::detail [T:TYPE] parse_impl(
 	p: Parser &,
 	abs: rlc::Abstractness,
-	out: ast::[Config]Abstractable *&) BOOL
+	out: ast::[Config]Abstractable - std::Dyn &,
+	parse_fn: ((Parser &, T!&) BOOL)) BOOL
 {
 	v: T;
 	v.Abstractness := abs;
-	IF(v.parse(p))
+	IF(parse_fn(p, v))
 	{
 		out := :dup(&&v);
 		RETURN TRUE;

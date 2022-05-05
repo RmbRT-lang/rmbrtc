@@ -102,8 +102,7 @@ INCLUDE "symbolconstant.rl"
 				IF(!parse_type_name(p, next))
 					p.fail("expected symbol");
 
-				tplArg: ast::[Config]TemplateArg(:emplace, &&ret);
-				next.Name.Children!.back().Templates += &&tplArg;
+				next.Name.Children!.back().Templates += :vec(&&ret);
 				ret := :dup(&&next);
 			}
 			= TRUE;

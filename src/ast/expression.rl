@@ -128,7 +128,7 @@ INCLUDE 'std/vector'
 			lhs: [Stage]Expression-std::Dyn
 		) [Stage]Expression - std::Dyn
 		{
-			ret: OperatorExpression-std::Dyn(:create);
+			ret: OperatorExpression-std::Dyn := :new();
 			ret->Op := op;
 			ret->Position := opPosition;
 			ret->Range := lhs->Range;
@@ -143,7 +143,7 @@ INCLUDE 'std/vector'
 			rhs: [Stage]Expression - std::Dyn
 		) [Stage]Expression - std::Dyn
 		{
-			ret: OperatorExpression-std::Dyn(:create);
+			ret: OperatorExpression-std::Dyn := :new();
 			ret->Op := op;
 			ret->Position := opPosition;
 			ret->Range := lhs->Range.span(rhs->Range);
@@ -163,6 +163,8 @@ INCLUDE 'std/vector'
 	[Stage: TYPE] CastExpression -> [Stage]Expression
 	{
 		ENUM Kind { static, dynamic, mask }
+		{}: Method(NOINIT);
+
 		Method: Kind;
 		Type: ast::[Stage]Type-std::Dyn;
 		Values: [Stage]Expression - std::DynVec;

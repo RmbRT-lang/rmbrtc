@@ -19,24 +19,19 @@ INCLUDE "../parser/stage.rl"
 	) VOID
 	{
 		// Processed input files.
-		scoped: parser::Stage - ast::File \ - std::NatVectorSet;
+		scoped: parser::Config - ast::File \ - std::NatVecSet;
 
-		IF(build.LegacyScoping)
-			Registry.LegacyScope := :create(NULL, NULL);
-
-		build.AdditionalIncludePaths.append(Registry.IncludeDirs!, :move);
-		Registry.IncludeDirs := &&build.AdditionalIncludePaths;
+		ASSERT(!build.LegacyScoping);
 
 		// Parse all code first.
 		FOR(f ::= files.start(); f; ++f)
 		{
-			abs ::= util::absolute_file(f!);
-			scoped += Registry.get(<std::Str>(abs, :cstring)!);
+			scoped += Registry.get(util::absolute_file(f!));
 		}
 
 		IF(build.Type == :checkSyntax)
 			RETURN;
-
+(/
 		// Resolve all references.
 		resolved: resolver::Cache;
 		FOR(f ::= scoped.start(); f; ++f)
@@ -88,5 +83,7 @@ INCLUDE "../parser/stage.rl"
 			THROW <std::err::Unimplemented>("full verification");
 		}
 		}
+		/)
+		DIE "not implemented";
 	}
 }

@@ -10,6 +10,8 @@
 		lessMinus
 	}
 
+	{}: NameType(NOINIT);
+
 	:identifier{i: src::String}: NameType(:identifier), Identifier(i);
 	:special{t: Type}: NameType(t) { ASSERT(is_special()); }
 

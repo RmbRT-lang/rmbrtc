@@ -20,7 +20,7 @@ INCLUDE 'std/optional'
 		Output: std::Str - std::Opt;
 		Type: BuildType;
 		Debug: BOOL;
-		AdditionalIncludePaths: std::Str-std::Vec;
+		IncludePaths: std::Str-std::Vec;
 		Verbose: BOOL;
 
 		(//
@@ -36,11 +36,31 @@ INCLUDE 'std/optional'
 			:checkSyntax, :verifySimple, :verifyFull: {;}
 			DEFAULT: THROW "build flag: invalid no-output build type";
 			}
+
+			load_include_dirs();
 		}
 
 		:withOutput{output: std::Str, type: BuildType}:
 			Output(:a(&&output)),
-			Type(type);
+			Type(type)
+		{
+			load_include_dirs();
+		}
+
+		/// Loads default include directories from the environment variable.
+		PRIVATE load_include_dirs() VOID
+		{
+			incs ::= std::str::view(detail::getenv("RLINCLUDE"));
+			DO(len: UM)
+			{
+				FOR(len := 0; len < ##incs; len++)
+					IF(incs[len] == ':')
+						BREAK;
+
+				IF(len)
+					IncludePaths += incs.cut(len);
+			} FOR(len < ##incs; incs := incs.drop_start(len+1)++)
+		}
 	}
 
 	MASK Compiler
@@ -53,4 +73,6 @@ INCLUDE 'std/optional'
 			build: Build
 		) VOID;
 	}
+
+	::detail EXTERN getenv(CHAR #*) CHAR # *;
 }

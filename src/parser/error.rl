@@ -32,12 +32,12 @@ INCLUDE 'std/io/streamutil'
 		IF(tokenCount)
 		{
 			Tokens[0] := tokens[tokenIndex];
-			TokenContent[0] := file->content(Tokens[0].Content);
+			TokenContent[0] := file->content(Tokens[0].Content)++;
 		}
 		IF(tokenCount == 2)
 		{
 			Tokens[1] := tokens[tokenIndex^1];
-			TokenContent[1] := file->content(Tokens[1].Content);
+			TokenContent[1] := file->content(Tokens[1].Content)++;
 		}
 	}
 
@@ -46,16 +46,16 @@ INCLUDE 'std/io/streamutil'
 	# FINAL stream(o: std::io::OStream &) VOID
 	{
 		std::io::write(o,
-			File!, ':', :dec(Line), ":", :dec(Column), ": unexpected ");
+			File!++, :ch(':'), :dec(Line), ":", :dec(Column), ": unexpected ");
 		IF(TokenCount)
 		{
-			std::io::write(o, TokenContent[0]);
+			std::io::write(o, TokenContent[0]!++);
 			IF(TokenCount > 1)
-				std::io::write(o, :ch(' '), TokenContent[1]);
+				std::io::write(o, :ch(' '), TokenContent[1]!++);
 		} ELSE
 			std::io::write(o, "end of file");
 
-		std::io::write(o, " in ", Context!, ": ");
+		std::io::write(o, " in ", Context!++, ": ");
 		reason(o);
 		std::io::write(o, :ch('.'));
 	}
@@ -80,7 +80,7 @@ INCLUDE 'std/io/streamutil'
 
 	# FINAL reason(o: std::io::OStream &) VOID
 	{
-		std::io::write(o, Reason!);
+		std::io::write(o, Reason!++);
 	}
 }
 

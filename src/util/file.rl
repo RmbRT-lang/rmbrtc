@@ -9,7 +9,7 @@ INCLUDE 'std/err/filenotfound'
 	absolute_file(name: std::str::CV #&) std::Str
 	{
 		n: std::Str(name);
-		n.append(0);
+		n.append(:ch(0));
 
 		IF(real ::= detail::realpath(n.data(), &detail::path_buf[0]))
 			RETURN <std::Str>(real);
@@ -31,12 +31,12 @@ INCLUDE 'std/err/filenotfound'
 		relative: std::[CHAR#]Buffer #&
 	) std::Str
 	{
-		path: std::Str(<std::str::CV>(base));
+		path: std::Str(<std::str::CV>(base++));
 		IF(!base.Size)
 			THROW;
 		IF(base[base.Size-1] != '/')
-			path.append('/');
-		path.append(relative);
+			path.append(:ch('/'));
+		path.append(relative++);
 
 		RETURN path;
 	}

@@ -50,7 +50,7 @@ INCLUDE "symbolconstant.rl"
 			= &&exp;
 		}
 
-		ret: ast::[Config]Expression *;
+		ret: ast::[Config]Expression - std::Dyn;
 		IF(detail::parse_impl(p, ret, parse_reference)
 		|| detail::parse_impl(p, ret, parse_symbol_constant)
 		|| detail::parse_impl(p, ret, parse_number)
@@ -63,15 +63,15 @@ INCLUDE "symbolconstant.rl"
 		|| detail::parse_impl(p, ret, parse_sizeof)
 		|| detail::parse_impl(p, ret, parse_typeof))
 		{
-			RETURN :gc(ret);
+			= &&ret;
 		}
 
-		RETURN NULL;
+		= NULL;
 	}
 
 	::detail [T:TYPE] parse_impl(
 		p: Parser &,
-		ret: ast::[Config]Expression * &,
+		ret: ast::[Config]Expression - std::Dyn &,
 		parse_fn: ((Parser&, T! &) BOOL)
 	) BOOL
 	{

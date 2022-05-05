@@ -45,9 +45,11 @@ INCLUDE 'std/err/unimplemented'
 
 		PRIVATE Out: std::io::OStream *;
 
-		{}: Out(NULL);
-		{o: std::io::OStream \}: Out(o), WithColours(TRUE);
-		:plain{o: std::io::OStream \}: Out(o), WithColours(FALSE);
+		{}: Context := :normal;
+		{o: std::io::OStream \}: Out(o), WithColours(TRUE), Context := :normal;
+		:plain{o: std::io::OStream \}:
+			Out(o),
+			Context := :normal;
 
 		PRIVATE context(ctx: cli::Context) VOID
 		{
@@ -56,14 +58,14 @@ INCLUDE 'std/err/unimplemented'
 
 			IF(!WithColours) RETURN;
 			
-			Out->write(style::reset);
+			std::io::write(Out, style::reset);
 			SWITCH(ctx)
 			{
 			DEFAULT: THROW <std::err::Unimplemented>(<CHAR#\>(ctx));
 			:normal: {;}
-			:error: Out->write(style::colour::red);
-			:warn: Out->write(style::colour::yellow);
-			:info: Out->write(style::colour::cyan);
+			:error: std::io::write(Out, style::colour::red);
+			:warn: std::io::write(Out, style::colour::yellow);
+			:info: std::io::write(Out, style::colour::cyan);
 			}
 		}
 
@@ -88,14 +90,22 @@ INCLUDE 'std/err/unimplemented'
 				SWITCH(p.Style)
 				{
 				:normal: {;}
-				:bold: { Out->write(style::bold::on); off := style::bold::off; }
-				:dim: { Out->write(style::dim::on); off := style::dim::off; }
+				:bold:
+				{
+					std::io::write(Out, style::bold::on);
+					off := style::bold::off;
+				}
+				:dim:
+				{
+					std::io::write(Out, style::dim::on);
+					off := style::dim::off;
+				}
 				}
 
-			Out->write(p.Input);
+			std::io::write(Out, p.Input);
 
 			IF(off)
-				Out->write(off);
+				std::io::write(Out, off);
 		}
 
 		[Msg...: TYPE]

@@ -16,13 +16,13 @@ INCLUDE "namespace.rl"
 
 		ret: ast::[Config]Global - std::Dyn := NULL;
 		IF(parse_global_impl(p, ret, namespace::parse)
-		|| parse_global_impl(p, ret, typedef::parse)
+		|| parse_global_impl(p, ret, typedef::parse_global)
 		|| parse_global_impl(p, ret, function::parse_global)
 		|| (ret := variable::parse_global(p))
-		|| parse_global_impl(p, ret, class::parse)
-		|| parse_global_impl(p, ret, mask::parse)
-		|| parse_global_impl(p, ret, rawtype::parse)
-		|| parse_global_impl(p, ret, enum::parse)
+		|| parse_global_impl(p, ret, class::parse_global)
+		|| parse_global_impl(p, ret, mask::parse_global)
+		|| parse_global_impl(p, ret, rawtype::parse_global)
+		|| parse_global_impl(p, ret, enum::parse_global)
 		|| (ret := extern::parse(p))
 		|| parse_global_impl(p, ret, test::parse))
 		{

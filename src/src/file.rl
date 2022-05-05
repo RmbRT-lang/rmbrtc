@@ -62,7 +62,7 @@ INCLUDE 'std/math/limit'
 			WHILE(!f.eof())
 			{
 				read ::= f.read(buf, ##buf);
-				Contents.append(buf, read);
+				Contents.append(:buf(buf, read));
 			}
 		}
 

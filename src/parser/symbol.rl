@@ -13,7 +13,7 @@ INCLUDE "parser.rl"
 
 	DO(child: Symbol-detail::Child)
 	{
-		IF(!child.parse(p))
+		IF(!parse_child(p, child))
 		{
 			IF(expect)
 				p.fail("expected symbol child");
@@ -59,11 +59,11 @@ INCLUDE "parser.rl"
 			p.expect(:bracketClose);
 		}
 		id ::= p.expect(:identifier);
-		(out.Name, &out.Position) := (id.Content, id.Position);
+		(out.Name, out.Position) := (id.Content, id.Position);
 		= TRUE;
 	} ELSE IF(id ::= p.consume(:identifier))
 	{
-		(out.Name, &out.Position) := (id->Content, id->Position);
+		(out.Name, out.Position) := (id->Content, id->Position);
 		= TRUE;
 	}
 
