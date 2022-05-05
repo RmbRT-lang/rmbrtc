@@ -4,6 +4,7 @@ INCLUDE "templatedecl.rl"
 INCLUDE "class.rl"
 INCLUDE "mask.rl"
 INCLUDE "extern.rl"
+INCLUDE "test.rl"
 INCLUDE "namespace.rl"
 
 ::rlc::parser::global

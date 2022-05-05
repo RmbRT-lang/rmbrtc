@@ -1,27 +1,10 @@
 INCLUDE "global.rl"
 INCLUDE "scopeitem.rl"
 INCLUDE "statement.rl"
+INCLUDE "codeobject.rl"
 
-::rlc::parser Test -> Global, ScopeItem
+::rlc::ast [Stage:TYPE] Test -> [Stage]Global, CodeObject
 {
-	Name: tok::Token;
-	Body: BlockStatement;
-
-	# FINAL name() src::String#& := src::String::empty;
-	# FINAL overloadable() BOOL := FALSE;
-
-	parse(p: Parser &) BOOL
-	{
-		IF(!p.consume(:test))
-			RETURN FALSE;
-
-		t: Trace(&p, "test");
-
-		p.expect(:stringQuote, &Name);
-
-		IF(!Body.parse(p))
-			p.fail("expected block statement");
-
-		RETURN TRUE;
-	}
+	Name: Stage::String;
+	Body: [Stage]BlockStatement;
 }

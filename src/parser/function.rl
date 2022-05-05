@@ -144,6 +144,11 @@ Can be called multiple times to append new arguments.
 	RETURN TRUE;
 }
 
+::rlc::parser::function parse_global(
+	p: Parser &,
+	out: ast::[Config]GlobalFunction &
+) BOOL := parse(p, TRUE, out);
+
 /// Parses an extern function (without the EXTERN keyword, use extern::parse()).
 ::rlc::parser::function::help parse_extern(
 	p: Parser &,
