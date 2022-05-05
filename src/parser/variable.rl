@@ -24,14 +24,17 @@ INCLUDE "stage.rl"
 		= :new(nt->Name, &&nt->Type, &&inits);
 	}
 
-	parse_extern(p: Parser&) ast::[Config]GlobalVariable - std::Opt
+	parse_extern(
+		p: Parser&,
+		linkName: src::String - std::Opt
+	) ast::[Config]ExternVariable - std::Opt
 	{
 		_: Trace(&p, "extern variable");
 
 		IF:!(nt ::= help::parse_uninitialised_name_and_type(p))
 			= NULL;
 		p.expect(:semicolon);
-		= :a(&&nt->(0).Content, &&nt->(1));
+		= :a(&&nt->(0).Content, &&nt->(1), &&linkName);
 	}
 
 	parse_member(

@@ -2,17 +2,61 @@ INCLUDE "../ast/function.rl"
 INCLUDE "stage.rl"
 INCLUDE "statement.rl"
 
+::rlc::parser::function parse_resolved_signature(
+	p: Parser &,
+	allow_multiple_args: BOOL,
+	allow_no_args: BOOL,
+	out: ast::[Config]ResolvedSig &
+) VOID
+{
+	p.expect(:parentheseOpen);
+	out.Arguments := help::parse_args(p, allow_multiple_args, allow_no_args);
+	p.expect(:parentheseClose);
+	out.IsCoroutine := p.consume(:at);
+	IF!(out.Return := type::parse(p))
+		p.fail("expected type");
+}
+
+::rlc::parser::function parse_signature(
+	p: Parser &,
+	allow_multiple_args: BOOL,
+	allow_no_args: BOOL
+) ast::[Config]FnSignature - std::Dyn
+{
+	p.expect(:parentheseOpen);
+	arguments ::= help::parse_args(p, allow_multiple_args, allow_no_args);
+	p.expect(:parentheseClose);
+	= help::parse_signature_after_args(p, &&arguments);
+}
+
+::rlc::parser::function::help parse_signature_after_args(
+	p: Parser &,
+	arguments: ast::[Config]TypeOrArgument - std::DynVec&&
+) ast::[Config]FnSignature - std::Dyn
+{
+	isCoroutine ::= p.consume(:at);
+	IF(return ::= type::parse(p))
+		= :gc(std::heap::[ast::[Config]ResolvedSig]new(
+			&&arguments, isCoroutine, &&return));
+	
+	ret: ast::[Config]UnresolvedSig;
+	ret.Arguments := &&arguments;
+	ret.IsCoroutine := isCoroutine;
+	type::parse_auto(p, ret.Return);
+	= :dup(&&ret);
+}
+
 (//
 Parses a comma-separated list of arguments (without surrounding parentheses).
 Can be called multiple times to append new arguments.
 /)
-::rlc::parser::function parse_args(
+::rlc::parser::function::help parse_args(
 	p: Parser &,
 	allow_multiple: BOOL,
 	allow_empty: BOOL
-) [Config]TypeOrArgument-std::DynVec
+) ast::[Config]TypeOrArgument-std::DynVec
 {
-	ret: [Config]TypeOrArgument-std::DynVec;
+	ret: ast::[Config]TypeOrArgument-std::DynVec;
 	readAny ::= FALSE;
 	DO()
 		IF(arg ::= parse_arg(p))
@@ -25,34 +69,12 @@ Can be called multiple times to append new arguments.
 	= &&ret;
 }
 
-::rlc::parser::function parse_arg(
+::rlc::parser::function::help parse_arg(
 	p: Parser &
 ) ast::[Config]TypeOrArgument-std::Dyn
 	:= variable::parse_fn_arg(p);
 
-
-/// Parses modifiers and return type.
-::rlc::parser::function parse_rest_of_head(
-	p: Parser &,
-	out: ast::[Config]Functoid &,
-	returnType: BOOL) VOID
-{
-	out.IsInline := p.consume(:inline);
-	out.IsCoroutine := p.consume(:at);
-
-	IF(!returnType)
-		RETURN;
-
-	IF(out.Return := parser::type::parse(p))
-		RETURN;
-
-	expectBody ::= p.consume(:questionMark);
-	auto: ast::type::[Config]Auto;
-	type::parse_auto(p, auto);
-	out.Return := :dup(&&auto);
-}
-
-::rlc::parser::function parse_body(
+::rlc::parser::function::help parse_body(
 	p: Parser &,
 	allow_body: BOOL,
 	out: ast::[Config]Functoid &) VOID
@@ -61,31 +83,25 @@ Can be called multiple times to append new arguments.
 
 	IF(!allow_body)
 	{
-		IF(!out.Return)
+		IF(<<ast::[Config]UnresolvedSig *>>(out.Signature!))
 			p.fail("expected explicit return type for bodyless function");
 		p.expect(:semicolon);
 		RETURN;
 	}
 
 	body: ast::[Config]BlockStatement;
-	IF(!out.Return)
+	IF(<<ast::[Config]UnresolvedSig *>>(out.Signature!))
 	{
-		expectBody ::= p.consume(:questionMark);
-		auto: ast::type::[Config]Auto;
-		type::parse_auto(p, auto);
-		out.Return := :dup(&&auto);
-
-		IF(expectBody)
+		IF(p.consume(:doubleColonEqual))
+		{
+			IF(!(out.Body := expression::parse(p)))
+				p.fail("expected expression");
+			p.expect(:semicolon);
+		} ELSE
 		{
 			IF(!statement::parse_block(p, locals, body))
 				p.fail("expected block statement");
 			out.Body := :dup(&&body);
-		} ELSE
-		{
-			p.expect(:doubleColonEqual);
-			IF(!(out.Body := expression::parse(p)))
-				p.fail("expected expression");
-			p.expect(:semicolon);
 		}
 	} ELSE IF(!p.consume(:semicolon))
 	{
@@ -119,12 +135,9 @@ Can be called multiple times to append new arguments.
 
 	t: Trace(&p, "function");
 
-	p.expect(:parentheseOpen);
-	default.Arguments := parse_args(p, TRUE, TRUE);
-	p.expect(:parentheseClose);
-
-	parse_rest_of_head(p, default, TRUE);
-	parse_body(p, allow_body, default);
+	default.Signature := parse_signature(p, TRUE, TRUE);
+	default.IsInline := p.consume(:inline);
+	help::parse_body(p, allow_body, default);
 
 	out.Default := :dup(&&default);
 
@@ -132,40 +145,23 @@ Can be called multiple times to append new arguments.
 }
 
 /// Parses an extern function (without the EXTERN keyword, use extern::parse()).
-::rlc::parser::function parse_extern(
+::rlc::parser::function::help parse_extern(
 	p: Parser &,
-	linkName: tok::Token - std::Opt
+	linkName: src::String - std::Opt
 ) ast::[Config]ExternFunction - std::Dyn
 {
 	nameTok: tok::Token-std::Opt;
-	IF(!p.match_ahead(:parentheseOpen)) = FALSE;
-	IF:!(tok ::= p.consume(:identifier)) = FALSE;
-	
-	name ::= tok->Content;
+	IF(!p.match_ahead(:parentheseOpen)) = NULL;
+	IF:!(tok ::= p.consume(:identifier)) = NULL;
 
 	t: Trace(&p, "function");
 
-	ret: ast::[Config]ExternFunction;
+	name ::= tok->Content;
+	signature: ast::[Config]ResolvedSig;
+	parse_resolved_signature(p, TRUE, TRUE, signature);
+	p.expect(:semicolon);
 
-	p.expect(:parentheseOpen);
-	args ::= parse_args(p, default, TRUE, TRUE);
-	p.expect(:parentheseClose);
-
-	IsCoroutine ::= p.consume(:at);
-
-	IF(!returnType)
-		RETURN;
-
-	IF(out.Return := parser::type::parse(p))
-		RETURN;
-
-	expectBody ::= p.consume(:questionMark);
-	auto: ast::type::[Config]Auto;
-	type::parse_auto(p, auto);
-	out.Return := :dup(&&auto);
-	parse_body(p, allow_body, default);
-
-	out.Default := :dup(&&default);
+	= :new(&&name, &&signature, &&linkName);
 }
 
 ::rlc::parser::abstractable parse(p: Parser &) ast::[Config]Abstractable *
@@ -215,23 +211,29 @@ Can be called multiple times to append new arguments.
 	RETURN :none;
 }
 
-::rlc::parser::abstractable parse_converter(p: Parser &, out: ast::[Config]Converter &) BOOL
+::rlc::parser::abstractable parse_converter(
+	p: Parser &,
+	out: ast::[Config]Converter &
+) BOOL
 {
-	IF(tok ::= p.consume(:less))
-		out.Position := tok->Position;
-	ELSE = FALSE;
+	IF:!(tok ::= p.consume(:less))
+		= FALSE;
+	out.Position := tok->Position;
 
 	t: Trace(&p, "type converter");
 
-	IF(!(out.Return := type::parse(p)))
+	sig: ast::[Config]ResolvedSig;
+	IF!(sig.Return := type::parse(p))
 		p.fail("expected type name");
-
 	p.expect(:greater);
 
-	function::parse_rest_of_head(p, out, FALSE);
-	function::parse_body(p, out.Abstractness != :abstract, out);
+	sig.IsCoroutine := p.consume(:at);
+	out.Signature := :dup(&&sig);
 
-	RETURN TRUE;
+	out.IsInline := p.consume(:inline);
+	function::help::parse_body(p, out.Abstractness != :abstract, out);
+
+	= TRUE;
 }
 
 ::rlc::parser::abstractable parse_member_function(
@@ -254,6 +256,8 @@ Can be called multiple times to append new arguments.
 
 	nothing: :nothing := :nothing;
 
+	args: ast::[Config]TypeOrArgument - std::DynVec;
+
 	IF(postFix)
 	{
 		IF(expression::consume_overloadable_binary_operator(p, out.Op))
@@ -272,7 +276,7 @@ Can be called multiple times to append new arguments.
 		} ELSE IF(p.match(:questionMark))
 		{
 			p.expect(:parentheseOpen);
-			function::parse_args(p, out, FALSE, FALSE);
+			args := function::help::parse_args(p, FALSE, FALSE);
 			p.expect(:parentheseClose);
 			p.expect(:colon);
 			singleArg := TRUE;
@@ -289,26 +293,30 @@ Can be called multiple times to append new arguments.
 	IF(allowArgs)
 	{
 		p.expect(parOpen);
-		function::parse_args(p, out, !singleArg, !singleArg);
+		args := function::help::parse_args(p, !singleArg, !singleArg);
 		p.expect(parClose);
 	}
 
-	function::parse_rest_of_head(p, out, TRUE);
-	function::parse_body(p, out.Abstractness != :abstract, out);
+	out.Signature := function::help::parse_signature_after_args(p, &&args);
+	function::help::parse_body(p, out.Abstractness != :abstract, out);
 }
 
-::rlc::parser::function parse_factory(p: Parser &, out: ast::[Config]Factory &) BOOL
+::rlc::parser::function parse_factory(
+	p: Parser &,
+	out: ast::[Config]Factory &
+) BOOL
 {
-	IF(tok ::= p.consume(:tripleLess))
-		out.Position := tok->Position;
-	ELSE = FALSE;
+	IF:!(tok ::= p.consume(:tripleLess))
+		= FALSE;
+	out.Position := tok->Position;
 
 	t: Trace(&p, "factory");
 
-	function::parse_args(p, out, TRUE, FALSE);
+	args ::= function::help::parse_args(p, TRUE, FALSE);
 	p.expect(:tripleGreater);
-	function::parse_rest_of_head(p, out, TRUE);
-	function::parse_body(p, TRUE, out);
 
-	RETURN TRUE;
+	out.Signature := help::parse_signature_after_args(p, &&args);
+	help::parse_body(p, TRUE, out);
+
+	= TRUE;
 }

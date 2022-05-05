@@ -12,20 +12,20 @@ INCLUDE "statement.rl"
 	IsCoroutine: BOOL;
 }
 
-::rlc::ast [Stage:TYPE] UnresolvedSig -> FnSignature
+::rlc::ast [Stage:TYPE] UnresolvedSig -> [Stage]FnSignature
 {
-	Return: [Stage]Auto;
+	Return: type::[Stage]Auto;
 }
 
-::rlc::ast [Stage:TYPE] ResolvedSig -> FnSignature
+::rlc::ast [Stage:TYPE] ResolvedSig -> [Stage]FnSignature
 {
 	Return: [Stage]Type-std::Dyn;
 }
 
 /// An anonymous function object.
-::rlc::ast [Stage:TYPE] Functoid VIRTUAL -> [Stage]Callable, CodeObject
+::rlc::ast [Stage:TYPE] Functoid VIRTUAL -> CodeObject
 {
-	Signature: FnSignature - std::Dyn;
+	Signature: [Stage]FnSignature - std::Dyn;
 	Body: [Stage]Statement - std::Dyn;
 	IsInline: BOOL;
 
@@ -77,7 +77,14 @@ INCLUDE "statement.rl"
 	[Stage]ScopeItem,
 	[Stage]ExternSymbol
 {
-	Signature: ResolvedSig;
+	Signature: [Stage]ResolvedSig;
+
+	{
+		name: Stage::Name,
+		signature: [Stage]ResolvedSig &&,
+		linkName: Stage-Name - std::Opt
+	} -> (), (&&name), (&&linkName):
+		Signature(&&signature);
 }
 
 ::rlc::ast [Stage:TYPE] DefaultVariant -> [Stage]Functoid { }

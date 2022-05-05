@@ -72,15 +72,9 @@ INCLUDE 'std/vector'
 	{
 		{
 			name: Stage::Name,
-			linkName: Stage::Name,
-			type: [Stage]Type - std::Dyn
-		} -> (), (&&linkName), (&&name, &&type);
-
-		:auto_named
-		{
-			name: Stage::Name#&,
-			type: [Stage]Type - std::Dyn
-		} -> (), (name), (name, &&type);
+			type: [Stage]Type - std::Dyn,
+			linkName: Stage-Name - std::Opt
+		} -> (), (&&name, &&type), (&&linkName);
 	}
 
 	[Stage: TYPE] MaybeAnonMemberVar VIRTUAL -> [Stage]Member {}

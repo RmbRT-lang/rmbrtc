@@ -9,15 +9,19 @@ INCLUDE "stage.rl"
 	IF(!p.consume(:extern))
 		= NULL;
 
+	linkName: src::String - std::Opt;
+	IF(p.consume(:bracketOpen))
+		linkName := :a(p.consume(:stringQuote));
+
 	t: Trace(&p, "external symbol");
 	IF(p.match_ahead(:colon))
 	{
-		IF:!(var ::= variable::parse_extern(p))
+		IF:!(var ::= variable::parse_extern(p, &&linkName))
 			p.fail("expected variable");
-		= &&var;
+		= :dup(&&*var);
 	} ELSE
 	{
-		IF:!(f ::= function::parse_extern(p))
+		IF:!(f ::= function::help::parse_extern(p, &&linkName))
 			p.fail("expected function");
 		= &&f;
 	}
