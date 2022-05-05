@@ -1,4 +1,5 @@
 INCLUDE 'std/range'
+INCLUDE "../ast/symbolconstant.rl"
 
 ::rlc::parser::symbol_constant parse(
 	p: Parser &

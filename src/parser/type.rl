@@ -90,7 +90,7 @@ INCLUDE "symbolconstant.rl"
 	::detail [T:TYPE] parse_impl(
 		p: Parser &,
 		ret: ast::[Config]Type - std::Dyn &,
-		parse_fn: ((Parser &, T &) BOOL)) BOOL
+		parse_fn: ((Parser &, T! &) BOOL)) BOOL
 	{
 		v: T;
 		IF(parse_fn(p, v))
@@ -99,10 +99,10 @@ INCLUDE "symbolconstant.rl"
 			WHILE(p.consume(:minus))
 			{
 				next: TypeName;
-				IF(!next.parse(p))
+				IF(!parse_type_name(p, next))
 					p.fail("expected symbol");
 
-				tplArg: TemplateArg(:emplace, &&ret);
+				tplArg: ast::[Config]TemplateArg(:emplace, &&ret);
 				next.Name.Children!.back().Templates += &&tplArg;
 				ret := :dup(&&next);
 			}
@@ -116,14 +116,14 @@ INCLUDE "symbolconstant.rl"
 		p: Parser &) Type - std::Dyn
 	{
 		ret: Type-std::Dyn;
-		IF(parse_impl(p, ret, parse_typeof)
-		|| parse_impl(p, ret, parse_tuple)
-		|| parse_impl(p, ret, parse_signature)
-		|| parse_impl(p, ret, parse_void)
-		|| parse_impl(p, ret, parse_null)
-		|| parse_impl(p, ret, parse_type_name)
-		|| parse_impl(p, ret, parse_builtin)
-		|| parse_impl(p, ret, parse_symbol_constant))
+		IF(detail::parse_impl(p, ret, parse_typeof)
+		|| detail::parse_impl(p, ret, parse_tuple)
+		|| detail::parse_impl(p, ret, parse_signature)
+		|| detail::parse_impl(p, ret, parse_void)
+		|| detail::parse_impl(p, ret, parse_null)
+		|| detail::parse_impl(p, ret, parse_type_name)
+		|| detail::parse_impl(p, ret, parse_builtin)
+		|| detail::parse_impl(p, ret, parse_symbol_constant))
 			= &&ret;
 		= NULL;
 	}
@@ -147,14 +147,14 @@ INCLUDE "symbolconstant.rl"
 
 	parse_auto(p: Parser&, out: Auto &) VOID
 	{
-		t: Trace(p, "auto type specifier");
+		t: Trace(&p, "auto type specifier");
 		hasQualifier ::= parse_qualifier(p, out.Qualifier);
 		out.Reference := parse_reference_type(p);
 		IF(out.Reference == :none && !hasQualifier)
 			p.expect(:questionMark);
 	}
 
-	parse_signature(p: Parser&, out: type::Signature &) BOOL
+	parse_signature(p: Parser&, out: Signature &) BOOL
 	{
 		t: Trace(&p, "signature");
 		// ((T1, T2) Ret)
@@ -175,9 +175,11 @@ INCLUDE "symbolconstant.rl"
 			p.expect(:parentheseClose);
 		}
 
+		out.IsCoroutine := p.consume(:at);
+
 		IF:!(type ::= type::parse(p))
 			p.fail("expected type");
-		Ret := &&type;
+		out.Ret := &&type;
 
 		p.expect(:parentheseClose);
 
@@ -205,7 +207,7 @@ INCLUDE "symbolconstant.rl"
 	parse_symbol_constant(p: Parser &, out: SymbolConstantType &) BOOL
 	{
 		IF(c ::= symbol_constant::parse(p))
-			out->Name := &&*c;
+			out.Name := &&*c;
 		ELSE
 			= FALSE;
 
@@ -251,16 +253,16 @@ INCLUDE "symbolconstant.rl"
 
 	parse_type_name(p: Parser&, out: TypeName &) BOOL
 	{
-		IF(!parse_symbol(p, out.Name))
+		IF(!symbol::parse(p, out.Name))
 			= FALSE;
-		NoDecay := p.consume(:exclamationMark);
+		out.NoDecay := p.consume(:exclamationMark);
 		detail::parse_generic_part(p, out);
 		= TRUE;
 	}
 
 	parse_builtin(p: Parser&, out: BuiltinType &) BOOL
 	{
-		STATIC table: {tok::Type, Primitive}#[](
+		STATIC table: {tok::Type, ast::[Config]BuiltinType::Primitive}#[](
 			(:bool, :bool),
 			(:char, :char), (:uchar, :uchar),
 			(:int, :int), (:uint,:uint),

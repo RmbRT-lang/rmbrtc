@@ -41,13 +41,13 @@ INCLUDE "global.rl"
 		{
 			ret: ast::[Config]Global - std::DynVec;
 
-			WHILE(glob ::= global::parse(p))
+			WHILE(glob ::= global::parse(*p))
 				ret += &&glob;
 
-			IF(!p.eof())
-				p.fail("expected scope entry");
+			IF(!p->eof())
+				p->fail("expected scope entry");
 
-			= &&glob;
+			= &&ret;
 		}
 	}
 }

@@ -17,30 +17,28 @@ INCLUDE 'std/vector'
 		{
 			DO()
 			{
-				name: tok::Token;
-				p.expect(:identifier, &name);
+				name ::= p.expect(:identifier).Content;
 				variadic ::= p.consume(:tripleDot);
-				c.Name := name.Content;
 				p.expect(:colon);
 
 				arg: Config-ast::TemplateArgDecl-std::Dyn;
 				IF(p.consume(:type))
-					ast := :dup(<Config-ast::TypeTemplateArgDecl>());
+					arg := :dup(<Config-ast::TypeTemplateArgDecl>());
 				ELSE IF(p.consume(:number))
-					ast := :dup(<Config-ast::NumberTemplateArgDecl>());
+					arg := :dup(<Config-ast::NumberTemplateArgDecl>());
 				ELSE IF(t ::= type::parse(p))
 				{
 					vArg: Config-ast::ValueTemplateArgDecl;
 					vArg.Type := &&t;
-					ast := :dup(&&vArg);
+					arg := :dup(&&vArg);
 				}
 				ELSE
 					p.fail("expected 'TYPE', 'NUMBER', or type");
 
-				ast->Name := name.Content;
-				ast->Variadic := variadic;
+				arg->Name := name;
+				arg->Variadic := variadic;
 
-				out.Arguments += &&ast;
+				out.Arguments += &&arg;
 			} WHILE(p.consume(:semicolon))
 
 			p.expect(:bracketClose);

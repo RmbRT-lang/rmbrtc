@@ -1,5 +1,6 @@
 INCLUDE "symbol.rl"
 INCLUDE "expression.rl"
+INCLUDE "symbolconstant.rl"
 
 ::rlc::ast
 {
@@ -73,6 +74,7 @@ INCLUDE "expression.rl"
 	{
 		Args: [Stage]Type - std::DynVec;
 		Ret: [Stage]Type-std::Dyn;
+		IsCoroutine: BOOL;
 	}
 
 	[Stage: TYPE] Void -> [Stage]Type
@@ -85,7 +87,7 @@ INCLUDE "expression.rl"
 
 	[Stage: TYPE] SymbolConstantType -> [Stage]Type
 	{
-		Name: Stage::SymbolConstant;
+		Name: [Stage]SymbolConstant;
 	}
 
 	[Stage: TYPE] TupleType -> [Stage]Type
