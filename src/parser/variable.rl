@@ -91,14 +91,12 @@ INCLUDE "stage.rl"
 
 		IF(nt ::= help::parse_uninitialised_name_and_type(p))
 		{
-			p.expect(:semicolon);
 			= :gc(std::heap::[ast::[Config]CatchVariable]new(
 				&&nt->Name.Content, ++locals, &&nt->Type));
 		} ELSE IF(help::is_optionally_named_variable_start(p))
 		{	// Anonymous catch variable.
 			IF:!(t ::= type::parse(p))
 				p.fail("expected type");
-			p.expect(:semicolon);
 			= &&t;
 		}
 		= NULL;
@@ -146,10 +144,9 @@ INCLUDE "stage.rl"
 		:doubleColon, :colon,
 		:void, :bool, :char, :int, :uint, :sm, :um, :null);
 
-	// (token, onlyIfNeedsName)
+	// (token, acceptableIfNeedsName)
 	::help needed_after_name: {tok::Type, BOOL}#[](
 		(:colon, TRUE),
-		(:colonEqual, TRUE),
 		(:doubleColonEqual, TRUE),
 		(:hash, TRUE),
 		(:dollar, TRUE),
@@ -247,11 +244,10 @@ INCLUDE "stage.rl"
 				{
 					auto: ast::type::[Config]Auto;
 					type::parse_auto_no_ref(p, auto);
-					p.expect(:doubleColonEqual);
 					= :a(name, :dup(&&auto));
 				}
 			}
-			DIE;
+			p.fail("dying, expected #, $, or ::=.");
 		}
 
 		DIE;
@@ -306,7 +302,7 @@ INCLUDE "stage.rl"
 					IF:!(init ::= expression::parse(p))
 						p.fail("expected expression");
 					inits += &&init;
-				} WHILE(!p.consume(:comma))
+				} WHILE(p.consume(:comma))
 				p.expect(:parentheseClose);
 			}
 		}

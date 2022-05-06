@@ -109,6 +109,8 @@ main(
 			build := :new(buildType);
 		//build->LegacyScoping := TRUE;
 
+		cli::main.info("compiling ", :dec(##files), " files.\n");
+
 		compiler.compile(&&files, &&*build);
 
 		= 0;

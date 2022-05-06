@@ -67,9 +67,9 @@ INCLUDE "../symbol.rl"
 
 			ret: ast::[Config]OperatorExpression-std::Dyn := :new();
 			ret->Op := :conditional;
-			ret->Operands += :gc(lhs);
-			ret->Operands += :gc(then);
-			ret->Operands += :gc(else);
+			ret->Operands += &&lhs;
+			ret->Operands += &&then;
+			ret->Operands += &&else;
 			RETURN &&ret;
 		} ELSE
 			RETURN parse_binary_rhs(p, &&lhs, level);
@@ -82,7 +82,7 @@ INCLUDE "../symbol.rl"
 			{
 				xp: ast::[Config]OperatorExpression-std::Dyn := :new();
 				xp->Op := detail::k_prefix_ops[i].(1);
-				xp->Operands += :gc(parse_prefix(p));
+				xp->Operands += parse_prefix(p);
 				RETURN xp;
 			}
 

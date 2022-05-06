@@ -27,7 +27,7 @@ INCLUDE "symbolconstant.rl"
 			{
 				IF(!tuple)
 				{
-					tuple: ast::[Config]OperatorExpression-std::Dyn := :new();
+					tuple := :new();
 					tuple->Op := :tuple;
 					tuple->Operands += &&exp;
 				}
@@ -125,10 +125,9 @@ INCLUDE "symbolconstant.rl"
 
 	parse_string(p: Parser &, out: ast::[Config]StringExpression &) BOOL
 	{
-		s ::= p.consume(:stringQuote);
-		IF(s)
-			out.String := s!;
-		= s;
+		WHILE(s ::= p.consume(:stringQuote))
+			out.String += s!;
+		= ##out.String != 0;
 	}
 
 	parse_this(p: Parser &, out: ast::[Config]ThisExpression &) BOOL
@@ -159,7 +158,7 @@ INCLUDE "symbolconstant.rl"
 
 		out.Method := lookup[type].(0);
 
-		IF(!(out.Type := :gc(parser::type::parse(p))))
+		IF(!(out.Type := parser::type::parse(p)))
 			p.fail("expected type");
 
 		p.expect(lookup[type].(2));
@@ -167,11 +166,11 @@ INCLUDE "symbolconstant.rl"
 		IF(lookup[type].(4) || !p.consume(:parentheseClose))
 		{
 			DO()
-				IF(value ::= expression::parse(p))
-					out.Values += :gc(value);
-				ELSE
+			{
+				IF:!(value ::= expression::parse(p))
 					p.fail("expected expression");
-				WHILE(lookup[type].(3) && p.consume(:comma))
+				out.Values += &&value;
+			} WHILE(lookup[type].(3) && p.consume(:comma))
 
 			p.expect(:parentheseClose);
 		}
@@ -218,11 +217,11 @@ INCLUDE "symbolconstant.rl"
 		p.expect(:parentheseOpen);
 		IF(expectType)
 		{
-			IF(!(out.Term := :gc(type::parse(p))))
+			IF(!(out.Term := type::parse(p)))
 				p.fail("expected type");
 		} ELSE
 		{
-			IF(!(out.Term := :gc(expression::parse(p))))
+			IF(!(out.Term := expression::parse(p)))
 				p.fail("expected expression");
 		}
 

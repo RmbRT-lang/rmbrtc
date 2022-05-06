@@ -130,6 +130,7 @@ INCLUDE "../src/file.rl"
 		comma,
 		semicolon,
 		doubleEqual,
+		equal,
 
 		bracketOpen,
 		bracketClose,

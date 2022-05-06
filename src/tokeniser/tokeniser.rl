@@ -228,6 +228,7 @@ INCLUDE 'std/unicode'
 				(",", :comma),
 				(";", :semicolon),
 				("==", :doubleEqual),
+				("=", :equal),
 
 				("[", :bracketOpen),
 				("]", :bracketClose),

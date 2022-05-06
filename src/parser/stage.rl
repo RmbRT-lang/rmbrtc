@@ -16,7 +16,7 @@ INCLUDE "global.rl"
 		TYPE Symbol := Config-ast::Symbol;
 		TYPE String := src::String;
 		TYPE CharLiteral := tok::Token;
-		TYPE StringLiteral := tok::Token;
+		TYPE StringLiteral := tok::Token - std::Vec;
 		TYPE Name := src::String;
 		TYPE ControlLabelName := tok::Token;
 		TYPE Number := tok::Token;
@@ -48,7 +48,10 @@ INCLUDE "global.rl"
 				out += &&glob;
 
 			IF(!p->eof())
+			{
 				p->fail("expected scope entry");
+				DIE;
+			}
 		}
 
 		STATIC create_file(

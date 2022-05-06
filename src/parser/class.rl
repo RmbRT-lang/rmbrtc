@@ -33,7 +33,7 @@ INCLUDE "../ast/class.rl"
 
 		default ::= Visibility::public;
 		WHILE(member ::= member::parse_class_member(p, default))
-			out.Members += :gc(member);
+			out.Members += &&member;
 
 		p.expect(:braceClose);
 

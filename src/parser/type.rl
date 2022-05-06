@@ -220,7 +220,7 @@ INCLUDE "symbolconstant.rl"
 			= FALSE;
 
 		IF(t ::= type::parse(p))
-			out.Types += :gc(t);
+			out.Types += &&t;
 		ELSE p.fail("expected type");
 		p.expect(:comma);
 		DO()

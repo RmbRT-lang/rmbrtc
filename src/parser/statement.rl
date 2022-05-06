@@ -188,7 +188,7 @@ INCLUDE "varorexpression.rl"
 		out: ast::[Config]ReturnStatement &
 	) BOOL
 	{
-		IF(!p.consume(:return))
+		IF(!p.consume(:return) && !p.consume(:equal))
 			= FALSE;
 
 		out.Expression := parser::expression::parse(p);

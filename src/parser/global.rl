@@ -28,6 +28,8 @@ INCLUDE "namespace.rl"
 		{
 			IF(t ::= <<ast::[Config]Templateable *>>(ret!))
 				t->Templates := &&templates;
+			ELSE IF(fn ::= <<ast::[Config]Function *>>(ret!))
+				fn->set_templates_after_parsing(&&templates);
 			ELSE IF(templates.exists())
 				p.fail("preceding item must not have templates");
 		}

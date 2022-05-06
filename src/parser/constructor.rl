@@ -106,7 +106,7 @@ INCLUDE "stage.rl"
 					DO()
 					{
 						IF(exp ::= expression::parse(p))
-							init.Arguments += :gc(exp);
+							init.Arguments += &&exp;
 						ELSE
 							p.fail("expected expression");
 					} WHILE(p.consume(:comma))

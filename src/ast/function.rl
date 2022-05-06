@@ -30,7 +30,7 @@ INCLUDE "statement.rl"
 }
 
 /// An anonymous function object.
-::rlc::ast [Stage:TYPE] Functoid VIRTUAL -> CodeObject
+::rlc::ast [Stage:TYPE] Functoid VIRTUAL -> [Stage]Templateable, CodeObject
 {
 	Signature: [Stage]FnSignature - std::Dyn;
 	Body: [Stage]Statement - std::Dyn;
@@ -61,6 +61,16 @@ INCLUDE "statement.rl"
 	SpecialVariants: std::[SpecialVariant; ast::[Stage]SpecialVariant-std::Shared]NatMap;
 	(// The function's variant implementations. /)
 	Variants: std::[Stage-Name; [Stage]Variant-std::Shared]NatMap;
+
+	set_templates_after_parsing(tpl: [Stage]TemplateDecl &&) VOID
+	{
+		IF(Default)
+			Default->Templates := &&tpl;
+		ELSE IF(##SpecialVariants)
+			SpecialVariants.start()->(1)->Templates := &&tpl;
+		ELSE
+			Variants.start()->(1)->Templates := &&tpl;
+	}
 
 	PRIVATE FINAL merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID
 	{
