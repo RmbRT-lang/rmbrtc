@@ -55,7 +55,7 @@ INCLUDE "symbolconstant.rl"
 		ArraySize: [Stage]Expression - std::DynVec;
 
 		{}: Indirection(:plain), IsArray(FALSE);
-		:const{}: Indirection(:plain), Qualifier(:const), IsArray(FALSE);
+		:const{}: Indirection(:plain), Qualifier(TRUE, FALSE), IsArray(FALSE);
 	}
 
 	/// A specific type.
@@ -68,6 +68,8 @@ INCLUDE "symbolconstant.rl"
 		Modifiers: type::[Stage]Modifier-std::Vec;
 		Reference: type::ReferenceType;
 		Variadic: BOOL;
+
+		{}: Reference(:none);
 	}
 
 	[Stage: TYPE] Signature -> [Stage]Type
@@ -122,6 +124,8 @@ INCLUDE "symbolconstant.rl"
 		}
 
 		Kind: Primitive;
+
+		{}: Kind(NOINIT);
 	}
 
 	[Stage: TYPE] ThisType -> [Stage]Type

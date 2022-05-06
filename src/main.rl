@@ -17,7 +17,7 @@ main(
 	argv: CHAR **) INT
 {
 	out ::= <<<std::io::OStream>>>(&std::io::out);
-	cli::main := (&out);
+	cli::main := :plain(&out);
 
 	IF(argc < 2)
 	{
@@ -47,10 +47,10 @@ main(
 		(:executable, "exe"),
 		(:library, "lib"),
 		(:sharedLibrary, "shared"),
-		(:test, "test"),
-		(:checkSyntax, "syntax"),
-		(:verifySimple, "quick-dry"),
-		(:verifyFull, "dry")
+		(:test, "test"), // build tests.
+		(:checkSyntax, "syntax"), // only syntax.
+		(:verifySimple, "quick-dry"), // simple symbol resolution, no templates.
+		(:verifyFull, "dry") // templates.
 	);
 
 	flag ::= 1;
@@ -95,7 +95,7 @@ main(
 		= 1;
 	}
 
-	compiler: rlc::compiler::Compiler *;
+	compiler: rlc::compiler::CCompiler;
 	TRY
 	{
 		build: rlc::compiler::Build-std::Dyn;
@@ -107,12 +107,12 @@ main(
 		}
 		ELSE
 			build := :new(buildType);
-		build->LegacyScoping := TRUE;
+		//build->LegacyScoping := TRUE;
 
-//		compiler->compile(&&files, &&*build);
+		compiler.compile(&&files, &&*build);
 
 		= 0;
-	} CATCH(e: rlc::Error &)
+	} CATCH(e: std::Error &)
 		cli::main.error(:stream(e), "\n");
 	CATCH(e: CHAR#\)
 		cli::main.error(e, "\n");

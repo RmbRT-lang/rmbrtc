@@ -20,6 +20,13 @@ INCLUDE "statement.rl"
 ::rlc::ast [Stage:TYPE] ResolvedSig -> [Stage]FnSignature
 {
 	Return: [Stage]Type-std::Dyn;
+
+	{};
+	{
+		args: [Stage]TypeOrArgument-std::DynVec&&,
+		isCoroutine: BOOL,
+		return: [Stage]Type-std::Dyn
+	} -> (&&args, isCoroutine): Return := &&return;
 }
 
 /// An anonymous function object.
@@ -35,18 +42,25 @@ INCLUDE "statement.rl"
 	}
 }
 
+::rlc::ast [Stage: TYPE] VariantMergeError {
+	Function: ast::[Stage]Function \;
+	Name: Stage::Name;
+	Old: [Stage]Variant \;
+	New: [Stage]Variant \;
+}
+
 (// A named function with potential callable variants. /)
 ::rlc::ast [Stage:TYPE] Function VIRTUAL -> [Stage]MergeableScopeItem
 {
-	Default: [Stage]Functoid-std::Shared;
+	Default: [Stage]DefaultVariant-std::Shared;
 
 	ENUM SpecialVariant {
 		null
 	}
 
-	SpecialVariants: std::[SpecialVariant; [Stage]Functoid-std::Shared]NatMap;
+	SpecialVariants: std::[SpecialVariant; ast::[Stage]SpecialVariant-std::Shared]NatMap;
 	(// The function's variant implementations. /)
-	Variants: std::[Stage-Name; [Stage]Functoid-std::Shared]NatMap;
+	Variants: std::[Stage-Name; [Stage]Variant-std::Shared]NatMap;
 
 	PRIVATE FINAL merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID
 	{
@@ -54,15 +68,17 @@ INCLUDE "statement.rl"
 		IF(from.Default)
 		{
 			IF(Default)
-				THROW <[Stage]MergeError>(THIS, from);
+				THROW <[Stage]MergeError>(&THIS, &from);
 			Default := from.Default;
 		}
 
 		FOR(var ::= from.Variants.start(); var; ++var)
 		{
 			IF(prev ::= Variants.find(var!.(0)))
-				IF(prev! != var!.(1)!)
-					THROW <[Stage]VariantMergeError>(THIS, var!.(0), *prev, var!.(0));
+				IF((*prev)! != var!.(1)!)
+					THROW <[Stage]VariantMergeError>(
+						&THIS, var!.(0),
+						*prev, var!.(1));
 			Variants.insert(var!.(0), var!.(1));
 		}
 	}
@@ -126,6 +142,7 @@ INCLUDE "statement.rl"
 ::rlc::ast [Stage:TYPE] Operator -> [Stage]Abstractable, [Stage]Functoid
 {
 	Op: rlc::Operator;
+	{}: Op(NOINIT);
 }
 
 ::rlc::ast [Stage:TYPE] Factory -> [Stage]Member, [Stage]Functoid

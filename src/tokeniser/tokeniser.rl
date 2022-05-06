@@ -9,13 +9,12 @@ INCLUDE 'std/unicode'
 	Tokeniser
 	{
 		{
-			file: src::File #\,
-			fileNumber: U1
+			file: src::File #\
 		}:
 			File(file),
 			Read(0),
 			Start(0),
-			Position(0, 0, fileNumber);
+			Position(0, 0, file);
 
 		# eof() BOOL := Read == ##File->Contents;
 		# position(
@@ -335,9 +334,11 @@ INCLUDE 'std/unicode'
 				("WHILE", :while)
 			);
 
+			ASSERT(##keywords[0].(0) != 0);
 			str ::= tok_str();
+			ASSERT(##str != 0);
 			FOR(i: UM := 0; i < ##keywords; i++)
-				IF(keywords[i].(0) == str)
+				IF(keywords[i].(0) == str++)
 				{
 					out->Type := keywords[i].(1);
 					RETURN TRUE;

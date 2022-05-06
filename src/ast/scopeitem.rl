@@ -8,15 +8,15 @@ INCLUDE "templatedecl.rl"
 }
 
 ::rlc::ast [Stage: TYPE] MergeError {
+	Old: [Stage]ScopeItem \;
+	New: [Stage]ScopeItem \;
 }
-
-::rlc::ast [Stage: TYPE] VariantMergeError {}
 
 /// An overloadable scope item that can hold multiple definitions.
 ::rlc::ast [Stage: TYPE] MergeableScopeItem VIRTUAL -> [Stage]ScopeItem
 {
 	PrivateIncluded: [Stage]MergeableScopeItem# \ - std::Vec;
-	PublicIncluded: [Stage-Type]MergeableScopeItem# \ - std::Vec;
+	PublicIncluded: [Stage]MergeableScopeItem# \ - std::Vec;
 
 	/// Include definitions from another file.
 	include(

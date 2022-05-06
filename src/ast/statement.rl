@@ -23,7 +23,7 @@ INCLUDE 'std/memory'
 
 	[Stage: TYPE] IfStatement -> [Stage]Statement
 	{
-		Label: [Stage]ControlLabel;
+		Label: [Stage]ControlLabel-std::Opt;
 
 		Init: [Stage]VarOrExpr-std::Dyn;
 		Condition: [Stage]VarOrExpr-std::Dyn;
@@ -92,6 +92,8 @@ INCLUDE 'std/memory'
 
 		ValueType: Type;
 		Value: [Stage]Expression-std::Dyn;
+
+		{}: ValueType (NOINIT);
 	}
 
 	[Stage: TYPE] LoopStatement -> [Stage]Statement
@@ -101,7 +103,7 @@ INCLUDE 'std/memory'
 		Condition: [Stage]VarOrExpr - std::Dyn;
 		Body: [Stage]Statement-std::Dyn;
 		PostLoop: [Stage]Expression-std::Dyn;
-		Label: [Stage]ControlLabel;
+		Label: [Stage]ControlLabel-std::Opt;
 	}
 
 	[Stage: TYPE] SwitchStatement -> [Stage]Statement
@@ -109,7 +111,7 @@ INCLUDE 'std/memory'
 		Initial: [Stage]VarOrExpr - std::Dyn;
 		Value: [Stage]VarOrExpr - std::Dyn;
 		Cases: [Stage]CaseStatement - std::Vec;
-		Label: [Stage]ControlLabel;
+		Label: [Stage]ControlLabel-std::Opt;
 	}
 
 	[Stage: TYPE] CaseStatement
@@ -126,7 +128,7 @@ INCLUDE 'std/memory'
 		Initial: [Stage]VarOrExpr - std::Dyn;
 		Value: [Stage]VarOrExpr - std::Dyn;
 		Cases: [Stage]TypeCaseStatement - std::Vec;
-		Label: [Stage]ControlLabel;
+		Label: [Stage]ControlLabel-std::Opt;
 	}
 
 	[Stage: TYPE] TypeCaseStatement
@@ -139,11 +141,11 @@ INCLUDE 'std/memory'
 
 	[Stage: TYPE] BreakStatement -> [Stage]Statement
 	{
-		Label: [Stage]ControlLabel;
+		Label: [Stage]ControlLabel-std::Opt;
 	}
 
 	[Stage: TYPE] ContinueStatement -> [Stage]Statement
 	{
-		Label: [Stage]ControlLabel;
+		Label: [Stage]ControlLabel-std::Opt;
 	}
 }

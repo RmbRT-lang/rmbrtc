@@ -19,7 +19,7 @@ INCLUDE 'std/string'
 	# OVERRIDE stream(
 		o: std::io::OStream &) VOID
 	{
-		std::io::write(File!, ":", :dec(Line), ":", :dec(Column), ": ");
+		std::io::write(o, File!++, ":", :dec(Line), ":", :dec(Column), ": ");
 
 		reason(o);
 		std::io::write(o, ".");

@@ -19,7 +19,7 @@ INCLUDE 'std/memory'
 
 	MemberInit -> CodeObject
 	{
-		Member: Stage::MemberReference;
+		Member: Stage::MemberVariableReference;
 		Arguments: [Stage]Expression - std::DynVec;
 	}
 
@@ -45,28 +45,30 @@ INCLUDE 'std/memory'
 
 ::rlc::ast [Stage: TYPE] CopyConstructor -> [Stage]Constructor
 {
-	Argument: [Stage]LocalVariable;
+	Argument: ast::[Stage]Argument-std::Opt;
 
+	{};
 	:named_arg{
 		name: Stage::Name
-	}: Argument(0, name, std::heap::[[Stage]ThisType]new(:cref));
-	:unnamed_arg{}: Argument(:unnamed(0, std::heap::[[Stage]ThisType]new(:cref)));
+	}: Argument(:a(name, :gc(std::heap::[[Stage]ThisType]new(:cref))));
+	:unnamed_arg{};
 }
 
 ::rlc::ast [Stage: TYPE] MoveConstructor -> [Stage]Constructor
 {
-	Argument: [Stage]LocalVariable;
+	Argument: ast::[Stage]Argument-std::Opt;
 
+	{};
 	:named_arg{
 		name: Stage::Name
-	}: Argument(0, name, std::heap::[[Stage]ThisType]new(:tempRef));
-	:unnamed_arg{}: Argument(:unnamed(0, std::heap::[[Stage]ThisType]new(:tempRef)));
+	}: Argument(:a(name, :gc(std::heap::[[Stage]ThisType]new(:tempRef))));
+	:unnamed_arg{};
 }
 
 ::rlc::ast [Stage: TYPE] CustomConstructor -> [Stage]Constructor
 {
 	Name: [Stage]SymbolConstant - std::Opt;
-	Arguments: [Stage]LocalVariable - std::Vec;
+	Arguments: [Stage]TypeOrArgument - std::DynVec;
 
 	# named() BOOL INLINE := Name!;
 }

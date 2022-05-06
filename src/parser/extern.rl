@@ -11,7 +11,7 @@ INCLUDE "stage.rl"
 
 	linkName: src::String - std::Opt;
 	IF(p.consume(:bracketOpen))
-		linkName := :a(p.consume(:stringQuote));
+		linkName := :a(p.expect(:stringQuote).Content);
 
 	t: Trace(&p, "external symbol");
 	IF(p.match_ahead(:colon))

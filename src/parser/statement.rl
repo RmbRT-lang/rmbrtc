@@ -162,7 +162,7 @@ INCLUDE "varorexpression.rl"
 		out.Static := p.consume(:static);
 		IF(v ::= parser::variable::parse_local(p, TRUE, locals))
 		{
-			out.Variable := &&v!;
+			out.Variable := &&*v;
 			= TRUE;
 		}
 		ELSE IF(out.Static)

@@ -43,9 +43,9 @@ INCLUDE "stage.rl"
 			_out->Name := &&symbol;
 			DO()
 			{
-				IF(arg ::= function::help::parse_arg(p))
-					_out->Arguments += &&arg;
-				ELSE p.fail("expected argument");
+				IF:!(arg ::= function::help::parse_arg(p))
+					p.fail("expected argument");
+				_out->Arguments += &&arg;
 			} WHILE(p.consume(:comma))
 
 		}

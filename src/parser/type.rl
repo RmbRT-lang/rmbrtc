@@ -164,12 +164,11 @@ INCLUDE "symbolconstant.rl"
 
 		IF(!p.consume(:parentheseClose))
 		{
-			DO(arg: Type *)
+			DO()
 			{
-				IF(arg := type::parse(p))
-					out.Args += &&arg;
-				ELSE
+				IF:!(arg ::= type::parse(p))
 					p.fail("expected type");
+				out.Args += &&arg;
 			} WHILE(p.consume(:comma))
 			p.expect(:parentheseClose);
 		}

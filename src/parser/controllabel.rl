@@ -6,14 +6,16 @@ INCLUDE "stage.rl"
 	p: Parser &
 ) ast::[Config]ControlLabel - std::Opt
 {
-	IF(p.consume(:bracketOpen))
-	{
-		IF(!p.match(:stringBacktick)
-		&& !p.match(:stringQuote))
-			p.fail("expected \"\" or `` string");
+	IF(!p.consume(:bracketOpen))
+		= NULL;
 
-		t ::= p.eat_token()!.Content;
-		p.expect(:bracketClose);
-		= :a(&&t);
-	}
+	IF(!p.match(:stringBacktick)
+	&& !p.match(:stringQuote))
+		p.fail("expected \"\" or `` string");
+
+	label: ast::[Config]ControlLabel;
+	tok ::= p.eat_token()!;
+	(label.Name, label.Position) := (tok, tok.Position);
+	p.expect(:bracketClose);
+	= :a(&&label);
 }

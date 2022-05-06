@@ -18,36 +18,47 @@ INCLUDE "global.rl"
 		TYPE CharLiteral := tok::Token;
 		TYPE StringLiteral := tok::Token;
 		TYPE Name := src::String;
-		TYPE ControlLabelName := src::String;
+		TYPE ControlLabelName := tok::Token;
 		TYPE Number := tok::Token;
 
 		TYPE Inheritance := Symbol;
 		TYPE MemberReference := Symbol::Child;
+		TYPE MemberVariableReference := src::String;
 
 		TYPE Includes := Include - std::Vec;
 
-		STATIC transform_includes(:nothing, p: Parser \) Includes
+		STATIC transform_includes(
+			out: Includes&,
+			:nothing,
+			p: Parser \
+		) VOID
 		{
-			ret: Includes;
-
 			i: parser::Include;
 			WHILE(i.parse(*p))
-				ret += &&i;
-
-			= &&ret;
+				out += &&i;
 		}
 
-		STATIC transform_globals(:nothing, p: Parser \) ast::[Config]Global - std::DynVec
+		STATIC transform_globals(
+			out: ast::[Config]Global-std::DynVec&,
+			:nothing,
+			p: Parser \
+		) VOID
 		{
-			ret: ast::[Config]Global - std::DynVec;
-
 			WHILE(glob ::= global::parse(*p))
-				ret += &&glob;
+				out += &&glob;
 
 			IF(!p->eof())
 				p->fail("expected scope entry");
+		}
 
-			= &&ret;
+		STATIC create_file(
+			registry: Config-ast::FileRegistry &,
+			file: std::str::CV#&
+		) Config-ast::File \
+		{
+			s: src::File-std::Shared := :new(file);
+			p: Parser(s!);
+			= std::heap::[Config-ast::File]new(:transform(:nothing, &p));
 		}
 	}
 }

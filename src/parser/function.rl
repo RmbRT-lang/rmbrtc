@@ -253,7 +253,7 @@ Can be called multiple times to append new arguments.
 {
 	postFix ::= p.consume(:this);
 	IF(!postFix && !p.match_ahead(:this))
-		RETURN FALSE;
+		= FALSE;
 
 	t: Trace(&p, "operator");
 
@@ -307,6 +307,7 @@ Can be called multiple times to append new arguments.
 
 	out.Signature := function::help::parse_signature_after_args(p, &&args);
 	function::help::parse_body(p, out.Abstractness != :abstract, out);
+	= TRUE;
 }
 
 ::rlc::parser::function parse_factory(

@@ -13,6 +13,7 @@ INCLUDE 'std/vector'
 	/// Generic named variable.
 	[Stage:TYPE] Variable VIRTUAL -> [Stage]ScopeItem
 	{
+		{};
 		{ name: Stage::Name } -> (&&name);
 	}
 
@@ -25,6 +26,7 @@ INCLUDE 'std/vector'
 		Type: [Stage]MaybeAutoType - std::Dyn;
 		InitValues: Stage-Expression - std::DynVec;
 		
+		{};
 		{
 			name: Stage::Name,
 			type: [Stage]MaybeAutoType - std::Dyn,
@@ -35,7 +37,7 @@ INCLUDE 'std/vector'
 			InitValues(&&initValues)
 		{
 			// Make sure that an auto variable has a single-value initialiser.
-			ASSERT(!<<Stage-type::Auto>>(Type!) || ##InitValues == 1);
+			ASSERT(!<<Stage-type::Auto *>>(Type!) || ##InitValues == 1);
 		}
 	}
 
@@ -47,6 +49,7 @@ INCLUDE 'std/vector'
 	{
 		Type: ast::[Stage]Type - std::Dyn;
 
+		{};
 		{
 			name: Stage::Name,
 			type: ast::[Stage]Type-std::Dyn
@@ -58,6 +61,7 @@ INCLUDE 'std/vector'
 	/// A variable in global scope.
 	[Stage:TYPE] GlobalVariable -> [Stage]Global, [Stage]InitialisedVariable
 	{
+		{};
 		{
 			name: Stage::Name,
 			type: [Stage]MaybeAutoType - std::Dyn,
@@ -70,6 +74,7 @@ INCLUDE 'std/vector'
 		[Stage]UninitialisedVariable,
 		[Stage]ExternSymbol
 	{
+		{};
 		{
 			name: Stage::Name,
 			type: [Stage]Type - std::Dyn,
@@ -83,21 +88,31 @@ INCLUDE 'std/vector'
 		[Stage]UninitialisedVariable,
 		[Stage]MaybeAnonMemberVar
 	{
+		{};
 		{
 			name: Stage::Name,
 			type: [Stage]Type - std::Dyn
-		} -> (), (&&name, &&type);
+		} -> (&&name, &&type), ();
 	}
 
 	[Stage:TYPE] AnonMemberVariable -> [Stage]MaybeAnonMemberVar
 	{
 		Type: ast::[Stage]Type - std::Dyn;
+		{};
+		{type: ast::[Stage]Type - std::Dyn}: Type(&&type);
 	}
 
 	[Stage:TYPE] StaticMemberVariable ->
 		[Stage]MaybeAnonMemberVar,
 		[Stage]InitialisedVariable
 	{
+		{};
+		{
+			name: Stage::Name,
+			type: [Stage]Type-std::Dyn,
+			inits: [Stage]Expression - std::DynVec
+		}-> (), (&&name, &&type, &&inits);
+
 	}
 
 	TYPE LocalPosition := U2;
@@ -106,6 +121,7 @@ INCLUDE 'std/vector'
 	{
 		Position: LocalPosition;
 
+		{};
 		{pos: LocalPosition}: Position(pos) { ASSERT(pos > 0); }
 		:arg{}: Position(0);
 	}
@@ -116,6 +132,7 @@ INCLUDE 'std/vector'
 		[Stage]UninitialisedVariable,
 		[Stage]TypeOrArgument
 	{
+		{};
 		{
 			name: Stage::Name,
 			type: [Stage]Type-std::Dyn
@@ -128,6 +145,7 @@ INCLUDE 'std/vector'
 		[Stage]InitialisedVariable,
 		[Stage]VarOrExpr
 	{
+		{};
 		{
 			name: Stage::Name,
 			position: LocalPosition,
@@ -142,6 +160,7 @@ INCLUDE 'std/vector'
 		[Stage]UninitialisedVariable,
 		[Stage]TypeOrCatchVariable
 	{
+		{};
 		{
 			name: Stage::Name,
 			position: LocalPosition,

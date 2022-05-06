@@ -10,11 +10,10 @@ INCLUDE 'std/tags'
 		std::NoMove;
 
 		{
-			file: src::File #\,
-			fileIndex: U1
+			file: src::File #\
 		}:
 			File(file),
-			Tokeniser(file, fileIndex),
+			Tokeniser(file),
 			Ctx(NULL),
 			Buffer(NOINIT),
 			BufferSize(0),

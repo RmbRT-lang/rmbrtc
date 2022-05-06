@@ -18,4 +18,6 @@ INCLUDE "scopeitem.rl"
 {
 	Visibility: rlc::Visibility;
 	Attribute: rlc::MemberAttribute;
+
+	{}: Visibility(NOINIT), Attribute(NOINIT);
 }

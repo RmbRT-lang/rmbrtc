@@ -8,7 +8,6 @@ INCLUDE 'std/math/limit'
 	TYPE Size := U2;
 	TYPE Line := U2;
 	TYPE Column := U1;
-	TYPE FileNo := U1;
 
 	(// String inside a source file. /)
 	String
@@ -40,13 +39,7 @@ INCLUDE 'std/math/limit'
 	{
 		Line: src::Line;
 		Column: src::Column;
-		File: FileNo;
-
-		{};
-		{ line: src::Line, col: src::Column, file: FileNo }:
-			Line(line),
-			Column(col),
-			File(file);
+		File: src::File #\;
 	}
 
 	(// Source file. /)
@@ -55,7 +48,7 @@ INCLUDE 'std/math/limit'
 		Name: std::Str;
 		PUBLIC Contents: std::Str;
 
-		{name: std::Str}: Name(name)
+		{name: std::Str}: Name(:cstring(name!++))
 		{
 			f: std::io::File(Name.data(), "r");
 			buf: CHAR[1024] (NOINIT);

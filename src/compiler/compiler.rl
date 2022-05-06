@@ -58,7 +58,7 @@ INCLUDE 'std/optional'
 						BREAK;
 
 				IF(len)
-					IncludePaths += incs.cut(len);
+					IncludePaths += incs.cut(len)++;
 			} FOR(len < ##incs; incs := incs.drop_start(len+1)++)
 		}
 	}

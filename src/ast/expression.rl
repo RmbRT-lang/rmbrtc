@@ -122,6 +122,8 @@ INCLUDE 'std/vector'
 		Operands: [Stage]Expression - std::DynVec;
 		Op: rlc::Operator;
 
+		{}: Op(NOINIT);
+
 		STATIC make_unary(
 			op: rlc::Operator,
 			opPosition: src::Position,

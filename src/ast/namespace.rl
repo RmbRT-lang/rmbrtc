@@ -9,19 +9,28 @@ INCLUDE 'std/set'
 
 	PRIVATE FINAL merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID
 	{
-		ns ::= <<[Stage]Namespace &>>(rhs);
+		ns: ?& := <<[Stage]Namespace &>>(rhs);
 
 		FOR[insert](rhs_entry ::= ns.Entries.start(); rhs_entry; ++rhs_entry)
 		{
+			IF:!(rhs_entry_si ::= <<[Stage]ScopeItem *>>(rhs_entry!))
+			{
+				Entries += &&*rhs_entry;
+				CONTINUE;
+			}
+
 			FOR[collisions](entry ::= Entries.start(); entry; ++entry)
 			{
-				IF(entry!->Name == rhs_entry!->Name)
+				IF:!(entry_si ::= <<[Stage]ScopeItem *>>(entry!))
+					CONTINUE;
+
+				IF(entry_si!->Name == rhs_entry_si!->Name)
 				{
 					merge_entry ::= <<[Stage]MergeableScopeItem *>>(entry!);
 					merge_rhs ::= <<[Stage]MergeableScopeItem *>>(rhs_entry!);
 
 					IF(!merge_entry || !merge_rhs)
-						THROW <[Stage]MergeError>(entry, rhs_entry);
+						THROW <[Stage]MergeError>(entry_si, rhs_entry_si);
 
 					// Merge colliding items.
 					merge_entry->merge(&&*merge_rhs);

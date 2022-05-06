@@ -21,7 +21,7 @@ INCLUDE "stage.rl"
 
 		p.expect(:semicolon);
 
-		= :new(nt->Name, &&nt->Type, &&inits);
+		= :new(nt->Name.Content, &&nt->Type, &&inits);
 	}
 
 	parse_extern(
@@ -34,7 +34,7 @@ INCLUDE "stage.rl"
 		IF:!(nt ::= help::parse_uninitialised_name_and_type(p))
 			= NULL;
 		p.expect(:semicolon);
-		= :a(&&nt->(0).Content, &&nt->(1), &&linkName);
+		= :a(&&nt->Name.Content, &&nt->Type, &&linkName);
 	}
 
 	parse_member(
@@ -70,13 +70,13 @@ INCLUDE "stage.rl"
 			{
 				p.expect(:semicolon);
 				= :gc(std::heap::[ast::[Config]MemberVariable]new(
-					&&nt->(0).Content, &&nt->(1)));
+					&&nt->Name.Content, &&nt->Type));
 			} ELSE IF(help::is_optionally_named_variable_start(p))
 			{	// Anonymous member variable.
 				IF:!(t ::= type::parse(p))
 					p.fail("expected type");
 				p.expect(:semicolon);
-				= :gc(std::heap::[ast::[Config]AnonMemberVariable]new(t));
+				= :gc(std::heap::[ast::[Config]AnonMemberVariable]new(&&t));
 			}
 		}
 		= &&ret;
@@ -93,14 +93,15 @@ INCLUDE "stage.rl"
 		{
 			p.expect(:semicolon);
 			= :gc(std::heap::[ast::[Config]CatchVariable]new(
-				&&nt->(0).Content, ++locals, &&nt->(1)));
+				&&nt->Name.Content, ++locals, &&nt->Type));
 		} ELSE IF(help::is_optionally_named_variable_start(p))
-		{	// Anonymous member variable.
+		{	// Anonymous catch variable.
 			IF:!(t ::= type::parse(p))
 				p.fail("expected type");
 			p.expect(:semicolon);
 			= &&t;
 		}
+		= NULL;
 	}
 
 	parse_local(
@@ -189,13 +190,16 @@ INCLUDE "stage.rl"
 		= FALSE;
 	}
 
+	::help UninitialisedNameAndType
+	{
+		Name: tok::Token;
+		Type: ast::[Config]Type - std::Dyn;
+	}
+
 	/// A named uninitialised variable.
 	::help parse_uninitialised_name_and_type(
 		p: Parser &
-	) {
-		tok::Token,
-		ast::[Config]Type - std::Dyn
-	} - std::Opt
+	) UninitialisedNameAndType - std::Opt
 	{
 		IF(!is_named_variable_start(p, TRUE))
 			= NULL;
@@ -204,7 +208,7 @@ INCLUDE "stage.rl"
 		p.expect(:colon);
 		IF:!(t ::= type::parse(p))
 			p.fail("experted type");
-		= :a(:a(name), &&t);
+		= :a(name, &&t);
 	}
 
 
@@ -227,9 +231,9 @@ INCLUDE "stage.rl"
 			{
 				auto: ast::type::[Config]Auto;
 				type::parse_auto(p, auto);
-				= :a(:a(name), :dup(&&auto));
+				= :a(name, :dup(&&auto));
 			}
-			= :a(:a(name), type::parse(p));
+			= :a(name, type::parse(p));
 		} ELSE
 		{
 			STATIC k_need_ahead: tok::Type#[](
@@ -244,7 +248,7 @@ INCLUDE "stage.rl"
 					auto: ast::type::[Config]Auto;
 					type::parse_auto_no_ref(p, auto);
 					p.expect(:doubleColonEqual);
-					= :a(:a(name), :dup(&&auto));
+					= :a(name, :dup(&&auto));
 				}
 			}
 			DIE;
