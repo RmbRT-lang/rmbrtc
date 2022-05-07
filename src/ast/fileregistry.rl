@@ -1,46 +1,32 @@
 INCLUDE 'std/string'
 INCLUDE 'std/set'
 INCLUDE 'std/hashmap'
-INCLUDE 'std/sync/mutex'
 
 INCLUDE "../compiler/compiler.rl"
 INCLUDE "file.rl"
 
-::rlc::ast [Stage:TYPE] FileRegistry -> PRIVATE std::sync::Mutex
+::rlc::ast [Stage:TYPE] FileRegistry
 {
 PRIVATE:
 	StrCmp
 	{
-		STATIC cmp(
-			a: std::Str #&,
-			b: Stage-File # \
-		) INT INLINE
-			:= a!.cmp(b->name());
+		STATIC cmp(lhs: std::Str#&, rhs: std::Str#&) ? := lhs!.cmp(rhs!);
 	}
 
-	Files: Stage-File-std::DynVec;
-	FileFutures: Stage-File\^-std::DynVec;
-	FileByName: std::[std::Str, Stage-File\^\]HashMap;
+	Files: [Stage]File-std::DynVec;
+	FileByName: std::[std::Str, [Stage]File\, StrCmp]Map;
 PUBLIC:
 	get(file: std::Str #&) Stage-File \
 	{
-		g ::= THIS();
 		entry ::= FileByName.find_loc(file);
 		IF(f ::= entry.(0))
+			= (*f)!;
+		ELSE
 		{
-			g.~;
-			RETURN (**f)();
-		} ELSE
-		{
-			loc ::= entry.(1);
-
-			fH ::= (FileFutures += :dup(^Stage::create_file(THIS, file!)))!;
-			FileByName.insert(file, fH);
-			g.~;
-			file ::= (*fH)();
-			g := THIS();
-			Files += :gc(file);
-			= file;
+			processed ::= Stage::create_file(THIS, file!);
+			FileByName.insert_at(entry.(1), file, processed);
+			Files += :gc(processed);
+			= processed;
 		}
 	}
 }

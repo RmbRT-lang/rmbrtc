@@ -25,11 +25,7 @@ INCLUDE "../parser/stage.rl"
 
 		// Parse all code first.
 		FOR(f ::= files.start(); f; ++f)
-		{
-			abs ::= util::absolute_file(f!);
-			cli::main.info("parsing ", f!++, " (", abs!++, ")\n");
-			scoped += Registry.get(&&abs);
-		}
+			scoped += Registry.get(util::absolute_file(f!));
 
 		IF(build.Type == :checkSyntax)
 			RETURN;
