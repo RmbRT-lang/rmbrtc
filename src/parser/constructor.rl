@@ -75,8 +75,6 @@ INCLUDE "stage.rl"
 			dup_init := TRUE;
 			DO(init: ast::[Config]Constructor::BaseInit)
 			{
-				IF(!symbol::parse(p, init.Base))
-					p.fail("expected base class name");
 				p.expect(:parentheseOpen);
 				IF(!p.consume(:parentheseClose))
 				{
@@ -100,17 +98,25 @@ INCLUDE "stage.rl"
 				tok ::= p.expect(:identifier);
 				(init.Member, init.Position) := (tok.Content, tok.Position);
 
-				p.expect(:parentheseOpen);
-				IF(!p.consume(:parentheseClose))
+				IF(p.consume(:colonEqual))
 				{
-					DO()
+					IF:!(exp ::= expression::parse(p))
+						p.fail("expected expression");
+					init.Arguments += &&exp;
+				} ELSE
+				{
+					p.expect(:parentheseOpen);
+					IF(!p.consume(:parentheseClose))
 					{
-						IF(exp ::= expression::parse(p))
-							init.Arguments += &&exp;
-						ELSE
-							p.fail("expected expression");
-					} WHILE(p.consume(:comma))
-					p.expect(:parentheseClose);
+						DO()
+						{
+							IF(exp ::= expression::parse(p))
+								init.Arguments += &&exp;
+							ELSE
+								p.fail("expected expression");
+						} WHILE(p.consume(:comma))
+						p.expect(:parentheseClose);
+					}
 				}
 				inits.MemberInits += &&init;
 			} WHILE(p.consume(:comma))

@@ -17,7 +17,10 @@ INCLUDE 'std/hashset'
 	Type: Stage::Inheritance;
 }
 
-::rlc::ast [Stage: TYPE] Class VIRTUAL -> [Stage]ScopeItem, CodeObject
+::rlc::ast [Stage: TYPE] Class VIRTUAL ->
+	[Stage]ScopeItem,
+	[Stage]Templateable,
+	CodeObject
 {
 	Virtual: BOOL;
 	Members: [Stage]Member - std::DynVec;

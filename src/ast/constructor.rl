@@ -7,7 +7,10 @@ INCLUDE "statement.rl"
 INCLUDE 'std/vector'
 INCLUDE 'std/memory'
 
-::rlc::ast [Stage: TYPE] Constructor VIRTUAL -> [Stage]Member, CodeObject
+::rlc::ast [Stage: TYPE] Constructor VIRTUAL ->
+	[Stage]Member,
+	[Stage]Templateable,
+	CodeObject
 {
 	Initialisers VIRTUAL {}
 

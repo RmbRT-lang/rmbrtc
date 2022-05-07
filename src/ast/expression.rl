@@ -2,6 +2,7 @@ INCLUDE "symbol.rl"
 INCLUDE "type.rl"
 INCLUDE "codeobject.rl"
 INCLUDE "varorexpression.rl"
+INCLUDE "exprorstatement.rl"
 INCLUDE "typeorexpression.rl"
 INCLUDE "statement.rl"
 INCLUDE "stage.rl"
@@ -56,7 +57,8 @@ INCLUDE 'std/vector'
 	[Stage: TYPE] Expression VIRTUAL ->
 		CodeObject,
 		[Stage]TypeOrExpr,
-		[Stage]VarOrExpr
+		[Stage]VarOrExpr,
+		[Stage]ExprOrStatement
 	{
 		Range: src::String;
 

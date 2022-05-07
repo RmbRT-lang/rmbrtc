@@ -10,8 +10,9 @@ INCLUDE "stage.rl"
 		= NULL;
 
 	IF(!p.match(:stringBacktick)
-	&& !p.match(:stringQuote))
-		p.fail("expected \"\" or `` string");
+	&& !p.match(:stringQuote)
+	&& !p.match(:identifier))
+		p.fail("expected identifier, \"\" or `` string");
 
 	label: ast::[Config]ControlLabel;
 	tok ::= p.eat_token()!;

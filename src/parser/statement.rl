@@ -125,17 +125,21 @@ INCLUDE "varorexpression.rl"
 			= FALSE;
 
 		t: Trace(&p, "if statement");
+		out.RevealsVariable := p.consume(:colon);
 		out.Label := control_label::parse(p);
+		out.Negated := p.consume(:exclamationMark);
 		p.expect(:parentheseOpen);
 
-		val ::= var_or_exp::parse(p, locals);
+		val ::= out.RevealsVariable
+			? <ast::[Config]VarOrExpr-std::Dyn>(
+				variable::parse_local(p, FALSE, locals))
+			: var_or_exp::parse(p, locals);
 
-		IF(p.consume(:semicolon))
+		IF(!out.Negated && p.consume(:semicolon))
 		{
 			out.Init := &&val;
 			val := var_or_exp::parse(p, locals);
 		}
-
 		out.Condition := &&val;
 
 		p.expect(:parentheseClose);

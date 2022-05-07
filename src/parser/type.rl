@@ -149,8 +149,6 @@ INCLUDE "symbolconstant.rl"
 		t: Trace(&p, "auto type specifier");
 		hasQualifier ::= parse_qualifier(p, out.Qualifier);
 		out.Reference := parse_reference_type(p);
-		IF(out.Reference == :none && !hasQualifier)
-			p.expect(:questionMark);
 	}
 
 	parse_signature(p: Parser&, out: Signature &) BOOL

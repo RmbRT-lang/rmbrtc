@@ -30,12 +30,13 @@ INCLUDE "templatedecl.rl"
 		ret: ast::[Config]Member-std::Dyn := NULL;
 
 		IF(parse_impl(p, ret, typedef::parse_member)
-		|| ((allow_abstract_fn && p.match(:abstract))
-			&& parse_impl(p, ret, abstractable::parse_member_function))
+		|| ((allow_abstract_fn || !p.match(:abstract))
+			&& (ret := abstractable::parse(p)))
 		|| (ret := parse_constructor(p))
 		|| (attr == :static
 			? (ret := variable::parse_member(p, TRUE))
 			: allow_variable && (ret := variable::parse_member(p, FALSE)))
+		|| (attr == :none && parse_impl(p, ret, function::parse_factory))
 		|| parse_impl(p, ret, class::parse_member)
 		|| parse_impl(p, ret, rawtype::parse_member)
 		|| parse_impl(p, ret, union::parse_member)
@@ -44,10 +45,11 @@ INCLUDE "templatedecl.rl"
 		{
 			ret->Visibility := visibility;
 			IF(templates.exists())
-				IF(t ::= <<ast::[Config]Templateable *>>(ret))
-					t->Templates := &&templates;
-				ELSE
+			{
+				IF:!(t ::= <<ast::[Config]Templateable *>>(ret))
 					p.fail("preceding member must not have templates");
+				t->Templates := &&templates;
+			}
 			ret->Attribute := attr;
 		}
 

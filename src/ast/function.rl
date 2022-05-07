@@ -33,7 +33,7 @@ INCLUDE "statement.rl"
 ::rlc::ast [Stage:TYPE] Functoid VIRTUAL -> [Stage]Templateable, CodeObject
 {
 	Signature: [Stage]FnSignature - std::Dyn;
-	Body: [Stage]Statement - std::Dyn;
+	Body: [Stage]ExprOrStatement - std::Dyn;
 	IsInline: BOOL;
 
 	STATIC short_hand_body(e: [Stage]Expression-std::Dyn) [Stage]Statement-std::Dyn

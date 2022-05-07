@@ -1,13 +1,14 @@
 INCLUDE "expression.rl"
 INCLUDE "variable.rl"
 INCLUDE "controllabel.rl"
+INCLUDE "exprorstatement.rl"
 
 INCLUDE 'std/vector'
 INCLUDE 'std/memory'
 
 ::rlc::ast
 {
-	[Stage: TYPE] Statement VIRTUAL
+	[Stage: TYPE] Statement VIRTUAL -> [Stage]ExprOrStatement
 	{
 	}
 
@@ -24,6 +25,9 @@ INCLUDE 'std/memory'
 	[Stage: TYPE] IfStatement -> [Stage]Statement
 	{
 		Label: [Stage]ControlLabel-std::Opt;
+
+		RevealsVariable: BOOL;
+		Negated: BOOL;
 
 		Init: [Stage]VarOrExpr-std::Dyn;
 		Condition: [Stage]VarOrExpr-std::Dyn;

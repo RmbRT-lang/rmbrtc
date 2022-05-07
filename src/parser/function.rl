@@ -90,31 +90,17 @@ Can be called multiple times to append new arguments.
 	}
 
 	body: ast::[Config]BlockStatement;
-	IF(<<ast::[Config]UnresolvedSig *>>(out.Signature!))
-	{
-		IF(p.consume(:doubleColonEqual))
-		{
-			IF(!(out.Body := expression::parse(p)))
-				p.fail("expected expression");
-			p.expect(:semicolon);
-		} ELSE
-		{
-			IF(!statement::parse_block(p, locals, body))
-				p.fail("expected block statement");
-			out.Body := :dup(&&body);
-		}
-	} ELSE IF(!p.consume(:semicolon))
-	{
-		IF(statement::parse_block(p, locals, body))
-			out.Body := :dup(&&body);
-		ELSE
-		{
-			p.expect(:colonEqual);
 
-			IF(!(out.Body := expression::parse(p)))
-				p.fail("expected expression");
-			p.expect(:semicolon);
-		}
+	IF(p.consume(:colonEqual))
+	{
+		IF(!(out.Body := expression::parse(p)))
+			p.fail("expected expression");
+		p.expect(:semicolon);
+	} ELSE
+	{
+		IF(!statement::parse_block(p, locals, body))
+			p.fail("expected block statement");
+		out.Body := :dup(&&body);
 	}
 }
 
@@ -178,7 +164,8 @@ Can be called multiple times to append new arguments.
 	abs ::= parse_abstractness(p);
 
 	IF(detail::parse_impl(p, abs, ret, parse_operator)
-	|| detail::parse_impl(p, abs, ret, parse_member_function))
+	|| detail::parse_impl(p, abs, ret, parse_member_function)
+	|| detail::parse_impl(p, abs, ret, parse_converter))
 	{
 		= &&ret;
 	}
@@ -247,7 +234,23 @@ Can be called multiple times to append new arguments.
 ::rlc::parser::abstractable parse_member_function(
 	p: Parser&,
 	out: ast::[Config]MemberFunction &
-) BOOL INLINE := function::parse(p, out.Abstractness != :abstract, out);
+) BOOL INLINE
+{
+	STATIC abstractness: {tok::Type, Abstractness}#[](
+		(:abstract, :abstract),
+		(:virtual, :virtual),
+		(:final, :final),
+		(:override, :override));
+
+	out.Abstractness := :none;
+	FOR(a ::= std::range::start(abstractness); a; ++a)
+		IF(p.consume(a->(0)))
+		{
+			out.Abstractness := a->(1);
+			BREAK;
+		}
+	= function::parse(p, out.Abstractness != :abstract, out);
+}
 
 ::rlc::parser::abstractable parse_operator(p: Parser &, out: ast::[Config]Operator &) BOOL
 {
@@ -317,6 +320,7 @@ Can be called multiple times to append new arguments.
 {
 	IF:!(tok ::= p.consume(:tripleLess))
 		= FALSE;
+
 	out.Position := tok->Position;
 
 	t: Trace(&p, "factory");

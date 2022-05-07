@@ -15,7 +15,7 @@ INCLUDE "stage.rl"
 		inits: ast::[Config]Expression - std::DynVec;
 
 		IF(<<ast::type::[Config]Auto *>>(nt->Type!))
-			inits += help::parse_auto_init(p);
+			inits += help::parse_auto_init(p, nt->ExpectShortHandInit);
 		ELSE
 			inits := help::parse_initialisers(p);
 
@@ -44,8 +44,6 @@ INCLUDE "stage.rl"
 	{
 		_: Trace(&p, "member variable");
 
-		ret: ast::[Config]MaybeAnonMemberVar - std::Dyn;
-
 		IF(static)
 		{
 			IF(nt ::= help::parse_initialised_name_and_type(p))
@@ -53,7 +51,7 @@ INCLUDE "stage.rl"
 				inits: ast::[Config]Expression - std::DynVec;
 
 				IF(<<ast::type::[Config]Auto *>>(nt->Type!))
-					inits += help::parse_auto_init(p);
+					inits += help::parse_auto_init(p, nt->ExpectShortHandInit);
 				ELSE
 					inits := help::parse_initialisers(p);
 
@@ -65,7 +63,6 @@ INCLUDE "stage.rl"
 		}
 		ELSE
 		{
-			help::parse_variable_opt_name_and_type(p);
 			IF(nt ::= help::parse_uninitialised_name_and_type(p))
 			{
 				p.expect(:semicolon);
@@ -77,9 +74,8 @@ INCLUDE "stage.rl"
 					p.fail("expected type");
 				p.expect(:semicolon);
 				= :gc(std::heap::[ast::[Config]AnonMemberVariable]new(&&t));
-			}
+			} ELSE = NULL;
 		}
-		= &&ret;
 	}
 
 	parse_catch(
@@ -116,7 +112,7 @@ INCLUDE "stage.rl"
 		inits: ast::[Config]Expression - std::DynVec;
 
 		IF(<<ast::type::[Config]Auto *>>(nt->Type!))
-			inits += help::parse_auto_init(p);
+			inits += help::parse_auto_init(p, nt->ExpectShortHandInit);
 		ELSE
 			inits := help::parse_initialisers(p);
 
@@ -204,7 +200,7 @@ INCLUDE "stage.rl"
 		name ::= p.consume(:identifier)!;
 		p.expect(:colon);
 		IF:!(t ::= type::parse(p))
-			p.fail("experted type");
+			p.fail("expected type");
 		= :a(name, &&t);
 	}
 
@@ -213,6 +209,7 @@ INCLUDE "stage.rl"
 	{
 		Name: tok::Token;
 		Type: ast::[Config]MaybeAutoType - std::Dyn;
+		ExpectShortHandInit: BOOL;
 	}
 	::help parse_initialised_name_and_type(p: Parser &) NameAndInitType - std::Opt
 	{
@@ -228,9 +225,9 @@ INCLUDE "stage.rl"
 			{
 				auto: ast::type::[Config]Auto;
 				type::parse_auto(p, auto);
-				= :a(name, :dup(&&auto));
+				= :a(name, :dup(&&auto), FALSE);
 			}
-			= :a(name, type::parse(p));
+			= :a(name, type::parse(p), FALSE);
 		} ELSE
 		{
 			STATIC k_need_ahead: tok::Type#[](
@@ -244,7 +241,7 @@ INCLUDE "stage.rl"
 				{
 					auto: ast::type::[Config]Auto;
 					type::parse_auto_no_ref(p, auto);
-					= :a(name, :dup(&&auto));
+					= :a(name, :dup(&&auto), TRUE);
 				}
 			}
 			p.fail("dying, expected #, $, or ::=.");
@@ -277,9 +274,11 @@ INCLUDE "stage.rl"
 		= NULL;
 	}
 
-	::help parse_auto_init(p: Parser &) ast::[Config]Expression-std::Dyn
+	::help parse_auto_init(p: Parser &, shortHand: BOOL) ast::[Config]Expression-std::Dyn
 	{
-		p.expect(:doubleColonEqual);
+		IF(shortHand) p.expect(:doubleColonEqual);
+		ELSE p.expect(:colonEqual);
+
 		IF:!(init ::= expression::parse(p))
 			p.fail("expected expression");
 		= &&init;
