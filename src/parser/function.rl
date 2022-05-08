@@ -42,6 +42,7 @@ INCLUDE "statement.rl"
 	ret: ast::[Config]UnresolvedSig;
 	ret.Arguments := &&arguments;
 	ret.IsCoroutine := isCoroutine;
+	p.expect(:questionMark);
 	type::parse_auto(p, ret.Return);
 	= :dup(&&ret);
 }
@@ -88,6 +89,10 @@ Can be called multiple times to append new arguments.
 		p.expect(:semicolon);
 		RETURN;
 	}
+
+	IF(<<ast::[Config]ResolvedSig *>>(out.Signature!))
+		IF(p.consume(:semicolon))
+			RETURN;
 
 	body: ast::[Config]BlockStatement;
 
@@ -236,19 +241,6 @@ Can be called multiple times to append new arguments.
 	out: ast::[Config]MemberFunction &
 ) BOOL INLINE
 {
-	STATIC abstractness: {tok::Type, Abstractness}#[](
-		(:abstract, :abstract),
-		(:virtual, :virtual),
-		(:final, :final),
-		(:override, :override));
-
-	out.Abstractness := :none;
-	FOR(a ::= std::range::start(abstractness); a; ++a)
-		IF(p.consume(a->(0)))
-		{
-			out.Abstractness := a->(1);
-			BREAK;
-		}
 	= function::parse(p, out.Abstractness != :abstract, out);
 }
 
