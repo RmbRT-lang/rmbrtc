@@ -12,23 +12,30 @@ INCLUDE "../parser/stage.rl"
 
 ::rlc::compiler CCompiler -> Compiler
 {
-	Registry: parser::Config-ast::FileRegistry;
 	FINAL compile(
 		files: std::Str - std::Vec,
 		build: Build
 	) VOID
 	{
+		parsed_registry: parser::Config-ast::FileRegistry(:nothing);
+
 		// Processed input files.
-		scoped: parser::Config - ast::File \ - std::NatVecSet;
+		parsed: parser::Config - ast::File \ - std::NatVecSet;
 
 		ASSERT(!build.LegacyScoping);
 
 		// Parse all code first.
 		FOR(f ::= files.start(); f; ++f)
-			scoped += Registry.get(util::absolute_file(f!));
+			parsed += registry.get(util::absolute_file(f!));
 
 		IF(build.Type == :checkSyntax)
 			RETURN;
+
+		scoped_registry: scoper::Config - ast::FileRegistry(&parsed_registry);
+		scoped: scoper::Config - ast::File \ - std::NatVecSet;
+		FOR(f ::= parsed.start(); f; ++f)
+			scoped += scoped_registry->get(f->Name!);
+
 (/
 		// Resolve all references.
 		resolved: resolver::Cache;

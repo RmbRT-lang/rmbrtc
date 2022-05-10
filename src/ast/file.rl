@@ -7,6 +7,8 @@ INCLUDE "global.rl"
 	/// The file's global scope.
 	Globals: [Config]Global - std::DynVec;
 
+	Name: std::Str;
+
 	/// Used for transforming a file from the previous stage's representation.
 	:transform{
 		prev: Config::Previous #&,

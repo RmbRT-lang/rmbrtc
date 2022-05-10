@@ -15,7 +15,11 @@ PRIVATE:
 
 	Files: [Stage]File-std::DynVec;
 	FileByName: std::[std::Str, [Stage]File\, StrCmp]Map;
+
+	Context: Stage::Context;
 PUBLIC:
+	{ctx: Stage::Context}: Context(&&ctx);
+
 	get(file: std::Str #&) Stage-File \
 	{
 		entry ::= FileByName.find_loc(file);
