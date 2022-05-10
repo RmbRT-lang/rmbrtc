@@ -39,7 +39,6 @@ INCLUDE "../src/file.rl"
 		noinit,
 		null,
 		number,
-		operator,
 		override,
 		private,
 		protected,

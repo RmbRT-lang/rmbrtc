@@ -33,6 +33,8 @@ INCLUDE 'std/vector'
 	expectDynamic,
 	maybeDynamic,
 
+	streamFeed,
+
 	assign,
 	addAssign, subAssign, mulAssign, divAssign, modAssign,
 	bitAndAssign, bitOrAssign, bitXorAssign, bitNotAssign,

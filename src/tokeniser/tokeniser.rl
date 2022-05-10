@@ -302,7 +302,6 @@ INCLUDE 'std/unicode'
 				("MASK", :mask),
 				("NULL", :null),
 				("NUMBER", :number),
-				("OPERATOR", :operator),
 				("OVERRIDE", :override),
 				("PRIVATE", :private),
 				("PROTECTED", :protected),

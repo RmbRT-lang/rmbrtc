@@ -55,6 +55,14 @@
 				Size(N),
 				LeftAssoc(leftAssoc);
 
+			:single{
+				entry: {tok::Type, rlc::Operator, BOOL}#\,
+				leftAssoc: BOOL
+			}:
+				Table(entry),
+				Size(1),
+				LeftAssoc(leftAssoc);
+
 			Table: {tok::Type, rlc::Operator, BOOL}# \;
 			Size: UM;
 			LeftAssoc: BOOL;
@@ -107,6 +115,9 @@
 			(:doublePipe, :logOr, TRUE),
 			(:doublePipe, :logOr, TRUE));
 
+		k_stream_feed: {tok::Type, rlc::Operator, BOOL}# :=
+			(:lessMinus, :streamFeed, TRUE);
+
 		k_assign: {tok::Type, rlc::Operator, BOOL}#[](
 			// assignments.
 			(:colonEqual, :assign, TRUE),
@@ -134,6 +145,7 @@
 			(k_cmp, TRUE),
 			(k_log_and, TRUE),
 			(k_log_or, TRUE),
+			:single(&k_stream_feed, TRUE),
 			(k_assign, FALSE));
 
 		precedenceGroups: UM# := ##k_groups;
