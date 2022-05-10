@@ -55,6 +55,9 @@ INCLUDE "varorexpression.rl"
 	{
 		ret: ast::[Config]Statement - std::Dyn;
 		IF(detail::parse_impl(p, ret, locals, parse_assert)
+		|| detail::parse_impl(p, ret, locals, parse_die)
+		|| detail::parse_impl(p, ret, locals, parse_yield)
+		|| detail::parse_impl(p, ret, locals, parse_sleep)
 		|| detail::parse_impl(p, ret, locals, parse_block)
 		|| detail::parse_impl(p, ret, locals, parse_if)
 		|| detail::parse_impl(p, ret, locals, parse_return)
