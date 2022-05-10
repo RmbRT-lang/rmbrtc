@@ -99,7 +99,8 @@ INCLUDE "symbolconstant.rl"
 
 	parse_number(p: Parser &, out: ast::[Config]NumberExpression &) BOOL
 	{
-		n ::= p.consume(:numberLiteral);
+		IF:!(n ::= p.consume(:numberLiteral))
+			n := p.consume(:floatLiteral);
 		IF(n) out.Number := n!;
 		= n;
 	}

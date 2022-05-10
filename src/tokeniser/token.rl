@@ -6,6 +6,7 @@ INCLUDE "../src/file.rl"
 	{
 		identifier,
 		numberLiteral,
+		floatLiteral,
 		stringApostrophe,
 		stringQuote,
 		stringBacktick,

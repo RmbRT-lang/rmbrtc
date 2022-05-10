@@ -375,7 +375,15 @@ INCLUDE 'std/unicode'
 			WHILE(is_digit(look()))
 				++Read;
 
-			out->Type := :numberLiteral;
+			IF(look() == '.')
+			{
+				++Read;
+				WHILE(is_digit(look()))
+					++Read;
+				out->Type := :floatLiteral;
+			} ELSE {
+				out->Type := :numberLiteral;
+			}
 			RETURN TRUE;
 		}
 
