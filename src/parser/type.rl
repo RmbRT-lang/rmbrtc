@@ -48,16 +48,29 @@ INCLUDE "symbolconstant.rl"
 		= :plain;
 	}
 
+	::help parse_constness(p: Parser &) ast::type::Constness
+	{
+		IF(p.consume(:hash))
+			IF(p.consume(:questionMark))
+				= :maybe;
+			ELSE
+				= :const;
+		ELSE
+			= :none;
+	}
+
 	parse_qualifier(
 		p: Parser&,
 		out: Qualifier &) BOOL
 	{
 		start ::= p.progress();
-		IF((out.Const := p.consume(:hash)))
+		out.Volatile := p.consume(:dollar);
+
+		out.Const := help::parse_constness(p);
+
+		IF(!out.Volatile)
 			out.Volatile := p.consume(:dollar);
-		ELSE IF((out.Volatile := p.consume(:dollar)))
-			out.Const := p.consume(:hash);
-		
+
 		= p.progress() != start;
 	}
 

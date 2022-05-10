@@ -128,14 +128,13 @@ INCLUDE "templatedecl.rl"
 	parse_attribute(
 		p: Parser &) MemberAttribute
 	{
-		STATIC lookup: {tok::Type, MemberAttribute}#[](
-			(:static, :static),
-			(:hash, :isolated));
-
-		FOR(i ::= 0; i < ##lookup; i++)
-			IF(p.consume(lookup[i].(0)))
-				RETURN lookup[i].(1);
-
-		RETURN :none;
+		IF(p.consume(:static))
+			= :static;
+		IF(p.consume(:hash))
+			IF(p.consume(:questionMark))
+				= :maybeIsolated;
+			ELSE
+				= :isolated;
+		= :none;
 	}
 }

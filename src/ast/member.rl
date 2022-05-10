@@ -11,6 +11,7 @@ INCLUDE "scopeitem.rl"
 {
 	none,
 	isolated,
+	maybeIsolated,
 	static
 }
 

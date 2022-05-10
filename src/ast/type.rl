@@ -30,10 +30,22 @@ INCLUDE "symbolconstant.rl"
 			future
 		}
 
+		ENUM Constness
+		{
+			none,
+			maybe,
+			const
+		}
+
 		Qualifier
 		{
-			Const: BOOL;
+			Const: Constness;
 			Volatile: BOOL;
+
+			{}: Const(:none);
+			{c: Constness, v: BOOL}:
+				Const := c,
+				Volatile := v;
 		}
 
 
@@ -55,7 +67,7 @@ INCLUDE "symbolconstant.rl"
 		ArraySize: [Stage]Expression - std::DynVec;
 
 		{}: Indirection(:plain), IsArray(FALSE);
-		:const{}: Indirection(:plain), Qualifier(TRUE, FALSE), IsArray(FALSE);
+		:const{}: Indirection(:plain), Qualifier(:const, FALSE), IsArray(FALSE);
 	}
 
 	/// A specific type.
