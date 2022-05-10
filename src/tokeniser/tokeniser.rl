@@ -286,6 +286,7 @@ INCLUDE 'std/unicode'
 				("CONTINUE", :continue),
 				("DEFAULT", :default),
 				("DESTRUCTOR", :destructor),
+				("DIE", :die),
 				("DO", :do),
 				("ELSE", :else),
 				("ENUM", :enum),

@@ -11,6 +11,7 @@ INCLUDE "varorexpression.rl"
 	{
 		ret: ast::[Config]Statement - std::Dyn;
 		IF(detail::parse_impl(p, ret, locals, parse_assert)
+		|| detail::parse_impl(p, ret, locals, parse_die)
 		|| detail::parse_impl(p, ret, locals, parse_block)
 		|| detail::parse_impl(p, ret, locals, parse_if)
 		|| detail::parse_impl(p, ret, locals, parse_variable)
@@ -83,6 +84,23 @@ INCLUDE "varorexpression.rl"
 			p.fail("expected expression");
 
 		p.expect(:parentheseClose);
+		p.expect(:semicolon);
+		= TRUE;
+	}
+
+	parse_die(
+		p: Parser &,
+		ast::LocalPosition&,
+		out: ast::[Config]DieStatement &
+	) BOOL
+	{
+		IF(!p.consume(:die))
+			= FALSE;
+
+		out.Message := :a();
+		IF(!expression::parse_string(p, out.Message!))
+			out.Message := NULL;
+
 		p.expect(:semicolon);
 		= TRUE;
 	}

@@ -17,6 +17,12 @@ INCLUDE 'std/memory'
 		Expression: ast::[Stage]Expression - std::Dyn;
 	}
 
+	[Stage: TYPE] DieStatement -> [Stage]Statement
+	{
+		Message: ast::[Stage]StringExpression - std::Opt;
+	}
+
+
 	[Stage: TYPE] BlockStatement -> [Stage]Statement
 	{
 		Statements: [Stage]Statement - std::DynVec;

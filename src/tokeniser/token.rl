@@ -21,6 +21,7 @@ INCLUDE "../src/file.rl"
 		continue,
 		default,
 		destructor,
+		die,
 		do,
 		else,
 		enum,
