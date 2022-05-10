@@ -9,7 +9,10 @@ INCLUDE "member.rl"
 INCLUDE 'std/vector'
 INCLUDE 'std/memory'
 
-::rlc::ast [Stage:TYPE] Mask VIRTUAL -> [Stage]ScopeItem, CodeObject
+::rlc::ast [Stage:TYPE] Mask VIRTUAL ->
+	[Stage]ScopeItem,
+	[Stage]Templateable,
+	CodeObject
 {
 	Members: [Stage]Member - std::DynVec;
 }
