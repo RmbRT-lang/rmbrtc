@@ -12,6 +12,8 @@ INCLUDE "varorexpression.rl"
 		ret: ast::[Config]Statement - std::Dyn;
 		IF(detail::parse_impl(p, ret, locals, parse_assert)
 		|| detail::parse_impl(p, ret, locals, parse_die)
+		|| detail::parse_impl(p, ret, locals, parse_yield)
+		|| detail::parse_impl(p, ret, locals, parse_sleep)
 		|| detail::parse_impl(p, ret, locals, parse_block)
 		|| detail::parse_impl(p, ret, locals, parse_if)
 		|| detail::parse_impl(p, ret, locals, parse_variable)
@@ -78,6 +80,8 @@ INCLUDE "varorexpression.rl"
 		IF(!p.consume(:assert))
 			= FALSE;
 
+		t: Trace(&p, "assert statement");
+
 		p.expect(:parentheseOpen);
 
 		IF(!(out.Expression := parser::expression::parse(p)))
@@ -97,10 +101,39 @@ INCLUDE "varorexpression.rl"
 		IF(!p.consume(:die))
 			= FALSE;
 
+		t: Trace(&p, "die statement");
+
 		out.Message := :a();
 		IF(!expression::parse_string(p, out.Message!))
 			out.Message := NULL;
 
+		p.expect(:semicolon);
+		= TRUE;
+	}
+
+	parse_yield(
+		p: Parser &,
+		ast::LocalPosition&,
+		out: ast::[Config]YieldStatement &
+	) BOOL
+	{
+		IF(!p.match_ahead(:semicolon) || !p.consume(:tripleDot))
+			= FALSE;
+		p.eat_token()!;
+		= TRUE;
+	}
+
+	parse_sleep(
+		p: Parser &,
+		ast::LocalPosition&,
+		out: ast::[Config]SleepStatement &
+	) BOOL
+	{
+		IF(p.match_ahead(:semicolon) || !p.consume(:tripleDot))
+			= FALSE;
+		t: Trace(&p, "sleep statement");
+		IF!(out.Duration := expression::parse(p))
+			p.fail("expected expression");
 		p.expect(:semicolon);
 		= TRUE;
 	}

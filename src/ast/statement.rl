@@ -22,6 +22,12 @@ INCLUDE 'std/memory'
 		Message: ast::[Stage]StringExpression - std::Opt;
 	}
 
+	[Stage: TYPE] YieldStatement -> [Stage]Statement { }
+	[Stage: TYPE] SleepStatement -> [Stage]Statement
+	{
+		Duration: [Stage]Expression - std::Dyn;
+	}
+
 
 	[Stage: TYPE] BlockStatement -> [Stage]Statement
 	{
