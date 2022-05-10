@@ -17,7 +17,7 @@ INCLUDE 'std/vector'
 	logAnd, logOr, logNot,
 	shiftLeft, shiftRight, rotateLeft, rotateRight,
 	neg, pos,
-	subscript, call, visit, conditional,
+	subscript, call, visit, reflectVisit, conditional,
 	memberReference, memberPointer, tupleMemberReference, tupleMemberPointer,
 	bindReference, bindPointer,
 	dereference, address, move,
@@ -29,6 +29,7 @@ INCLUDE 'std/vector'
 
 	async,
 	fullAsync,
+	fork,
 	await,
 	expectDynamic,
 	maybeDynamic,

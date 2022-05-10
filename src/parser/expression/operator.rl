@@ -141,9 +141,10 @@ INCLUDE "../symbol.rl"
 
 		IF(p.consume(:visit))
 		{
+			isReflect ::= p.consume(:asterisk);
 			p.expect(:parentheseOpen);
 			visit: ast::[Config]OperatorExpression-std::Dyn := :new();
-			visit->Op := :visit;
+			visit->Op := isReflect ? Operator::reflectVisit : Operator::visit;
 			visit->Operands += &&lhs;
 
 			DO(comma ::= FALSE)

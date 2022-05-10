@@ -152,6 +152,9 @@
 
 		// (tok, op, user-overloadable)
 		k_prefix_ops: {tok::Type, rlc::Operator, BOOL}#[](
+				(:at, :async, FALSE),
+				(:doubleAt, :fullAsync, FALSE),
+				(:circumflex, :fork, FALSE),
 				(:minus, :neg, TRUE),
 				(:plus, :pos, TRUE),
 				(:doublePlus, :preIncrement, TRUE),
