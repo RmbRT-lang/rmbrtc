@@ -9,9 +9,12 @@ INCLUDE "global.rl"
 {
 	Config
 	{
-		TYPE Previous := :nothing;
+		TYPE Previous := Parser \;
 		TYPE PrevExpression := :nothing;
-		TYPE Context := Parser \;
+
+		Registry: ast::[Config]FileRegistry;
+
+		{}: Registry(&THIS);
 
 		TYPE Symbol := Config-ast::Symbol;
 		TYPE String := src::String;
@@ -27,9 +30,8 @@ INCLUDE "global.rl"
 
 		TYPE Includes := Include - std::Vec;
 
-		STATIC transform_includes(
+		transform_includes(
 			out: Includes&,
-			:nothing,
 			p: Parser \
 		) VOID
 		{
@@ -38,9 +40,8 @@ INCLUDE "global.rl"
 				out += &&i;
 		}
 
-		STATIC transform_globals(
+		transform_globals(
 			out: ast::[Config]Global-std::DynVec&,
-			:nothing,
 			p: Parser \
 		) VOID
 		{
@@ -54,8 +55,7 @@ INCLUDE "global.rl"
 			}
 		}
 
-		STATIC create_file(
-			registry: Config-ast::FileRegistry &,
+		create_file(
 			file: std::str::CV#&
 		) Config-ast::File \
 		{

@@ -49,6 +49,7 @@ main(
 		(:sharedLibrary, "shared"),
 		(:test, "test"), // build tests.
 		(:checkSyntax, "syntax"), // only syntax.
+		(:createAST, "create-ast"), // only create the AST and check includes.
 		(:verifySimple, "quick-dry"), // simple symbol resolution, no templates.
 		(:verifyFull, "dry") // templates.
 	);

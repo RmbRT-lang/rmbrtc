@@ -17,25 +17,25 @@ INCLUDE "../parser/stage.rl"
 		build: Build
 	) VOID
 	{
-		parsed_registry: parser::Config-ast::FileRegistry(:nothing);
-
-		// Processed input files.
+		parser: rlc::parser::Config;
 		parsed: parser::Config - ast::File \ - std::NatVecSet;
-
-		ASSERT(!build.LegacyScoping);
 
 		// Parse all code first.
 		FOR(f ::= files.start(); f; ++f)
-			parsed += registry.get(util::absolute_file(f!));
+			parsed += parser.Registry.get(util::absolute_file(f!));
 
 		IF(build.Type == :checkSyntax)
 			RETURN;
 
-		scoped_registry: scoper::Config - ast::FileRegistry(&parsed_registry);
+		scoper: rlc::scoper::Config(&parser);
 		scoped: scoper::Config - ast::File \ - std::NatVecSet;
-		FOR(f ::= parsed.start(); f; ++f)
-			scoped += scoped_registry->get(f->Name!);
 
+		// Resolve all includes, populate scopes.
+		FOR(f ::= parsed.start(); f; ++f)
+			scoped += scoper.Registry.get(f->Name!);
+
+		IF(build.Type == :createAST)
+			RETURN;
 (/
 		// Resolve all references.
 		resolved: resolver::Cache;

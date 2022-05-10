@@ -3,19 +3,22 @@ INCLUDE "../util/file.rl"
 
 ::rlc::scoper Config
 {
+	ParsedRegistry: ast::[parser::Config]FileRegistry \;
+	Registry: ast::[Config]FileRegistry;
+
 	TYPE Previous := ast::[parser::Config]File #\;
+	TYPE Context := Config \;
+
+	{prev: parser::Config \}:
+		ParsedRegistry(&prev->Registry),
+		Registry(&THIS);
 	
-	Context
-	{
-		ParsedRegistry: ast::[parser::Config]FileRegistry \;
-	}
 
 	TYPE Includes := ast::[Config] File #\ - std::Vec;
 
-	STATIC transform_includes(
+	transform_includes(
 		out: Includes&,
-		parsed: Previous,
-		registry: Context
+		parsed: ast::[parser::Config]File \
 	) VOID
 	{
 		FOR(inc ::= out->Includes.start(); inc; ++inc)
@@ -32,7 +35,7 @@ INCLUDE "../util/file.rl"
 					resolved_path ::= util::absolute_file(conc!);
 				} CATCH()
 				{
-					inc!.Token.Position, 
+					THROW <rlc::Error>(inc!.Token.Position);
 				}
 			}
 			}
@@ -41,10 +44,9 @@ INCLUDE "../util/file.rl"
 		}
 	}
 
-	STATIC transform_globals(
+	transform_globals(
 		out: ast::[Config]Global-std::DynVec&,
-		:nothing,
-		p: Parser \
+		p: ast::[parser::Config]File \
 	) VOID
 	{
 		WHILE(glob ::= global::parse(*p))
@@ -57,10 +59,7 @@ INCLUDE "../util/file.rl"
 		}
 	}
 
-	STATIC create_file(
-		registry: Config-ast::FileRegistry &,
-		file: std::str::CV#&
-	) Config-ast::File \
+	create_file(file: std::str::CV#&) Config-ast::File \
 	{
 		s: src::File-std::Shared := :new(file);
 		p: Parser(s!);

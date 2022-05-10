@@ -11,6 +11,7 @@ INCLUDE 'std/optional'
 		sharedLibrary,
 		test,
 		checkSyntax,
+		createAST,
 		verifySimple,
 		verifyFull
 	}

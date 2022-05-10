@@ -16,9 +16,9 @@ PRIVATE:
 	Files: [Stage]File-std::DynVec;
 	FileByName: std::[std::Str, [Stage]File\, StrCmp]Map;
 
-	Context: Stage::Context;
+	Context: Stage \;
 PUBLIC:
-	{ctx: Stage::Context}: Context(&&ctx);
+	{ctx: Stage \}: Context(ctx);
 
 	get(file: std::Str #&) Stage-File \
 	{
@@ -27,7 +27,7 @@ PUBLIC:
 			= (*f)!;
 		ELSE
 		{
-			processed ::= Stage::create_file(THIS, file!);
+			processed ::= Context->create_file(file!);
 			FileByName.insert_at(entry.(1), file, processed);
 			Files += :gc(processed);
 			= processed;
