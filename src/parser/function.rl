@@ -301,6 +301,7 @@ Can be called multiple times to append new arguments.
 	}
 
 	out.Signature := function::help::parse_signature_after_args(p, &&args);
+	out.IsInline := p.consume(:inline);
 	function::help::parse_body(p, out.Abstractness != :abstract, out);
 	= TRUE;
 }
@@ -321,6 +322,7 @@ Can be called multiple times to append new arguments.
 	p.expect(:tripleGreater);
 
 	out.Signature := help::parse_signature_after_args(p, &&args);
+	out.IsInline := p.consume(:inline);
 	help::parse_body(p, TRUE, out);
 
 	= TRUE;
