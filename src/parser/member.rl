@@ -46,9 +46,12 @@ INCLUDE "templatedecl.rl"
 			ret->Visibility := visibility;
 			IF(templates.exists())
 			{
-				IF:!(t ::= <<ast::[Config]Templateable *>>(ret))
+				IF(t ::= <<ast::[Config]Templateable *>>(ret!))
+					t->Templates := &&templates;
+				ELSE IF(fn ::= <<ast::[Config]Function *>>(ret!))
+					fn->set_templates_after_parsing(&&templates);
+				ELSE IF(templates.exists())
 					p.fail("preceding member must not have templates");
-				t->Templates := &&templates;
 			}
 			ret->Attribute := attr;
 		}
