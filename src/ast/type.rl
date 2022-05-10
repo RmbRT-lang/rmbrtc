@@ -27,7 +27,9 @@ INCLUDE "symbolconstant.rl"
 			nonnull,
 			expectDynamic,
 			maybeDynamic,
-			future
+			future,
+			processHandle,
+			atomic
 		}
 
 		ENUM Constness

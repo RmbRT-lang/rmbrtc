@@ -39,7 +39,9 @@ INCLUDE "symbolconstant.rl"
 			(:backslash, :nonnull),
 			(:doubleDotExclamationMark, :expectDynamic),
 			(:doubleDotQuestionMark, :maybeDynamic),
-			(:at, :future));
+			(:at, :future),
+			(:circumflex, :processHandle),
+			(:dot, :atomic));
 
 		FOR(i ::= 0; i < ##table; i++)
 			IF(p.consume(table[i].(0)))
