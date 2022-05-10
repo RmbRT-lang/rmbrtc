@@ -490,6 +490,7 @@ INCLUDE "varorexpression.rl"
 			= FALSE;
 
 		out.Label := control_label::parse(p);
+		out.Strict := !p.consume(:questionMark);
 		p.expect(:parentheseOpen);
 
 		val ::= var_or_exp::parse(p, locals);

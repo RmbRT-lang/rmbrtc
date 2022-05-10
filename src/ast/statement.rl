@@ -124,6 +124,7 @@ INCLUDE 'std/memory'
 
 	[Stage: TYPE] SwitchStatement -> [Stage]Statement
 	{
+		Strict: BOOL;
 		Initial: [Stage]VarOrExpr - std::Dyn;
 		Value: [Stage]VarOrExpr - std::Dyn;
 		Cases: [Stage]CaseStatement - std::Vec;
