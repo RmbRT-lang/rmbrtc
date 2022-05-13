@@ -8,13 +8,8 @@ INCLUDE "file.rl"
 ::rlc::ast [Stage:TYPE] FileRegistry
 {
 PRIVATE:
-	StrCmp
-	{
-		STATIC cmp(lhs: std::Str#&, rhs: std::Str#&) ? := lhs!.cmp(rhs!);
-	}
-
 	Files: [Stage]File-std::DynVec;
-	FileByName: std::[std::Str, [Stage]File\, StrCmp]Map;
+	FileByName: std::[std::str::CV, [Stage]File\]AutoMap;
 
 	Context: Stage \;
 PUBLIC:
@@ -28,9 +23,8 @@ PUBLIC:
 		ELSE
 		{
 			processed ::= Context->create_file(file!);
-			FileByName.insert_at(entry.(1), file, processed);
-			Files += :gc(processed);
-			= processed;
+			FileByName.insert_at(entry.(1), processed->Name!, processed!);
+			= (Files += &&processed)!;
 		}
 	}
 }

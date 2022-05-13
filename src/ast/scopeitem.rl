@@ -1,5 +1,7 @@
 INCLUDE "templatedecl.rl"
 
+
+
 (// All identifier-addressable code entities. /)
 ::rlc::ast [Stage: TYPE] ScopeItem VIRTUAL
 {

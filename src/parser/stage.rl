@@ -29,6 +29,7 @@ INCLUDE "global.rl"
 		TYPE MemberVariableReference := src::String;
 
 		TYPE Includes := Include - std::Vec;
+		TYPE RootScope := Config-ast::Global - std::DynVec;
 
 		transform_includes(
 			out: Includes&,
@@ -41,7 +42,7 @@ INCLUDE "global.rl"
 		}
 
 		transform_globals(
-			out: ast::[Config]Global-std::DynVec&,
+			out: RootScope&,
 			p: Parser \
 		) VOID
 		{
@@ -57,11 +58,11 @@ INCLUDE "global.rl"
 
 		create_file(
 			file: std::str::CV#&
-		) Config-ast::File \
+		) Config-ast::File - std::Dyn
 		{
 			s: src::File-std::Shared := :new(file);
 			p: Parser(s!);
-			= std::heap::[Config-ast::File]new(:transform(:nothing, &p));
+			= :new(:transform(:nothing, &p));
 		}
 	}
 }

@@ -5,9 +5,10 @@ INCLUDE "global.rl"
 	/// The file's includes.
 	Includes: Config::Includes;
 	/// The file's global scope.
-	Globals: [Config]Global - std::DynVec;
+	Globals: Config::RootScope;
 
 	Name: std::Str;
+	Source: src::File# \;
 
 	/// Used for transforming a file from the previous stage's representation.
 	:transform{

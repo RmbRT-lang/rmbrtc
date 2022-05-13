@@ -8,6 +8,13 @@ INCLUDE "../util/file.rl"
 
 	TYPE Previous := ast::[parser::Config]File #\;
 	TYPE Context := Config \;
+	TYPE Includes := Config-ast::File \-std::Vec;
+	
+	RootScope
+	{
+		ScopeItems: std::[std::str::CV; ast::[Config]ScopeItem]AutoDynMap;
+		Tests: [Config]Test - std::Vec;
+	}
 
 	{prev: parser::Config \}:
 		ParsedRegistry(&prev->Registry),
@@ -21,48 +28,33 @@ INCLUDE "../util/file.rl"
 		parsed: ast::[parser::Config]File \
 	) VOID
 	{
-		FOR(inc ::= out->Includes.start(); inc; ++inc)
-		{
-			SWITCH(inc!.Type)
-			{
-			:relative:
-			{
-				relative_path ::= parse_string(inc!.Token.Content);
-				directory ::= util::parent_dir(parsed->Name);
-				conc ::= util::concat_paths(directory, relative_path!);
-				TRY
-				{
-					resolved_path ::= util::absolute_file(conc!);
-				} CATCH()
-				{
-					THROW <rlc::Error>(inc!.Token.Position);
-				}
-			}
-			}
-			resolved_path ::= 
-			registry->get();
-		}
+		FOR(inc ::= parsed->Includes.start(); inc; ++inc)
+			out->Includes += Registry->get(
+				include::resolve(parsed->Name!, inc!, parsed->Source));
 	}
 
 	transform_globals(
-		out: ast::[Config]Global-std::DynVec&,
-		p: ast::[parser::Config]File \
+		out: RootScope&,
+		p: ast::[parser::Config]File #\
 	) VOID
 	{
-		WHILE(glob ::= global::parse(*p))
-			out += &&glob;
-
-		IF(!p->eof())
+		FOR(g ::= p->Globals.start(); g; ++g)
 		{
-			p->fail("expected scope entry");
-			DIE;
+			IF(s ::= <<parser::Config-ast::ScopeItem #\>>(g!))
+			{
+				conv ::= <<<Config-ast::ScopeItem>>>(*s, p);
+				out.ScopeItems.insert(conv->Name!, &&conv);
+			} ELSE
+			{
+				test ::= <<parser::Config-ast::Test #\>>(g!);
+				out.Tests += :transform(*test, *p);
+			}
 		}
 	}
 
-	create_file(file: std::str::CV#&) Config-ast::File \
+	create_file(file: std::str::CV#&) Config-ast::File - std::Dyn
 	{
-		s: src::File-std::Shared := :new(file);
-		p: Parser(s!);
-		= std::heap::[Config-ast::File]new(:transform(:nothing, &p));
+		parsed ::= ParsedRegistry->get(file);
+		= :new(:transform(parsed, &THIS));
 	}
 }
