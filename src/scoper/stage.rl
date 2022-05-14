@@ -1,27 +1,29 @@
 INCLUDE "../parser/stage.rl"
 INCLUDE "../util/file.rl"
+INCLUDE "../ast/test.rl"
+INCLUDE "includes.rl"
 
 ::rlc::scoper Config
 {
 	ParsedRegistry: ast::[parser::Config]FileRegistry \;
 	Registry: ast::[Config]FileRegistry;
+	IncludeDirs: std::Str - std::Buffer;
 
-	TYPE Previous := ast::[parser::Config]File #\;
+	TYPE Prev := parser::Config;
+	TYPE PrevFile := ast::[parser::Config]File #\;
 	TYPE Context := Config \;
 	TYPE Includes := Config-ast::File \-std::Vec;
+	TYPE Name := std::str::CV;
 	
 	RootScope
 	{
 		ScopeItems: std::[std::str::CV; ast::[Config]ScopeItem]AutoDynMap;
-		Tests: [Config]Test - std::Vec;
+		Tests: ast::[Config]Test - std::Vec;
 	}
 
 	{prev: parser::Config \}:
 		ParsedRegistry(&prev->Registry),
 		Registry(&THIS);
-	
-
-	TYPE Includes := ast::[Config] File #\ - std::Vec;
 
 	transform_includes(
 		out: Includes&,
@@ -29,8 +31,12 @@ INCLUDE "../util/file.rl"
 	) VOID
 	{
 		FOR(inc ::= parsed->Includes.start(); inc; ++inc)
-			out->Includes += Registry->get(
-				include::resolve(parsed->Name!, inc!, parsed->Source));
+			out += Registry.get(
+				include::resolve(
+					parsed->Name!,
+					inc!,
+					*parsed->Source,
+					IncludeDirs));
 	}
 
 	transform_globals(

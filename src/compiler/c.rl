@@ -9,6 +9,7 @@ INCLUDE 'std/set'
 INCLUDE "../parser/templatedecl.rl"
 INCLUDE "../parser/type.rl"
 INCLUDE "../parser/stage.rl"
+INCLUDE "../scoper/stage.rl"
 
 ::rlc::compiler CCompiler -> Compiler
 {
@@ -28,7 +29,7 @@ INCLUDE "../parser/stage.rl"
 			RETURN;
 
 		scoper: rlc::scoper::Config(&parser);
-		scoped: scoper::Config - ast::File \ - std::NatVecSet;
+		scoped: rlc::scoper::Config - ast::File \ - std::NatVecSet;
 
 		// Resolve all includes, populate scopes.
 		FOR(f ::= parsed.start(); f; ++f)

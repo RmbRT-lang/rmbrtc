@@ -9,8 +9,10 @@ INCLUDE "global.rl"
 {
 	Config
 	{
-		TYPE Previous := Parser \;
+		TYPE PrevFile := Parser \;
+		TYPE PrevScopeEntry := :nothing;
 		TYPE PrevExpression := :nothing;
+		TYPE Prev := Config!;
 
 		Registry: ast::[Config]FileRegistry;
 

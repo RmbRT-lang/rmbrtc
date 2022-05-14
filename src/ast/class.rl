@@ -5,7 +5,7 @@ INCLUDE "../src/file.rl"
 
 INCLUDE 'std/vector'
 INCLUDE 'std/memory'
-INCLUDE 'std/hashset'
+INCLUDE 'std/set'
 
 
 ::rlc::ast::class [Stage: TYPE] Inheritance -> CodeObject
@@ -30,7 +30,34 @@ INCLUDE 'std/hashset'
 	CopyCtor: [Stage]CopyConstructor-std::Dyn;
 	MoveCtor: [Stage]MoveConstructor-std::Dyn;
 	ImplicitCtor: [Stage]CustomConstructor-std::Dyn;
-	CustomCtors: [Stage]CustomConstructor-std::DynHashSet;
+	CustomCtors: [Stage]CustomConstructor-std::AutoDynVecSet;
+
+	:transform{
+		p: [Stage-Prev]Class #&,
+		f: Stage::PrevFile #&
+	} -> (:transform(p, f)), (:transform(p, f)), (p):
+		Virtual := p.Virtual,
+		Members := :reserve(##p.Members),
+		Inheritances := :reserve(##p.Inheritances)
+	{
+		FOR(m ::= p.Members.start(); m; ++m)
+			Members += <<<[Stage]Member>>>(m!, f);
+		FOR(i ::= p.Inheritances.start(); i; ++i)
+			Inheritances += :transform(i!, f);
+
+		IF(p.DefaultCtor)
+			DefaultCtor := :new(:transform(*p.DefaultCtor, f));
+		IF(p.CopyCtor)
+			CopyCtor := :new(:transform(*p.CopyCtor, f));
+		IF(p.MoveCtor)
+			MoveCtor := :new(:transform(*p.MoveCtor, f));
+		IF(p.ImplicitCtor)
+			ImplicitCtor := :new(:transform(*p.ImplicitCtor, f));
+		loc: UM := 0;
+		FOR(ctor ::= p.CustomCtors.start(); ctor; ++ctor)
+			CustomCtors.emplace_at(loc++, :new(:transform(*(ctor!), f)));
+	}
+
 }
 
 ::rlc::ast [Stage: TYPE] GlobalClass -> [Stage]Global, [Stage]Class

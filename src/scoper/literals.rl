@@ -7,7 +7,7 @@
 		FOR(c ::= str.start(); c; ++c)
 			IF(c! == '\\')
 				DIE "escapes in include paths are not yet implemented!";
-		= str++;
+		= <std::str::CV>(str++);
 	}
 	::help delim(t: tok::Type) std::str::CV
 	{

@@ -12,7 +12,7 @@ INCLUDE "global.rl"
 
 	/// Used for transforming a file from the previous stage's representation.
 	:transform{
-		prev: Config::Previous #&,
+		prev: Config::PrevFile #&,
 		ctx: Config \
 	}
 	{

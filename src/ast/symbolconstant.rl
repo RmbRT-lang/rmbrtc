@@ -20,4 +20,17 @@
 
 	# has_name() BOOL := NameType == :identifier;
 	# is_special() BOOL := NameType != :identifier;
+
+
+	Cmp {
+		STATIC cmp(lhs: THIS#&, rhs: THIS#&) ?
+		{
+			IF(lhs.NameType == :identifier && rhs.NameType == :identifier)
+			{
+				= Stage::Name::Cmp::cmp(lhs.Identifier, rhs.Identifier);
+			}
+			= <SM>(lhs.NameType) - <SM>(rhs.NameType);
+		}
+	}
+
 }

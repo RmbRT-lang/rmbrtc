@@ -73,5 +73,22 @@ INCLUDE 'std/memory'
 	Name: [Stage]SymbolConstant - std::Opt;
 	Arguments: [Stage]TypeOrArgument - std::DynVec;
 
-	# named() BOOL INLINE := Name!;
+	# named() BOOL INLINE := Name;
+
+	Cmp {
+		STATIC cmp(lhs: THIS#&, rhs: THIS#&) ?
+		{
+			IF(lhs.Name)
+			{
+				IF(rhs.Name)
+					= [Stage]SymbolConstant::Cmp::cmp(lhs.Name!, rhs.Name!);
+				ELSE
+					= 1;
+			} ELSE IF(rhs.Name)
+			{
+				= -1;
+			} ELSE
+				= 0;
+		}
+	}
 }
