@@ -157,7 +157,7 @@ Can be called multiple times to append new arguments.
 	parse_resolved_signature(p, TRUE, TRUE, signature);
 	p.expect(:semicolon);
 
-	= :new(&&name, &&signature, &&linkName);
+	= :a(&&name, &&signature, &&linkName);
 }
 
 ::rlc::parser::abstractable parse(
@@ -187,7 +187,7 @@ Can be called multiple times to append new arguments.
 	out: ast::[Config]Abstractable - std::Dyn &,
 	parse_fn: ((Parser &, T!&) BOOL)) BOOL
 {
-	v: T;
+	v: T := BARE;
 	v.Abstractness := abs;
 	IF(parse_fn(p, v))
 	{

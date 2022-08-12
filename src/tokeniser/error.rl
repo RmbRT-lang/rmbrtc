@@ -51,8 +51,8 @@ INCLUDE 'std/string'
 		DEFAULT:
 			{
 				u8: CHAR[4] (NOINIT);
-				len ::= std::code::utf8::encode(Char, u8);
-				std::io::write(o, :buf(u8, len));
+				len ::= std::code::utf8::encode(Char, u8!);
+				std::io::write(o, :buf(u8!, len));
 			}
 		}
 		std::io::write(o, "'");

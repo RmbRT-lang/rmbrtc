@@ -111,6 +111,12 @@ INCLUDE "statement.rl"
 		linkName: Stage-Name - std::Opt
 	} -> (), (&&name), (&&linkName):
 		Signature(&&signature);
+
+	:transform{
+		p: [Stage::Prev+]ExternFunction #&,
+		f: Stage #&
+	} -> (), (:transform(p, f)), (:transform(p, f)):
+		Signature(:transform(p, f));
 }
 
 ::rlc::ast [Stage:TYPE] DefaultVariant -> [Stage]Functoid { }

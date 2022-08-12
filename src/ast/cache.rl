@@ -4,11 +4,9 @@
 /)
 ::rlc::ast [Stage: TYPE; T: TYPE]Cache
 {
-	[U:TYPE] PRIVATE TYPE Prev := U::Prev;
-	References: std::[T-Prev #\; T - std::Shared]NatMap;
+	References: std::[T::Prev+ #\; T - std::Shared]NatMap;
 
-	PRIVATE TYPE PrevFile := Stage::PrevFile!;
-	THIS[p: T-Prev #\, file: PrevFile] T - std::Shared
+	THIS[p: T::Prev+ #\, file: Stage::PrevFile+ #&] T - std::Shared
 	{
 		IF(entry ::= References.find(p))
 			= *entry;

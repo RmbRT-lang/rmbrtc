@@ -43,7 +43,7 @@ INCLUDE "namespace.rl"
 		parse_fn: ((Parser &, T! &) BOOL)
 	) BOOL
 	{
-		v: T;
+		v: T := BARE;
 		succ: BOOL;
 		IF(succ := parse_fn(p, v))
 			ret := :dup(&&v);

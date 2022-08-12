@@ -88,7 +88,7 @@ INCLUDE "templatedecl.rl"
 		ret: ast::[Config]Member-std::Dyn &,
 		parse_fn: ((Parser &, T! &) BOOL)) BOOL
 	{
-		v: T;
+		v: T := BARE;
 		IF(!parse_fn(p, v))
 			= FALSE;
 		ret := :dup(&&v);

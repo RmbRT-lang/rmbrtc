@@ -45,14 +45,14 @@
 	{
 		BinOpDesc
 		{
-			[N: NUMBER]
+			[T: TYPE]
 			{
 				// (token, operator, UserOverloadable)
-				table: {tok::Type, rlc::Operator, BOOL}#[N] &,
+				table: T! #&,
 				leftAssoc: BOOL
 			}:
-				Table(table),
-				Size(N),
+				Table(table!),
+				Size(##table),
 				LeftAssoc(leftAssoc);
 
 			:single{

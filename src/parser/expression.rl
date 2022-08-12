@@ -27,7 +27,7 @@ INCLUDE "symbolconstant.rl"
 			{
 				IF(!tuple)
 				{
-					tuple := :new();
+					tuple := :a();
 					tuple->Op := :tuple;
 					tuple->Operands += &&exp;
 				}

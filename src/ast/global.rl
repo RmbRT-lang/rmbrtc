@@ -1,41 +1,40 @@
 /// A named entry in a namespace.
 ::rlc::ast [Stage: TYPE] Global VIRTUAL
 {
-	PRIVATE TYPE PrevFile := Stage::PrevFile!;
 	<<<
-		g: [Stage-Prev]Global #&,
-		f: PrevFile #&
+		g: [Stage::Prev+]Global #&,
+		ctx: Stage::Context+ &
 	>>> THIS - std::Dyn
 	{
 		TYPE SWITCH(g)
 		{
-		[Stage-ast::Prev]GlobalClass:
-			= :dup(<[Stage]GlobalClass>(:transform(
-				<<[Stage-ast::Prev]GlobalClass #&>>(*g), f)));
-		[Stage-ast::Prev]GlobalRawtype:
-			= :dup(<[Stage]GlobalRawtype>(:transform(
-				<<[Stage-ast::Prev]GlobalRawtype #&>>(*g), f)));
-		[Stage-ast::Prev]GlobalUnion:
-			= :dup(<[Stage]GlobalUnion>(:transform(
-				<<[Stage-ast::Prev]GlobalUnion #&>>(*g), f)));
-		[Stage-ast::Prev]Namespace:
+		[Stage::Prev+]Namespace:
 			= :dup(<[Stage]Namespace>(:transform(
-				<<[Stage-ast::Prev]Namespace #&>>(*g), f)));
-		[Stage-ast::Prev]GlobalEnum:
-			= :dup(<[Stage]GlobalEnum>(:transform(
-				<<[Stage-ast::Prev]GlobalEnum #&>>(*g), f)));
-		[Stage-ast::Prev]ExternFunction:
-			= :dup(<[Stage]ExternFunction>(:transform(
-				<<[Stage-ast::Prev]ExternFunction #&>>(*g), f)));
-		[Stage-ast::Prev]ExternVariable:
-			= :dup(<[Stage]ExternVariable>(:transform(
-				<<[Stage-ast::Prev]ExternVariable #&>>(*g), f)));
-		[Stage-ast::Prev]GlobalVariable:
-			= :dup(<[Stage]GlobalVariable>(:transform(
-				<<[Stage-ast::Prev]GlobalVariable #&>>(*g), f)));
-		[Stage-ast::Prev]GlobalFunction:
+				<<[Stage::Prev+]Namespace #&>>(g), ctx)));
+		[Stage::Prev+]GlobalFunction:
 			= :dup(<[Stage]GlobalFunction>(:transform(
-				<<[Stage-ast::Prev]GlobalFunction #&>>(*g), f)));
+				<<[Stage::Prev+]GlobalFunction #&>>(g), ctx)));
+		[Stage::Prev+]GlobalClass:
+			= :dup(<[Stage]GlobalClass>(:transform(
+				<<[Stage::Prev+]GlobalClass #&>>(g), ctx)));
+		[Stage::Prev+]GlobalRawtype:
+			= :dup(<[Stage]GlobalRawtype>(:transform(
+				<<[Stage::Prev+]GlobalRawtype #&>>(g), ctx)));
+		[Stage::Prev+]GlobalUnion:
+			= :dup(<[Stage]GlobalUnion>(:transform(
+				<<[Stage::Prev+]GlobalUnion #&>>(g), ctx)));
+		[Stage::Prev+]GlobalEnum:
+			= :dup(<[Stage]GlobalEnum>(:transform(
+				<<[Stage::Prev+]GlobalEnum #&>>(g), ctx)));
+		[Stage::Prev+]ExternFunction:
+			= :dup(<[Stage]ExternFunction>(:transform(
+				<<[Stage::Prev+]ExternFunction #&>>(g), ctx)));
+		[Stage::Prev+]ExternVariable:
+			= :dup(<[Stage]ExternVariable>(:transform(
+				<<[Stage::Prev+]ExternVariable #&>>(g), ctx)));
+		[Stage::Prev+]GlobalVariable:
+			= :dup(<[Stage]GlobalVariable>(:transform(
+				<<[Stage::Prev+]GlobalVariable #&>>(g), ctx)));
 		}
 	}
 }

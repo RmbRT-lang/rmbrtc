@@ -20,5 +20,13 @@ INCLUDE "scopeitem.rl"
 	Visibility: rlc::Visibility;
 	Attribute: rlc::MemberAttribute;
 
-	{}: Visibility(NOINIT), Attribute(NOINIT);
+	{} (BARE);
+
+	<<<
+		g: [Stage::Prev+]Member #&,
+		ctx: Stage::Context+ &
+	>>> THIS - std::Dyn
+	{
+		= NULL;
+	}
 }

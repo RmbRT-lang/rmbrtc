@@ -2,6 +2,10 @@ INCLUDE "../parser/stage.rl"
 INCLUDE "../util/file.rl"
 INCLUDE "../ast/test.rl"
 INCLUDE "includes.rl"
+INCLUDE "../ast/scopeitem.rl"
+INCLUDE "../ast/cache.rl"
+
+INCLUDE 'std/heaped'
 
 ::rlc::scoper Config
 {
@@ -9,11 +13,14 @@ INCLUDE "includes.rl"
 	Registry: ast::[Config]FileRegistry;
 	IncludeDirs: std::Str - std::Buffer;
 
+	MSIs: ast::[Config]MergeableScopeItem-ast::[Config]Cache - std::Heaped;
+
 	TYPE Prev := parser::Config;
 	TYPE PrevFile := ast::[parser::Config]File #\;
 	TYPE Context := Config \;
 	TYPE Includes := Config-ast::File \-std::Vec;
 	TYPE Name := std::str::CV;
+	TYPE String := std::Str;
 	
 	RootScope
 	{
@@ -48,7 +55,7 @@ INCLUDE "includes.rl"
 		{
 			IF(s ::= <<parser::Config-ast::ScopeItem #\>>(g!))
 			{
-				conv ::= <<<Config-ast::ScopeItem>>>(*s, p);
+				conv ::= <<<Config-ast::ScopeItem>>>(*s, THIS);
 				out.ScopeItems.insert(conv->Name!, &&conv);
 			} ELSE
 			{
@@ -61,6 +68,6 @@ INCLUDE "includes.rl"
 	create_file(file: std::str::CV#&) Config-ast::File - std::Dyn
 	{
 		parsed ::= ParsedRegistry->get(file);
-		= :new(:transform(parsed, &THIS));
+		= :a(:transform(parsed, &THIS));
 	}
 }

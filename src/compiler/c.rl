@@ -33,7 +33,7 @@ INCLUDE "../scoper/stage.rl"
 
 		// Resolve all includes, populate scopes.
 		FOR(f ::= parsed.start(); f; ++f)
-			scoped += scoper.Registry.get(f->Name!);
+			scoped += scoper.Registry.get(f!->Name!);
 
 		IF(build.Type == :createAST)
 			RETURN;

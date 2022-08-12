@@ -5,7 +5,6 @@ INCLUDE "varorexpression.rl"
 INCLUDE "exprorstatement.rl"
 INCLUDE "typeorexpression.rl"
 INCLUDE "statement.rl"
-INCLUDE "stage.rl"
 
 INCLUDE 'std/vector'
 
@@ -66,9 +65,9 @@ INCLUDE 'std/vector'
 		Range: src::String;
 
 		<<<
-			prev: [Stage]PrevExpression,
-			ctx: Stage \
-		>>> [Stage]Expression-std::Dyn := Stage::transform_expression(prev, ctx);
+			p: [Stage::Prev+]Expression #&,
+			f: Stage #&
+		>>> [Stage]Expression-std::Dyn := Stage::transform_expression(p, f);
 	}
 
 	/// A statement evaluating into a value.
@@ -135,7 +134,7 @@ INCLUDE 'std/vector'
 			lhs: [Stage]Expression-std::Dyn
 		) [Stage]Expression - std::Dyn
 		{
-			ret: OperatorExpression-std::Dyn := :new();
+			ret: OperatorExpression-std::Dyn := :a();
 			ret->Op := op;
 			ret->Position := opPosition;
 			ret->Range := lhs->Range;
@@ -150,7 +149,7 @@ INCLUDE 'std/vector'
 			rhs: [Stage]Expression - std::Dyn
 		) [Stage]Expression - std::Dyn
 		{
-			ret: OperatorExpression-std::Dyn := :new();
+			ret: OperatorExpression-std::Dyn := :a();
 			ret->Op := op;
 			ret->Position := opPosition;
 			ret->Range := lhs->Range.span(rhs->Range);

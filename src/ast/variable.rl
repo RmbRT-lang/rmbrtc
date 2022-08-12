@@ -124,6 +124,12 @@ INCLUDE 'std/vector'
 		{};
 		{pos: LocalPosition}: Position(pos) { ASSERT(pos > 0); }
 		:arg{}: Position(0);
+
+		<<<
+			g: [Stage::Prev+]Local #&,
+			ctx: Stage::Context+ &
+		>>> THIS - std::Dyn;
+
 	}
 
 	/// A named function or constructor argument.

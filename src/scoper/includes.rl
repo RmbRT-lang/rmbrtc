@@ -42,7 +42,7 @@ INCLUDE "literals.rl"
 				util::concat_paths(inc!, path)!);
 			CATCH() { ; }
 
-		THROW <std::io::FileNotFound>(path++);
+		THROW <std::io::FileNotFound>(<std::Str>(path++));
 	}
 
 	NotFound -> Error
@@ -61,7 +61,7 @@ INCLUDE "literals.rl"
 		# FINAL stream(o: std::io::OStream &) VOID
 		{
 			std::io::write(o,
-				<CHAR#\>(Type), " include '", Include!, "' not found");
+				<CHAR#\>(Type), " include '", Include!++, "' not found");
 		}
 	}
 }

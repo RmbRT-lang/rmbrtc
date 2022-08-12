@@ -54,8 +54,8 @@ INCLUDE 'std/math/limit'
 			buf: CHAR[1024] (NOINIT);
 			WHILE(!f.eof())
 			{
-				read ::= f.read(buf, ##buf);
-				Contents.append(:buf(buf, read));
+				read ::= f.read(buf!, ##buf);
+				Contents.append(:buf(buf!, read));
 			}
 		}
 

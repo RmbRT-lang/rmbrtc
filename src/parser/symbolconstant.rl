@@ -20,7 +20,7 @@ INCLUDE "../ast/symbolconstant.rl"
 		= :a(:identifier(tok->Content));
 	ELSE
 	{
-		FOR(it ::= std::range::start(specials); it; ++it)
+		FOR(it ::= std::range::start(specials!); it; ++it)
 			IF(p.consume(it->(0)))
 				= :a(:special(it->(1)));
 		p.fail("expected <, >, <>, !, ?, or <-"); DIE;

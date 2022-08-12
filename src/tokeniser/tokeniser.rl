@@ -140,7 +140,7 @@ INCLUDE 'std/unicode'
 					File,
 					line,
 					column,
-					std::code::utf8::point(buf));
+					std::code::utf8::point(buf!));
 			}
 		}
 

@@ -1,6 +1,5 @@
 INCLUDE "templatedecl.rl"
 INCLUDE "cache.rl"
-INCLUDE "stage.rl"
 
 
 (// All identifier-addressable code entities. /)
@@ -10,22 +9,22 @@ INCLUDE "stage.rl"
 	Name: Stage::Name;
 
 	:transform{
-		i: [Stage-ast::Prev]ScopeItem #&,
-		f: Stage::PrevFile+ #&
+		i: [Stage::Prev+]ScopeItem #&,
+		f: Stage #&
 	}:
 		Name := Stage::transform_name(i, f);
 
 	<<<
-		i: [Stage-ast::Prev]ScopeItem #&,
-		f: Stage::PrevFile+ #&
+		i: [Stage::Prev+]ScopeItem #&,
+		f: Stage &
 	>>> ScopeItem - std::Dyn
 	{
-		IF(g ::= <<[Stage-ast::Prev]Global #*>>(i))
+		IF(g ::= <<[Stage::Prev+]Global #*>>(&i))
 			= <<<[Stage]Global>>>(*g, f);
-		ELSE IF(m ::= <<[Stage-ast::Prev]Member #*>>(i))
+		ELSE IF(m ::= <<[Stage::Prev+]Member #*>>(&i))
 			= <<<[Stage]Member>>>(*m, f);
 		ELSE
-			= <<<[Stage]Local>>>(*<<[Stage-ast::Prev]Local #\>>(i), f);
+			= <<<[Stage]Local>>>(*<<[Stage::Prev+]Local #\>>(&i), f);
 	}
 }
 
@@ -37,8 +36,6 @@ INCLUDE "stage.rl"
 /// An overloadable scope item that can hold multiple definitions.
 ::rlc::ast [Stage: TYPE] MergeableScopeItem VIRTUAL -> [Stage]ScopeItem
 {
-	TYPE Cache := ast::[Stage; THIS]Cache;
-
 	Included: std::[std::str::CV; [Stage]MergeableScopeItem #\]AutoMap;
 
 	/// Include definitions from another file.
@@ -49,9 +46,6 @@ INCLUDE "stage.rl"
 		Included.insert(rhs->Name!, rhs);
 	}
 
-	PRIVATE ABSTRACT handle_merge([Stage]MergeableScopeItem #\) BOOL :=
-
-
 	/// Merge definitions from the same file into a single entity.
 	merge(rhs: [Stage]MergeableScopeItem &&) VOID
 	{
@@ -60,13 +54,14 @@ INCLUDE "stage.rl"
 	}
 
 	:transform{
-		i: [Stage-Prev]MergeableScopeItem #&,
-		f: Stage::PrevFile+ #&,
-		cache: Cache &
-	} -> (:transform(i, f))
+		i: [Stage::Prev+]MergeableScopeItem #&,
+		f: Stage #&,
+		cache: THIS-[Stage]Cache &
+	} -> (:transform(i, f)):
+		Included := :reserve(##i.Included)
 	{
 		FOR(item ::= i.Included.start(); item; ++item)
-			include(cache(i, f));
+			include(cache[i, f]);
 	}
 
 	PRIVATE ABSTRACT merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID;

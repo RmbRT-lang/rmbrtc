@@ -7,6 +7,17 @@ INCLUDE 'std/set'
 {
 	Entries: [Stage]Global - std::DynVec;
 
+	:transform{
+		p: [Stage::Prev+]Namespace #&,
+		f: Stage #&,
+		cache: [Stage]MergeableScopeItem-[Stage]Cache &
+	} -> (:transform(p, f, cache)), ():
+		Entries := :reserve(##p.Entries)
+	{
+		FOR(it ::= p.Entries.start(); it; ++it)
+			Entries += <<<[Stage]Global>>>(it!, f, cache);
+	}
+
 	PRIVATE FINAL merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID
 	{
 		ns: ?& := <<[Stage]Namespace &>>(rhs);

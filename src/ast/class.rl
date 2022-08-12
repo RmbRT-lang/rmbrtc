@@ -33,8 +33,8 @@ INCLUDE 'std/set'
 	CustomCtors: [Stage]CustomConstructor-std::AutoDynVecSet;
 
 	:transform{
-		p: [Stage-Prev]Class #&,
-		f: Stage::PrevFile #&
+		p: [Stage::Prev+]Class #&,
+		f: Stage #&
 	} -> (:transform(p, f)), (:transform(p, f)), (p):
 		Virtual := p.Virtual,
 		Members := :reserve(##p.Members),
@@ -46,24 +46,32 @@ INCLUDE 'std/set'
 			Inheritances += :transform(i!, f);
 
 		IF(p.DefaultCtor)
-			DefaultCtor := :new(:transform(*p.DefaultCtor, f));
+			DefaultCtor := :a(:transform(*p.DefaultCtor, f));
 		IF(p.CopyCtor)
-			CopyCtor := :new(:transform(*p.CopyCtor, f));
+			CopyCtor := :a(:transform(*p.CopyCtor, f));
 		IF(p.MoveCtor)
-			MoveCtor := :new(:transform(*p.MoveCtor, f));
+			MoveCtor := :a(:transform(*p.MoveCtor, f));
 		IF(p.ImplicitCtor)
-			ImplicitCtor := :new(:transform(*p.ImplicitCtor, f));
+			ImplicitCtor := :a(:transform(*p.ImplicitCtor, f));
 		loc: UM := 0;
 		FOR(ctor ::= p.CustomCtors.start(); ctor; ++ctor)
-			CustomCtors.emplace_at(loc++, :new(:transform(*(ctor!), f)));
+			CustomCtors.emplace_at(loc++, :a(:transform(*(ctor!), f)));
 	}
 
 }
 
 ::rlc::ast [Stage: TYPE] GlobalClass -> [Stage]Global, [Stage]Class
 {
+	:transform{
+		p: [Stage::Prev+]GlobalClass #&,
+		f: Stage #&
+	} -> (), (:transform(p, f));
 }
 
 ::rlc::ast [Stage: TYPE] MemberClass -> [Stage]Member, [Stage]Class
 {
+	:transform{
+		p: [Stage::Prev+]MemberClass #&,
+		f: Stage #&
+	} -> (p), (:transform(p, f));
 }

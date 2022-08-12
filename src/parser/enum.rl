@@ -15,7 +15,7 @@ INCLUDE "../ast/enum.rl"
 		out.Name := p.expect(:identifier).Content;
 		p.expect(:braceOpen);
 
-		DO(c: ast::[Config]Enum::Constant)
+		DO(c: ast::[Config]Enum::Constant (NOINIT))
 			DO()
 			{
 				tok ::= p.expect(:identifier);

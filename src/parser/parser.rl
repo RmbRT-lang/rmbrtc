@@ -41,11 +41,11 @@ INCLUDE 'std/tags'
 			} ELSE
 				Tokeniser.position(&line, &column);
 			
-			THROW ReasonError(
+			THROW <ReasonError>(
 				File,
 				line,
 				column,
-				Buffer,
+				Buffer!,
 				BufferIndex,
 				BufferSize,
 				THIS,
@@ -80,7 +80,7 @@ INCLUDE 'std/tags'
 
 			THROW <ExpectedToken>(
 				File, line, column,
-				Buffer, BufferIndex, BufferSize,
+				Buffer!, BufferIndex, BufferSize,
 				THIS,
 				type);
 		}

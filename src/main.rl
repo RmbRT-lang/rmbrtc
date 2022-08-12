@@ -107,7 +107,7 @@ main(
 			build := :gc(std::heap::[rlc::compiler::Build]new(&&b));
 		}
 		ELSE
-			build := :new(buildType);
+			build := :a(buildType);
 		//build->LegacyScoping := TRUE;
 
 		cli::main.info("compiling ", :dec(##files), " files.\n");

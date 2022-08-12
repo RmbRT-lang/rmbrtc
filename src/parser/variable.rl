@@ -21,7 +21,7 @@ INCLUDE "stage.rl"
 
 		p.expect(:semicolon);
 
-		= :new(nt->Name.Content, &&nt->Type, &&inits);
+		= :a(nt->Name.Content, &&nt->Type, &&inits);
 	}
 
 	parse_extern(
@@ -119,7 +119,7 @@ INCLUDE "stage.rl"
 		IF(expect_semicolon)
 			p.expect(:semicolon);
 
-		= :new(nt->Name.Content, ++locals, &&nt->Type, &&inits);
+		= :a(nt->Name.Content, ++locals, &&nt->Type, &&inits);
 	}
 
 	parse_fn_arg(
