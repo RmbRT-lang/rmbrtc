@@ -15,15 +15,16 @@ INCLUDE 'std/vector'
 
 	:transform{
 		p: [Stage::Prev+]Rawtype #&,
-		f: Stage #&
+		f: Stage::PrevFile+,
+		s: Stage &
 	} -> (:transform(p, f)), (p):
-		Size := <<<[Stage]Expression>>>(p.Size!, f),
+		Size := <<<[Stage]Expression>>>(p.Size!, f, s),
 		Members := :reserve(##p.Members)
 	{
 		IF(p.Alignment)
-			Alignment := <<<[Stage]Expression>>>(p.Alignment!, f);
+			Alignment := <<<[Stage]Expression>>>(p.Alignment!, f, s);
 		FOR(it ::= p.Members.start(); it; ++it)
-			Members += <<<[Stage]Member>>>(it!, f);
+			Members += <<<[Stage]Member>>>(it!, f, s);
 	}
 }
 
@@ -31,14 +32,16 @@ INCLUDE 'std/vector'
 {
 	:transform{
 		p: [Stage::Prev+]GlobalRawtype #&,
-		f: Stage #&
-	} -> (), (:transform(p, f));
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (), (:transform, p, f, s);
 }
 
 ::rlc::ast [Stage:TYPE] MemberRawtype -> [Stage]Member, [Stage]Rawtype
 {
 	:transform{
 		p: [Stage::Prev+]MemberRawtype #&,
-		f: Stage #&
-	} -> (p), (:transform(p, f));
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (p), (:transform, p, f, s);
 }

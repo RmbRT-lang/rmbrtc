@@ -23,7 +23,7 @@ INCLUDE "../ast/class.rl"
 		out.Virtual := p.consume(:virtual);
 
 		IF(p.consume(:minusGreater))
-			DO(i: ast::class::[Config]Inheritance)
+			DO(i: ast::class::[Config]Inheritance (BARE))
 			{
 				parse_inheritance(p, i);
 				out.Inheritances += &&i;

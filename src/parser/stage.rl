@@ -65,7 +65,7 @@ INCLUDE "global.rl"
 		{
 			s: src::File-std::Shared := :a(file);
 			p: Parser(s!);
-			= :a(:transform(:nothing, &p));
+			= :a(:transform(&p, THIS));
 		}
 	}
 }

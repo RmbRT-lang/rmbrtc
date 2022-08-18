@@ -13,10 +13,10 @@ INCLUDE "global.rl"
 	/// Used for transforming a file from the previous stage's representation.
 	:transform{
 		prev: Config::PrevFile #&,
-		ctx: Config \
+		s: Config &
 	}
 	{
-		ctx->transform_includes(Includes, prev);
-		ctx->transform_globals(Globals, prev);
+		s.transform_includes(Includes, prev);
+		s.transform_globals(Globals, prev);
 	}
 }

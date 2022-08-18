@@ -107,13 +107,13 @@ INCLUDE "symbolconstant.rl"
 		ret: ast::[Config]Type - std::Dyn &,
 		parse_fn: ((Parser &, T! &) BOOL)) BOOL
 	{
-		v: T;
+		v: T (BARE);
 		IF(parse_fn(p, v))
 		{
 			ret := :dup(&&v);
 			WHILE(p.consume(:minus))
 			{
-				next: TypeName;
+				next: TypeName (BARE);
 				IF(!parse_type_name(p, next))
 					p.fail("expected symbol");
 

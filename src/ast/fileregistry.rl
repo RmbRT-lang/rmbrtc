@@ -17,7 +17,7 @@ PUBLIC:
 
 	get(file: std::Str #&) Stage-File \
 	{
-		entry ::= FileByName.find_loc(file);
+		entry ::= FileByName.find_loc(file!);
 		IF(f ::= entry.(0))
 			= (*f)!;
 		ELSE

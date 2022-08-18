@@ -24,9 +24,7 @@ INCLUDE "scopeitem.rl"
 
 	<<<
 		g: [Stage::Prev+]Member #&,
-		ctx: Stage::Context+ &
-	>>> THIS - std::Dyn
-	{
-		= NULL;
-	}
+		f: Stage::PrevFile+,
+		s: Stage &
+	>>> THIS - std::Dyn;
 }

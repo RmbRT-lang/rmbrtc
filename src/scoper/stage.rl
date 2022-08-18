@@ -10,10 +10,10 @@ INCLUDE 'std/heaped'
 ::rlc::scoper Config
 {
 	ParsedRegistry: ast::[parser::Config]FileRegistry \;
-	Registry: ast::[Config]FileRegistry;
+	Registry: ast::[THIS]FileRegistry;
 	IncludeDirs: std::Str - std::Buffer;
 
-	MSIs: ast::[Config]MergeableScopeItem-ast::[Config]Cache - std::Heaped;
+	MSIs: ast::[THIS; ast::[THIS]MergeableScopeItem]Cache - std::Heaped;
 
 	TYPE Prev := parser::Config;
 	TYPE PrevFile := ast::[parser::Config]File #\;
@@ -21,6 +21,7 @@ INCLUDE 'std/heaped'
 	TYPE Includes := Config-ast::File \-std::Vec;
 	TYPE Name := std::str::CV;
 	TYPE String := std::Str;
+	TYPE Inheritance := THIS-ast::Symbol;
 	
 	RootScope
 	{
@@ -32,12 +33,15 @@ INCLUDE 'std/heaped'
 		ParsedRegistry(&prev->Registry),
 		Registry(&THIS);
 
+	transform_name(p: Prev::Name+ #&, f: PrevFile) Name INLINE
+		:= f->Source->content(p)++;
+
 	transform_includes(
 		out: Includes&,
 		parsed: ast::[parser::Config]File \
 	) VOID
 	{
-		FOR(inc ::= parsed->Includes.start(); inc; ++inc)
+		FOR(inc ::= parsed->Includes.start())
 			out += Registry.get(
 				include::resolve(
 					parsed->Name!,
@@ -55,19 +59,16 @@ INCLUDE 'std/heaped'
 		{
 			IF(s ::= <<parser::Config-ast::ScopeItem #\>>(g!))
 			{
-				conv ::= <<<Config-ast::ScopeItem>>>(*s, THIS);
+				conv ::= <<<Config-ast::ScopeItem>>>(*s, p, THIS);
 				out.ScopeItems.insert(conv->Name!, &&conv);
 			} ELSE
 			{
 				test ::= <<parser::Config-ast::Test #\>>(g!);
-				out.Tests += :transform(*test, *p);
+				out.Tests += :transform(*test, p, THIS);
 			}
 		}
 	}
 
-	create_file(file: std::str::CV#&) Config-ast::File - std::Dyn
-	{
-		parsed ::= ParsedRegistry->get(file);
-		= :a(:transform(parsed, &THIS));
-	}
+	create_file(file: std::str::CV#&) THIS-ast::File - std::Dyn
+		:= :a(:transform(ParsedRegistry->get(file), THIS));
 }

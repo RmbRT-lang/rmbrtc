@@ -8,25 +8,28 @@ INCLUDE "member.rl"
 
 	:transform{
 		p: [Stage::Prev+]Union #&,
-		f: Stage #&
-	} -> (:transform(p, f)), (p):
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform(p, f, s)), (p):
 		Members := :reserve(##p.Members)
 	{
 		FOR(it ::= p.Members.start(); it; ++it)
-			Members += <<<[Stage]Member>>>(it!, f);
+			Members += <<<[Stage]Member>>>(it!, f, s);
 	}
 }
 
 ::rlc::ast [Stage:TYPE] GlobalUnion -> [Stage]Global, [Stage]Union {
 	:transform{
 		p: [Stage::Prev+]GlobalUnion #&,
-		f: Stage #&
-	} -> (), (:transform(p, f));
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (), (:transform, p, f, s);
 }
 
 ::rlc::ast [Stage:TYPE] MemberUnion -> [Stage]Member, [Stage]Union {
 	:transform{
 		p: [Stage::Prev+]MemberUnion #&,
-		f: Stage #&
-	} -> (p), (:transform(p, f));
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (p), (:transform, p, f, s);
 }

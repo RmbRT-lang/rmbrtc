@@ -9,31 +9,46 @@ INCLUDE 'std/vector'
 	{
 		Value: src::Index;
 
-		:transform{e: [Stage::Prev+]Enum::Constant #&, f: Stage #&} ->
-			(:transform(e, f)), (:transform(e, f)), (e):
+		:transform{
+			e: [Stage::Prev+]Enum::Constant #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		} ->
+			(:transform(e, f, s)), (:transform(e, f, s)), (e):
 			Value := e.Value;
 	}
 
 	Constants: std::[Constant]Vec;
 
 	{};
-	:transform{e: [Stage::Prev+]Enum #&, f: Stage #&} ->
-		(:transform(e, f)), (e):
+	:transform{
+		e: [Stage::Prev+]Enum #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} ->
+		(:transform(e, f, s)), (e):
 		Constants := :reserve(##e.Constants)
 	{
 		FOR(c ::= e.Constants.start(); c; ++c)
-			Constants += :transform(c!.Value, f);
+			Constants += :transform(c!.Value, f, s);
 	}
 }
 
 ::rlc::ast [Stage: TYPE] GlobalEnum -> [Stage]Global, [Stage]Enum
 {
-	:transform{e: [Stage::Prev+]GlobalEnum #&, f: Stage #&} ->
-		(), (:transform(e, f));
+	:transform{
+		e: [Stage::Prev+]GlobalEnum #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} ->
+		(), (:transform, e, f, s);
 }
 
 ::rlc::ast [Stage: TYPE] MemberEnum -> [Stage]Member, [Stage]Enum
 {
-	:transform{e: [Stage::Prev+]GlobalEnum #&, f: Stage #&} ->
-		(e), (:transform(e, f));
+	:transform{
+		e: [Stage::Prev+]GlobalEnum #&,
+		f: Stage::PrevFile+,
+		s: Stage &} ->
+		(e), (:transform, e, f, s);
 }

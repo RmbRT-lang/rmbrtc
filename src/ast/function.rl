@@ -27,6 +27,12 @@ INCLUDE "statement.rl"
 		isCoroutine: BOOL,
 		return: [Stage]Type-std::Dyn
 	} -> (&&args, isCoroutine): Return := &&return;
+
+	:transform{
+		p: [Stage::Prev+]ResolvedSig #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	}: Return := <<<[Stage]Type>>>(p->Return!, f, s);
 }
 
 /// An anonymous function object.
@@ -62,6 +68,22 @@ INCLUDE "statement.rl"
 	(// The function's variant implementations. /)
 	Variants: std::[Stage-Name; [Stage]Variant-std::Shared]NatMap;
 
+	:transform {
+		p: [Stage::Prev+]Function #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p, f, s)
+	{
+		IF(p.Default)
+			Default := :a(:transform(p.Default!, f, s));
+		FOR(var ::= p.SpecialVariants.start())
+			SpecialVariants.insert(var!.(0), :a(:transform(var!.(1)!, f, s)));
+		FOR(var ::= p.Variants.start())
+			SpecialVariants.insert(
+				s.transform_name(var!.(0), f),
+				:a(:transform(var!.(1)!, f, s)));
+	}
+
 	set_templates_after_parsing(tpl: [Stage]TemplateDecl &&) VOID
 	{
 		IF(Default)
@@ -95,7 +117,13 @@ INCLUDE "statement.rl"
 }
 
 /// Global function.
-::rlc::ast [Stage:TYPE] GlobalFunction -> [Stage]Global, [Stage]Function { }
+::rlc::ast [Stage:TYPE] GlobalFunction -> [Stage]Global, [Stage]Function {
+	:transform{
+		p: [Stage::Prev+]GlobalFunction #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (), (:transform, p, f, s);
+}
 
 /// A reference to an external function. Cannot have variants.
 ::rlc::ast [Stage:TYPE] ExternFunction ->
@@ -114,9 +142,10 @@ INCLUDE "statement.rl"
 
 	:transform{
 		p: [Stage::Prev+]ExternFunction #&,
-		f: Stage #&
-	} -> (), (:transform(p, f)), (:transform(p, f)):
-		Signature(:transform(p, f));
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (), (:transform, p, f, s), (:transform, p, f, s):
+		Signature(:transform(p.Signature, f, s));
 }
 
 ::rlc::ast [Stage:TYPE] DefaultVariant -> [Stage]Functoid { }

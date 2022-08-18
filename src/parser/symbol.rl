@@ -2,8 +2,6 @@ INCLUDE "../ast/symbol.rl"
 INCLUDE "parser.rl"
 
 
-::rlc::parser::symbol::detail [Symbol: TYPE] TYPE Child := Symbol::Child;
-
 ::rlc::parser::symbol [Symbol:TYPE] parse(p: Parser&, out: Symbol! &) BOOL
 {
 	t: Trace(&p, "symbol");
@@ -11,7 +9,7 @@ INCLUDE "parser.rl"
 	out.IsRoot := p.consume(:doubleColon);
 	expect ::= out.IsRoot;
 
-	DO(child: Symbol-detail::Child)
+	DO(child: Symbol::Child+ (BARE))
 	{
 		IF(!parse_child(p, child))
 		{

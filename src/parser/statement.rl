@@ -38,7 +38,7 @@ INCLUDE "varorexpression.rl"
 		parse_fn: ((Parser&, ast::LocalPosition &, T! &) BOOL)
 	) BOOL
 	{
-		v: T;
+		v: T (BARE);
 		IF(parse_fn(p, locals, v))
 		{
 			ret := :dup(&&v);
@@ -106,7 +106,7 @@ INCLUDE "varorexpression.rl"
 
 		t: Trace(&p, "die statement");
 
-		out.Message := :a();
+		out.Message := :a(BARE);
 		IF(!expression::parse_string(p, out.Message!))
 			out.Message := NULL;
 
@@ -267,7 +267,7 @@ INCLUDE "varorexpression.rl"
 		IF(!(out.Body := statement::parse_body(p, locals)))
 			p.fail("expected statement");
 
-		FOR(catch: ast::[Config]CatchStatement;
+		FOR(catch: ast::[Config]CatchStatement (BARE);
 			detail::parse_catch(p, locals, catch);)
 			out.Catches += &&catch;
 
@@ -505,7 +505,7 @@ INCLUDE "varorexpression.rl"
 		p.expect(:parentheseClose);
 		p.expect(:braceOpen);
 
-		DO(case: ast::[Config]CaseStatement)
+		DO(case: ast::[Config]CaseStatement (BARE))
 		{
 			IF(!switch::parse_case(p, locals, case))
 				p.fail("expected case");
@@ -566,7 +566,7 @@ INCLUDE "varorexpression.rl"
 		p.expect(:parentheseClose);
 		p.expect(:braceOpen);
 
-		DO(case: ast::[Config]TypeCaseStatement)
+		DO(case: ast::[Config]TypeCaseStatement (BARE))
 		{
 			IF(!type_switch::parse_case(p, locals, case))
 				p.fail("expected case");

@@ -57,7 +57,7 @@ INCLUDE "stage.rl"
 
 				p.expect(:semicolon);
 
-				= :gc(std::heap::[ast::[Config]StaticMemberVariable]new(
+				= :dup(<ast::[Config]StaticMemberVariable>(
 					&&nt->Name.Content, &&nt->Type, &&inits));
 			} ELSE = NULL;
 		}

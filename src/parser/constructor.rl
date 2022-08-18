@@ -80,7 +80,7 @@ INCLUDE "stage.rl"
 		IF(p.consume(:minusGreater))
 		{
 			dup_init := TRUE;
-			DO(init: ast::[Config]Constructor::BaseInit)
+			DO(init: ast::[Config]Constructor::BaseInit (BARE))
 			{
 				p.expect(:parentheseOpen);
 				IF(!p.consume(:parentheseClose))
@@ -100,7 +100,7 @@ INCLUDE "stage.rl"
 		IF(p.consume(:colon))
 		{
 			dup_init := TRUE;
-			DO(init: ast::[Config]Constructor::MemberInit)
+			DO(init: ast::[Config]Constructor::MemberInit (BARE))
 			{
 				tok ::= p.expect(:identifier);
 				(init.Member, init.Position) := (tok.Content, tok.Position);
@@ -136,7 +136,7 @@ INCLUDE "stage.rl"
 	IF(!p.consume(:semicolon))
 	{
 		locals: ast::LocalPosition;
-		body: ast::[Config]BlockStatement;
+		body: ast::[Config]BlockStatement (BARE);
 		IF(!statement::parse_block(p, locals, body))
 			p.fail("expected constructor body");
 		out->Body := :dup(&&body);

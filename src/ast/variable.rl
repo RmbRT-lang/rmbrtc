@@ -13,8 +13,13 @@ INCLUDE 'std/vector'
 	/// Generic named variable.
 	[Stage:TYPE] Variable VIRTUAL -> [Stage]ScopeItem
 	{
-		{};
 		{ name: Stage::Name } -> (&&name);
+
+		:transform{
+			p: [Stage::Prev+]Variable #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		} -> (:transform, p, f, s);
 	}
 
 	(//
@@ -25,8 +30,7 @@ INCLUDE 'std/vector'
 	{
 		Type: [Stage]MaybeAutoType - std::Dyn;
 		InitValues: Stage-Expression - std::DynVec;
-		
-		{};
+
 		{
 			name: Stage::Name,
 			type: [Stage]MaybeAutoType - std::Dyn,
@@ -39,6 +43,18 @@ INCLUDE 'std/vector'
 			// Make sure that an auto variable has a single-value initialiser.
 			ASSERT(!<<Stage-type::Auto *>>(Type!) || ##InitValues == 1);
 		}
+
+		:transform{
+			p: [Stage::Prev+]InitialisedVariable #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		} -> (:transform, p, f, s) :
+			Type := <<<[Stage]MaybeAutoType>>>(p->Type!, f, s),
+			InitValues := :reserve(##p->InitValues)
+		{
+			FOR(v ::= p->InitValues.start(); v; ++v)
+				InitValues += <<<[Stage]Expression>>>(v!, f, s);
+		}
 	}
 
 	(//
@@ -49,24 +65,35 @@ INCLUDE 'std/vector'
 	{
 		Type: ast::[Stage]Type - std::Dyn;
 
-		{};
 		{
 			name: Stage::Name,
 			type: ast::[Stage]Type-std::Dyn
 		} ->
 			(&&name):
 			Type(&&type);
+
+		:transform{
+			p: [Stage::Prev+]UninitialisedVariable #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		} -> (:transform, p, f, s):
+			Type := <<<ast::[Stage]Type>>>(p->Type!, f, s);
 	}
 
 	/// A variable in global scope.
 	[Stage:TYPE] GlobalVariable -> [Stage]Global, [Stage]InitialisedVariable
 	{
-		{};
 		{
 			name: Stage::Name,
 			type: [Stage]MaybeAutoType - std::Dyn,
 			initValues: [Stage]Expression - std::DynVec
 		} -> (), (&&name, &&type, &&initValues);
+
+		:transform{
+			p: [Stage::Prev+]GlobalVariable #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		} -> (), (:transform, p, f, s);
 	}
 
 	[Stage: TYPE] ExternVariable ->
@@ -74,12 +101,17 @@ INCLUDE 'std/vector'
 		[Stage]UninitialisedVariable,
 		[Stage]ExternSymbol
 	{
-		{};
 		{
 			name: Stage::Name,
 			type: [Stage]Type - std::Dyn,
 			linkName: Stage-Name - std::Opt
 		} -> (), (&&name, &&type), (&&linkName);
+
+		:transform{
+			p: [Stage::Prev+]ExternVariable #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		} -> (), (:transform, p, f, s), (:transform, p, f, s);
 	}
 
 	[Stage: TYPE] MaybeAnonMemberVar VIRTUAL -> [Stage]Member {}
@@ -88,31 +120,47 @@ INCLUDE 'std/vector'
 		[Stage]UninitialisedVariable,
 		[Stage]MaybeAnonMemberVar
 	{
-		{};
 		{
 			name: Stage::Name,
 			type: [Stage]Type - std::Dyn
 		} -> (&&name, &&type), ();
+
+		:transform{
+			p: [Stage::Prev+]MemberVariable #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		} -> (:transform, p, f, s), ();
 	}
 
 	[Stage:TYPE] AnonMemberVariable -> [Stage]MaybeAnonMemberVar
 	{
 		Type: ast::[Stage]Type - std::Dyn;
-		{};
+
 		{type: ast::[Stage]Type - std::Dyn}: Type(&&type);
+
+		:transform{
+			p: [Stage::Prev+]AnonMemberVariable #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		} -> (:transform, p, f, s):
+			Type := <<<ast::[Stage]Type>>>(p->Type!, f, s);
 	}
 
 	[Stage:TYPE] StaticMemberVariable ->
 		[Stage]MaybeAnonMemberVar,
 		[Stage]InitialisedVariable
 	{
-		{};
 		{
 			name: Stage::Name,
 			type: [Stage]Type-std::Dyn,
 			inits: [Stage]Expression - std::DynVec
 		}-> (), (&&name, &&type, &&inits);
 
+		:transform{
+			p: [Stage::Prev+]StaticMemberVariable #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+			} -> (:transform, p, f, s), (:transform, p, f, s);
 	}
 
 	TYPE LocalPosition := U2;
@@ -121,15 +169,16 @@ INCLUDE 'std/vector'
 	{
 		Position: LocalPosition;
 
-		{};
 		{pos: LocalPosition}: Position(pos) { ASSERT(pos > 0); }
 		:arg{}: Position(0);
 
+		:transform{p: [Stage::Prev+]Local #&}: Position := p.Position;
+
 		<<<
 			g: [Stage::Prev+]Local #&,
-			ctx: Stage::Context+ &
+			f: Stage::PrevFile+,
+			s: Stage &
 		>>> THIS - std::Dyn;
-
 	}
 
 	/// A named function or constructor argument.
@@ -138,11 +187,16 @@ INCLUDE 'std/vector'
 		[Stage]UninitialisedVariable,
 		[Stage]TypeOrArgument
 	{
-		{};
 		{
 			name: Stage::Name,
 			type: [Stage]Type-std::Dyn
 		} -> (:arg), (&&name, &&type), ();
+
+		:transform{
+			p: [Stage::Prev+]Argument #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		} -> (:arg), (:transform, p, f, s), ();
 	}
 
 	/// A local variable inside a function.
@@ -151,13 +205,18 @@ INCLUDE 'std/vector'
 		[Stage]InitialisedVariable,
 		[Stage]VarOrExpr
 	{
-		{};
 		{
 			name: Stage::Name,
 			position: LocalPosition,
 			type: [Stage]MaybeAutoType-std::Dyn,
 			initValues: [Stage]Expression-std::DynVec
 		} -> (position), (&&name, &&type, &&initValues), ();
+
+		:transform{
+			p: [Stage::Prev+]LocalVariable #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		} -> (:transform(p)), (:transform, p, f, s), ();
 	}
 
 	/// The named exception variable of a CATCH statement.
@@ -166,11 +225,16 @@ INCLUDE 'std/vector'
 		[Stage]UninitialisedVariable,
 		[Stage]TypeOrCatchVariable
 	{
-		{};
 		{
 			name: Stage::Name,
 			position: LocalPosition,
 			type: [Stage]MaybeAutoType-std::Dyn
 		} -> (position), (&&name, &&type), ();
+
+		:transform{
+			p: [Stage::Prev+]CatchVariable #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		} -> (:transform(p)), (:transform, p, f, s), ();
 	}
 }

@@ -21,7 +21,7 @@ INCLUDE "../symbol.rl"
 			IF(p.consume(group->Table[i].(0)))
 			{
 				op ::= group->Table[i].(1);
-				ret: ast::[Config]OperatorExpression-std::Dyn := :a();
+				ret: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
 				ret->Op := op;
 				ret->Operands += &&lhs;
 
@@ -65,7 +65,7 @@ INCLUDE "../symbol.rl"
 			p.expect(:colon);
 			else ::= expression::parse(p);
 
-			ret: ast::[Config]OperatorExpression-std::Dyn := :a();
+			ret: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
 			ret->Op := :conditional;
 			ret->Operands += &&lhs;
 			ret->Operands += &&then;
@@ -80,7 +80,7 @@ INCLUDE "../symbol.rl"
 		FOR(i ::= 0; i < ##detail::k_prefix_ops; i++)
 			IF(p.consume(detail::k_prefix_ops[i].(0)))
 			{
-				xp: ast::[Config]OperatorExpression-std::Dyn := :a();
+				xp: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
 				xp->Op := detail::k_prefix_ops[i].(1);
 				xp->Operands += parse_prefix(p);
 				RETURN xp;
@@ -123,7 +123,7 @@ INCLUDE "../symbol.rl"
 
 		IF(p.consume(:bracketOpen))
 		{
-			sub: ast::[Config]OperatorExpression-std::Dyn := :a();
+			sub: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
 			sub->Op := :subscript;
 			sub->Operands += &&lhs;
 
@@ -143,7 +143,7 @@ INCLUDE "../symbol.rl"
 		{
 			isReflect ::= p.consume(:asterisk);
 			p.expect(:parentheseOpen);
-			visit: ast::[Config]OperatorExpression-std::Dyn := :a();
+			visit: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
 			visit->Op := isReflect ? Operator::reflectVisit : Operator::visit;
 			visit->Operands += &&lhs;
 
@@ -163,7 +163,7 @@ INCLUDE "../symbol.rl"
 
 		IF(p.consume(:parentheseOpen))
 		{
-			call: ast::[Config]OperatorExpression-std::Dyn := :a();
+			call: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
 			call->Op := :call;
 			call->Operands += &&lhs;
 
@@ -221,7 +221,7 @@ INCLUDE "../symbol.rl"
 				}
 				ELSE
 				{
-					exp: ast::[Config]MemberReferenceExpression-std::Dyn := :a();
+					exp: ast::[Config]MemberReferenceExpression-std::Dyn := :a(BARE);
 					exp->Object := &&lhs;
 					exp->IsArrowAccess := (i != 0);
 

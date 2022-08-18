@@ -27,7 +27,7 @@ INCLUDE "symbolconstant.rl"
 			{
 				IF(!tuple)
 				{
-					tuple := :a();
+					tuple := :a(BARE);
 					tuple->Op := :tuple;
 					tuple->Operands += &&exp;
 				}
@@ -75,7 +75,7 @@ INCLUDE "symbolconstant.rl"
 		parse_fn: ((Parser&, T! &) BOOL)
 	) BOOL
 	{
-		v: T;
+		v: T (BARE);
 		IF(parse_fn(p, v))
 		{
 			ret := :dup(&&v);

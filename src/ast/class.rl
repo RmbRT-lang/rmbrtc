@@ -34,44 +34,46 @@ INCLUDE 'std/set'
 
 	:transform{
 		p: [Stage::Prev+]Class #&,
-		f: Stage #&
-	} -> (:transform(p, f)), (:transform(p, f)), (p):
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p, f, s), (:transform, p, f, s), (p):
 		Virtual := p.Virtual,
 		Members := :reserve(##p.Members),
-		Inheritances := :reserve(##p.Inheritances)
+		Inheritances := :reserve(##p.Inheritances),
+		CustomCtors := :reserve(##p.CustomCtors)
 	{
 		FOR(m ::= p.Members.start(); m; ++m)
-			Members += <<<[Stage]Member>>>(m!, f);
+			Members += <<<[Stage]Member>>>(m!, f, s);
 		FOR(i ::= p.Inheritances.start(); i; ++i)
-			Inheritances += :transform(i!, f);
+			Inheritances += :transform(i!, f, s);
 
 		IF(p.DefaultCtor)
-			DefaultCtor := :a(:transform(*p.DefaultCtor, f));
+			DefaultCtor := :a(:transform(*p.DefaultCtor, f, s));
 		IF(p.CopyCtor)
-			CopyCtor := :a(:transform(*p.CopyCtor, f));
+			CopyCtor := :a(:transform(*p.CopyCtor, f, s));
 		IF(p.MoveCtor)
-			MoveCtor := :a(:transform(*p.MoveCtor, f));
+			MoveCtor := :a(:transform(*p.MoveCtor, f, s));
 		IF(p.ImplicitCtor)
-			ImplicitCtor := :a(:transform(*p.ImplicitCtor, f));
-		loc: UM := 0;
+			ImplicitCtor := :a(:transform(*p.ImplicitCtor, f, s));
 		FOR(ctor ::= p.CustomCtors.start(); ctor; ++ctor)
-			CustomCtors.emplace_at(loc++, :a(:transform(*(ctor!), f)));
+			CustomCtors.emplace_at(##CustomCtors, :transform(*(ctor!), f, s));
 	}
-
 }
 
 ::rlc::ast [Stage: TYPE] GlobalClass -> [Stage]Global, [Stage]Class
 {
 	:transform{
 		p: [Stage::Prev+]GlobalClass #&,
-		f: Stage #&
-	} -> (), (:transform(p, f));
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (), (:transform, p, f, s);
 }
 
 ::rlc::ast [Stage: TYPE] MemberClass -> [Stage]Member, [Stage]Class
 {
 	:transform{
 		p: [Stage::Prev+]MemberClass #&,
-		f: Stage #&
-	} -> (p), (:transform(p, f));
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (p), (:transform, p, f, s);
 }

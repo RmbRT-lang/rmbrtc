@@ -9,13 +9,13 @@ INCLUDE 'std/set'
 
 	:transform{
 		p: [Stage::Prev+]Namespace #&,
-		f: Stage #&,
-		cache: [Stage]MergeableScopeItem-[Stage]Cache &
-	} -> (:transform(p, f, cache)), ():
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p, f, s), ():
 		Entries := :reserve(##p.Entries)
 	{
 		FOR(it ::= p.Entries.start(); it; ++it)
-			Entries += <<<[Stage]Global>>>(it!, f, cache);
+			Entries += <<<[Stage]Global>>>(*it!, f, s);
 	}
 
 	PRIVATE FINAL merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID

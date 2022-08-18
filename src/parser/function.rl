@@ -94,7 +94,7 @@ Can be called multiple times to append new arguments.
 		IF(p.consume(:semicolon))
 			RETURN;
 
-	body: ast::[Config]BlockStatement;
+	body: ast::[Config]BlockStatement (BARE);
 
 	IF(p.consume(:colonEqual))
 	{
