@@ -5,11 +5,67 @@ INCLUDE "symbolconstant.rl"
 ::rlc::ast
 {
 	/// Type | Argument union.
-	[Stage: TYPE] TypeOrArgument VIRTUAL {}
+	[Stage: TYPE] TypeOrArgument VIRTUAL
+	{
+		<<<
+			p: [Stage::Prev+]TypeOrArgument #\,
+			f: Stage::PrevFile+,
+			s: Stage &
+		>>> THIS-std::Dyn
+		{
+			TYPE SWITCH(p)
+			{
+			[Stage::Prev+]Type:
+				= <<<[Stage]Type>>>(
+					<<[Stage::Prev+]Type #\>>(p), f, s);
+			[Stage::Prev+]Argument:
+				= :dup(<[Stage]Argument>(:transform(
+					<<[Stage::Prev+]Argument #&>>(*p), f, s)));
+			}
+		}
+	}
+
 	/// Type | CatchVariable union.
-	[Stage: TYPE] TypeOrCatchVariable VIRTUAL {}
+	[Stage: TYPE] TypeOrCatchVariable VIRTUAL
+	{
+		<<<
+			p: [Stage::Prev+]TypeOrCatchVariable #\,
+			f: Stage::PrevFile+,
+			s: Stage &
+		>>> THIS-std::Dyn
+		{
+			TYPE SWITCH(p)
+			{
+			[Stage::Prev+]Type:
+				= <<<[Stage]Type>>>(
+					<<[Stage::Prev+]Type #\>>(p), f, s);
+			[Stage::Prev+]CatchVariable:
+				= :dup(<[Stage]CatchVariable>(:transform(
+					<<[Stage::Prev+]Argument #&>>(*p), f, s)));
+			}
+		}
+	}
+
 	/// Either a specific type or a deduced type.
-	[Stage: TYPE] MaybeAutoType VIRTUAL {}
+	[Stage: TYPE] MaybeAutoType VIRTUAL
+	{
+		<<<
+			p: [Stage::Prev+]MaybeAutoType #\,
+			f: Stage::PrevFile+,
+			s: Stage &
+		>>> THIS-std::Dyn
+		{
+			TYPE SWITCH(p)
+			{
+			[Stage::Prev+]Type:
+				= <<<[Stage]Type>>>(
+					<<[Stage::Prev+]Type #\>>(p), f, s);
+			type::[Stage::Prev+]Auto:
+				= :dup(<type::[Stage]Auto>(:transform(
+					<<type::[Stage::Prev+]Auto #&>>(*p))));
+			}
+		}
+	}
 
 	::type
 	{
@@ -52,12 +108,16 @@ INCLUDE "symbolconstant.rl"
 
 
 		(// Modifiers to be applied to auto types. /)
-		[Stage: TYPE] Auto -> [Stage]MaybeAutoType
+		[Stage:TYPE] Auto -> [Stage]MaybeAutoType
 		{
 			Qualifier: type::Qualifier;
 			Reference: type::ReferenceType;
 
 			{}: Reference(:none);
+
+			:transform{p:[Stage::Prev+]Auto #&}:
+				Qualifier(p.Qualifier),
+				Reference(p.Reference);
 		}
 	}
 
@@ -108,32 +168,32 @@ INCLUDE "symbolconstant.rl"
 			TYPE SWITCH(p)
 			{
 			[Stage::Prev+]Signature:
-				= :dup(<[Stage]Signature>(
-					<<[Stage::Prev+]Signature #\>>(p), f, s));
+				= :dup(<[Stage]Signature>(:transform(
+					<<[Stage::Prev+]Signature #&>>(*p), f, s)));
 			[Stage::Prev+]Void:
-				= :dup(<[Stage]Void>(
-					<<[Stage::Prev+]Void #\>>(p), f, s));
+				= :dup(<[Stage]Void>(:transform(
+					<<[Stage::Prev+]Void #&>>(*p), f, s)));
 			[Stage::Prev+]Null:
-				= :dup(<[Stage]Null>(
-					<<[Stage::Prev+]Null #\>>(p), f, s));
+				= :dup(<[Stage]Null>(:transform(
+					<<[Stage::Prev+]Null #&>>(*p), f, s)));
 			[Stage::Prev+]SymbolConstantType:
-				= :dup(<[Stage]SymbolConstantType>(
-					<<[Stage::Prev+]SymbolConstantType #\>>(p), f, s));
+				= :dup(<[Stage]SymbolConstantType>(:transform(
+					<<[Stage::Prev+]SymbolConstantType #&>>(*p), f, s)));
 			[Stage::Prev+]TupleType:
-				= :dup(<[Stage]TupleType>(
-					<<[Stage::Prev+]TupleType #\>>(p), f, s));
+				= :dup(<[Stage]TupleType>(:transform(
+					<<[Stage::Prev+]TupleType #&>>(*p), f, s)));
 			[Stage::Prev+]TypeOfExpression:
-				= :dup(<[Stage]TypeOfExpression>(
-					<<[Stage::Prev+]TypeOfExpression #\>>(p), f, s));
+				= :dup(<[Stage]TypeOfExpression>(:transform(
+					<<[Stage::Prev+]TypeOfExpression #&>>(*p), f, s)));
 			[Stage::Prev+]TypeName:
-				= :dup(<[Stage]TypeName>(
-					<<[Stage::Prev+]TypeName #\>>(p), f, s));
+				= :dup(<[Stage]TypeName>(:transform(
+					<<[Stage::Prev+]TypeName #&>>(*p), f, s)));
 			[Stage::Prev+]BuiltinType:
-				= :dup(<[Stage]BuiltinType>(
-					<<[Stage::Prev+]BuiltinType #\>>(p), f, s));
+				= :dup(<[Stage]BuiltinType>(:transform(
+					<<[Stage::Prev+]BuiltinType #&>>(*p), f, s)));
 			[Stage::Prev+]ThisType:
-				= :dup(<[Stage]ThisType>(
-					<<[Stage::Prev+]ThisType #\>>(p), f, s));
+				= :dup(<[Stage]ThisType>(:transform(
+					<<[Stage::Prev+]ThisType #&>>(*p), f, s)));
 			}
 		}
 	}

@@ -11,7 +11,7 @@ INCLUDE "namespace.rl"
 {
 	parse(p: Parser &) ast::[Config]Global - std::Dyn
 	{
-		templates: TemplateDecl;
+		templates: TemplateDecl (BARE);
 		parse_template_decl(p, templates);
 
 		ret: ast::[Config]Global - std::Dyn := NULL;

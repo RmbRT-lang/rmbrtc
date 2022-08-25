@@ -12,6 +12,15 @@ INCLUDE 'std/set'
 {
 	{}: Visibility := :public;
 
+	:transform{
+		p: [Stage::Prev+]Inheritance #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (p):
+		Visibility := p.Visibility,
+		IsVirtual := p.IsVirtual,
+		Type := :transform(p.Type, f, s);
+
 	Visibility: rlc::Visibility;
 	IsVirtual: BOOL;
 	Type: Stage::Inheritance;
@@ -42,9 +51,9 @@ INCLUDE 'std/set'
 		Inheritances := :reserve(##p.Inheritances),
 		CustomCtors := :reserve(##p.CustomCtors)
 	{
-		FOR(m ::= p.Members.start(); m; ++m)
+		FOR(m ::= p.Members.start())
 			Members += <<<[Stage]Member>>>(m!, f, s);
-		FOR(i ::= p.Inheritances.start(); i; ++i)
+		FOR(i ::= p.Inheritances.start())
 			Inheritances += :transform(i!, f, s);
 
 		IF(p.DefaultCtor)
@@ -55,8 +64,8 @@ INCLUDE 'std/set'
 			MoveCtor := :a(:transform(*p.MoveCtor, f, s));
 		IF(p.ImplicitCtor)
 			ImplicitCtor := :a(:transform(*p.ImplicitCtor, f, s));
-		FOR(ctor ::= p.CustomCtors.start(); ctor; ++ctor)
-			CustomCtors.emplace_at(##CustomCtors, :transform(*(ctor!), f, s));
+		FOR(ctor ::= p.CustomCtors.start())
+			CustomCtors.emplace_at(##CustomCtors, :a(:transform(*ctor!, f, s)));
 	}
 }
 

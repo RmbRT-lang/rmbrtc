@@ -4,7 +4,7 @@
 	{
 		delim ::= help::delim(t.Type);
 		str ::= file.content(t.Content).drop_start(##delim).drop_end(##delim);
-		FOR(c ::= str.start(); c; ++c)
+		FOR(c ::= str.start())
 			IF(c! == '\\')
 				DIE "escapes in include paths are not yet implemented!";
 		= <std::str::CV>(str++);

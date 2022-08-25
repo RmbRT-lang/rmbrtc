@@ -39,7 +39,7 @@ INCLUDE "statement.rl"
 		= :gc(std::heap::[ast::[Config]ResolvedSig]new(
 			&&arguments, isCoroutine, &&return));
 	
-	ret: ast::[Config]UnresolvedSig;
+	ret: ast::[Config]UnresolvedSig (BARE);
 	ret.Arguments := &&arguments;
 	ret.IsCoroutine := isCoroutine;
 	p.expect(:questionMark);
@@ -122,7 +122,7 @@ Can be called multiple times to append new arguments.
 	}
 	out.Name := nameTok!.Content;
 
-	default: ast::[Config]DefaultVariant;
+	default: ast::[Config]DefaultVariant (BARE);
 
 	t: Trace(&p, "function");
 
@@ -146,14 +146,13 @@ Can be called multiple times to append new arguments.
 	linkName: src::String - std::Opt
 ) ast::[Config]ExternFunction - std::Dyn
 {
-	nameTok: tok::Token-std::Opt;
 	IF(!p.match_ahead(:parentheseOpen)) = NULL;
 	IF:!(tok ::= p.consume(:identifier)) = NULL;
 
 	t: Trace(&p, "function");
 
 	name ::= tok->Content;
-	signature: ast::[Config]ResolvedSig;
+	signature: ast::[Config]ResolvedSig (BARE);
 	parse_resolved_signature(p, TRUE, TRUE, signature);
 	p.expect(:semicolon);
 
@@ -222,7 +221,7 @@ Can be called multiple times to append new arguments.
 
 	t: Trace(&p, "type converter");
 
-	sig: ast::[Config]ResolvedSig;
+	sig: ast::[Config]ResolvedSig (BARE);
 	IF!(sig.Return := type::parse(p))
 		p.fail("expected type name");
 	p.expect(:greater);

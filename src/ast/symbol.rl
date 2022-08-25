@@ -25,10 +25,10 @@ INCLUDE 'std/vector'
 				Templates := :reserve(##prev.Templates),
 				Position := prev.Position
 			{
-				FOR(pt ::= prev.Templates.start(); pt; ++pt)
+				FOR(pt ::= prev.Templates.start())
 				{
 					t:?&:= Templates += :reserve(##pt);
-					FOR(pa ::= pt.start(); pa; ++pa)
+					FOR(pa ::= pt.start())
 						IF(e ::= <<ast::[Stage::Prev+]Expression #*>>(pa!))
 							t += <<<ast::[Stage]Expression>>>(*e, f, s);
 						ELSE
@@ -50,7 +50,7 @@ INCLUDE 'std/vector'
 			Children := :reserve(##prev.Children),
 			IsRoot := prev.IsRoot
 		{
-			FOR(c ::= prev.Children.start(); c; ++c)
+			FOR(c ::= prev.Children.start())
 				Children += :transform(c!, f, s);
 		}
 	}

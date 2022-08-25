@@ -14,15 +14,15 @@ INCLUDE 'std/set'
 	} -> (:transform, p, f, s), ():
 		Entries := :reserve(##p.Entries)
 	{
-		FOR(it ::= p.Entries.start(); it; ++it)
-			Entries += <<<[Stage]Global>>>(*it!, f, s);
+		FOR(it ::= p.Entries.start())
+			Entries += <<<[Stage]Global>>>(it!, f, s);
 	}
 
 	PRIVATE FINAL merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID
 	{
 		ns: ?& := <<[Stage]Namespace &>>(rhs);
 
-		FOR[insert](rhs_entry ::= ns.Entries.start(); rhs_entry; ++rhs_entry)
+		FOR[insert](rhs_entry ::= ns.Entries.start())
 		{
 			IF:!(rhs_entry_si ::= <<[Stage]ScopeItem *>>(rhs_entry!))
 			{
@@ -30,7 +30,7 @@ INCLUDE 'std/set'
 				CONTINUE;
 			}
 
-			FOR[collisions](entry ::= Entries.start(); entry; ++entry)
+			FOR[collisions](entry ::= Entries.start())
 			{
 				IF:!(entry_si ::= <<[Stage]ScopeItem *>>(entry!))
 					CONTINUE;

@@ -10,10 +10,10 @@ INCLUDE "member.rl"
 		p: [Stage::Prev+]Union #&,
 		f: Stage::PrevFile+,
 		s: Stage &
-	} -> (:transform(p, f, s)), (p):
+	} -> (:transform, p, f, s), (p):
 		Members := :reserve(##p.Members)
 	{
-		FOR(it ::= p.Members.start(); it; ++it)
+		FOR(it ::= p.Members.start())
 			Members += <<<[Stage]Member>>>(it!, f, s);
 	}
 }

@@ -37,7 +37,7 @@ INCLUDE "literals.rl"
 		path: std::[CHAR#]Buffer #&,
 		globals: std::Str - std::Buffer#&) std::Str
 	{
-		FOR(inc ::= globals.start(); inc; ++inc)
+		FOR(inc ::= globals.start())
 			TRY RETURN util::absolute_file(
 				util::concat_paths(inc!, path)!);
 			CATCH() { ; }

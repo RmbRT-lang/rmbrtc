@@ -21,7 +21,7 @@ INCLUDE "templatedecl.rl"
 	{
 		parse_visibility(p, default_visibility, TRUE);
 
-		templates: TemplateDecl;
+		templates: TemplateDecl (BARE);
 		parse_template_decl(p, templates);
 
 		visibility ::= parse_visibility(p, default_visibility, FALSE);

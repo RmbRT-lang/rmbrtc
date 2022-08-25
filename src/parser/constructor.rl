@@ -18,27 +18,27 @@ INCLUDE "stage.rl"
 
 	out: ast::[Config]Constructor - std::Dyn;
 	IF(p.consume(:braceClose))
-		out := :gc(std::heap::[ast::[Config]DefaultConstructor]new());
+		out := :dup(<ast::[Config]DefaultConstructor>(BARE));
 	ELSE
 	{
 		IF(!symbol && p.consume(:hash))
 		{
 			p.expect(:and);
 			IF(name ::= p.consume(:identifier))
-				out := :gc(std::heap::[ast::[Config]CopyConstructor]new(
+				out := :dup(<ast::[Config]CopyConstructor>(
 					:named_arg(name->Content)));
 			ELSE
-				out := :gc(std::heap::[ast::[Config]CopyConstructor]new(:unnamed_arg));
+				out := :dup(<ast::[Config]CopyConstructor>(:unnamed_arg));
 		} ELSE IF(!symbol && p.consume(:doubleAnd))
 		{
 			IF(name ::= p.consume(:identifier))
-				out := :gc(std::heap::[ast::[Config]MoveConstructor]new(
+				out := :dup(<ast::[Config]MoveConstructor>(
 					:named_arg(name->Content)));
 			ELSE
-				out := :gc(std::heap::[ast::[Config]MoveConstructor]new(:unnamed_arg));
+				out := :dup(<ast::[Config]MoveConstructor>(:unnamed_arg));
 		} ELSE
 		{
-			_out ::= std::heap::[ast::[Config]CustomConstructor]new();
+			_out ::= std::heap::[ast::[Config]CustomConstructor]new(BARE);
 			out := :gc(_out);
 			_out->Name := &&symbol;
 			DO()

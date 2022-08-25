@@ -22,8 +22,14 @@ INCLUDE "scopeitem.rl"
 
 	{} (BARE);
 
+	:transform{
+		p: [Stage::Prev+]Member #&
+	}:
+		Visibility := p.Visibility,
+		Attribute := p.Attribute;
+
 	<<<
-		g: [Stage::Prev+]Member #&,
+		g: [Stage::Prev+]Member #\,
 		f: Stage::PrevFile+,
 		s: Stage &
 	>>> THIS - std::Dyn;

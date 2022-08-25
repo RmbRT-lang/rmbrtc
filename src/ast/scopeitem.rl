@@ -15,21 +15,21 @@ INCLUDE "cache.rl"
 		i: [Stage::Prev+]ScopeItem #&,
 		f: Stage::PrevFile+,
 		s: Stage &
-	} (BARE);(/:
-		Name := Stage::transform_name(i, f, s);/)
+	}:
+		Name := s.transform_name(i.Name, f);
 
 	<<<
-		i: [Stage::Prev+]ScopeItem #&,
+		i: [Stage::Prev+]ScopeItem #\,
 		f: Stage::PrevFile+,
 		s: Stage &
 	>>> ScopeItem - std::Dyn
 	{
-		IF(g ::= <<[Stage::Prev+]Global #*>>(&i))
-			= <<<[Stage]Global>>>(*g, f, s);
-		ELSE IF(m ::= <<[Stage::Prev+]Member #*>>(&i))
-			= <<<[Stage]Member>>>(*m, f, s);
+		IF(g ::= <<[Stage::Prev+]Global #*>>(i))
+			= <<<[Stage]Global>>>(g, f, s);
+		ELSE IF(m ::= <<[Stage::Prev+]Member #*>>(i))
+			= <<<[Stage]Member>>>(m, f, s);
 		ELSE
-			= <<<[Stage]Local>>>(*<<[Stage::Prev+]Local #\>>(&i), f, s);
+			= <<<[Stage]Local>>>(<<[Stage::Prev+]Local #\>>(i), f, s);
 	}
 }
 
@@ -45,16 +45,35 @@ INCLUDE "cache.rl"
 
 	Included: std::[std::str::CV; [Stage]MergeableScopeItem #\]AutoMap;
 
+
+	<<<
+		p: [Stage::Prev+]MergeableScopeItem #\,
+		f: Stage::PrevFile+,
+		s: Stage &
+	>>> THIS - std::Dyn
+	{
+		TYPE SWITCH(p)
+		{
+		[Stage::Prev+]Function:
+			= :gc(<<<[Stage]Function>>>(
+					<<[Stage::Prev+]Function #\>>(p), f, s
+				).release());
+		[Stage::Prev+]Namespace:
+			= :dup(<[Stage]Namespace>(:transform(
+				<<[Stage::Prev+]Namespace #&>>(*p), f, s)));
+		}
+	}
+
 	:transform{
 		i: [Stage::Prev+]MergeableScopeItem #&,
 		f: Stage::PrevFile+,
 		s: Stage &
-	} (BARE); (/-> (:transform(i, f, s)):
+	} -> (:transform, i, f, s):
 		Included := :reserve(##i.Included)
 	{
 		FOR(item ::= i.Included.start())
-			include(s.MSIs[item!.(1), f, s]);
-	}/)
+			include(s.MSIs![item!.(1), f, s]);
+	}
 
 	/// Include definitions from another file.
 	include(

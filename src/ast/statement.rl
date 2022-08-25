@@ -16,6 +16,65 @@ INCLUDE 'std/memory'
 			f: Stage::PrevFile+,
 			s: Stage &
 		};
+
+		<<<
+			p: [Stage::Prev+]Statement #\,
+			f: Stage::PrevFile+,
+			s: Stage &
+		>>> THIS-std::Dyn
+		{
+			TYPE SWITCH(p)
+			{
+			[Stage::Prev+]AssertStatement:
+				= :dup(<[Stage]AssertStatement>(:transform(
+					<<[Stage::Prev+]AssertStatement #&>>(*p), f, s)));
+			[Stage::Prev+]DieStatement:
+				= :dup(<[Stage]DieStatement>(:transform(
+					<<[Stage::Prev+]DieStatement #&>>(*p), f, s)));
+			[Stage::Prev+]YieldStatement:
+				= :dup(<[Stage]YieldStatement>(:transform(
+					<<[Stage::Prev+]YieldStatement #&>>(*p), f, s)));
+			[Stage::Prev+]SleepStatement:
+				= :dup(<[Stage]SleepStatement>(:transform(
+					<<[Stage::Prev+]SleepStatement #&>>(*p), f, s)));
+			[Stage::Prev+]BlockStatement:
+				= :dup(<[Stage]BlockStatement>(:transform(
+					<<[Stage::Prev+]BlockStatement #&>>(*p), f, s)));
+			[Stage::Prev+]IfStatement:
+				= :dup(<[Stage]IfStatement>(:transform(
+					<<[Stage::Prev+]IfStatement #&>>(*p), f, s)));
+			[Stage::Prev+]VariableStatement:
+				= :dup(<[Stage]VariableStatement>(:transform(
+					<<[Stage::Prev+]VariableStatement #&>>(*p), f, s)));
+			[Stage::Prev+]ExpressionStatement:
+				= :dup(<[Stage]ExpressionStatement>(:transform(
+					<<[Stage::Prev+]ExpressionStatement #&>>(*p), f, s)));
+			[Stage::Prev+]ReturnStatement:
+				= :dup(<[Stage]ReturnStatement>(:transform(
+					<<[Stage::Prev+]ReturnStatement #&>>(*p), f, s)));
+			[Stage::Prev+]TryStatement:
+				= :dup(<[Stage]TryStatement>(:transform(
+					<<[Stage::Prev+]TryStatement #&>>(*p), f, s)));
+			[Stage::Prev+]ThrowStatement:
+				= :dup(<[Stage]ThrowStatement>(:transform(
+					<<[Stage::Prev+]ThrowStatement #&>>(*p), f, s)));
+			[Stage::Prev+]LoopStatement:
+				= :dup(<[Stage]LoopStatement>(:transform(
+					<<[Stage::Prev+]LoopStatement #&>>(*p), f, s)));
+			[Stage::Prev+]SwitchStatement:
+				= :dup(<[Stage]SwitchStatement>(:transform(
+					<<[Stage::Prev+]SwitchStatement #&>>(*p), f, s)));
+			[Stage::Prev+]TypeSwitchStatement:
+				= :dup(<[Stage]TypeSwitchStatement>(:transform(
+					<<[Stage::Prev+]TypeSwitchStatement #&>>(*p), f, s)));
+			[Stage::Prev+]BreakStatement:
+				= :dup(<[Stage]BreakStatement>(:transform(
+					<<[Stage::Prev+]BreakStatement #&>>(*p), f, s)));
+			[Stage::Prev+]ContinueStatement:
+				= :dup(<[Stage]ContinueStatement>(:transform(
+					<<[Stage::Prev+]ContinueStatement #&>>(*p), f, s)));
+			}
+		}
 	}
 
 	[Stage: TYPE] AssertStatement -> [Stage]Statement

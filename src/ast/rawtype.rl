@@ -17,13 +17,13 @@ INCLUDE 'std/vector'
 		p: [Stage::Prev+]Rawtype #&,
 		f: Stage::PrevFile+,
 		s: Stage &
-	} -> (:transform(p, f)), (p):
+	} -> (:transform, p, f, s), (p):
 		Size := <<<[Stage]Expression>>>(p.Size!, f, s),
 		Members := :reserve(##p.Members)
 	{
 		IF(p.Alignment)
 			Alignment := <<<[Stage]Expression>>>(p.Alignment!, f, s);
-		FOR(it ::= p.Members.start(); it; ++it)
+		FOR(it ::= p.Members.start())
 			Members += <<<[Stage]Member>>>(it!, f, s);
 	}
 }

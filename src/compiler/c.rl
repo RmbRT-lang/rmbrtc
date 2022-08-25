@@ -22,7 +22,7 @@ INCLUDE "../scoper/stage.rl"
 		parsed: parser::Config - ast::File \ - std::NatVecSet;
 
 		// Parse all code first.
-		FOR(f ::= files.start(); f; ++f)
+		FOR(f ::= files.start())
 			parsed += parser.Registry.get(util::absolute_file(f!));
 
 		IF(build.Type == :checkSyntax)
@@ -32,7 +32,7 @@ INCLUDE "../scoper/stage.rl"
 		scoped: rlc::scoper::Config - ast::File \ - std::NatVecSet;
 
 		// Resolve all includes, populate scopes.
-		FOR(f ::= parsed.start(); f; ++f)
+		FOR(f ::= parsed.start())
 			scoped += scoper.Registry.get(f!->Name!);
 
 		IF(build.Type == :createAST)
@@ -40,9 +40,9 @@ INCLUDE "../scoper/stage.rl"
 (/
 		// Resolve all references.
 		resolved: resolver::Cache;
-		FOR(f ::= scoped.start(); f; ++f)
-			FOR(group ::= f!->Scope->Items.start(); group; ++group)
-				FOR(it ::= group!->Items.start(); it; ++it)
+		FOR(f ::= scoped.start())
+			FOR(group ::= f!->Scope->Items.start())
+				FOR(it ::= group!->Items.start())
 					resolved += it!;
 
 		instances: instantiator::Cache(&resolved);
@@ -54,7 +54,7 @@ INCLUDE "../scoper/stage.rl"
 		{
 			mainFn: scoper::ScopeItem * := NULL;
 			mainName ::= std::str::buf("main");
-			FOR ["main"] (f ::= scoped.start(); f; ++f)
+			FOR ["main"] (f ::= scoped.start())
 				IF(group ::= f!->Scope->find(mainName))
 					TYPE SWITCH(group->Items[0]!)
 					{
@@ -77,7 +77,7 @@ INCLUDE "../scoper/stage.rl"
 		:library,
 		:sharedLibrary:
 		{
-			FOR(f ::= scoped.start(); f; ++f)
+			FOR(f ::= scoped.start())
 				instances.insert_all_untemplated(f!->Scope, resolved);
 		}
 		:test:

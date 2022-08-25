@@ -10,18 +10,38 @@ INCLUDE "statement.rl"
 {
 	Arguments: [Stage]TypeOrArgument-std::DynVec;
 	IsCoroutine: BOOL;
+
+	{...};
+
+	:transform {
+		p: [Stage::Prev+]FnSignature #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	}:
+		Arguments := :reserve(##p.Arguments),
+		IsCoroutine := p.IsCoroutine
+	{
+		FOR(a ::= p.Arguments.start())
+			Arguments += <<<[Stage]TypeOrArgument>>>(a!, f, s);
+	}
 }
 
 ::rlc::ast [Stage:TYPE] UnresolvedSig -> [Stage]FnSignature
 {
 	Return: type::[Stage]Auto;
+
+	:transform {
+		p: [Stage::Prev+]UnresolvedSig #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p, f, s):
+		Return := :transform(p.Return);
 }
 
 ::rlc::ast [Stage:TYPE] ResolvedSig -> [Stage]FnSignature
 {
 	Return: [Stage]Type-std::Dyn;
 
-	{};
 	{
 		args: [Stage]TypeOrArgument-std::DynVec&&,
 		isCoroutine: BOOL,
@@ -32,7 +52,8 @@ INCLUDE "statement.rl"
 		p: [Stage::Prev+]ResolvedSig #&,
 		f: Stage::PrevFile+,
 		s: Stage &
-	}: Return := <<<[Stage]Type>>>(p->Return!, f, s);
+	} -> (:transform, p, f, s):
+		Return := <<<[Stage]Type>>>(p.Return!, f, s);
 }
 
 /// An anonymous function object.
@@ -42,10 +63,17 @@ INCLUDE "statement.rl"
 	Body: [Stage]ExprOrStatement - std::Dyn;
 	IsInline: BOOL;
 
+	:transform{
+		p: [Stage::Prev+]Functoid #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p, f, s), (p):
+		Signature := <<<[Stage]FnSignature>>>(p.Signature!, f, s),
+		Body := <<<[Stage]ExprOrStatement>>>(p.Body!, f, s),
+		IsInline := p.IsInline;
+
 	STATIC short_hand_body(e: [Stage]Expression-std::Dyn) [Stage]Statement-std::Dyn
-	{
-		std::heap::[[Stage]ReturnStatement]new(e);
-	}
+		:= :dup(<[Stage]ReturnStatement>(:exp(&&e)));
 }
 
 ::rlc::ast [Stage: TYPE] VariantMergeError {
@@ -104,7 +132,7 @@ INCLUDE "statement.rl"
 			Default := from.Default;
 		}
 
-		FOR(var ::= from.Variants.start(); var; ++var)
+		FOR(var ::= from.Variants.start())
 		{
 			IF(prev ::= Variants.find(var!.(0)))
 				IF((*prev)! != var!.(1)!)
@@ -148,9 +176,22 @@ INCLUDE "statement.rl"
 		Signature(:transform(p.Signature, f, s));
 }
 
-::rlc::ast [Stage:TYPE] DefaultVariant -> [Stage]Functoid { }
+::rlc::ast [Stage:TYPE] DefaultVariant -> [Stage]Functoid {
+	:transform{
+		p: [Stage::Prev+]DefaultVariant #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p, f, s);
+}
 ::rlc::ast [Stage:TYPE] SpecialVariant -> [Stage]Functoid {
 	Variant: [Stage]Function::SpecialVariant;
+
+	:transform{
+		p: [Stage::Prev+]SpecialVariant #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p, f, s):
+		Variant := :transform(p.Variant, f, s);
 }
 ::rlc::ast [Stage:TYPE] Variant -> [Stage]Functoid {
 	Name: ast::[Stage]Name;

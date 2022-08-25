@@ -14,7 +14,7 @@ INCLUDE 'std/vector'
 			f: Stage::PrevFile+,
 			s: Stage &
 		} ->
-			(:transform(e, f, s)), (:transform(e, f, s)), (e):
+			(:transform, e, f, s), (:transform, e, f, s), (e):
 			Value := e.Value;
 	}
 
@@ -26,11 +26,11 @@ INCLUDE 'std/vector'
 		f: Stage::PrevFile+,
 		s: Stage &
 	} ->
-		(:transform(e, f, s)), (e):
+		(:transform, e, f, s), (e):
 		Constants := :reserve(##e.Constants)
 	{
-		FOR(c ::= e.Constants.start(); c; ++c)
-			Constants += :transform(c!.Value, f, s);
+		FOR(c ::= e.Constants.start())
+			Constants += :transform(c!, f, s);
 	}
 }
 
@@ -50,5 +50,5 @@ INCLUDE 'std/vector'
 		e: [Stage::Prev+]GlobalEnum #&,
 		f: Stage::PrevFile+,
 		s: Stage &} ->
-		(e), (:transform, e, f, s);
+		(:transform, e), (:transform, e, f, s);
 }

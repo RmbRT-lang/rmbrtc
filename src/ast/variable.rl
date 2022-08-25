@@ -49,10 +49,10 @@ INCLUDE 'std/vector'
 			f: Stage::PrevFile+,
 			s: Stage &
 		} -> (:transform, p, f, s) :
-			Type := <<<[Stage]MaybeAutoType>>>(p->Type!, f, s),
-			InitValues := :reserve(##p->InitValues)
+			Type := <<<[Stage]MaybeAutoType>>>(p.Type!, f, s),
+			InitValues := :reserve(##p.InitValues)
 		{
-			FOR(v ::= p->InitValues.start(); v; ++v)
+			FOR(v ::= p.InitValues.start())
 				InitValues += <<<[Stage]Expression>>>(v!, f, s);
 		}
 	}
@@ -77,7 +77,7 @@ INCLUDE 'std/vector'
 			f: Stage::PrevFile+,
 			s: Stage &
 		} -> (:transform, p, f, s):
-			Type := <<<ast::[Stage]Type>>>(p->Type!, f, s);
+			Type := <<<ast::[Stage]Type>>>(p.Type!, f, s);
 	}
 
 	/// A variable in global scope.
@@ -143,7 +143,7 @@ INCLUDE 'std/vector'
 			f: Stage::PrevFile+,
 			s: Stage &
 		} -> (:transform, p, f, s):
-			Type := <<<ast::[Stage]Type>>>(p->Type!, f, s);
+			Type := <<<ast::[Stage]Type>>>(p.Type!, f, s);
 	}
 
 	[Stage:TYPE] StaticMemberVariable ->
@@ -175,10 +175,24 @@ INCLUDE 'std/vector'
 		:transform{p: [Stage::Prev+]Local #&}: Position := p.Position;
 
 		<<<
-			g: [Stage::Prev+]Local #&,
+			g: [Stage::Prev+]Local #\,
 			f: Stage::PrevFile+,
 			s: Stage &
-		>>> THIS - std::Dyn;
+		>>> THIS - std::Dyn
+		{
+			TYPE SWITCH(g)
+			{
+			[Stage::Prev+]Argument:
+				= :dup(<[Stage]Argument>(:transform(
+					<<[Stage::Prev+]Argument #&>>(*g), f, s)));
+			[Stage::Prev+]LocalVariable:
+				= :dup(<[Stage]LocalVariable>(:transform(
+					<<[Stage::Prev+]LocalVariable #&>>(*g), f, s)));
+			[Stage::Prev+]CatchVariable:
+				= :dup(<[Stage]CatchVariable>(:transform(
+					<<[Stage::Prev+]CatchVariable #&>>(*g), f, s)));
+			}
+		}
 	}
 
 	/// A named function or constructor argument.
@@ -216,7 +230,7 @@ INCLUDE 'std/vector'
 			p: [Stage::Prev+]LocalVariable #&,
 			f: Stage::PrevFile+,
 			s: Stage &
-		} -> (:transform(p)), (:transform, p, f, s), ();
+		} -> (:transform, p), (:transform, p, f, s), ();
 	}
 
 	/// The named exception variable of a CATCH statement.
@@ -235,6 +249,6 @@ INCLUDE 'std/vector'
 			p: [Stage::Prev+]CatchVariable #&,
 			f: Stage::PrevFile+,
 			s: Stage &
-		} -> (:transform(p)), (:transform, p, f, s), ();
+		} -> (:transform, p), (:transform, p, f, s), ();
 	}
 }

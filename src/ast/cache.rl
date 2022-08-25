@@ -12,7 +12,7 @@
 			= *entry;
 		ELSE
 		{
-			new ::= <<<T>>>(p, f, s);
+			new: T-std::Shared := :gc(<<<T>>>(p, f, s).release());
 			References.insert(p, new);
 			= new;
 		}

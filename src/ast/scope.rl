@@ -9,7 +9,7 @@
 	{
 		IF(e ::= Elements.find(n))
 			= e;
-		FOR(scope ::= IncludedScopes.start(); scope; ++scope)
+		FOR(scope ::= IncludedScopes.start())
 			IF(e ::= scope!->Elements.find(n))
 				= e;
 		= NULL;
@@ -20,7 +20,7 @@
 		ASSERT(!##IncludedScopes);
 		ASSERT(!##rhs.IncludedScopes);
 
-		FOR(kv ::= rhs.IncludedScopes.start(); kv; ++kv)
+		FOR(kv ::= rhs.IncludedScopes.start())
 		{
 			IF(existing ::= IncludedScopes.find(kv!.(0)))
 			{

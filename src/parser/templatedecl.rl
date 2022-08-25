@@ -23,12 +23,12 @@ INCLUDE 'std/vector'
 
 				arg: Config-ast::TemplateArgDecl-std::Dyn;
 				IF(p.consume(:type))
-					arg := :dup(<Config-ast::TypeTemplateArgDecl>());
+					arg := :dup(<Config-ast::TypeTemplateArgDecl>(BARE));
 				ELSE IF(p.consume(:number))
-					arg := :dup(<Config-ast::NumberTemplateArgDecl>());
+					arg := :dup(<Config-ast::NumberTemplateArgDecl>(BARE));
 				ELSE IF(t ::= type::parse(p))
 				{
-					vArg: Config-ast::ValueTemplateArgDecl;
+					vArg: Config-ast::ValueTemplateArgDecl(BARE);
 					vArg.Type := &&t;
 					arg := :dup(&&vArg);
 				}

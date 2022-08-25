@@ -30,7 +30,7 @@ INCLUDE "type.rl"
 		# ABSTRACT type() TemplateDeclArgType;
 
 		:transform{
-			p: [Stage::Prev+]TemplateDecl #&,
+			p: [Stage::Prev+]TemplateArgDecl #&,
 			f: Stage::PrevFile+,
 			s: Stage &
 		}:
@@ -38,7 +38,7 @@ INCLUDE "type.rl"
 			Variadic := p.Variadic;
 
 		<<<
-			p: [Stage::Prev+]TemplateArgDecl #&,
+			p: [Stage::Prev+]TemplateArgDecl #\,
 			f: Stage::PrevFile+,
 			s: Stage &
 		>>> THIS-std::Dyn
@@ -63,7 +63,7 @@ INCLUDE "type.rl"
 		# FINAL type() TemplateDeclArgType := :type;
 
 		:transform{
-			p: [Stage::Prev+]TypeTemplateDecl #&,
+			p: [Stage::Prev+]TypeTemplateArgDecl #&,
 			f: Stage::PrevFile+,
 			s: Stage &
 		} -> (:transform, p, f, s);
@@ -75,7 +75,7 @@ INCLUDE "type.rl"
 		# FINAL type() TemplateDeclArgType := :value;
 
 		:transform{
-			p: [Stage::Prev+]ValueTemplateDecl #&,
+			p: [Stage::Prev+]ValueTemplateArgDecl #&,
 			f: Stage::PrevFile+,
 			s: Stage &
 		} -> (:transform, p, f, s):
@@ -87,7 +87,7 @@ INCLUDE "type.rl"
 		# FINAL type() TemplateDeclArgType := :number;
 
 		:transform{
-			p: [Stage::Prev+]NumberTemplateDecl #&,
+			p: [Stage::Prev+]NumberTemplateArgDecl #&,
 			f: Stage::PrevFile+,
 			s: Stage &
 		} -> (:transform, p, f, s);
