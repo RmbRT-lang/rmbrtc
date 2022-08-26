@@ -118,9 +118,9 @@ INCLUDE 'std/vector'
 			[Stage::Prev+]SizeofExpression:
 				= :dup(<[Stage]SizeofExpression>(:transform(
 					<<[Stage::Prev+]SizeofExpression#&>>(*p), f, s)));
-			[Stage::Prev+]TypeOfExpression:
-				= :dup(<[Stage]TypeOfExpression>(:transform(
-					<<[Stage::Prev+]TypeOfExpression#&>>(*p), f, s)));
+			[Stage::Prev+]TypeofExpression:
+				= :dup(<[Stage]TypeofExpression>(:transform(
+					<<[Stage::Prev+]TypeofExpression#&>>(*p), f, s)));
 			}
 
 			DIE;
@@ -133,7 +133,7 @@ INCLUDE 'std/vector'
 		Statement: ast::[Stage]Statement - std::Dyn;
 
 		:transform{
-			p: [Stage::Prev+]Expression #&,
+			p: [Stage::Prev+]StatementExpression #&,
 			f: Stage::PrevFile+,
 			s: Stage &
 		} -> (:transform, p, f, s):
@@ -150,7 +150,7 @@ INCLUDE 'std/vector'
 			f: Stage::PrevFile+,
 			s: Stage &
 		} -> (:transform, p, f, s):
-			Symbol := s.tansform_symbol(p.Symbol, f);
+			Symbol := s.transform_symbol(p.Symbol, f);
 	}
 
 	/// A reference to an object's member variable, function, or constant.
@@ -219,7 +219,7 @@ INCLUDE 'std/vector'
 			f: Stage::PrevFile+,
 			s: Stage &
 		} -> (:transform, p, f, s):
-			Char := p.Char;
+			Char := s.transform_char(p.Char, f);
 	}
 
 	/// A string literal expression.
@@ -232,7 +232,7 @@ INCLUDE 'std/vector'
 			f: Stage::PrevFile+,
 			s: Stage &
 		} -> (:transform, p, f, s):
-			String := s.transform_string_literal(p.String, f);
+			String := s.transform_string(p.String, f);
 	}
 
 	(// Expression containing a user-overloadable operator. /)

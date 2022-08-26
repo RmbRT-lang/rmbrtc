@@ -143,7 +143,7 @@ Can be called multiple times to append new arguments.
 /// Parses an extern function (without the EXTERN keyword, use extern::parse()).
 ::rlc::parser::function::help parse_extern(
 	p: Parser &,
-	linkName: src::String - std::Opt
+	linkName: tok::Token - std::Vec - std::Opt
 ) ast::[Config]ExternFunction - std::Dyn
 {
 	IF(!p.match_ahead(:parentheseOpen)) = NULL;

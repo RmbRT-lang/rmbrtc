@@ -9,9 +9,9 @@ INCLUDE "stage.rl"
 	IF(!p.consume(:extern))
 		= NULL;
 
-	linkName: src::String - std::Opt;
+	linkName: Config::StringLiteral - std::Opt;
 	IF(p.consume(:bracketOpen))
-		linkName := :a(p.expect(:stringQuote).Content);
+		linkName := :a(:vec(p.expect(:stringQuote)));
 
 	t: Trace(&p, "external symbol");
 	IF(p.match_ahead(:colon))

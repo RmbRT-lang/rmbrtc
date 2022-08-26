@@ -26,7 +26,7 @@ INCLUDE "stage.rl"
 
 	parse_extern(
 		p: Parser&,
-		linkName: src::String - std::Opt
+		linkName: tok::Token - std::Vec - std::Opt
 	) ast::[Config]ExternVariable - std::Opt
 	{
 		_: Trace(&p, "extern variable");

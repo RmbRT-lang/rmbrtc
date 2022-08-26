@@ -83,16 +83,16 @@ INCLUDE "statement.rl"
 	New: [Stage]Variant \;
 }
 
+::rlc::ast::function ENUM SpecialVariant {
+		null
+}
+
 (// A named function with potential callable variants. /)
 ::rlc::ast [Stage:TYPE] Function VIRTUAL -> [Stage]MergeableScopeItem
 {
 	Default: [Stage]DefaultVariant-std::Shared;
 
-	ENUM SpecialVariant {
-		null
-	}
-
-	SpecialVariants: std::[SpecialVariant; ast::[Stage]SpecialVariant-std::Shared]NatMap;
+	SpecialVariants: std::[function::SpecialVariant; ast::[Stage]SpecialVariant-std::Shared]NatMap;
 	(// The function's variant implementations. /)
 	Variants: std::[Stage-Name; [Stage]Variant-std::Shared]NatMap;
 
@@ -164,7 +164,7 @@ INCLUDE "statement.rl"
 	{
 		name: Stage::Name,
 		signature: [Stage]ResolvedSig &&,
-		linkName: Stage-Name - std::Opt
+		linkName: Stage::StringLiteral+ - std::Opt
 	} -> (), (&&name), (&&linkName):
 		Signature(&&signature);
 
@@ -184,7 +184,7 @@ INCLUDE "statement.rl"
 	} -> (:transform, p, f, s);
 }
 ::rlc::ast [Stage:TYPE] SpecialVariant -> [Stage]Functoid {
-	Variant: [Stage]Function::SpecialVariant;
+	Variant: function::SpecialVariant;
 
 	:transform{
 		p: [Stage::Prev+]SpecialVariant #&,

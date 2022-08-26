@@ -21,20 +21,19 @@ INCLUDE 'std/vector'
 				f: Stage::PrevFile+,
 				s: Stage &
 			}:
-				Name := Stage::transform_name(prev.Name, f, s),
+				Name := s.transform_name(prev.Name, f),
 				Templates := :reserve(##prev.Templates),
 				Position := prev.Position
 			{
 				FOR(pt ::= prev.Templates.start())
 				{
-					t:?&:= Templates += :reserve(##pt);
-					FOR(pa ::= pt.start())
+					t:?&:= Templates += :reserve(##pt!);
+					FOR(pa ::= pt!.start())
 						IF(e ::= <<ast::[Stage::Prev+]Expression #*>>(pa!))
-							t += <<<ast::[Stage]Expression>>>(*e, f, s);
+							t += <<<ast::[Stage]Expression>>>(e, f, s);
 						ELSE
 							t += <<<ast::[Stage]Type>>>(
-									*<<ast::[Stage::Prev+]Type #\>>(pa!),
-									f, s);
+									<<ast::[Stage::Prev+]Type #\>>(pa!), f, s);
 				}
 			}
 		}

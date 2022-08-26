@@ -104,7 +104,7 @@ INCLUDE 'std/vector'
 		{
 			name: Stage::Name,
 			type: [Stage]Type - std::Dyn,
-			linkName: Stage-Name - std::Opt
+			linkName: Stage::StringLiteral+ - std::Opt
 		} -> (), (&&name, &&type), (&&linkName);
 
 		:transform{
