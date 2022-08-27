@@ -69,7 +69,7 @@ INCLUDE 'std/vector'
 			f: Stage::PrevFile+,
 			s: Stage &
 		} -> (p), (), (), ():
-			Range := s.transform_string(p.Range, f);
+			Range := p.Range;
 
 		<<<
 			p: [Stage::Prev+]Expression #\,
@@ -219,7 +219,7 @@ INCLUDE 'std/vector'
 			f: Stage::PrevFile+,
 			s: Stage &
 		} -> (:transform, p, f, s):
-			Char := s.transform_char(p.Char, f);
+			Char := s.transform_char_literal(p.Char, f);
 	}
 
 	/// A string literal expression.
@@ -232,7 +232,7 @@ INCLUDE 'std/vector'
 			f: Stage::PrevFile+,
 			s: Stage &
 		} -> (:transform, p, f, s):
-			String := s.transform_string(p.String, f);
+			String := s.transform_string_literal(p.String!, f);
 	}
 
 	(// Expression containing a user-overloadable operator. /)

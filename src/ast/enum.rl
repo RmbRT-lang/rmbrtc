@@ -13,8 +13,7 @@ INCLUDE 'std/vector'
 			e: [Stage::Prev+]Enum::Constant #&,
 			f: Stage::PrevFile+,
 			s: Stage &
-		} ->
-			(:transform, e, f, s), (:transform, e, f, s), (e):
+		} -> (:transform, e, f, s), (:transform, e), (e):
 			Value := e.Value;
 	}
 

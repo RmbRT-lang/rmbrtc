@@ -13,6 +13,6 @@ INCLUDE "name.rl"
 		s: Stage &
 	} {
 		IF(p.LinkName)
-			LinkName := :a(s.transform_string(p.LinkName!, f));
+			LinkName := :a(s.transform_string_literal(p.LinkName!, f));
 	}
 }

@@ -23,7 +23,8 @@ INCLUDE "type.rl"
 		# exists() BOOL INLINE := ##Arguments != 0;
 	}
 
-	[Stage:TYPE] TemplateArgDecl VIRTUAL {
+	[Stage:TYPE] TemplateArgDecl VIRTUAL
+	{
 		Name: Stage::Name;
 		Variadic: BOOL;
 
@@ -47,13 +48,13 @@ INCLUDE "type.rl"
 			{
 			[Stage::Prev+]TypeTemplateArgDecl:
 				= :dup(<[Stage]TypeTemplateArgDecl>(:transform(
-					<<[Stage::Prev+]TypeTemplateArgDecl #&>>(p), f, s)));
+					<<[Stage::Prev+]TypeTemplateArgDecl #&>>(*p), f, s)));
 			[Stage::Prev+]ValueTemplateArgDecl:
 				= :dup(<[Stage]ValueTemplateArgDecl>(:transform(
-					<<[Stage::Prev+]ValueTemplateArgDecl #&>>(p), f, s)));
+					<<[Stage::Prev+]ValueTemplateArgDecl #&>>(*p), f, s)));
 			[Stage::Prev+]NumberTemplateArgDecl:
 				= :dup(<[Stage]NumberTemplateArgDecl>(:transform(
-					<<[Stage::Prev+]NumberTemplateArgDecl #&>>(p), f, s)));
+					<<[Stage::Prev+]NumberTemplateArgDecl #&>>(*p), f, s)));
 			}
 		}
 	}

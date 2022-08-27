@@ -41,7 +41,7 @@ INCLUDE "symbolconstant.rl"
 					<<[Stage::Prev+]Type #\>>(p), f, s);
 			[Stage::Prev+]CatchVariable:
 				= :dup(<[Stage]CatchVariable>(:transform(
-					<<[Stage::Prev+]Argument #&>>(*p), f, s)));
+					<<[Stage::Prev+]CatchVariable #&>>(*p), f, s)));
 			}
 		}
 	}
@@ -141,8 +141,8 @@ INCLUDE "symbolconstant.rl"
 			IsArray := p.IsArray,
 			ArraySize := :reserve(##p.ArraySize)
 		{
-			FOR(s ::= p.ArraySize.start())
-				ArraySize += <<<[Stage]Expression>>>(s!, f, s);
+			FOR(sz ::= p.ArraySize.start())
+				ArraySize += <<<[Stage]Expression>>>(sz!, f, s);
 		}
 	}
 
@@ -158,6 +158,19 @@ INCLUDE "symbolconstant.rl"
 		Variadic: BOOL;
 
 		{}: Reference(:none);
+
+		:transform{
+			p: [Stage::Prev+]Type #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		}:
+			Modifiers := :reserve(##p.Modifiers),
+			Reference := p.Reference,
+			Variadic := p.Variadic
+		{
+			FOR(m ::= p.Modifiers.start())
+				Modifiers += :transform(m!, f, s);
+		}
 
 		<<<
 			p: [Stage::Prev+]Type #\,
@@ -210,7 +223,7 @@ INCLUDE "symbolconstant.rl"
 			s: Stage &
 		} -> (:transform, p, f, s):
 			Args := :reserve(##p.Args),
-			Ret := <<<[Stage]Type>>>(p, f, s),
+			Ret := <<<[Stage]Type>>>(p.Ret!, f, s),
 			IsCoroutine := p.IsCoroutine
 		{
 			FOR(a ::= p.Args.start())

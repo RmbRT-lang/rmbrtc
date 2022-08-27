@@ -38,6 +38,7 @@ INCLUDE 'std/unicode'
 	TYPE CharLiteral := U4;
 	TYPE StringLiteral := std::Str;
 	TYPE ControlLabelName := std::Str;
+	TYPE MemberVariableReference := Name;
 	
 	RootScope
 	{
@@ -51,8 +52,10 @@ INCLUDE 'std/unicode'
 
 	transform_name(p: Prev::Name+ #&, f: PrevFile) Name INLINE
 		:= f->Source->content(p)++;
+	transform_control_label_name(p: Prev::ControlLabelName #&, f: PrevFile) ControlLabelName;
 	transform_member_reference(p: Prev::MemberReference+ #&, f: PrevFile) MemberReference INLINE
 		:= :transform(p, f, THIS);
+	transform_inheritance(p: Prev::Inheritance+ #&, f: PrevFile) Inheritance;
 
 	transform_number(p: Prev::Number+ #&, f: PrevFile) Number INLINE
 	{
@@ -78,7 +81,7 @@ INCLUDE 'std/unicode'
 		= :nat(acc);
 	}
 
-	transform_char(p: Prev::CharLiteral+ #&, f: PrevFile) CharLiteral
+	transform_char_literal(p: Prev::CharLiteral+ #&, f: PrevFile) CharLiteral
 	{
 		src ::= f->Source->content(p.Content);
 
@@ -96,7 +99,7 @@ INCLUDE 'std/unicode'
 		= parse_char(p);
 	}
 
-	transform_string(p: Prev::StringLiteral+ #&, f: PrevFile) StringLiteral
+	transform_string_literal(p: tok::Token-std::Buffer #&, f: PrevFile) StringLiteral
 	{
 		str: StringLiteral;
 		FOR(token ::= p.start())

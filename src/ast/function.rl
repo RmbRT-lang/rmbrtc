@@ -11,6 +11,23 @@ INCLUDE "statement.rl"
 	Arguments: [Stage]TypeOrArgument-std::DynVec;
 	IsCoroutine: BOOL;
 
+	<<<
+		p: [Stage::Prev+]FnSignature #\,
+		f: Stage::PrevFile+,
+		s: Stage &
+	>>> THIS-std::Dyn
+	{
+		TYPE SWITCH(p)
+		{
+		[Stage::Prev+]UnresolvedSig:
+			= :dup(<[Stage]UnresolvedSig>(:transform(
+				<<[Stage::Prev+]UnresolvedSig #&>>(*p), f, s)));
+		[Stage::Prev+]ResolvedSig:
+			= :dup(<[Stage]ResolvedSig>(:transform(
+				<<[Stage::Prev+]ResolvedSig #&>>(*p), f, s)));
+		}
+	}
+
 	{...};
 
 	:transform {
@@ -103,13 +120,13 @@ INCLUDE "statement.rl"
 	} -> (:transform, p, f, s)
 	{
 		IF(p.Default)
-			Default := :a(:transform(p.Default!, f, s));
+			Default := :a(:transform(*p.Default!, f, s));
 		FOR(var ::= p.SpecialVariants.start())
-			SpecialVariants.insert(var!.(0), :a(:transform(var!.(1)!, f, s)));
+			SpecialVariants.insert(var!.(0), :a(:transform(*var!.(1)!, f, s)));
 		FOR(var ::= p.Variants.start())
-			SpecialVariants.insert(
+			Variants.insert(
 				s.transform_name(var!.(0), f),
-				:a(:transform(var!.(1)!, f, s)));
+				:a(:transform(*var!.(1)!, f, s)));
 	}
 
 	set_templates_after_parsing(tpl: [Stage]TemplateDecl &&) VOID
@@ -191,10 +208,17 @@ INCLUDE "statement.rl"
 		f: Stage::PrevFile+,
 		s: Stage &
 	} -> (:transform, p, f, s):
-		Variant := :transform(p.Variant, f, s);
+		Variant := p.Variant;
 }
 ::rlc::ast [Stage:TYPE] Variant -> [Stage]Functoid {
-	Name: ast::[Stage]Name;
+	Name: Stage::Name+;
+
+	:transform{
+		p: [Stage::Prev+]Variant #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p, f, s):
+		Name := s.transform_name(p.Name, f);
 }
 
 ::rlc ENUM Abstractness

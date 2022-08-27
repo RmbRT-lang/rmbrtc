@@ -57,7 +57,7 @@ INCLUDE "stage.rl"
 
 	IF(p.consume(:parentheseOpen))
 	{
-		alias ::= std::heap::[ast::[Config]Constructor::CtorAlias]new();
+		alias ::= std::heap::[ast::[Config]Constructor::CtorAlias]new(BARE);
 		out->Inits := :gc(alias);
 		DO()
 		{
@@ -68,14 +68,14 @@ INCLUDE "stage.rl"
 		p.expect(:parentheseClose);
 	} ELSE IF(p.consume(:colonEqual))
 	{
-		alias ::= std::heap::[ast::[Config]Constructor::CtorAlias]new();
+		alias ::= std::heap::[ast::[Config]Constructor::CtorAlias]new(BARE);
 		out->Inits := :gc(alias);
 		IF:!(exp ::= expression::parse(p))
 			p.fail("expected expression");
 		alias->Arguments += &&exp;
 	} ELSE
 	{
-		inits: ast::[Config]Constructor::ExplicitInits;
+		inits: ast::[Config]Constructor::ExplicitInits (BARE);
 		dup_init ::= FALSE;
 		IF(p.consume(:minusGreater))
 		{

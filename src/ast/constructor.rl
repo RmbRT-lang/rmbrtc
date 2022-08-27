@@ -21,10 +21,10 @@ INCLUDE 'std/memory'
 		{
 			TYPE SWITCH(p)
 			{
-			[Stage::Prev+]Constructor::ExplicitInits:
+			[Stage::Prev+]Constructor::ExplicitInits+:
 				= :dup(<ExplicitInits>(:transform(
-					<<[Stage::Prev+]Constructor::ExplicitInits #&>>(*p), f, s)));
-			[Stage::Prev+]Constructor::CtorAlias:
+					<<[Stage::Prev+]Constructor::ExplicitInits+ #&>>(*p), f, s)));
+			[Stage::Prev+]Constructor::CtorAlias+:
 				= :dup(<CtorAlias>(:transform(
 					<<[Stage::Prev+]Constructor::CtorAlias #&>>(*p), f, s)));
 			}
@@ -35,23 +35,72 @@ INCLUDE 'std/memory'
 	{
 		Base: Stage::Inheritance;
 		Arguments: [Stage]Expression - std::DynVec;
+
+		:transform{
+			p: [Stage::Prev+]Constructor::BaseInit+ #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		}:
+			Base := s.transform_inheritance(p.Base, f),
+			Arguments := :reserve(##p.Arguments)
+		{
+			FOR(a ::= p.Arguments.start())
+				Arguments += <<<[Stage]Expression>>>(a!, f, s);
+		}
 	}
 
 	MemberInit -> CodeObject
 	{
 		Member: Stage::MemberVariableReference;
 		Arguments: [Stage]Expression - std::DynVec;
+
+		:transform{
+			p: [Stage::Prev+]Constructor::MemberInit+ #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		}:
+			Member := s.transform_member_reference(p.Member, f),
+			Arguments := :reserve(##p.Arguments)
+		{
+			FOR(a ::= p.Arguments.start())
+				Arguments += <<<[Stage]Expression>>>(a!, f, s);
+		}
 	}
 
 	ExplicitInits -> Initialisers
 	{
 		BaseInits: BaseInit - std::Vec;
 		MemberInits: MemberInit - std::Vec;
+
+		:transform{
+			p: [Stage::Prev+]Constructor::ExplicitInits+ #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		}:
+			BaseInits := :reserve(##p.BaseInits),
+			MemberInits := :reserve(##p.MemberInits)
+		{
+			FOR(i ::= p.BaseInits.start())
+				BaseInits += :transform(i!, f, s);
+			FOR(i ::= p.MemberInits.start())
+				MemberInits += :transform(i!, f, s);
+		}
 	}
 
 	CtorAlias -> Initialisers
 	{
 		Arguments: [Stage]Expression - std::DynVec;
+
+		:transform{
+			p: [Stage::Prev+]Constructor::CtorAlias+ #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		}:
+			Arguments := :reserve(##p.Arguments)
+		{
+			FOR(a ::= p.Arguments.start())
+				Arguments += <<<[Stage]Expression>>>(a!, f, s);
+		}
 	}
 
 	Inits: Initialisers - std::Dyn;
@@ -68,7 +117,7 @@ INCLUDE 'std/memory'
 		IF(p.Inits)
 			Inits := <<<Initialisers>>>(p.Inits!, f, s);
 		IF(p.Body)
-			Body := <<<[Stage]BlockStatement>>>(:transform(p.Body!, f, s));
+			Body := :a(:transform(*p.Body!, f, s));
 	}
 }
 

@@ -14,7 +14,7 @@ INCLUDE "stage.rl"
 	&& !p.match(:identifier))
 		p.fail("expected identifier, \"\" or `` string");
 
-	label: ast::[Config]ControlLabel;
+	label: ast::[Config]ControlLabel (BARE);
 	tok ::= p.eat_token()!;
 	(label.Name, label.Position) := (tok, tok.Position);
 	p.expect(:bracketClose);
