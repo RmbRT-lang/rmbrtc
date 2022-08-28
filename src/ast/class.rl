@@ -35,9 +35,13 @@ INCLUDE 'std/set'
 	Members: [Stage]Member - std::DynVec;
 	Inheritances: class::[Stage]Inheritance - std::Vec;
 
+	/// The auto-generated structural (member-wise) constructor.
+	StructuralCtor: [Stage]StructuralConstructor-std::Dyn;
 	DefaultCtor: [Stage]DefaultConstructor-std::Dyn;
 	CopyCtor: [Stage]CopyConstructor-std::Dyn;
 	MoveCtor: [Stage]MoveConstructor-std::Dyn;
+
+	/// Custom unnamed constructor. If there is a structural ctor, they must differ in their argument count.
 	ImplicitCtor: [Stage]CustomConstructor-std::Dyn;
 	CustomCtors: [Stage]CustomConstructor-std::AutoDynVecSet;
 
@@ -55,6 +59,8 @@ INCLUDE 'std/set'
 			Members += <<<[Stage]Member>>>(m!, f, s);
 		FOR(i ::= p.Inheritances.start())
 			Inheritances += :transform(i!, f, s);
+
+		IF(p.StructuralCtor)
 
 		IF(p.DefaultCtor)
 			DefaultCtor := :a(:transform(*p.DefaultCtor, f, s));

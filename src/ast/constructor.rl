@@ -121,10 +121,38 @@ INCLUDE 'std/memory'
 	}
 }
 
+
+::rlc::ast [Stage: TYPE] StructuralConstructor -> [Stage]Constructor
+{
+	:transform{
+		p: [Stage::Prev+]StructuralConstructor #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p, f, s);
+}
+
 ::rlc::ast [Stage: TYPE] DefaultConstructor -> [Stage]Constructor
 {
 	:transform{
 		p: [Stage::Prev+]DefaultConstructor #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p, f, s);
+}
+
+::rlc::ast [Stage: TYPE] NullConstructor -> [Stage]Constructor
+{
+	:transform{
+		p: [Stage::Prev+]NullConstructor #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p, f, s);
+}
+
+::rlc::ast [Stage: TYPE] BareConstructor -> [Stage]Constructor
+{
+	:transform{
+		p: [Stage::Prev+]BareConstructor #&,
 		f: Stage::PrevFile+,
 		s: Stage &
 	} -> (:transform, p, f, s);
@@ -192,9 +220,12 @@ INCLUDE 'std/memory'
 			Arguments += <<<[Stage]TypeOrArgument>>>(a!, f, s);
 	}
 
+	PRIVATE TYPE Self := THIS;
 	Cmp
 	{
-		STATIC cmp(lhs: THIS#&, rhs: THIS#&) ?
+		STATIC cmp(
+			lhs: Self#&,
+			rhs: Self#&) ?
 		{
 			IF(lhs.Name)
 			{

@@ -30,5 +30,5 @@
 		}
 	}
 
-	insert(n: Name)
+	insert(n: Name) VOID;
 }

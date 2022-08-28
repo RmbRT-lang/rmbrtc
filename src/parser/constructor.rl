@@ -17,8 +17,14 @@ INCLUDE "stage.rl"
 	ELSE = NULL;
 
 	out: ast::[Config]Constructor - std::Dyn;
-	IF(p.consume(:braceClose))
+	IF(!symbol && p.consume(:braceClose))
 		out := :dup(<ast::[Config]DefaultConstructor>(BARE));
+	ELSE IF(!symbol && p.consume_seq(:tripleDot, :braceClose))
+		out := :dup(<ast::[Config]StructuralConstructor>(BARE));
+	ELSE IF(!symbol && p.consume_seq(:null, :braceClose))
+		out := :dup(<ast::[Config]NullConstructor>(BARE));
+	ELSE IF(!symbol && p.consume_seq(:bare, :braceClose))
+		out := :dup(<ast::[Config]BareConstructor>(BARE));
 	ELSE
 	{
 		IF(!symbol && p.consume(:hash))
@@ -41,12 +47,13 @@ INCLUDE "stage.rl"
 			_out ::= std::heap::[ast::[Config]CustomConstructor]new(BARE);
 			out := :gc(_out);
 			_out->Name := &&symbol;
-			DO()
-			{
-				IF:!(arg ::= function::help::parse_arg(p))
-					p.fail("expected argument");
-				_out->Arguments += &&arg;
-			} WHILE(p.consume(:comma))
+			IF(!p.match(:braceClose))
+				DO()
+				{
+					IF:!(arg ::= function::help::parse_arg(p))
+						p.fail("expected argument");
+					_out->Arguments += &&arg;
+				} WHILE(p.consume(:comma))
 
 		}
 		p.expect(:braceClose);

@@ -112,6 +112,9 @@ INCLUDE 'std/vector'
 			[Stage::Prev+]NullExpression:
 				= :dup(<[Stage]NullExpression>(:transform(
 					<<[Stage::Prev+]NullExpression#&>>(*p), f, s)));
+			[Stage::Prev+]BareExpression:
+				= :dup(<[Stage]BareExpression>(:transform(
+					<<[Stage::Prev+]BareExpression#&>>(*p), f, s)));
 			[Stage::Prev+]CastExpression:
 				= :dup(<[Stage]CastExpression>(:transform(
 					<<[Stage::Prev+]CastExpression#&>>(*p), f, s)));
@@ -299,6 +302,16 @@ INCLUDE 'std/vector'
 	{
 		:transform{
 			p: [Stage::Prev+]NullExpression #&,
+			f: Stage::PrevFile+,
+			s: Stage &
+		} -> (:transform, p, f, s);
+	}
+
+	/// `BARE` expression.
+	[Stage: TYPE] BareExpression -> [Stage]Expression
+	{
+		:transform{
+			p: [Stage::Prev+]BareExpression #&,
 			f: Stage::PrevFile+,
 			s: Stage &
 		} -> (:transform, p, f, s);

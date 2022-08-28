@@ -15,6 +15,7 @@ INCLUDE "../src/file.rl"
 		// Keywords.
 		abstract,
 		assert,
+		bare,
 		bool,
 		break,
 		catch,

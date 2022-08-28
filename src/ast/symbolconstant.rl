@@ -28,8 +28,9 @@
 	# is_special() BOOL := NameType != :identifier;
 
 
+	PRIVATE TYPE Self := THIS;
 	Cmp {
-		STATIC cmp(lhs: THIS#&, rhs: THIS#&) ?
+		STATIC cmp(lhs: Self#&, rhs: Self#&) ?
 		{
 			IF(lhs.NameType == :identifier && rhs.NameType == :identifier)
 			{

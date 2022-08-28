@@ -279,6 +279,7 @@ INCLUDE 'std/unicode'
 			STATIC keywords: {std::str::CV, Type}#[](
 				("ABSTRACT", :abstract),
 				("ASSERT", :assert),
+				("BARE", :bare),
 				("BOOL", :bool),
 				("BREAK", :break),
 				("CATCH", :catch),

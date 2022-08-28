@@ -135,6 +135,7 @@ INCLUDE "symbolconstant.rl"
 		|| detail::parse_impl(p, ret, parse_signature)
 		|| detail::parse_impl(p, ret, parse_void)
 		|| detail::parse_impl(p, ret, parse_null)
+		|| detail::parse_impl(p, ret, parse_this)
 		|| detail::parse_impl(p, ret, parse_type_name)
 		|| detail::parse_impl(p, ret, parse_builtin)
 		|| detail::parse_impl(p, ret, parse_symbol_constant))
@@ -201,18 +202,23 @@ INCLUDE "symbolconstant.rl"
 
 	parse_void(p: Parser&, out: Void &) BOOL
 	{
-		IF(!p.consume(:void))
-			= FALSE;
-		detail::parse_generic_part(p, out);
-		= TRUE;
+		IF:(ret ::= p.consume(:void))
+			detail::parse_generic_part(p, out);
+		= ret;
 	}
 
 	parse_null(p: Parser &, out: Null &) BOOL
 	{
-		IF(!p.consume(:null))
-			= FALSE;
-		detail::parse_generic_part(p, out);
-		= TRUE;
+		IF:(ret ::= p.consume(:null))
+			detail::parse_generic_part(p, out);
+		= ret;
+	}
+
+	parse_this(p: Parser &, out: ast::[Config]ThisType &) BOOL
+	{
+		IF:(ret ::= p.consume(:this))
+			detail::parse_generic_part(p, out);
+		= ret;
 	}
 
 	parse_symbol_constant(p: Parser &, out: SymbolConstantType &) BOOL
@@ -266,6 +272,10 @@ INCLUDE "symbolconstant.rl"
 	{
 		IF(!symbol::parse(p, out.Name))
 			= FALSE;
+
+		/// HACK: tolerate quirks of the bootstrap compiler.
+		p.consume(:plus);
+
 		out.NoDecay := p.consume(:exclamationMark);
 		detail::parse_generic_part(p, out);
 		= TRUE;

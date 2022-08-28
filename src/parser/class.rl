@@ -26,6 +26,10 @@ INCLUDE "../ast/class.rl"
 			DO(i: ast::class::[Config]Inheritance (BARE))
 			{
 				parse_inheritance(p, i);
+
+				/// HACK: tolerate quirks of the bootstrap compiler.
+				p.consume(:plus);
+
 				out.Inheritances += &&i;
 			} WHILE(p.consume(:comma))
 
@@ -33,7 +37,34 @@ INCLUDE "../ast/class.rl"
 
 		default ::= Visibility::public;
 		WHILE(member ::= member::parse_class_member(p, default))
-			out.Members += &&member;
+		{
+			IF(ctor ::= <<ast::[Config]Constructor *>>(member!))
+			{
+				TYPE SWITCH(ctor)
+				{
+				ast::[Config]StructuralConstructor:
+					IF(out.StructuralCtor)
+						p.fail("multiple structural constructors");
+					ELSE out.StructuralCtor := &&member;
+				ast::[Config]DefaultConstructor:
+					IF(out.DefaultCtor)
+						p.fail("multiple default constructors");
+					ELSE out.DefaultCtor := &&member;
+				ast::[Config]CopyConstructor:
+					IF(out.CopyCtor)
+						p.fail("multiple copy constructors");
+					ELSE out.CopyCtor := &&member;
+				ast::[Config]MoveConstructor:
+					IF(out.MoveCtor)
+						p.fail("multiple copy constructors");
+					ELSE out.MoveCtor := &&member;
+				ast::[Config]CustomConstructor:
+					/// Cannot enter them into the ctor set yet because src strings are not comparable. This has to be done at the next stage.
+					out.Members += &&member;
+				}
+			} ELSE
+				out.Members += &&member;
+		}
 
 		p.expect(:braceClose);
 

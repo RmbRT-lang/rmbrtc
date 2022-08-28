@@ -26,7 +26,8 @@ INCLUDE 'std/unicode'
 	TYPE MemberReference := Symbol::Child;
 	TYPE Inheritance := THIS-ast::Symbol;
 
-	Number {
+	Number
+	{
 		Sign: BOOL;
 		Value: U8;
 
