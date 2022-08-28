@@ -92,6 +92,16 @@ INCLUDE 'std/tags'
 				&& Buffer[BufferIndex^1].Type == tok2;
 		}
 
+		consume_seq(tok1: tok::Type, tok2: tok::Type) BOOL
+		{
+			IF:(ret ::= match_seq(tok1, tok2))
+			{
+				eat_token();
+				eat_token();
+			}
+			= ret;
+		}
+
 		match(type: tok::Type) BOOL
 		{
 			IF(!BufferSize)
