@@ -43,5 +43,5 @@ INCLUDE 'std/vector'
 		p: [Stage::Prev+]MemberRawtype #&,
 		f: Stage::PrevFile+,
 		s: Stage &
-	} -> (p), (:transform, p, f, s);
+	} -> (:transform, p), (:transform, p, f, s);
 }

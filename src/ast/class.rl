@@ -84,5 +84,5 @@ INCLUDE 'std/set'
 		p: [Stage::Prev+]MemberClass #&,
 		f: Stage::PrevFile+,
 		s: Stage &
-	} -> (p), (:transform, p, f, s);
+	} -> (:transform, p), (:transform, p, f, s);
 }

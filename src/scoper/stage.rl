@@ -37,7 +37,7 @@ INCLUDE 'std/unicode'
 
 	TYPE CharLiteral := U4;
 	TYPE StringLiteral := std::Str;
-	TYPE ControlLabelName := std::Str;
+	TYPE ControlLabelName := Name;
 	TYPE MemberVariableReference := Name;
 	
 	RootScope
@@ -52,10 +52,12 @@ INCLUDE 'std/unicode'
 
 	transform_name(p: Prev::Name+ #&, f: PrevFile) Name INLINE
 		:= f->Source->content(p)++;
-	transform_control_label_name(p: Prev::ControlLabelName #&, f: PrevFile) ControlLabelName;
+	transform_control_label_name(p: Prev::ControlLabelName #&, f: PrevFile) ControlLabelName := f->Source->content(p.Content)++;
 	transform_member_reference(p: Prev::MemberReference+ #&, f: PrevFile) MemberReference INLINE
 		:= :transform(p, f, THIS);
-	transform_inheritance(p: Prev::Inheritance+ #&, f: PrevFile) Inheritance;
+	transform_member_variable_reference(p: Prev::MemberVariableReference+ #&, f: PrevFile) MemberVariableReference INLINE
+		:= transform_name(p, f);
+	transform_inheritance(p: Prev::Inheritance+ #&, f: PrevFile) Inheritance := :transform(p, f, THIS);
 
 	transform_number(p: Prev::Number+ #&, f: PrevFile) Number INLINE
 	{
@@ -181,6 +183,8 @@ INCLUDE 'std/unicode'
 				}
 				n := (n << 4) | d;
 			}
+
+			= n;
 		}
 		}
 	}
@@ -189,7 +193,7 @@ INCLUDE 'std/unicode'
 	transform_symbol(
 		p: Prev::Symbol #&,
 		f: PrevFile
-	) Symbol;
+	) Symbol := :transform(p, f, THIS);
 
 	transform_includes(
 		out: Includes&,

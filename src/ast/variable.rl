@@ -114,35 +114,54 @@ INCLUDE 'std/vector'
 		} -> (), (:transform, p, f, s), (:transform, p, f, s);
 	}
 
-	[Stage: TYPE] MaybeAnonMemberVar VIRTUAL -> [Stage]Member {}
+	[Stage: TYPE] MaybeAnonMemberVar VIRTUAL -> [Stage]Member
+	{
+		<<<
+			p: [Stage::Prev+]MaybeAnonMemberVar #\,
+			f: Stage::PrevFile+,
+			s: Stage &
+		>>> THIS-std::Dyn
+		{
+			TYPE SWITCH(p)
+			{
+			[Stage::Prev+]MemberVariable:
+				= :dup(<[Stage]MemberVariable>(:transform(
+					<<[Stage::Prev+]MemberVariable #&>>(*p), f, s)));
+			[Stage::Prev+]AnonMemberVariable:
+				= :dup(<[Stage]AnonMemberVariable>(:transform(
+					<<[Stage::Prev+]AnonMemberVariable #&>>(*p), f, s)));
+			[Stage::Prev+]StaticMemberVariable:
+				= :dup(<[Stage]StaticMemberVariable>(:transform(
+					<<[Stage::Prev+]StaticMemberVariable #&>>(*p), f, s)));
+			}
+		}
+
+		:transform{
+			p: [Stage::Prev+]MaybeAnonMemberVar #&
+		} -> (:transform, p);
+	}
+
 	/// Member variable of a class or union.
 	[Stage:TYPE] MemberVariable ->
 		[Stage]UninitialisedVariable,
 		[Stage]MaybeAnonMemberVar
 	{
-		{
-			name: Stage::Name,
-			type: [Stage]Type - std::Dyn
-		} -> (&&name, &&type), ();
-
 		:transform{
 			p: [Stage::Prev+]MemberVariable #&,
 			f: Stage::PrevFile+,
 			s: Stage &
-		} -> (:transform, p, f, s), ();
+		} -> (:transform, p, f, s), (:transform, p);
 	}
 
 	[Stage:TYPE] AnonMemberVariable -> [Stage]MaybeAnonMemberVar
 	{
 		Type: ast::[Stage]Type - std::Dyn;
 
-		{type: ast::[Stage]Type - std::Dyn}: Type(&&type);
-
 		:transform{
 			p: [Stage::Prev+]AnonMemberVariable #&,
 			f: Stage::PrevFile+,
 			s: Stage &
-		} -> (:transform, p, f, s):
+		} -> (:transform, p):
 			Type := <<<ast::[Stage]Type>>>(p.Type!, f, s);
 	}
 
@@ -160,7 +179,7 @@ INCLUDE 'std/vector'
 			p: [Stage::Prev+]StaticMemberVariable #&,
 			f: Stage::PrevFile+,
 			s: Stage &
-			} -> (:transform, p, f, s), (:transform, p, f, s);
+		} -> (:transform, p), (:transform, p, f, s);
 	}
 
 	TYPE LocalPosition := U2;

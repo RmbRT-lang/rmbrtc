@@ -235,26 +235,51 @@ INCLUDE "statement.rl"
 {
 	Abstractness: rlc::Abstractness;
 
-	{}: Abstractness(:none);
+	:transform{
+		p: [Stage::Prev+]Abstractable #&
+	} -> (:transform, p):
+		Abstractness := p.Abstractness;
 }
 
 (// Type conversion operator. /)
 ::rlc::ast [Stage:TYPE] Converter -> [Stage]Abstractable, [Stage]Functoid
 {
+	:transform{
+		p: [Stage::Prev+]Converter #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p), (:transform, p, f, s);
+
 	# type() [Stage]Type #\ INLINE := <<[Stage]Type #\>>([Stage]Functoid::Return!);
 }
 
 ::rlc::ast [Stage:TYPE] MemberFunction -> [Stage]Abstractable, [Stage]Function
 {
+	:transform{
+		p: [Stage::Prev+]MemberFunction #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p), (:transform, p, f, s);
 }
 
 /// Custom operator implementation.
 ::rlc::ast [Stage:TYPE] Operator -> [Stage]Abstractable, [Stage]Functoid
 {
 	Op: rlc::Operator;
-	{}: Op(NOINIT);
+
+	:transform{
+		p: [Stage::Prev+]Operator #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p), (:transform, p, f, s):
+		Op := p.Op;
 }
 
 ::rlc::ast [Stage:TYPE] Factory -> [Stage]Member, [Stage]Functoid
 {
+	:transform{
+		p: [Stage::Prev+]Factory #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p), (:transform, p, f, s);
 }

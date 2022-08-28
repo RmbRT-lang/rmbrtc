@@ -39,15 +39,14 @@ INCLUDE 'std/vector'
 		e: [Stage::Prev+]GlobalEnum #&,
 		f: Stage::PrevFile+,
 		s: Stage &
-	} ->
-		(), (:transform, e, f, s);
+	} -> (), (:transform, e, f, s);
 }
 
 ::rlc::ast [Stage: TYPE] MemberEnum -> [Stage]Member, [Stage]Enum
 {
 	:transform{
-		e: [Stage::Prev+]GlobalEnum #&,
+		e: [Stage::Prev+]MemberEnum #&,
 		f: Stage::PrevFile+,
-		s: Stage &} ->
-		(:transform, e), (:transform, e, f, s);
+		s: Stage &
+	} -> (:transform, e), (:transform, e, f, s);
 }

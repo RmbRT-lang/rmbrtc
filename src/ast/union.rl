@@ -31,5 +31,5 @@ INCLUDE "member.rl"
 		p: [Stage::Prev+]MemberUnion #&,
 		f: Stage::PrevFile+,
 		s: Stage &
-	} -> (p), (:transform, p, f, s);
+	} -> (:transform, p), (:transform, p, f, s);
 }

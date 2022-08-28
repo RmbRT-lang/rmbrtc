@@ -57,8 +57,11 @@ INCLUDE "stage.rl"
 
 				p.expect(:semicolon);
 
-				= :dup(<ast::[Config]StaticMemberVariable>(
-					&&nt->Name.Content, &&nt->Type, &&inits));
+				v: ast::[Config]StaticMemberVariable (BARE);
+				v.Name := nt->Name.Content;
+				v.Type := &&nt->Type;
+				v.InitValues := &&inits;
+				= :dup(&&v);
 			} ELSE = NULL;
 		}
 		ELSE
@@ -66,14 +69,20 @@ INCLUDE "stage.rl"
 			IF(nt ::= help::parse_uninitialised_name_and_type(p))
 			{
 				p.expect(:semicolon);
-				= :gc(std::heap::[ast::[Config]MemberVariable]new(
-					&&nt->Name.Content, &&nt->Type));
+
+				v: ast::[Config]MemberVariable (BARE);
+				v.Name := nt->Name.Content;
+				v.Type := &&nt->Type;
+				= :dup(&&v);
 			} ELSE IF(help::is_optionally_named_variable_start(p))
 			{	// Anonymous member variable.
 				IF:!(t ::= type::parse(p))
 					p.fail("expected type");
 				p.expect(:semicolon);
-				= :gc(std::heap::[ast::[Config]AnonMemberVariable]new(&&t));
+
+				v: ast::[Config]AnonMemberVariable (BARE);
+				v.Type := &&t;
+				= :dup(&&v);
 			} ELSE = NULL;
 		}
 	}

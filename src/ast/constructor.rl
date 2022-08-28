@@ -59,7 +59,7 @@ INCLUDE 'std/memory'
 			f: Stage::PrevFile+,
 			s: Stage &
 		}:
-			Member := s.transform_member_reference(p.Member, f),
+			Member := s.transform_member_variable_reference(p.Member, f),
 			Arguments := :reserve(##p.Arguments)
 		{
 			FOR(a ::= p.Arguments.start())
