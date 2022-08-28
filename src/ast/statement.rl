@@ -10,7 +10,6 @@ INCLUDE 'std/memory'
 {
 	[Stage: TYPE] Statement VIRTUAL -> [Stage]ExprOrStatement
 	{
-		{};
 		:transform{
 			p: [Stage::Prev+]Statement #&,
 			f: Stage::PrevFile+,
@@ -295,21 +294,31 @@ INCLUDE 'std/memory'
 		}
 	}
 
+	ENUM LoopType
+	{
+		condition,
+		postCondition,
+		range,
+		reverseRange
+	}
+
 	[Stage: TYPE] LoopStatement -> [Stage]Statement
 	{
-		IsPostCondition: BOOL;
+		Type: LoopType;
 		Initial: [Stage]VarOrExpr - std::Dyn;
 		Condition: [Stage]VarOrExpr - std::Dyn;
 		Body: [Stage]Statement-std::Dyn;
 		PostLoop: [Stage]Expression-std::Dyn;
 		Label: [Stage]ControlLabel-std::Opt;
 
+		# is_post_condition() BOOL := Type == :postCondition;
+
 		:transform{
 			p: [Stage::Prev+]LoopStatement #&,
 			f: Stage::PrevFile+,
 			s: Stage &
 		} -> (:transform, p, f, s):
-			IsPostCondition := p.IsPostCondition,
+			Type := p.Type,
 			Body := <<<[Stage]Statement>>>(p.Body!, f, s)
 		{
 			IF(p.Initial)

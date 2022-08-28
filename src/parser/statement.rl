@@ -357,7 +357,7 @@ INCLUDE "varorexpression.rl"
 		IF(!(out.Body := statement::parse_body(p, locals)))
 			p.fail("expected statement");
 
-		IF(out.IsPostCondition)
+		IF(out.is_post_condition())
 			IF(!loop::parse_for_head(p, locals, out)
 			&& !loop::parse_while_head(p, locals, out))
 				p.fail("expected 'FOR' or 'WHILE'");
@@ -371,7 +371,7 @@ INCLUDE "varorexpression.rl"
 		out: ast::[Config]LoopStatement &
 	) VOID
 	{
-		out.IsPostCondition := FALSE;
+		out.Type := :condition;
 		IF(!parse_do_head(p, locals, out)
 		&& !parse_for_head(p, locals, out)
 		&& !parse_while_head(p, locals, out))
@@ -387,7 +387,7 @@ INCLUDE "varorexpression.rl"
 		IF(!p.consume(:do))
 			= FALSE;
 
-		out.IsPostCondition := TRUE;
+		out.Type := :postCondition;
 
 		out.Label := control_label::parse(p);
 		p.expect(:parentheseOpen);
@@ -406,14 +406,27 @@ INCLUDE "varorexpression.rl"
 		IF(!p.consume(:for))
 			= FALSE;
 
-		IF(!out.IsPostCondition)
+		IF(!out.is_post_condition())
 			out.Label := control_label::parse(p);
 		p.expect(:parentheseOpen);
 
-		IF(!out.IsPostCondition)
+		IF(!out.is_post_condition())
 		{
 			parse_initial(p, locals, out);
-			p.expect(:semicolon);
+			IF(p.consume(:semicolon))
+			{
+				IF(p.consume_seq(:doubleMinus, :parentheseClose))
+				{
+					out.Type := :reverseRange;
+					= TRUE;
+				}
+				out.Type := :condition;
+			} ELSE
+			{
+				p.expect(:parentheseClose);
+				out.Type := :range;
+				= TRUE;
+			}
 		}
 
 		IF(!p.consume(:semicolon))
@@ -437,11 +450,11 @@ INCLUDE "varorexpression.rl"
 		IF(!p.consume(:while))
 			= FALSE;
 
-		IF(!out.IsPostCondition)
+		IF(!out.is_post_condition())
 			out.Label := control_label::parse(p);
 		p.expect(:parentheseOpen);
 
-		IF(!out.IsPostCondition)
+		IF(!out.is_post_condition())
 		{
 			v ::= var_or_exp::parse(p, locals);
 
