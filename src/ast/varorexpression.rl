@@ -8,8 +8,9 @@
 	{
 		TYPE SWITCH(p)
 		{
-		[Stage::Prev+]Variable:
-			= <<<[Stage]Variable>>>(<<[Stage::Prev+]Variable #\>>(p), f, s);
+		[Stage::Prev+]LocalVariable:
+			= :dup(<[Stage]LocalVariable>(:transform(
+				<<[Stage::Prev+]LocalVariable #&>>(*p), f, s)));
 		[Stage::Prev+]Expression:
 			= <<<[Stage]Expression>>>(<<[Stage::Prev+]Expression #\>>(p), f, s);
 		}
