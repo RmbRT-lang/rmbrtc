@@ -63,8 +63,8 @@ INCLUDE "global.rl"
 			file: std::str::CV#&
 		) Config-ast::File - std::Dyn
 		{
-			s: src::File-std::Shared := :a(file);
-			p: Parser(s!);
+			s: src::File#-std::Shared := :a(file);
+			p: Parser(&&s);
 			= :a(:transform(&p, THIS));
 		}
 	}

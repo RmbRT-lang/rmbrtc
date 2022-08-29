@@ -204,7 +204,7 @@ INCLUDE 'std/unicode'
 		FOR(inc ::= parsed->Includes.start())
 			out += Registry.get(
 				include::resolve(
-					parsed->Name!,
+					parsed->Source->Name!,
 					inc!,
 					*parsed->Source,
 					IncludeDirs));

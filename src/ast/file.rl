@@ -7,14 +7,14 @@ INCLUDE "global.rl"
 	/// The file's global scope.
 	Globals: Config::RootScope;
 
-	Name: std::Str;
-	Source: src::File# \;
+	Source: src::File # - std::Shared #;
 
 	/// Used for transforming a file from the previous stage's representation.
 	:transform{
 		prev: Config::PrevFile #&,
 		s: Config &
-	}
+	}:
+		Source := prev->Source
 	{
 		s.transform_includes(Includes, prev);
 		s.transform_globals(Globals, prev);

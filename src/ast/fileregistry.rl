@@ -23,7 +23,7 @@ PUBLIC:
 		ELSE
 		{
 			processed ::= Context->create_file(file!);
-			FileByName.insert_at(entry.(1), processed->Name!, processed!);
+			FileByName.insert_at(entry.(1), processed->Source->Name!, processed!);
 			= (Files += &&processed)!;
 		}
 	}

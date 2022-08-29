@@ -10,9 +10,9 @@ INCLUDE 'std/tags'
 		std::NoMove;
 
 		{
-			file: src::File #\
+			file: src::File # - std::Shared
 		}:
-			File(file),
+			Source(file),
 			Tokeniser(file),
 			Ctx(NULL),
 			Buffer(NOINIT),
@@ -35,7 +35,7 @@ INCLUDE 'std/tags'
 				: Tokeniser.position();
 			
 			THROW <ReasonError>(
-				File,
+				Source,
 				pos.Line,
 				pos.Column,
 				Buffer!,
@@ -65,7 +65,7 @@ INCLUDE 'std/tags'
 				: Tokeniser.position();
 
 			THROW <ExpectedToken>(
-				File, pos.Line, pos.Column,
+				Source, pos.Line, pos.Column,
 				Buffer!, BufferIndex, BufferSize,
 				THIS,
 				type);
@@ -137,12 +137,13 @@ INCLUDE 'std/tags'
 
 		# offset() UM := BufferSize
 			? Buffer[BufferIndex].Content.Start
-			: ##File->Contents;
+			: ##Source->Contents;
 		# prev_offset() UM := PrevOffset!;
 
 		Ctx: Trace *;
+		Name: std::Str;
+		Source: src::File # - std::Shared #;
 	PRIVATE:
-		File: src::File #\;
 		Tokeniser: tok::Tokeniser;
 		Buffer: tok::Token[2]; // Lookahead buffer.
 		BufferIndex: UINT;
