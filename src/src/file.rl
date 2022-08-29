@@ -32,6 +32,8 @@ INCLUDE 'std/math/limit'
 		}
 
 		# <BOOL> INLINE := Length != 0;
+
+		# end() Index := Start + Length;
 	}
 
 	(// A line:column position inside a file. /)

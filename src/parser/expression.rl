@@ -12,13 +12,13 @@ INCLUDE "symbolconstant.rl"
 	/// Parses a non-operator expression.
 	parse_atom(p: Parser &) ast::[Config]Expression-std::Dyn
 	{
-		start: src::String;
-		position: src::Position;
+		// The start of the expression.
+		position ::= p.position();
 
 		// Is this a (...) expression?
 		IF(tok ::= p.consume(:parentheseOpen))
 		{
-			(start, position) := (tok->Content, tok->Position);
+			start ::= tok->Content;
 			IF:!(exp ::= expression::parse(p))
 				p.fail("expected expression");
 
@@ -28,11 +28,12 @@ INCLUDE "symbolconstant.rl"
 				IF(!tuple)
 				{
 					tuple := :a(BARE);
+					tuple->Position := position;
 					tuple->Op := :tuple;
 					tuple->Operands += &&exp;
 				}
 
-				IF(!(exp := expression::parse(p)))
+				IF!(exp := expression::parse(p))
 					p.fail("expected expression");
 				tuple->Operands += &&exp;
 			}
@@ -43,13 +44,14 @@ INCLUDE "symbolconstant.rl"
 	For readability, do not track ordinary parentheses, as they are irrelevant to the inner expression, but track tuples' parentheses, as they are essential.
 			/)
 			IF(tuple)
-				(tuple->Position, tuple->Range) := (position, start.span(end));
-
-			IF(tuple)
+			{
+				tuple->Range := start.span(end);
 				= &&tuple;
+			}
 			= &&exp;
 		}
 
+		start ::= p.offset();
 		ret: ast::[Config]Expression - std::Dyn;
 		IF(detail::parse_impl(p, ret, parse_reference)
 		|| detail::parse_impl(p, ret, parse_symbol_constant)
@@ -64,6 +66,8 @@ INCLUDE "symbolconstant.rl"
 		|| detail::parse_impl(p, ret, parse_sizeof)
 		|| detail::parse_impl(p, ret, parse_typeof))
 		{
+			ret->Range := (start, p.prev_offset() - start);
+			ret->Position := position;
 			= &&ret;
 		}
 
@@ -77,12 +81,9 @@ INCLUDE "symbolconstant.rl"
 	) BOOL
 	{
 		v: T (BARE);
-		IF(parse_fn(p, v))
-		{
+		IF:(ok ::= parse_fn(p, v))
 			ret := :dup(&&v);
-			= TRUE;
-		}
-		= FALSE;
+		= ok;
 	}
 
 	parse_reference(p: Parser &, out: ast::[Config]ReferenceExpression &) BOOL

@@ -17,12 +17,7 @@ INCLUDE 'std/unicode'
 			Position(0, 0, file);
 
 		# eof() BOOL := Read == ##File->Contents;
-		# position(
-			line: UINT \,
-			column: UINT \) VOID
-		{
-			File->position(Read, line, column);
-		}
+		# position() src::Position #& := Position;
 
 		parse_next(out: Token \) BOOL
 		{
@@ -112,9 +107,8 @@ INCLUDE 'std/unicode'
 
 		# error() VOID
 		{
-			line: UINT;
-			column: UINT;
-			position(&line, &column);
+			line ::= Position.Line;
+			column ::= Position.Column;
 
 			IF(eof())
 				THROW <UnexpectedEOF>(

@@ -30,21 +30,14 @@ INCLUDE 'std/tags'
 
 		fail(reason: CHAR#\) VOID
 		{
-			line: UINT;
-			column: UINT;
-			IF(BufferSize)
-			{
-				File->position(
-					Buffer[BufferIndex].Content.Start,
-					&line,
-					&column);
-			} ELSE
-				Tokeniser.position(&line, &column);
+			pos ::= (BufferSize)
+				? Buffer[BufferIndex].Position
+				: Tokeniser.position();
 			
 			THROW <ReasonError>(
 				File,
-				line,
-				column,
+				pos.Line,
+				pos.Column,
 				Buffer!,
 				BufferIndex,
 				BufferSize,
@@ -67,19 +60,12 @@ INCLUDE 'std/tags'
 		{
 			IF(tok ::= consume(type))
 				= &&*tok;
-
-			line: UINT;
-			column: UINT;
-			IF(BufferSize)
-				File->position(
-					Buffer[BufferIndex].Content.Start,
-					&line,
-					&column);
-			ELSE
-				Tokeniser.position(&line, &column);
+			pos ::= (BufferSize)
+				? Buffer[BufferIndex].Position
+				: Tokeniser.position();
 
 			THROW <ExpectedToken>(
-				File, line, column,
+				File, pos.Line, pos.Column,
 				Buffer!, BufferIndex, BufferSize,
 				THIS,
 				type);
@@ -123,6 +109,8 @@ INCLUDE 'std/tags'
 			IF(!BufferSize)
 				RETURN NULL;
 
+			PrevOffset := :a(Buffer[BufferIndex].Content.end());
+
 			out ::= Buffer[BufferIndex];
 
 			IF(!Tokeniser.parse_next(&Buffer[BufferIndex]))
@@ -143,9 +131,14 @@ INCLUDE 'std/tags'
 
 		# progress() UINT := Progress;
 
-		# position() UM := BufferSize
+		# position() src::Position := BufferSize
+			? Buffer[BufferIndex].Position
+			: Tokeniser.position();
+
+		# offset() UM := BufferSize
 			? Buffer[BufferIndex].Content.Start
 			: ##File->Contents;
+		# prev_offset() UM := PrevOffset!;
 
 		Ctx: Trace *;
 	PRIVATE:
@@ -155,6 +148,7 @@ INCLUDE 'std/tags'
 		BufferIndex: UINT;
 		BufferSize: UINT;
 		Progress: UINT;
+		PrevOffset: UINT-std::Opt;
 	}
 
 	Trace
