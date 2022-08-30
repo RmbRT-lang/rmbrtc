@@ -36,6 +36,12 @@
 		[Stage::Prev+]GlobalVariable:
 			= :dup(<[Stage]GlobalVariable>(:transform(
 				<<[Stage::Prev+]GlobalVariable #&>>(*g), f, s)));
+		[Stage::Prev+]GlobalTypedef:
+			= :dup(<[Stage]GlobalTypedef>(:transform(
+				<<[Stage::Prev+]GlobalTypedef #&>>(*g), f, s)));
+		[Stage::Prev+]GlobalMask:
+			= :dup(<[Stage]GlobalMask>(:transform(
+				<<[Stage::Prev+]GlobalMask #&>>(*g), f, s)));
 		}
 	}
 }

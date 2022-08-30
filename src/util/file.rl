@@ -11,10 +11,10 @@ INCLUDE 'std/err/filenotfound'
 		n: std::Str(name);
 		n.append(:ch(0));
 
-		IF(real ::= detail::realpath(n.data(), &detail::path_buf[0]))
-			RETURN <std::Str>(real);
+		IF:!(real ::= detail::realpath(n.data(), &detail::path_buf[0]))
+			THROW <std::io::FileNotFound>(name);
 
-		THROW <std::io::FileNotFound>(name);
+		= <std::Str>(real);
 	}
 
 	(// Returns the parent directory, including the final '/'. /)
@@ -32,8 +32,7 @@ INCLUDE 'std/err/filenotfound'
 	) std::Str
 	{
 		path: std::Str(<std::str::CV>(base++));
-		IF(!base.Size)
-			THROW;
+		ASSERT(base.Size);
 		IF(base[base.Size-1] != '/')
 			path.append(:ch('/'));
 		path.append(relative++);
@@ -44,6 +43,6 @@ INCLUDE 'std/err/filenotfound'
 
 ::rlc::util::detail
 {
-	path_buf: std::[CHAR]Vec := :move(std::heap::[CHAR]alloc(4097));
+	path_buf: std::[CHAR]Vec := 4097;
 	EXTERN realpath(CHAR #\, CHAR \) CHAR #*;
 }

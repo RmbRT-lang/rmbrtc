@@ -14,7 +14,7 @@ INCLUDE 'std/unicode'
 			File(file),
 			Read(0),
 			Start(0),
-			Position(0, 0, file);
+			Position(1, 1, file);
 
 		# eof() BOOL := Read == ##File->Contents;
 		# position() src::Position #& := Position;
@@ -76,7 +76,7 @@ INCLUDE 'std/unicode'
 			c ::= File->Contents[Read++];
 			IF(c == '\n')
 			{
-				Position.Column := 0;
+				Position.Column := 1;
 				Position.Line++;
 			} ELSE
 				Position.Column++;

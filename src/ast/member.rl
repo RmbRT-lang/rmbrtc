@@ -42,9 +42,9 @@ INCLUDE "scopeitem.rl"
 		[Stage::Prev+]MemberRawtype:
 			= :dup(<[Stage]MemberRawtype>(:transform(
 				<<[Stage::Prev+]MemberRawtype #&>>(*g), f, s)));
-		[Stage::Prev+]MemberFunction:
-			= :dup(<[Stage]MemberFunction>(:transform(
-				<<[Stage::Prev+]MemberFunction #&>>(*g), f, s)));
+		[Stage::Prev+]Abstractable:
+			= <<<[Stage]Abstractable>>>(
+				<<[Stage::Prev+]Abstractable #\>>(g), f, s);
 		[Stage::Prev+]Factory:
 			= :dup(<[Stage]Factory>(:transform(
 				<<[Stage::Prev+]Factory #&>>(*g), f, s)));

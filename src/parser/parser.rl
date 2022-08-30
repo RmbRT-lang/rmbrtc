@@ -47,12 +47,8 @@ INCLUDE 'std/tags'
 
 		consume(type: tok::Type) tok::Token - std::Opt
 		{
-			t: tok::Token;
 			IF(match(type))
-			{
-				t := eat_token()!;
-				= :a(&&t);
-			}
+				= :a(&&eat_token()!);
 			= NULL;
 		}
 

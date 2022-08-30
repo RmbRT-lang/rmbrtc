@@ -86,8 +86,11 @@ INCLUDE "statement.rl"
 		s: Stage &
 	} -> (:transform, p, f, s), (p):
 		Signature := <<<[Stage]FnSignature>>>(p.Signature!, f, s),
-		Body := <<<[Stage]ExprOrStatement>>>(p.Body!, f, s),
-		IsInline := p.IsInline;
+		IsInline := p.IsInline
+	{
+		IF(p.Body)
+			Body := <<<[Stage]ExprOrStatement>>>(p.Body!, f, s);
+	}
 
 	STATIC short_hand_body(e: [Stage]Expression-std::Dyn) [Stage]Statement-std::Dyn
 		:= :dup(<[Stage]ReturnStatement>(:exp(&&e)));
@@ -239,6 +242,27 @@ INCLUDE "statement.rl"
 		p: [Stage::Prev+]Abstractable #&
 	} -> (:transform, p):
 		Abstractness := p.Abstractness;
+
+
+	<<<
+		p: [Stage::Prev+]Abstractable #\,
+		f: Stage::PrevFile+,
+		s: Stage &
+	>>> THIS - std::Dyn
+	{
+		TYPE SWITCH(p)
+		{
+		[Stage::Prev+]Converter:
+			= :dup(<[Stage]Converter>(:transform(
+				<<[Stage::Prev+]Converter #&>>(*p), f, s)));
+		[Stage::Prev+]MemberFunction:
+			= :dup(<[Stage]MemberFunction>(:transform(
+				<<[Stage::Prev+]MemberFunction #&>>(*p), f, s)));
+		[Stage::Prev+]Operator:
+			= :dup(<[Stage]Operator>(:transform(
+				<<[Stage::Prev+]Operator #&>>(*p), f, s)));
+		}
+	}
 }
 
 (// Type conversion operator. /)

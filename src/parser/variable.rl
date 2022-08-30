@@ -196,6 +196,8 @@ INCLUDE "stage.rl"
 	{
 		Name: tok::Token;
 		Type: ast::[Config]Type - std::Dyn;
+
+		{...};
 	}
 
 	/// A named uninitialised variable.
@@ -219,6 +221,8 @@ INCLUDE "stage.rl"
 		Name: tok::Token;
 		Type: ast::[Config]MaybeAutoType - std::Dyn;
 		ExpectShortHandInit: BOOL;
+
+		{...};
 	}
 	::help parse_initialised_name_and_type(p: Parser &) NameAndInitType - std::Opt
 	{

@@ -28,7 +28,7 @@ INCLUDE "literals.rl"
 		:relative: = help::relative_path(base_file, path!);
 		:global: = find_global(path!, globals);
 		}
-		CATCH(std::io::FileNotFound&)
+		CATCH()
 			THROW <NotFound>(inc!.Token.Position, &&path, inc!.Type);
 	}
 
@@ -37,12 +37,21 @@ INCLUDE "literals.rl"
 		path: std::[CHAR#]Buffer #&,
 		globals: std::Str - std::Buffer#&) std::Str
 	{
+		ASSERT(##globals);
 		FOR(inc ::= globals.start())
 			TRY RETURN util::absolute_file(
 				util::concat_paths(inc!, path)!);
-			CATCH() { ; }
+			CATCH() {
+				std::io::write(<<<std::io::OStream>>>(&std::io::out),
+					"() could not find ", inc!++, "/", path++, "\n");
+			}
+			CATCH(f: std::io::FileNotFound &)
+			{
+				std::io::write(<<<std::io::OStream>>>(&std::io::out),
+					:stream(f), "\n");
+			}
 
-		THROW <std::io::FileNotFound>(<std::Str>(path++));
+		THROW;
 	}
 
 	NotFound -> Error
@@ -58,7 +67,7 @@ INCLUDE "literals.rl"
 		:	Include(&&path),
 			Type(type);
 
-		# FINAL stream(o: std::io::OStream &) VOID
+		# FINAL message(o: std::io::OStream &) VOID
 		{
 			std::io::write(o,
 				<CHAR#\>(Type), " include '", Include!++, "' not found");

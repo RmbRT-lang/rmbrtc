@@ -40,6 +40,8 @@ INCLUDE 'std/set'
 	DefaultCtor: [Stage]DefaultConstructor-std::Dyn;
 	CopyCtor: [Stage]CopyConstructor-std::Dyn;
 	MoveCtor: [Stage]MoveConstructor-std::Dyn;
+	NullCtor: [Stage]NullConstructor-std::Dyn;
+	BareCtor: [Stage]BareConstructor-std::Dyn;
 
 	/// Custom unnamed constructor. If there is a structural ctor, they must differ in their argument count.
 	ImplicitCtor: [Stage]CustomConstructor-std::Dyn;

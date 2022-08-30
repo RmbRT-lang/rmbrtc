@@ -66,12 +66,13 @@ INCLUDE "stage.rl"
 	{
 		alias ::= std::heap::[ast::[Config]Constructor::CtorAlias]new(BARE);
 		out->Inits := :gc(alias);
-		DO()
-		{
-			IF:!(exp ::= expression::parse(p))
-				p.fail("expected expression");
-			alias->Arguments += &&exp;
-		} WHILE(p.consume(:comma))
+		IF(!p.match(:parentheseClose))
+			DO()
+			{
+				IF:!(exp ::= expression::parse(p))
+					p.fail("expected expression");
+				alias->Arguments += &&exp;
+			} WHILE(p.consume(:comma))
 		p.expect(:parentheseClose);
 	} ELSE IF(p.consume(:colonEqual))
 	{

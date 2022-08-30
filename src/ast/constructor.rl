@@ -119,6 +119,35 @@ INCLUDE 'std/memory'
 		IF(p.Body)
 			Body := :a(:transform(*p.Body!, f, s));
 	}
+
+	<<<
+		p: [Stage::Prev+]Constructor #\,
+		f: Stage::PrevFile+,
+		s: Stage &
+	>>> THIS - std::Dyn
+	{
+		TYPE SWITCH(p)
+		{
+		[Stage::Prev+]NullConstructor:
+		= :dup(<[Stage]NullConstructor>(:transform(
+			<<[Stage::Prev+]NullConstructor #&>>(*p), f, s)));
+		[Stage::Prev+]BareConstructor:
+		= :dup(<[Stage]BareConstructor>(:transform(
+			<<[Stage::Prev+]BareConstructor #&>>(*p), f, s)));
+		[Stage::Prev+]CustomConstructor:
+		= :dup(<[Stage]CustomConstructor>(:transform(
+			<<[Stage::Prev+]CustomConstructor #&>>(*p), f, s)));
+		[Stage::Prev+]DefaultConstructor:
+			= :dup(<[Stage]DefaultConstructor>(:transform(
+				<<[Stage::Prev+]DefaultConstructor #&>>(*p), f, s)));
+		[Stage::Prev+]CopyConstructor:
+			= :dup(<[Stage]CopyConstructor>(:transform(
+				<<[Stage::Prev+]CopyConstructor #&>>(*p), f, s)));
+		[Stage::Prev+]MoveConstructor:
+			= :dup(<[Stage]MoveConstructor>(:transform(
+				<<[Stage::Prev+]MoveConstructor #&>>(*p), f, s)));
+		}
+	}
 }
 
 

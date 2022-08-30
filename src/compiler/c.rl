@@ -13,22 +13,22 @@ INCLUDE "../scoper/stage.rl"
 
 ::rlc::compiler CCompiler -> Compiler
 {
+	Parser: rlc::parser::Config;
 	FINAL compile(
 		files: std::Str - std::Vec,
 		build: Build
 	) VOID
 	{
-		parser: rlc::parser::Config;
 		parsed: parser::Config - ast::File \ - std::NatVecSet;
 
 		// Parse all code first.
 		FOR(f ::= files.start())
-			parsed += parser.Registry.get(util::absolute_file(f!));
+			parsed += Parser.Registry.get(util::absolute_file(f!));
 
 		IF(build.Type == :checkSyntax)
 			RETURN;
 
-		scoper: rlc::scoper::Config(&parser);
+		scoper: rlc::scoper::Config(&Parser, build.IncludePaths!);
 		scoped: rlc::scoper::Config - ast::File \ - std::NatVecSet;
 
 		// Resolve all includes, populate scopes.

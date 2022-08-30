@@ -320,8 +320,6 @@ INCLUDE "symbolconstant.rl"
 
 		Kind: Primitive;
 
-		{}: Kind(NOINIT);
-
 		:transform{
 			p: [Stage::Prev+]BuiltinType #&,
 			f: Stage::PrevFile+,

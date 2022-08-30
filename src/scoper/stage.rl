@@ -47,9 +47,10 @@ INCLUDE 'std/unicode'
 		Tests: ast::[Config]Test - std::Vec;
 	}
 
-	{prev: parser::Config \}:
+	{prev: parser::Config \, includes: std::Str - std::Buffer}:
 		ParsedRegistry(&prev->Registry),
-		Registry(&THIS);
+		Registry(&THIS),
+		IncludeDirs(includes);
 
 	transform_name(p: Prev::Name+ #&, f: PrevFile) Name INLINE
 		:= f->Source->content(p)++;

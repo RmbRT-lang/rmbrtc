@@ -39,7 +39,7 @@ INCLUDE "global.rl"
 			p: Parser \
 		) VOID
 		{
-			i: parser::Include;
+			i: parser::Include (BARE);
 			WHILE(i.parse(*p))
 				out += &&i;
 		}

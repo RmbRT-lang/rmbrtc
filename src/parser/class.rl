@@ -42,6 +42,14 @@ INCLUDE "../ast/class.rl"
 			{
 				TYPE SWITCH(ctor)
 				{
+				ast::[Config]NullConstructor:
+					IF(out.NullCtor)
+						p.fail("multiple NULL constructors");
+					ELSE out.NullCtor := &&member;
+				ast::[Config]BareConstructor:
+					IF(out.BareCtor)
+						p.fail("multiple BARE constructors");
+					ELSE out.BareCtor := &&member;
 				ast::[Config]StructuralConstructor:
 					IF(out.StructuralCtor)
 						p.fail("multiple structural constructors");

@@ -119,6 +119,9 @@ main(
 		cli::main.error(:stream(e), "\n");
 	CATCH(e: CHAR#\)
 		cli::main.error(e, "\n");
+	CATCH(e: {CHAR#\, CHAR#\})
+		cli::main.error(e.(0), " (", e.(1), ")\n");
+	FINALLY{}
 
 	= 1;
 }
