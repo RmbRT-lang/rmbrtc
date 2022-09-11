@@ -19,7 +19,26 @@ INCLUDE 'std/unicode'
 	TYPE Prev := parser::Config;
 	TYPE PrevFile := ast::[parser::Config]File #\;
 	TYPE Context := Config \;
-	TYPE Includes := Config-ast::File \-std::Vec;
+
+	Include
+	{
+		/// First, we only link to the previous stage's file.
+		Parsed: PrevFile;
+		/// After all files are linked, we link to the resolved files.
+		Resolved: ast::[Config]File \ - std::Opt;
+
+		:parsed{f: PrevFile}:
+			Parsed := f;
+	}
+
+	Includes
+	{
+		From: ast::[Config]File \ -std::NatVecSet;
+		FromMissing: std::str::CV -std::AutoVecSet;
+
+		Into: ast::[Config]File \ -std::NatVecSet;
+	}
+
 	TYPE Name := std::str::CV;
 	TYPE String := std::Str;
 	TYPE Symbol := ast::[THIS]Symbol;
@@ -50,7 +69,11 @@ INCLUDE 'std/unicode'
 	{prev: parser::Config \, includes: std::Str - std::Buffer}:
 		ParsedRegistry(&prev->Registry),
 		Registry(&THIS),
-		IncludeDirs(includes);
+		IncludeDirs(includes)
+	{
+		FOR(f ::= ParsedRegistry->start())
+			Registry.get(f!->Source->Name);
+	}
 
 	transform_name(p: Prev::Name+ #&, f: PrevFile) Name INLINE
 		:= f->Source->content(p)++;
@@ -151,6 +174,7 @@ INCLUDE 'std/unicode'
 		'n': = '\n';
 		't': = '\t';
 		'e': = '\e';
+		'r': = '\r';
 		'z': = 0;
 		'0', '1', '2', '3': // octal u8 point
 		{
@@ -191,7 +215,6 @@ INCLUDE 'std/unicode'
 		}
 	}
 
-
 	transform_symbol(
 		p: Prev::Symbol #&,
 		f: PrevFile
@@ -199,16 +222,28 @@ INCLUDE 'std/unicode'
 
 	transform_includes(
 		out: Includes&,
+		file: ast::[THIS]File *,
 		parsed: ast::[parser::Config]File #\
 	) VOID
 	{
 		FOR(inc ::= parsed->Includes.start())
-			out += Registry.get(
-				include::resolve(
-					parsed->Source->Name!,
-					inc!,
-					*parsed->Source,
-					IncludeDirs));
+		{
+			path ::= include::resolve(
+				parsed->name(),
+				inc!,
+				*parsed->Source,
+				IncludeDirs);
+
+			TRY
+			{
+				from ::= Registry.get(path!);
+				out.From += from;
+				from->Includes.Into += file;
+				IF(from->Includes.FromMissing -= parsed->name())
+					from->Includes.From += file;
+			}
+			CATCH(:loading) out.FromMissing += path!;
+		}
 	}
 
 	transform_globals(
@@ -221,7 +256,17 @@ INCLUDE 'std/unicode'
 			IF(s ::= <<parser::Config-ast::ScopeItem #\>>(g!))
 			{
 				conv ::= <<<Config-ast::ScopeItem>>>(s, p, THIS);
-				out.ScopeItems.insert(conv->Name!, &&conv);
+				IF(found_old_si ::= out.ScopeItems.find(conv->Name!))
+				{
+					old_si ::= (*found_old_si)!;
+					IF:!(old ::= <<ast::[Config]MergeableScopeItem *>>(old_si))
+						THROW <ast::[Config]MergeError>(old_si, conv!);
+					IF:!(new ::= <<ast::[Config]MergeableScopeItem *>>(conv!))
+						THROW <ast::[Config]MergeError>(old_si, conv!);
+
+					old->merge(&&*new);
+				} ELSE
+					out.ScopeItems.insert(conv->Name!, &&conv);
 			} ELSE
 			{
 				test ::= <<parser::Config-ast::Test #\>>(g!);

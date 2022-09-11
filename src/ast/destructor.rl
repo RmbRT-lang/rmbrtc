@@ -4,4 +4,12 @@ INCLUDE "statement.rl"
 {
 	Body: [Stage]BlockStatement;
 	Inline: BOOL;
+
+	:transform{
+		p: [Stage::Prev+]Destructor #&,
+		f: Stage::PrevFile+,
+		s: Stage &
+	} -> (:transform, p):
+		Body := :transform(p.Body, f, s),
+		Inline := p.Inline;
 }

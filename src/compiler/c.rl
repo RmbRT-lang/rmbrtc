@@ -31,9 +31,7 @@ INCLUDE "../scoper/stage.rl"
 		scoper: rlc::scoper::Config(&Parser, build.IncludePaths!);
 		scoped: rlc::scoper::Config - ast::File \ - std::NatVecSet;
 
-		// Resolve all includes, populate scopes.
-		FOR(f ::= parsed.start())
-			scoped += scoper.Registry.get(f!->Source->Name);
+		printf("%zu files recursively scoped\n", ##scoper.Registry);
 
 		IF(build.Type == :createAST)
 			RETURN;

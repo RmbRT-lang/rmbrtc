@@ -10,10 +10,15 @@ INCLUDE "file.rl"
 PRIVATE:
 	Files: [Stage]File-std::DynVec;
 	FileByName: std::[std::str::CV, [Stage]File\]AutoMap;
+	Loading: std::[std::str::CV]AutoVecSet;
 
 	Context: Stage \;
 PUBLIC:
 	{ctx: Stage \}: Context(ctx);
+
+	# start() ? := Files.start();
+
+	# ## THIS UM := ##Files;
 
 	get(file: std::Str #&) Stage-File \
 	{
@@ -22,8 +27,12 @@ PUBLIC:
 			= (*f)!;
 		ELSE
 		{
+			IF(Loading.has(file!))
+				THROW :loading;
+			Loading += file!;
 			processed ::= Context->create_file(file!);
-			FileByName.insert_at(entry.(1), processed->Source->Name!, processed!);
+			FileByName.insert(processed->Source->Name!, processed!);
+			Loading -= file!;
 			= (Files += &&processed)!;
 		}
 	}

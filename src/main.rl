@@ -5,7 +5,6 @@ INCLUDE 'std/io/file'
 INCLUDE 'std/set'
 INCLUDE 'std/map'
 
-
 ::app
 {
 	version: CHAR#[] := "pre-alpha";

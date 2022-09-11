@@ -9,6 +9,8 @@ INCLUDE "global.rl"
 
 	Source: src::File # - std::Shared #;
 
+	# name() std::str::CV := Source->Name!;
+
 	/// Used for transforming a file from the previous stage's representation.
 	:transform{
 		prev: Config::PrevFile #&,
@@ -16,7 +18,7 @@ INCLUDE "global.rl"
 	}:
 		Source := prev->Source
 	{
-		s.transform_includes(Includes, prev);
+		s.transform_includes(Includes, &THIS, prev);
 		s.transform_globals(Globals, prev);
 	}
 }

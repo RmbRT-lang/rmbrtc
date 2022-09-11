@@ -36,6 +36,7 @@ INCLUDE "global.rl"
 
 		transform_includes(
 			out: Includes&,
+			ast::[THIS]File *,
 			p: Parser \
 		) VOID
 		{
