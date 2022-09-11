@@ -28,8 +28,7 @@ INCLUDE 'std/set'
 
 ::rlc::ast [Stage: TYPE] Class VIRTUAL ->
 	[Stage]ScopeItem,
-	[Stage]Templateable,
-	CodeObject
+	[Stage]Templateable
 {
 	Virtual: BOOL;
 	Members: [Stage]Member - std::DynVec;
@@ -51,7 +50,7 @@ INCLUDE 'std/set'
 		p: [Stage::Prev+]Class #&,
 		f: Stage::PrevFile+,
 		s: Stage &
-	} -> (:transform, p, f, s), (:transform, p, f, s), (p):
+	} -> (:transform, p, f, s), (:transform, p, f, s):
 		Virtual := p.Virtual,
 		Members := :reserve(##p.Members),
 		Inheritances := :reserve(##p.Inheritances),

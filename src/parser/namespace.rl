@@ -10,7 +10,9 @@ INCLUDE "parser.rl"
 		= FALSE;
 
 	t: Trace(&p, "namespace");
-	out.Name := p.expect(:identifier).Content;
+	name ::= p.expect(:identifier);
+	out.Name := name.Content;
+	out.Position := name.Position;
 
 	IF(p.consume(:braceOpen))
 	{

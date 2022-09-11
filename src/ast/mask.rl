@@ -9,10 +9,7 @@ INCLUDE "member.rl"
 INCLUDE 'std/vector'
 INCLUDE 'std/memory'
 
-::rlc::ast [Stage:TYPE] Mask VIRTUAL ->
-	[Stage]ScopeItem,
-	[Stage]Templateable,
-	CodeObject
+::rlc::ast [Stage:TYPE] Mask VIRTUAL -> [Stage]ScopeItem, [Stage]Templateable
 {
 	Members: [Stage]Member - std::DynVec;
 
@@ -20,7 +17,7 @@ INCLUDE 'std/memory'
 		p: [Stage::Prev+]Mask #&,
 		f: Stage::PrevFile+,
 		s: Stage &
-	} -> (:transform, p, f, s), (:transform, p, f, s), (p):
+	} -> (:transform, p, f, s), (:transform, p, f, s):
 		Members := :reserve(##p.Members)
 	{
 		FOR(m ::= p.Members.start())

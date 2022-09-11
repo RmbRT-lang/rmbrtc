@@ -14,7 +14,7 @@ INCLUDE 'std/unicode'
 			File(file),
 			Read(0),
 			Start(0),
-			Position(1, 1, file);
+			Position(1, 1, :a(file));
 
 		# eof() BOOL := Read == ##File->Contents;
 		# position() src::Position #& := Position;

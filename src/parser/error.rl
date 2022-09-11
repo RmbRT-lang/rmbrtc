@@ -29,14 +29,18 @@ INCLUDE 'std/io/streamutil'
 		Tokens(NOINIT),
 		TokenContent(NOINIT)
 	{
+		FOR(i ::= 0; i < ##Tokens; i++) Tokens[i].{BARE};
+		FOR(i ::= 0; i < ##TokenContent; i++) TokenContent[i].{BARE};
+
 		IF(tokenCount)
 		{
-			Tokens[0] := tokens[tokenIndex];
+			// TODO: bug prevents copy := operator to be used.
+			Tokens[0].{tokens[tokenIndex]};
 			TokenContent[0] := file->content(Tokens[0].Content)++;
 		}
 		IF(tokenCount == 2)
 		{
-			Tokens[1] := tokens[tokenIndex^1];
+			Tokens[1].{tokens[tokenIndex^1]};
 			TokenContent[1] := file->content(Tokens[1].Content)++;
 		}
 	}

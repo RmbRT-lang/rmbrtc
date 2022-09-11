@@ -14,6 +14,8 @@ INCLUDE "namespace.rl"
 		templates: TemplateDecl (BARE);
 		parse_template_decl(p, templates);
 
+		pos ::= p.position();
+
 		ret: ast::[Config]Global - std::Dyn := NULL;
 		IF(parse_global_impl(p, ret, namespace::parse)
 		|| parse_global_impl(p, ret, typedef::parse_global)
@@ -32,6 +34,9 @@ INCLUDE "namespace.rl"
 				fn->set_templates_after_parsing(&&templates);
 			ELSE IF(templates.exists())
 				p.fail("preceding item must not have templates");
+
+			IF(s ::= <<ast::[Config]ScopeItem *>>(ret!))
+				s->Position := pos;
 		}
 
 		RETURN ret;

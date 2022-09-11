@@ -34,7 +34,7 @@ INCLUDE 'std/unicode'
 	Includes
 	{
 		From: ast::[Config]File \ -std::NatVecSet;
-		FromMissing: std::str::CV -std::AutoVecSet;
+		FromMissing: std::Str -std::AutoVecSet;
 
 		Into: ast::[Config]File \ -std::NatVecSet;
 	}
@@ -69,7 +69,8 @@ INCLUDE 'std/unicode'
 	{prev: parser::Config \, includes: std::Str - std::Buffer}:
 		ParsedRegistry(&prev->Registry),
 		Registry(&THIS),
-		IncludeDirs(includes)
+		IncludeDirs(includes);
+	transform() VOID
 	{
 		FOR(f ::= ParsedRegistry->start())
 			Registry.get(f!->Source->Name);
@@ -228,7 +229,7 @@ INCLUDE 'std/unicode'
 	{
 		FOR(inc ::= parsed->Includes.start())
 		{
-			path ::= include::resolve(
+			path: std::Str := include::resolve(
 				parsed->name(),
 				inc!,
 				*parsed->Source,
@@ -236,13 +237,13 @@ INCLUDE 'std/unicode'
 
 			TRY
 			{
-				from ::= Registry.get(path!);
+				from ::= Registry.get(path);
 				out.From += from;
 				from->Includes.Into += file;
 				IF(from->Includes.FromMissing -= parsed->name())
 					from->Includes.From += file;
 			}
-			CATCH(:loading) out.FromMissing += path!;
+			CATCH(:loading) out.FromMissing += &&path;
 		}
 	}
 
@@ -260,9 +261,9 @@ INCLUDE 'std/unicode'
 				{
 					old_si ::= (*found_old_si)!;
 					IF:!(old ::= <<ast::[Config]MergeableScopeItem *>>(old_si))
-						THROW <ast::[Config]MergeError>(old_si, conv!);
+						THROW <ast::MergeError>(old_si, conv!);
 					IF:!(new ::= <<ast::[Config]MergeableScopeItem *>>(conv!))
-						THROW <ast::[Config]MergeError>(old_si, conv!);
+						THROW <ast::MergeError>(old_si, conv!);
 
 					old->merge(&&*new);
 				} ELSE

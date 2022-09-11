@@ -13,7 +13,7 @@ INCLUDE 'std/vector'
 	/// Generic named variable.
 	[Stage:TYPE] Variable VIRTUAL -> [Stage]ScopeItem
 	{
-		{ name: Stage::Name } -> (&&name);
+		{ name: Stage::Name } -> (&&name, NULL);
 
 		:transform{
 			p: [Stage::Prev+]Variable #&,

@@ -3,9 +3,9 @@ INCLUDE "../src/file.rl"
 
 INCLUDE 'std/vector'
 
-::rlc::ast [Stage: TYPE] Enum VIRTUAL -> [Stage]ScopeItem, CodeObject
+::rlc::ast [Stage: TYPE] Enum VIRTUAL -> [Stage]ScopeItem
 {
-	Constant -> [Stage]ScopeItem, [Stage]Member, CodeObject
+	Constant -> [Stage]ScopeItem, [Stage]Member
 	{
 		Value: src::Index;
 
@@ -13,19 +13,18 @@ INCLUDE 'std/vector'
 			e: [Stage::Prev+]Enum::Constant #&,
 			f: Stage::PrevFile+,
 			s: Stage &
-		} -> (:transform, e, f, s), (:transform, e), (e):
+		} -> (:transform, e, f, s), (:transform, e):
 			Value := e.Value;
 	}
 
 	Constants: std::[Constant]Vec;
 
-	{};
 	:transform{
 		e: [Stage::Prev+]Enum #&,
 		f: Stage::PrevFile+,
 		s: Stage &
 	} ->
-		(:transform, e, f, s), (e):
+		(:transform, e, f, s):
 		Constants := :reserve(##e.Constants)
 	{
 		FOR(c ::= e.Constants.start())

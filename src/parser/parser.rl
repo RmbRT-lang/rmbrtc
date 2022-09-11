@@ -20,6 +20,7 @@ INCLUDE 'std/tags'
 			BufferIndex(0),
 			Progress(0)
 		{
+			FOR(i ::= 0; i < ##Buffer; i++) Buffer[i].{BARE};
 			IF(!Tokeniser.parse_next(&Buffer[0]))
 				RETURN;
 			IF(Tokeniser.parse_next(&Buffer[1]))

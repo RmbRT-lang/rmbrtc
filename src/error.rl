@@ -10,7 +10,7 @@ INCLUDE "src/file.rl"
 
 	# FINAL stream(o: std::io::OStream &) VOID
 	{
-		std::io::write(o, Position.File->Name!++, ":", :dec(Position.Line), ":", :dec(Position.Column), ": ");
+		std::io::write(o, :stream(Position), ": ");
 
 		message(o);
 	}

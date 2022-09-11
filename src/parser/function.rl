@@ -156,7 +156,7 @@ Can be called multiple times to append new arguments.
 	parse_resolved_signature(p, TRUE, TRUE, signature);
 	p.expect(:semicolon);
 
-	= :a(&&name, &&signature, &&linkName);
+	= :a(&&name, tok->Position, &&signature, &&linkName);
 }
 
 ::rlc::parser::abstractable parse(

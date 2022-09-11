@@ -1,21 +1,20 @@
 INCLUDE "templatedecl.rl"
 INCLUDE "cache.rl"
-
+INCLUDE "../error.rl"
 
 (// All identifier-addressable code entities. /)
-::rlc::ast [Stage: TYPE] ScopeItem VIRTUAL
+::rlc::ast [Stage: TYPE] ScopeItem VIRTUAL -> CodeObject
 {
 	(// The scope item's name. /)
 	Name: Stage::Name;
 
-	{name: Stage::Name+}: Name := &&name;
-
+	{name: Stage::Name+, position: src::Position} -> (position): Name := &&name;
 
 	:transform{
 		i: [Stage::Prev+]ScopeItem #&,
 		f: Stage::PrevFile+,
 		s: Stage &
-	}:
+	} -> (i):
 		Name := s.transform_name(i.Name, f);
 
 	<<<
@@ -33,9 +32,19 @@ INCLUDE "cache.rl"
 	}
 }
 
-::rlc::ast [Stage: TYPE] MergeError {
-	Old: [Stage]ScopeItem \;
-	New: [Stage]ScopeItem \;
+::rlc::ast MergeError -> Error
+{
+	OldLoc: src::Position;
+
+	[Stage: TYPE] {old: [Stage!]ScopeItem \, new: [Stage!]ScopeItem \} -> (new->Position):
+		OldLoc := old->Position;
+
+	# FINAL message(o: std::io::OStream &) VOID
+	{
+		std::io::write(o,
+			"could not merge with previous occurrence\n",
+			:stream(OldLoc), ": previously declared here.");
+	}
 }
 
 /// An overloadable scope item that can hold multiple definitions.
@@ -89,6 +98,7 @@ INCLUDE "cache.rl"
 		ASSERT(TYPE(THIS) == TYPE(rhs));
 		merge_impl(&&rhs);
 	}
+
 
 	PRIVATE ABSTRACT merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID;
 }

@@ -148,7 +148,7 @@ INCLUDE "statement.rl"
 		IF(from.Default)
 		{
 			IF(Default)
-				THROW <[Stage]MergeError>(&THIS, &from);
+				THROW <MergeError>(&THIS, &from);
 			Default := from.Default;
 		}
 
@@ -183,9 +183,10 @@ INCLUDE "statement.rl"
 
 	{
 		name: Stage::Name,
+		position: src::Position,
 		signature: [Stage]ResolvedSig &&,
 		linkName: Stage::StringLiteral+ - std::Opt
-	} -> (), (&&name), (&&linkName):
+	} -> (), (&&name, position), (&&linkName):
 		Signature(&&signature);
 
 	:transform{

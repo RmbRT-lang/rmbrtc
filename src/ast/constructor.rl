@@ -40,7 +40,7 @@ INCLUDE 'std/memory'
 			p: [Stage::Prev+]Constructor::BaseInit+ #&,
 			f: Stage::PrevFile+,
 			s: Stage &
-		}:
+		} -> (p):
 			Base := s.transform_inheritance(p.Base, f),
 			Arguments := :reserve(##p.Arguments)
 		{
@@ -58,7 +58,7 @@ INCLUDE 'std/memory'
 			p: [Stage::Prev+]Constructor::MemberInit+ #&,
 			f: Stage::PrevFile+,
 			s: Stage &
-		}:
+		} -> (p):
 			Member := s.transform_member_variable_reference(p.Member, f),
 			Arguments := :reserve(##p.Arguments)
 		{

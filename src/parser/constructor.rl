@@ -8,7 +8,7 @@ INCLUDE "stage.rl"
 
 	symbol ::= symbol_constant::parse(p);
 
-	position: src::Position;
+	position: src::Position (BARE);
 
 	IF(symbol)
 		position := p.expect(:braceOpen).Position;

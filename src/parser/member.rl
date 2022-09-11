@@ -29,6 +29,8 @@ INCLUDE "templatedecl.rl"
 
 		ret: ast::[Config]Member-std::Dyn := NULL;
 
+		pos ::= p.position();
+
 		IF(parse_impl(p, ret, typedef::parse_member)
 		|| ((allow_abstract_fn || !p.match(:abstract))
 			&& (ret := abstractable::parse(p)))
@@ -54,6 +56,9 @@ INCLUDE "templatedecl.rl"
 					p.fail("preceding member must not have templates");
 			}
 			ret->Attribute := attr;
+
+			IF(s ::= <<ast::[Config]ScopeItem *>>(ret!))
+				s->Position := pos;
 		}
 
 		= &&ret;

@@ -168,11 +168,6 @@ INCLUDE "../src/file.rl"
 		Content: src::String;
 		Position: src::Position;
 
-		{
-			type: tok::Type,
-			content: src::String#&,
-			position: src::Position
-		}:	Type(type),
-			Content(content);
+		{...};
 	}
 }

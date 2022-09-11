@@ -7,7 +7,7 @@ INCLUDE "../src/file.rl"
 INCLUDE 'std/memory'
 INCLUDE 'std/vector'
 
-::rlc::ast [Stage:TYPE] Rawtype VIRTUAL -> [Stage]ScopeItem, CodeObject
+::rlc::ast [Stage:TYPE] Rawtype VIRTUAL -> [Stage]ScopeItem
 {
 	Size: [Stage]Expression-std::Dyn;
 	Alignment: [Stage]Expression-std::Dyn;
@@ -17,7 +17,7 @@ INCLUDE 'std/vector'
 		p: [Stage::Prev+]Rawtype #&,
 		f: Stage::PrevFile+,
 		s: Stage &
-	} -> (:transform, p, f, s), (p):
+	} -> (:transform, p, f, s):
 		Size := <<<[Stage]Expression>>>(p.Size!, f, s),
 		Members := :reserve(##p.Members)
 	{

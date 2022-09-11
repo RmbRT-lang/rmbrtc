@@ -41,7 +41,7 @@ INCLUDE 'std/set'
 					merge_rhs ::= <<[Stage]MergeableScopeItem *>>(rhs_entry!);
 
 					IF(!merge_entry || !merge_rhs)
-						THROW <[Stage]MergeError>(entry_si, rhs_entry_si);
+						THROW <MergeError>(entry_si, rhs_entry_si);
 
 					// Merge colliding items.
 					merge_entry->merge(&&*merge_rhs);

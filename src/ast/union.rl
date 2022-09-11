@@ -2,7 +2,7 @@ INCLUDE "scopeitem.rl"
 INCLUDE "global.rl"
 INCLUDE "member.rl"
 
-::rlc::ast [Stage:TYPE] Union VIRTUAL -> [Stage]ScopeItem, CodeObject
+::rlc::ast [Stage:TYPE] Union VIRTUAL -> [Stage]ScopeItem
 {
 	Members: [Stage]Member - std::DynVec;
 
@@ -10,7 +10,7 @@ INCLUDE "member.rl"
 		p: [Stage::Prev+]Union #&,
 		f: Stage::PrevFile+,
 		s: Stage &
-	} -> (:transform, p, f, s), (p):
+	} -> (:transform, p, f, s):
 		Members := :reserve(##p.Members)
 	{
 		FOR(it ::= p.Members.start())

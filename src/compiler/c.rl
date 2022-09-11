@@ -14,6 +14,8 @@ INCLUDE "../scoper/stage.rl"
 ::rlc::compiler CCompiler -> Compiler
 {
 	Parser: rlc::parser::Config;
+	Scoper: rlc::scoper::Config - std::Opt;
+
 	FINAL compile(
 		files: std::Str - std::Vec,
 		build: Build
@@ -28,10 +30,10 @@ INCLUDE "../scoper/stage.rl"
 		IF(build.Type == :checkSyntax)
 			RETURN;
 
-		scoper: rlc::scoper::Config(&Parser, build.IncludePaths!);
-		scoped: rlc::scoper::Config - ast::File \ - std::NatVecSet;
+		Scoper := :a(&Parser, build.IncludePaths!);
+		Scoper!.transform();
 
-		printf("%zu files recursively scoped\n", ##scoper.Registry);
+		printf("%zu files recursively scoped\n", ##Scoper!.Registry);
 
 		IF(build.Type == :createAST)
 			RETURN;
