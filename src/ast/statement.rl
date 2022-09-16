@@ -381,6 +381,7 @@ INCLUDE 'std/memory'
 	[Stage: TYPE] TypeSwitchStatement -> [Stage]Statement
 	{
 		Static: BOOL;
+		Strict: BOOL;
 		Initial: [Stage]VarOrExpr - std::Dyn;
 		Value: [Stage]VarOrExpr - std::Dyn;
 		Cases: [Stage]TypeCaseStatement - std::Vec;
@@ -392,6 +393,7 @@ INCLUDE 'std/memory'
 			s: Stage &
 		} -> (:transform, p, f, s):
 			Static := p.Static,
+			Strict := p.Strict,
 			Value := <<<[Stage]VarOrExpr>>>(p.Value!, f, s),
 			Cases := :reserve(##p.Cases)
 		{
