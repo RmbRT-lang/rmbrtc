@@ -1,6 +1,9 @@
 INCLUDE "../error.rl"
 
 INCLUDE "literals.rl"
+INCLUDE 'std/io/streamutil'
+INCLUDE 'std/io/file'
+
 
 ::rlc::scoper::include
 {
@@ -28,6 +31,8 @@ INCLUDE "literals.rl"
 		:relative: = help::relative_path(base_file, path!);
 		:global: = find_global(path!, globals);
 		}
+		CATCH(std::io::FileNotFound #&)
+			THROW <NotFound>(inc!.Token.Position, &&path, inc!.Type);
 		CATCH()
 			THROW <NotFound>(inc!.Token.Position, &&path, inc!.Type);
 	}
