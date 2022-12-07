@@ -22,7 +22,7 @@ INCLUDE 'std/math/limit'
 		Start: Index;
 		Length: Size;
 
-		/// Returns a string encompassing this and the other string, and everything in between. 
+		/// Returns a string encompassing this and the other string, and everything in between.
 		# span(other: String) String
 		{
 			start ::= std::math::min(Start, other.Start);
@@ -34,6 +34,8 @@ INCLUDE 'std/math/limit'
 		# <BOOL> INLINE := Length != 0;
 
 		# end() Index := Start + Length;
+
+		# THIS<>(rhs: THIS#&) S1 := (Start, Length) <> (rhs.Start, Length);
 	}
 
 	(// A line:column position inside a file. /)

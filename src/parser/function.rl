@@ -13,8 +13,7 @@ INCLUDE "statement.rl"
 	out.Arguments := help::parse_args(p, allow_multiple_args, allow_no_args);
 	p.expect(:parentheseClose);
 	out.IsCoroutine := p.consume(:at);
-	IF!(out.Return := type::parse(p))
-		p.fail("expected type");
+	out.Return := type::parse_x(p);
 }
 
 ::rlc::parser::function parse_signature(
@@ -36,8 +35,8 @@ INCLUDE "statement.rl"
 {
 	isCoroutine ::= p.consume(:at);
 	IF(return ::= type::parse(p))
-		= :gc(std::heap::[ast::[Config]ResolvedSig]new(
-			&&arguments, isCoroutine, &&return));
+		= :a.ast::[Config]ResolvedSig(
+			&&arguments, isCoroutine, :!(&&return));
 	
 	ret: ast::[Config]UnresolvedSig (BARE);
 	ret.Arguments := &&arguments;
@@ -61,8 +60,10 @@ Can be called multiple times to append new arguments.
 	readAny ::= FALSE;
 	DO()
 		IF(arg ::= parse_arg(p))
-			ret += &&arg;
-		ELSE IF(!readAny && !allow_empty)
+		{
+			ret += :!(&&arg);
+			readAny := TRUE;
+		} ELSE IF(!readAny && !allow_empty)
 				p.fail("expected argument");
 		ELSE BREAK;
 		WHILE(allow_multiple && p.consume(:comma))
@@ -72,8 +73,17 @@ Can be called multiple times to append new arguments.
 
 ::rlc::parser::function::help parse_arg(
 	p: Parser &
-) ast::[Config]TypeOrArgument-std::Dyn
+) ast::[Config]TypeOrArgument-std::DynOpt
 	:= variable::parse_fn_arg(p);
+
+::rlc::parser::function::help parse_arg_x(
+	p: Parser &
+) ast::[Config]TypeOrArgument-std::Dyn
+{
+	IF:!(arg ::= variable::parse_fn_arg(p))
+		p.fail("expected argument");
+	= :!(&&arg);
+}
 
 ::rlc::parser::function::help parse_body(
 	p: Parser &,
@@ -84,13 +94,13 @@ Can be called multiple times to append new arguments.
 
 	IF(!allow_body)
 	{
-		IF(<<ast::[Config]UnresolvedSig *>>(out.Signature!))
+		IF(<<ast::[Config]UnresolvedSig *>>(out.Signature))
 			p.fail("expected explicit return type for bodyless function");
 		p.expect(:semicolon);
 		RETURN;
 	}
 
-	IF(<<ast::[Config]ResolvedSig *>>(out.Signature!))
+	IF(<<ast::[Config]ResolvedSig *>>(out.Signature))
 		IF(p.consume(:semicolon))
 			RETURN;
 
@@ -144,7 +154,7 @@ Can be called multiple times to append new arguments.
 ::rlc::parser::function::help parse_extern(
 	p: Parser &,
 	linkName: tok::Token - std::Vec - std::Opt
-) ast::[Config]ExternFunction - std::Dyn
+) ast::[Config]ExternFunction - std::DynOpt
 {
 	IF(!p.match_ahead(:parentheseOpen)) = NULL;
 	IF:!(tok ::= p.consume(:identifier)) = NULL;
@@ -161,9 +171,9 @@ Can be called multiple times to append new arguments.
 
 ::rlc::parser::abstractable parse(
 	p: Parser &
-) ast::[Config]Abstractable - std::Dyn
+) ast::[Config]Abstractable - std::DynOpt
 {
-	ret: ast::[Config]Abstractable - std::Dyn;
+	ret: ast::[Config]Abstractable - std::Dyn (BARE);
 
 	abs ::= parse_abstractness(p);
 
@@ -222,8 +232,7 @@ Can be called multiple times to append new arguments.
 	t: Trace(&p, "type converter");
 
 	sig: ast::[Config]ResolvedSig (BARE);
-	IF!(sig.Return := type::parse(p))
-		p.fail("expected type name");
+	sig.Return := type::parse_x(p);
 	p.expect(:greater);
 
 	sig.IsCoroutine := p.consume(:at);

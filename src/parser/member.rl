@@ -17,7 +17,7 @@ INCLUDE "templatedecl.rl"
 		default_visibility: Visibility &,
 		allow_variable: BOOL,
 		allow_abstract_fn: BOOL
-	) ast::[Config]Member-std::Dyn
+	) ast::[Config]Member-std::DynOpt
 	{
 		parse_visibility(p, default_visibility, TRUE);
 
@@ -27,7 +27,7 @@ INCLUDE "templatedecl.rl"
 		visibility ::= parse_visibility(p, default_visibility, FALSE);
 		attr ::= parse_attribute(p);
 
-		ret: ast::[Config]Member-std::Dyn := NULL;
+		ret: ast::[Config]Member-std::DynOpt;
 
 		pos ::= p.position();
 
@@ -36,7 +36,7 @@ INCLUDE "templatedecl.rl"
 			&& (ret := abstractable::parse(p)))
 		|| (ret := parse_constructor(p))
 		|| (attr == :static
-			? (ret := variable::parse_member(p, TRUE))
+			?? <BOOL>(ret := variable::parse_member(p, TRUE))
 			: allow_variable && (ret := variable::parse_member(p, FALSE)))
 		|| (attr == :none && parse_impl(p, ret, function::parse_factory))
 		|| parse_impl(p, ret, class::parse_member)
@@ -48,16 +48,16 @@ INCLUDE "templatedecl.rl"
 			ret->Visibility := visibility;
 			IF(templates.exists())
 			{
-				IF(t ::= <<ast::[Config]Templateable *>>(ret!))
+				IF(t ::= <<ast::[Config]Templateable *>>(ret))
 					t->Templates := &&templates;
-				ELSE IF(fn ::= <<ast::[Config]Function *>>(ret!))
+				ELSE IF(fn ::= <<ast::[Config]Function *>>(ret))
 					fn->set_templates_after_parsing(&&templates);
 				ELSE IF(templates.exists())
 					p.fail("preceding member must not have templates");
 			}
 			ret->Attribute := attr;
 
-			IF(s ::= <<ast::[Config]ScopeItem *>>(ret!))
+			IF(s ::= <<ast::[Config]ScopeItem *>>(ret))
 				s->Position := pos;
 		}
 
@@ -67,30 +67,30 @@ INCLUDE "templatedecl.rl"
 	parse_class_member(
 		p: Parser &,
 		default_visibility: Visibility &
-	) ast::[Config]Member-std::Dyn
+	) ast::[Config]Member-std::DynOpt
 		:= parse_generic(p, default_visibility, TRUE, TRUE);
 
 	parse_union_member(
 		p: Parser &,
 		default_visibility: Visibility &
-	) ast::[Config]Member - std::Dyn
+	) ast::[Config]Member - std::DynOpt
 		:= parse_generic(p, default_visibility, TRUE, FALSE);
 
 	parse_rawtype_member(
 		p: Parser &,
 		default_visibility: Visibility &
-	) ast::[Config]Member - std::Dyn
+	) ast::[Config]Member - std::DynOpt
 		:= parse_generic(p, default_visibility, FALSE, FALSE);
 
 	parse_mask_member(
 		p: Parser &,
 		default_visibility: Visibility &
-	) ast::[Config]Member-std::Dyn
+	) ast::[Config]Member-std::DynOpt
 		:= parse_generic(p, default_visibility, FALSE, FALSE);
 
 	[T:TYPE] parse_impl(
 		p: Parser &,
-		ret: ast::[Config]Member-std::Dyn &,
+		ret: ast::[Config]Member-std::DynOpt &,
 		parse_fn: ((Parser &, T! &) BOOL)) BOOL
 	{
 		v: T := BARE;

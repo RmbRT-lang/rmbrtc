@@ -104,7 +104,8 @@
 			(:greater, :greater, TRUE),
 			(:greaterEqual, :greaterEquals, TRUE),
 			(:doubleEqual, :equals, TRUE),
-			(:exclamationMarkEqual, :notEquals, TRUE));
+			(:exclamationMarkEqual, :notEquals, TRUE),
+			(:lessGreater, :cmp, TRUE));
 
 		k_log_and: {tok::Type, rlc::Operator, BOOL}#[](
 			// boolean arithmetic.
@@ -168,6 +169,8 @@
 				(:asterisk, :dereference, TRUE),
 				(:lessMinus, :await, TRUE),
 				(:doubleHash, :count, TRUE),
-				(:tripleAnd, :baseAddr, FALSE));
+				(:tripleAnd, :baseAddr, FALSE),
+				(:doubleGreater, :autoDynamicCast, FALSE),
+				(:pipe, :structure, TRUE));
 	}
 }

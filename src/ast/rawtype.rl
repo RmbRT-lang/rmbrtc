@@ -7,24 +7,41 @@ INCLUDE "../src/file.rl"
 INCLUDE 'std/memory'
 INCLUDE 'std/vector'
 
-::rlc::ast [Stage:TYPE] Rawtype VIRTUAL -> [Stage]ScopeItem
+::rlc::ast [Stage:TYPE] Rawtype VIRTUAL -> [Stage]ScopeItem, [Stage]ScopeBase
 {
 	Size: [Stage]Expression-std::Dyn;
-	Alignment: [Stage]Expression-std::Dyn;
-	Members: [Stage]Member - std::DynVec;
+	Alignment: [Stage]Expression-std::DynOpt;
+	Functions: [Stage]MemberFunctions;
+	Ctors: [Stage]Constructors;
+	Statics: [Stage]MemberScope;
 
 	:transform{
 		p: [Stage::Prev+]Rawtype #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s):
-		Size := <<<[Stage]Expression>>>(p.Size!, f, s),
-		Members := :reserve(##p.Members)
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s), (:childOf, parent):
+		Size := :make(p.Size!, f, s, parent),
+		Alignment := :make_if(p.Alignment, p.Alignment.ok(), f, s, parent),
+		Functions := :transform(p.Functions, f, s, &THIS),
+		Ctors := :transform(p.Ctors, f, s, &THIS),
+		Statics := :transform(p.Statics, f, s, &THIS)
 	{
-		IF(p.Alignment)
-			Alignment := <<<[Stage]Expression>>>(p.Alignment!, f, s);
-		FOR(it ::= p.Members.start())
-			Members += <<<[Stage]Member>>>(it!, f, s);
+		FOR(it ::= p.Statics.start())
+			Statics += <<<[Stage]Member>>>(it!.Value!, f, s, &THIS);
+	}
+
+	add_member(member: ast::[Stage]Member - std::Dyn) VOID
+	{
+		IF(member->Attribute == :static)
+			Statics.insert(&&member);
+		ELSE TYPE SWITCH(member!)
+		{
+		ast::[Stage]Constructor:
+			Ctors += :<>(&&member);
+		ast::[Stage]Abstractable:
+			Functions += :<>(&&member);
+		}
 	}
 }
 
@@ -33,8 +50,9 @@ INCLUDE 'std/vector'
 	:transform{
 		p: [Stage::Prev+]GlobalRawtype #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (), (:transform, p, f, s);
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (), (:transform, p, f, s, parent);
 }
 
 ::rlc::ast [Stage:TYPE] MemberRawtype -> [Stage]Member, [Stage]Rawtype
@@ -42,6 +60,7 @@ INCLUDE 'std/vector'
 	:transform{
 		p: [Stage::Prev+]MemberRawtype #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p), (:transform, p, f, s);
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p), (:transform, p, f, s, parent);
 }

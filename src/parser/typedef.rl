@@ -12,9 +12,9 @@ INCLUDE "../ast/typedef.rl"
 		out.Name := p.expect(:identifier).Content;
 		p.expect(:colonEqual);
 
-		out.Type := type::parse(p);
-		IF(!out.Type)
-			p.fail("expected type");
+		IF(t ::= type::parse(p))
+			out.Type := :!(&&t);
+		ELSE p.fail("expected type");
 
 		p.expect(:semicolon);
 

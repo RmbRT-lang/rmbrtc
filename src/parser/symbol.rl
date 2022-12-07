@@ -39,18 +39,18 @@ INCLUDE "parser.rl"
 				IF(p.consume(:semicolon))
 					{ ; }
 				ELSE IF(p.consume(:hash))
-					DO(arg: ast::[Config]Expression - std::Dyn)
+					DO()
 					{
-						IF(!(arg := expression::parse(p)))
+						IF:!(arg ::= expression::parse(p))
 							p.fail("expected expression");
-						tArg += &&arg;
+						tArg += :!(&&arg);
 					} WHILE(p.consume(:comma))
 				ELSE
-					DO(arg: ast::[Config]Type - std::Dyn)
+					DO()
 					{
-						IF(!(arg := type::parse(p)))
+						IF:!(arg ::= type::parse(p))
 							p.fail("expected type");
-						tArg += &&arg;
+						tArg += :!(&&arg);
 					} WHILE(p.consume(:comma))
 				out.Templates += &&tArg;
 			} WHILE(p.consume(:semicolon))

@@ -18,25 +18,31 @@ INCLUDE "../error.rl"
 		Name := s.transform_name(i.Name, f);
 
 	<<<
-		i: [Stage::Prev+]ScopeItem #\,
+		i: [Stage::Prev+]ScopeItem #&,
 		f: Stage::PrevFile+,
-		s: Stage &
+		s: Stage &,
+		parent: [Stage]ScopeBase \
 	>>> ScopeItem - std::Dyn
 	{
-		IF(g ::= <<[Stage::Prev+]Global #*>>(i))
-			= <<<[Stage]Global>>>(g, f, s);
-		ELSE IF(m ::= <<[Stage::Prev+]Member #*>>(i))
-			= <<<[Stage]Member>>>(m, f, s);
+		IF(g ::= <<[Stage::Prev+]Global #*>>(&i))
+			= :<>(<<<[Stage]Global>>>(*g, f, s, parent));
+		ELSE IF(m ::= <<[Stage::Prev+]Member #*>>(&i))
+			= :<>(<<<[Stage]Member>>>(*m, f, s, parent));
 		ELSE
-			= <<<[Stage]Local>>>(<<[Stage::Prev+]Local #\>>(i), f, s);
+			= :<>(<<<[Stage]Local>>>(>>i, f, s, parent));
 	}
+
+	# THIS <> (rhs: THIS #&) S1 := Name <> rhs.Name;
 }
 
 ::rlc::ast MergeError -> Error
 {
 	OldLoc: src::Position;
 
-	[Stage: TYPE] {old: [Stage!]ScopeItem \, new: [Stage!]ScopeItem \} -> (new->Position):
+	[Stage: TYPE] {
+		old: [Stage!]ScopeItem #\,
+		new: [Stage!]ScopeItem #\
+	} -> (new->Position):
 		OldLoc := old->Position;
 
 	# FINAL message(o: std::io::OStream &) VOID
@@ -47,41 +53,45 @@ INCLUDE "../error.rl"
 	}
 }
 
-/// An overloadable scope item that can hold multiple definitions.
+/// An overloadable scope item that can hold multiple definitions from the same or included files.
+(//
+	Scope/overload lookup:
+		1. check and return item, else, look for parent's includes.
+		2. check all includes, but do not look at their includes.
+/)
 ::rlc::ast [Stage: TYPE] MergeableScopeItem VIRTUAL -> [Stage]ScopeItem
 {
 	TYPE Prev := [Stage::Prev+]MergeableScopeItem;
 
-	Included: std::[std::str::CV; [Stage]MergeableScopeItem #\]AutoMap;
-
+	/// Definitions included from other files.
+	Included: std::[std::str::CV; [Stage]MergeableScopeItem #\]Map;
 
 	<<<
-		p: [Stage::Prev+]MergeableScopeItem #\,
+		p: [Stage::Prev+]MergeableScopeItem #&,
 		f: Stage::PrevFile+,
-		s: Stage &
+		s: Stage &,
+		parent: [Stage]ScopeBase \
 	>>> THIS - std::Dyn
 	{
 		TYPE SWITCH(p)
 		{
 		[Stage::Prev+]Function:
-			= :gc(<<<[Stage]Function>>>(
-					<<[Stage::Prev+]Function #\>>(p), f, s
-				).release());
+			= :<>(<<<[Stage]Function>>>(>>p, f, s, parent));
 		[Stage::Prev+]Namespace:
-			= :dup(<[Stage]Namespace>(:transform(
-				<<[Stage::Prev+]Namespace #&>>(*p), f, s)));
+			= :a.[Stage]Namespace(:transform(>>p, f, s, parent));
 		}
 	}
 
 	:transform{
 		i: [Stage::Prev+]MergeableScopeItem #&,
 		f: Stage::PrevFile+,
-		s: Stage &
+		s: Stage &,
+		parent: [Stage]ScopeBase \
 	} -> (:transform, i, f, s):
 		Included := :reserve(##i.Included)
 	{
 		FOR(item ::= i.Included.start())
-			include(s.MSIs![item!.(1), f, s]);
+			include(s.MSIs![item!.Value, f, s, parent]);
 	}
 
 	/// Include definitions from another file.

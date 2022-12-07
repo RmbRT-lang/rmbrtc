@@ -17,61 +17,46 @@ INCLUDE 'std/memory'
 		};
 
 		<<<
-			p: [Stage::Prev+]Statement #\,
+			p: [Stage::Prev+]Statement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		>>> THIS-std::Dyn
 		{
 			TYPE SWITCH(p)
 			{
 			[Stage::Prev+]AssertStatement:
-				= :dup(<[Stage]AssertStatement>(:transform(
-					<<[Stage::Prev+]AssertStatement #&>>(*p), f, s)));
+				= :a.[Stage]AssertStatement(:transform(>>p, f, s, parent));
 			[Stage::Prev+]DieStatement:
-				= :dup(<[Stage]DieStatement>(:transform(
-					<<[Stage::Prev+]DieStatement #&>>(*p), f, s)));
+				= :a.[Stage]DieStatement(:transform(>>p, f, s));
 			[Stage::Prev+]YieldStatement:
-				= :dup(<[Stage]YieldStatement>(:transform(
-					<<[Stage::Prev+]YieldStatement #&>>(*p), f, s)));
+				= :a.[Stage]YieldStatement(:transform(>>p, f, s));
 			[Stage::Prev+]SleepStatement:
-				= :dup(<[Stage]SleepStatement>(:transform(
-					<<[Stage::Prev+]SleepStatement #&>>(*p), f, s)));
+				= :a.[Stage]SleepStatement(:transform(>>p, f, s, parent));
 			[Stage::Prev+]BlockStatement:
-				= :dup(<[Stage]BlockStatement>(:transform(
-					<<[Stage::Prev+]BlockStatement #&>>(*p), f, s)));
+				= :a.[Stage]BlockStatement(:transform(>>p, f, s, parent));
 			[Stage::Prev+]IfStatement:
-				= :dup(<[Stage]IfStatement>(:transform(
-					<<[Stage::Prev+]IfStatement #&>>(*p), f, s)));
+				= :a.[Stage]IfStatement(:transform(>>p, f, s, parent));
 			[Stage::Prev+]VariableStatement:
-				= :dup(<[Stage]VariableStatement>(:transform(
-					<<[Stage::Prev+]VariableStatement #&>>(*p), f, s)));
+				= :a.[Stage]VariableStatement(:transform(>>p, f, s, parent));
 			[Stage::Prev+]ExpressionStatement:
-				= :dup(<[Stage]ExpressionStatement>(:transform(
-					<<[Stage::Prev+]ExpressionStatement #&>>(*p), f, s)));
+				= :a.[Stage]ExpressionStatement(:transform(>>p, f, s, parent));
 			[Stage::Prev+]ReturnStatement:
-				= :dup(<[Stage]ReturnStatement>(:transform(
-					<<[Stage::Prev+]ReturnStatement #&>>(*p), f, s)));
+				= :a.[Stage]ReturnStatement(:transform(>>p, f, s, parent));
 			[Stage::Prev+]TryStatement:
-				= :dup(<[Stage]TryStatement>(:transform(
-					<<[Stage::Prev+]TryStatement #&>>(*p), f, s)));
+				= :a.[Stage]TryStatement(:transform(>>p, f, s, parent));
 			[Stage::Prev+]ThrowStatement:
-				= :dup(<[Stage]ThrowStatement>(:transform(
-					<<[Stage::Prev+]ThrowStatement #&>>(*p), f, s)));
+				= :a.[Stage]ThrowStatement(:transform(>>p, f, s, parent));
 			[Stage::Prev+]LoopStatement:
-				= :dup(<[Stage]LoopStatement>(:transform(
-					<<[Stage::Prev+]LoopStatement #&>>(*p), f, s)));
+				= :a.[Stage]LoopStatement(:transform(>>p, f, s, parent));
 			[Stage::Prev+]SwitchStatement:
-				= :dup(<[Stage]SwitchStatement>(:transform(
-					<<[Stage::Prev+]SwitchStatement #&>>(*p), f, s)));
+				= :a.[Stage]SwitchStatement(:transform(>>p, f, s, parent));
 			[Stage::Prev+]TypeSwitchStatement:
-				= :dup(<[Stage]TypeSwitchStatement>(:transform(
-					<<[Stage::Prev+]TypeSwitchStatement #&>>(*p), f, s)));
+				= :a.[Stage]TypeSwitchStatement(:transform(>>p, f, s, parent));
 			[Stage::Prev+]BreakStatement:
-				= :dup(<[Stage]BreakStatement>(:transform(
-					<<[Stage::Prev+]BreakStatement #&>>(*p), f, s)));
+				= :a.[Stage]BreakStatement(:transform(>>p, f, s, parent));
 			[Stage::Prev+]ContinueStatement:
-				= :dup(<[Stage]ContinueStatement>(:transform(
-					<<[Stage::Prev+]ContinueStatement #&>>(*p), f, s)));
+				= :a.[Stage]ContinueStatement(:transform(>>p, f, s, parent));
 			}
 		}
 	}
@@ -83,9 +68,10 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]AssertStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (:transform, p, f, s):
-			Expression := <<<ast::[Stage]Expression>>>(p.Expression!, f, s);
+			Expression := :make(p.Expression!, f, s, parent);
 	}
 
 	[Stage: TYPE] DieStatement -> [Stage]Statement
@@ -117,9 +103,10 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]SleepStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (:transform, p, f, s):
-			Duration := <<<[Stage]Expression>>>(p.Duration!, f, s);
+			Duration := :make(p.Duration!, f, s, parent);
 	}
 
 
@@ -130,12 +117,13 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]BlockStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (:transform, p, f, s):
 			Statements := :reserve(##p.Statements)
 		{
 			FOR(stmt ::= p.Statements.start())
-				Statements += <<<[Stage]Statement>>>(stmt!, f, s);
+				Statements += :make(stmt!, f, s, parent);
 		}
 	}
 
@@ -146,28 +134,29 @@ INCLUDE 'std/memory'
 		RevealsVariable: BOOL;
 		Negated: BOOL;
 
-		Init: [Stage]VarOrExpr-std::Dyn;
+		Init: [Stage]VarOrExpr-std::DynOpt;
 		Condition: [Stage]VarOrExpr-std::Dyn;
 
 		Then: [Stage]Statement - std::Dyn;
-		Else: [Stage]Statement - std::Dyn;
+		Else: [Stage]Statement - std::DynOpt;
 
 		:transform{
 			p: [Stage::Prev+]IfStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (:transform, p, f, s):
 			RevealsVariable := p.RevealsVariable,
 			Negated := p.Negated,
-			Condition := <<<[Stage]VarOrExpr>>>(p.Condition!, f, s),
-			Then := <<<[Stage]Statement>>>(p.Then!, f, s)
+			Condition := :make(p.Condition!, f, s, parent),
+			Then := :make(p.Then!, f, s, parent)
 		{
 			IF(p.Label)
 				Label := :a(:transform(p.Label!, f, s));
 			IF(p.Init)
-				Init := <<<[Stage]VarOrExpr>>>(p.Init!, f, s);
+				Init := :make(p.Init!, f, s, parent);
 			IF(p.Else)
-				Else := <<<[Stage]Statement>>>(p.Then!, f, s);
+				Else := :make(p.Then!, f, s, parent);
 		}
 	}
 
@@ -179,9 +168,10 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]VariableStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (:transform, p, f, s):
-			Variable := :transform(p.Variable, f, s),
+			Variable := :transform(p.Variable, f, s, parent),
 			Static := p.Static;
 	}
 
@@ -192,14 +182,15 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]ExpressionStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (:transform, p, f, s):
-			Expression := <<<ast::[Stage]Expression>>>(p.Expression!, f, s);
+			Expression := :make(p.Expression!, f, s, parent);
 	}
 
 	[Stage: TYPE] ReturnStatement -> [Stage]Statement
 	{
-		Expression: ast::[Stage]Expression - std::Dyn;
+		Expression: ast::[Stage]Expression - std::DynOpt;
 
 		{};
 
@@ -210,11 +201,12 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]ReturnStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (:transform, p, f, s)
 		{
 			IF(p.Expression)
-				Expression := <<<ast::[Stage]Expression>>>(p.Expression!, f, s);
+				Expression := :make(p.Expression!, f, s, parent);
 		}
 
 		# is_void() BOOL INLINE := !Expression;
@@ -225,20 +217,21 @@ INCLUDE 'std/memory'
 	{
 		Body: [Stage]Statement - std::Dyn;
 		Catches: [Stage]CatchStatement - std::Vec;
-		Finally: [Stage]Statement - std::Dyn;
+		Finally: [Stage]Statement - std::DynOpt;
 
 		:transform{
 			p: [Stage::Prev+]TryStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (:transform, p, f, s):
-			Body := <<<[Stage]Statement>>>(p.Body!, f, s),
+			Body := :make(p.Body!, f, s, parent),
 			Catches := :reserve(##p.Catches)
 		{
 			FOR(c ::= p.Catches.start())
-				Catches += :transform(c!, f, s);
+				Catches += :transform(c!, f, s, parent);
 			IF(p.Finally)
-				Finally := <<<[Stage]Statement>>>(p.Finally!, f, s);
+				Finally := :make(p.Finally!, f, s, parent);
 		}
 
 		# has_finally() BOOL INLINE := Finally;
@@ -254,19 +247,20 @@ INCLUDE 'std/memory'
 		}
 
 		ExceptionType: Type;
-		Exception: [Stage]TypeOrCatchVariable - std::Dyn;
+		Exception: [Stage]TypeOrCatchVariable - std::DynOpt;
 		Body: [Stage]Statement - std::Dyn;
 
 		:transform{
 			p: [Stage::Prev+]CatchStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		}:
 			ExceptionType := p.ExceptionType,
-			Body := <<<[Stage]Statement>>>(p.Body!, f, s)
+			Body := :make(p.Body!, f, s, parent)
 		{
 			IF(p.Exception)
-				Exception := <<<[Stage]TypeOrCatchVariable>>>(p.Exception, f, s);
+				Exception := :make(p.Exception!, f, s, parent);
 		}
 	}
 
@@ -280,17 +274,18 @@ INCLUDE 'std/memory'
 		}
 
 		ValueType: Type;
-		Value: [Stage]Expression-std::Dyn;
+		Value: [Stage]Expression-std::DynOpt;
 
 		:transform{
 			p: [Stage::Prev+]ThrowStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (:transform, p, f, s):
 			ValueType := p.ValueType
 		{
 			IF(p.Value)
-				Value := <<<[Stage]Expression>>>(p.Value!, f, s);
+				Value := :make(p.Value!, f, s, parent);
 		}
 	}
 
@@ -305,10 +300,10 @@ INCLUDE 'std/memory'
 	[Stage: TYPE] LoopStatement -> [Stage]Statement
 	{
 		Type: LoopType;
-		Initial: [Stage]VarOrExpr - std::Dyn;
-		Condition: [Stage]VarOrExpr - std::Dyn;
+		Initial: [Stage]VarOrExpr - std::DynOpt;
+		Condition: [Stage]VarOrExpr - std::DynOpt;
 		Body: [Stage]Statement-std::Dyn;
-		PostLoop: [Stage]Expression-std::Dyn;
+		PostLoop: [Stage]Expression-std::DynOpt;
 		Label: [Stage]ControlLabel-std::Opt;
 
 		# is_post_condition() BOOL := Type == :postCondition;
@@ -316,17 +311,18 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]LoopStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (:transform, p, f, s):
 			Type := p.Type,
-			Body := <<<[Stage]Statement>>>(p.Body!, f, s)
+			Body := :make(p.Body!, f, s, parent)
 		{
 			IF(p.Initial)
-				Initial := <<<[Stage]VarOrExpr>>>(p.Initial!, f, s);
+				Initial := :make(p.Initial!, f, s, parent);
 			IF(p.Condition)
-				Condition := <<<[Stage]VarOrExpr>>>(p.Condition!, f, s);
+				Condition := :make(p.Condition!, f, s, parent);
 			IF(p.PostLoop)
-				PostLoop := <<<[Stage]Expression>>>(p.PostLoop!, f, s);
+				PostLoop := :make(p.PostLoop!, f, s, parent);
 			IF(p.Label)
 				Label := :a(:transform(p.Label!, f, s));
 		}
@@ -335,7 +331,7 @@ INCLUDE 'std/memory'
 	[Stage: TYPE] SwitchStatement -> [Stage]Statement
 	{
 		Strict: BOOL;
-		Initial: [Stage]VarOrExpr - std::Dyn;
+		Initial: [Stage]VarOrExpr - std::DynOpt;
 		Value: [Stage]VarOrExpr - std::Dyn;
 		Cases: [Stage]CaseStatement - std::Vec;
 		Label: [Stage]ControlLabel-std::Opt;
@@ -343,16 +339,17 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]SwitchStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (:transform, p, f, s):
 			Strict := p.Strict,
-			Value := <<<[Stage]VarOrExpr>>>(p.Value!, f, s),
+			Value := :make(p.Value!, f, s, parent),
 			Cases := :reserve(##p.Cases)
 		{
 			IF(p.Initial)
-				Initial := <<<[Stage]VarOrExpr>>>(p.Value!, f, s);
+				Initial := :make(p.Value!, f, s, parent);
 			FOR(c ::= p.Cases.start())
-				Cases += :transform(c!, f, s);
+				Cases += :transform(c!, f, s, parent);
 			IF(p.Label)
 				Label := :a(:transform(p.Label!, f, s));
 		}
@@ -366,13 +363,14 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]CaseStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		}:
 			Values := :reserve(##p.Values),
-			Body := <<<[Stage]Statement>>>(p.Body!, f, s)
+			Body := :make(p.Body!, f, s, parent)
 		{
 			FOR(v ::= p.Values.start())
-				Values += <<<[Stage]Expression>>>(v!, f, s);
+				Values += :make(v!, f, s, parent);
 		}
 
 		# is_default() BOOL INLINE := Values.empty();
@@ -382,7 +380,7 @@ INCLUDE 'std/memory'
 	{
 		Static: BOOL;
 		Strict: BOOL;
-		Initial: [Stage]VarOrExpr - std::Dyn;
+		Initial: [Stage]VarOrExpr - std::DynOpt;
 		Value: [Stage]VarOrExpr - std::Dyn;
 		Cases: [Stage]TypeCaseStatement - std::Vec;
 		Label: [Stage]ControlLabel-std::Opt;
@@ -390,17 +388,18 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]TypeSwitchStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (:transform, p, f, s):
 			Static := p.Static,
 			Strict := p.Strict,
-			Value := <<<[Stage]VarOrExpr>>>(p.Value!, f, s),
+			Value := :make(p.Value!, f, s, parent),
 			Cases := :reserve(##p.Cases)
 		{
 			IF(p.Initial)
-				Initial := <<<[Stage]VarOrExpr>>>(p.Initial!, f, s);
+				Initial := :make(p.Initial!, f, s, parent);
 			FOR(c ::= p.Cases.start())
-				Cases += :transform(c!, f, s);
+				Cases += :transform(c!, f, s, parent);
 			IF(p.Label)
 				Label := :a(:transform(p.Label!, f, s));
 		}
@@ -414,13 +413,14 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]TypeCaseStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		}:
 			Types := :reserve(##p.Types),
-			Body := <<<[Stage]Statement>>>(p.Body!, f, s)
+			Body := <<<[Stage]Statement>>>(p.Body!, f, s, parent)
 		{
 			FOR(t ::= p.Types.start())
-				Types += <<<[Stage]Type>>>(t!, f, s);
+				Types += <<<[Stage]Type>>>(t!, f, s, parent);
 		}
 
 		# is_default() BOOL INLINE := Types.empty();
@@ -433,7 +433,8 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]BreakStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (:transform, p, f, s)
 		{
 			IF(p.Label)
@@ -448,7 +449,8 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]ContinueStatement #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (:transform, p, f, s)
 		{
 			IF(p.Label)

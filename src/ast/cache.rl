@@ -4,17 +4,17 @@
 /)
 ::rlc::ast [Stage: TYPE; T: TYPE]Cache
 {
-	References: std::[T::Prev+ #\; T - std::Shared]NatMap;
+	References: std::[T::Prev+ #\; T - std::Shared]Map;
 
-	THIS[p: T::Prev+ #\, f: Stage::PrevFile+, s: Stage &] T - std::Shared
+	THIS[p: T::Prev+ #\, f: Stage::PrevFile+, s: Stage &, parent: [Stage]ScopeBase \] T - std::Shared
 	{
 		IF(entry ::= References.find(p))
 			= *entry;
 		ELSE
 		{
-			new: T-std::Shared := :gc(<<<T>>>(p, f, s).release());
+			new: T-std::Shared := :make(*p, f, s, parent);
 			References.insert(p, new);
-			= new;
+			= &&new;
 		}
 	}
 }

@@ -2,46 +2,36 @@
 ::rlc::ast [Stage: TYPE] Global VIRTUAL
 {
 	<<<
-		g: [Stage::Prev+]Global #\,
+		g: [Stage::Prev+]Global #&,
 		f: Stage::PrevFile+,
-		s: Stage &
+		s: Stage &,
+		parent: [Stage]ScopeBase \
 	>>> THIS - std::Dyn
 	{
 		TYPE SWITCH(g)
 		{
 		[Stage::Prev+]Namespace:
-			= :dup(<[Stage]Namespace>(:transform(
-				<<[Stage::Prev+]Namespace #&>>(*g), f, s)));
+			= :a.[Stage]Namespace(:transform(>>g, f, s, parent));
 		[Stage::Prev+]GlobalFunction:
-			= :dup(<[Stage]GlobalFunction>(:transform(
-				<<[Stage::Prev+]GlobalFunction #&>>(*g), f, s)));
+			= :a.[Stage]GlobalFunction(:transform(>>g, f, s, parent));
 		[Stage::Prev+]GlobalClass:
-			= :dup(<[Stage]GlobalClass>(:transform(
-				<<[Stage::Prev+]GlobalClass #&>>(*g), f, s)));
+			= :a.[Stage]GlobalClass(:transform(>>g, f, s, parent));
 		[Stage::Prev+]GlobalRawtype:
-			= :dup(<[Stage]GlobalRawtype>(:transform(
-				<<[Stage::Prev+]GlobalRawtype #&>>(*g), f, s)));
+			= :a.[Stage]GlobalRawtype(:transform(>>g, f, s, parent));
 		[Stage::Prev+]GlobalUnion:
-			= :dup(<[Stage]GlobalUnion>(:transform(
-				<<[Stage::Prev+]GlobalUnion #&>>(*g), f, s)));
+			= :a.[Stage]GlobalUnion(:transform(>>g, f, s, parent));
 		[Stage::Prev+]GlobalEnum:
-			= :dup(<[Stage]GlobalEnum>(:transform(
-				<<[Stage::Prev+]GlobalEnum #&>>(*g), f, s)));
+			= :a.[Stage]GlobalEnum(:transform(>>g, f, s, parent));
 		[Stage::Prev+]ExternFunction:
-			= :dup(<[Stage]ExternFunction>(:transform(
-				<<[Stage::Prev+]ExternFunction #&>>(*g), f, s)));
+			= :a.[Stage]ExternFunction(:transform(>>g, f, s, parent));
 		[Stage::Prev+]ExternVariable:
-			= :dup(<[Stage]ExternVariable>(:transform(
-				<<[Stage::Prev+]ExternVariable #&>>(*g), f, s)));
+			= :a.[Stage]ExternVariable(:transform(>>g, f, s, parent));
 		[Stage::Prev+]GlobalVariable:
-			= :dup(<[Stage]GlobalVariable>(:transform(
-				<<[Stage::Prev+]GlobalVariable #&>>(*g), f, s)));
+			= :a.[Stage]GlobalVariable(:transform(>>g, f, s, parent));
 		[Stage::Prev+]GlobalTypedef:
-			= :dup(<[Stage]GlobalTypedef>(:transform(
-				<<[Stage::Prev+]GlobalTypedef #&>>(*g), f, s)));
+			= :a.[Stage]GlobalTypedef(:transform(>>g, f, s, parent));
 		[Stage::Prev+]GlobalMask:
-			= :dup(<[Stage]GlobalMask>(:transform(
-				<<[Stage::Prev+]GlobalMask #&>>(*g), f, s)));
+			= :a.[Stage]GlobalMask(:transform(>>g, f, s, parent));
 		}
 	}
 }

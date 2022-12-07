@@ -1,17 +1,18 @@
 ::rlc::ast [Stage: TYPE] TypeOrExpr VIRTUAL
 {
 	<<<
-		p: [Stage::Prev+]TypeOrExpr #\,
+		p: [Stage::Prev+]TypeOrExpr #&,
 		f: Stage::PrevFile+,
-		s: Stage &
+		s: Stage &,
+		parent: [Stage]ScopeBase \
 	>>> THIS - std::Dyn
 	{
 		TYPE SWITCH(p)
 		{
 		[Stage::Prev+]Type:
-			= <<<[Stage]Type>>>(<<[Stage::Prev+]Type #\>>(p), f, s);
+			= :<>(<<<[Stage]Type>>>(>>p, f, s, parent));
 		[Stage::Prev+]Expression:
-			= <<<[Stage]Expression>>>(<<[Stage::Prev+]Expression #\>>(p), f, s);
+			= :<>(<<<[Stage]Expression>>>(>>p, f, s, parent));
 		}
 	}
 }

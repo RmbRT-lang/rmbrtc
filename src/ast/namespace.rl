@@ -5,40 +5,39 @@ INCLUDE 'std/set'
 
 ::rlc::ast [Stage:TYPE] Namespace -> [Stage]MergeableScopeItem, [Stage]Global
 {
-	Entries: [Stage]Global - std::DynVec;
+	Entries: [Stage]GlobalScope;
+
+	:childOf{parent: [Stage]ScopeBase \}: Entries := :childOf(parent);
 
 	:transform{
 		p: [Stage::Prev+]Namespace #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s), ():
-		Entries := :reserve(##p.Entries)
-	{
-		FOR(it ::= p.Entries.start())
-			Entries += <<<[Stage]Global>>>(it!, f, s);
-	}
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s, parent), ():
+		Entries := :transform(p.Entries, f, s, parent);
 
 	PRIVATE FINAL merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID
 	{
-		ns: ?& := <<[Stage]Namespace &>>(rhs);
+		ns: ?& := <<THIS &>>(rhs);
 
 		FOR[insert](rhs_entry ::= ns.Entries.start())
 		{
-			IF:!(rhs_entry_si ::= <<[Stage]ScopeItem *>>(rhs_entry!))
+			IF:!(rhs_entry_si ::= <<[Stage]ScopeItem *>>(rhs_entry!.Value))
 			{
-				Entries += &&*rhs_entry;
+				Entries += &&rhs_entry!.Value;
 				CONTINUE;
 			}
 
 			FOR[collisions](entry ::= Entries.start())
 			{
-				IF:!(entry_si ::= <<[Stage]ScopeItem *>>(entry!))
+				IF:!(entry_si ::= <<[Stage]ScopeItem *>>(entry!.Value))
 					CONTINUE;
 
 				IF(entry_si!->Name == rhs_entry_si!->Name)
 				{
-					merge_entry ::= <<[Stage]MergeableScopeItem *>>(entry!);
-					merge_rhs ::= <<[Stage]MergeableScopeItem *>>(rhs_entry!);
+					merge_entry ::= <<[Stage]MergeableScopeItem *>>(&entry!.Value!);
+					merge_rhs ::= <<[Stage]MergeableScopeItem *>>(&rhs_entry!.Value!);
 
 					IF(!merge_entry || !merge_rhs)
 						THROW <MergeError>(entry_si, rhs_entry_si);
@@ -50,10 +49,9 @@ INCLUDE 'std/set'
 				}
 			}
 			// If no collision was found, just insert.
-			Entries += &&*rhs_entry;
+			Entries += &&rhs_entry!.Value;
 		}
 
-		ns.Entries.~;
-		ns.Entries.{};
+		ns.Entries := BARE;
 	}
 }

@@ -206,6 +206,7 @@ INCLUDE 'std/unicode'
 				("|=", :pipeEqual),
 				("|", :pipe),
 
+				("?""?", :doubleQuestionMark),
 				("?", :questionMark),
 
 				("::=", :doubleColonEqual),

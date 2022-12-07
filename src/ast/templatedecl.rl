@@ -12,12 +12,13 @@ INCLUDE "type.rl"
 		:transform{
 			p: [Stage::Prev+]TemplateDecl #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		}:
 			Arguments := :reserve(##p.Arguments)
 		{
 			FOR(a ::= p.Arguments.start())
-				Arguments += <<<[Stage]TemplateArgDecl>>>(a!, f, s);
+				Arguments += :make(a!, f, s, parent);
 		}
 
 		# exists() BOOL INLINE := ##Arguments != 0;
@@ -39,22 +40,20 @@ INCLUDE "type.rl"
 			Variadic := p.Variadic;
 
 		<<<
-			p: [Stage::Prev+]TemplateArgDecl #\,
+			p: [Stage::Prev+]TemplateArgDecl #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		>>> THIS-std::Dyn
 		{
 			TYPE SWITCH(p)
 			{
 			[Stage::Prev+]TypeTemplateArgDecl:
-				= :dup(<[Stage]TypeTemplateArgDecl>(:transform(
-					<<[Stage::Prev+]TypeTemplateArgDecl #&>>(*p), f, s)));
+				= :a.[Stage]TypeTemplateArgDecl(:transform(>>p, f, s));
 			[Stage::Prev+]ValueTemplateArgDecl:
-				= :dup(<[Stage]ValueTemplateArgDecl>(:transform(
-					<<[Stage::Prev+]ValueTemplateArgDecl #&>>(*p), f, s)));
+				= :a.[Stage]ValueTemplateArgDecl(:transform(>>p, f, s, parent));
 			[Stage::Prev+]NumberTemplateArgDecl:
-				= :dup(<[Stage]NumberTemplateArgDecl>(:transform(
-					<<[Stage::Prev+]NumberTemplateArgDecl #&>>(*p), f, s)));
+				= :a.[Stage]NumberTemplateArgDecl(:transform(>>p, f, s));
 			}
 		}
 	}
@@ -78,9 +77,10 @@ INCLUDE "type.rl"
 		:transform{
 			p: [Stage::Prev+]ValueTemplateArgDecl #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (:transform, p, f, s):
-			Type := <<<ast::[Stage]Type>>>(p.Type!, f, s);
+			Type := :make(p.Type!, f, s, parent);
 	}
 
 	[Stage:TYPE] NumberTemplateArgDecl -> [Stage]TemplateArgDecl

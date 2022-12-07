@@ -13,9 +13,10 @@ INCLUDE "templateable.rl"
 		:transform{
 			p: [Stage::Prev+]Typedef #&,
 			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (:transform, p, f, s), (:transform, p, f, s):
-			Type := <<<ast::[Stage]Type>>>(p.Type!, f, s);
+			s: Stage &,
+			parent: [Stage]ScopeBase \
+		} -> (:transform, p, f, s), (:transform, p, f, s, parent):
+			Type := :make(p.Type!, f, s, parent);
 	}
 
 	[Stage:TYPE] GlobalTypedef -> [Stage]Global, [Stage]Typedef
@@ -23,8 +24,9 @@ INCLUDE "templateable.rl"
 		:transform{
 			p: [Stage::Prev+]GlobalTypedef #&,
 			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (), (:transform, p, f, s);
+			s: Stage &,
+			parent: [Stage]ScopeBase \
+		} -> (), (:transform, p, f, s, parent);
 	}
 
 	[Stage:TYPE] MemberTypedef -> [Stage]Member, [Stage]Typedef
@@ -32,7 +34,8 @@ INCLUDE "templateable.rl"
 		:transform{
 			p: [Stage::Prev+]MemberTypedef #&,
 			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (:transform, p), (:transform, p, f, s);
+			s: Stage &,
+			parent: [Stage]ScopeBase \
+		} -> (:transform, p), (:transform, p, f, s, parent);
 	}
 }

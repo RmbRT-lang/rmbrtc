@@ -21,15 +21,15 @@ INCLUDE 'std/vector'
 				variadic ::= p.consume(:tripleDot);
 				p.expect(:colon);
 
-				arg: Config-ast::TemplateArgDecl-std::Dyn;
+				arg: Config-ast::TemplateArgDecl-std::Dyn (BARE);
 				IF(p.consume(:type))
-					arg := :dup(<Config-ast::TypeTemplateArgDecl>(BARE));
+					arg := :a.Config-ast::TypeTemplateArgDecl(BARE);
 				ELSE IF(p.consume(:number))
-					arg := :dup(<Config-ast::NumberTemplateArgDecl>(BARE));
+					arg := :a.Config-ast::NumberTemplateArgDecl(BARE);
 				ELSE IF(t ::= type::parse(p))
 				{
 					vArg: Config-ast::ValueTemplateArgDecl(BARE);
-					vArg.Type := &&t;
+					vArg.Type := :!(&&t);
 					arg := :dup(&&vArg);
 				}
 				ELSE

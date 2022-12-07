@@ -21,7 +21,7 @@ INCLUDE "../scoper/stage.rl"
 		build: Build
 	) VOID
 	{
-		parsed: parser::Config - ast::File \ - std::NatVecSet;
+		parsed: parser::Config - ast::File \ - std::VecSet;
 
 		// Parse all code first.
 		FOR(f ::= files.start())

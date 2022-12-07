@@ -19,7 +19,8 @@ INCLUDE 'std/vector'
 			:transform{
 				prev: [Stage::Prev+]Symbol::Child #&,
 				f: Stage::PrevFile+,
-				s: Stage &
+				s: Stage &,
+				parent: [Stage]ScopeBase \
 			}:
 				Name := s.transform_name(prev.Name, f),
 				Templates := :reserve(##prev.Templates),
@@ -29,11 +30,10 @@ INCLUDE 'std/vector'
 				{
 					t:?&:= Templates += :reserve(##pt!);
 					FOR(pa ::= pt!.start())
-						IF(e ::= <<ast::[Stage::Prev+]Expression #*>>(pa!))
-							t += <<<ast::[Stage]Expression>>>(e, f, s);
+						IF(e ::= <<ast::[Stage::Prev+]Expression #*>>(&pa!))
+							t += :<>(<<<ast::[Stage]Expression>>>(*e, f, s, parent));
 						ELSE
-							t += <<<ast::[Stage]Type>>>(
-									<<ast::[Stage::Prev+]Type #\>>(pa!), f, s);
+							t += :<>(<<<ast::[Stage]Type>>>(>>pa!, f, s, parent));
 				}
 			}
 		}
@@ -44,13 +44,14 @@ INCLUDE 'std/vector'
 		:transform{
 			prev: [Stage::Prev+]Symbol #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		}:
 			Children := :reserve(##prev.Children),
 			IsRoot := prev.IsRoot
 		{
 			FOR(c ::= prev.Children.start())
-				Children += :transform(c!, f, s);
+				Children += :transform(c!, f, s, parent);
 		}
 	}
 }

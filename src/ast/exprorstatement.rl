@@ -1,17 +1,18 @@
 ::rlc::ast [Stage:TYPE] ExprOrStatement VIRTUAL
 {
 	<<<
-		p: [Stage::Prev+]ExprOrStatement #\,
+		p: [Stage::Prev+]ExprOrStatement #&,
 		f: Stage::PrevFile+,
-		s: Stage &
+		s: Stage &,
+		parent: [Stage]ScopeBase \
 	>>> THIS-std::Dyn
 	{
 		TYPE SWITCH(p)
 		{
 		[Stage::Prev+]Expression:
-			= <<<[Stage]Expression>>>(<<[Stage::Prev+]Expression #\>>(p), f, s);
+			= :<>(<<<[Stage]Expression>>>(>>p, f, s, parent));
 		[Stage::Prev+]Statement:
-			= <<<[Stage]Statement>>>(<<[Stage::Prev+]Statement #\>>(p), f, s);
+			= :<>(<<<[Stage]Statement>>>(>>p, f, s, parent));
 		}
 	}
 }

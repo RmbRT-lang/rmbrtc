@@ -6,11 +6,18 @@ INCLUDE "symbolconstant.rl"
 
 ::rlc::parser::expression
 {
-	parse(p: Parser &) ast::[Config]Expression-std::Dyn INLINE
+	parse(p: Parser &) ast::[Config]Expression-std::DynOpt INLINE
 		:= op::parse(p);
 
+	parse_x(p: Parser &) ast::[Config]Expression-std::Dyn
+	{
+		IF:!(x ::= parse(p))
+			p.fail("expected expression");
+		= :!(&&x);
+	}
+
 	/// Parses a non-operator expression.
-	parse_atom(p: Parser &) ast::[Config]Expression-std::Dyn
+	parse_atom(p: Parser &) ast::[Config]Expression-std::DynOpt
 	{
 		// The start of the expression.
 		position ::= p.position();
@@ -22,7 +29,7 @@ INCLUDE "symbolconstant.rl"
 			IF:!(exp ::= expression::parse(p))
 				p.fail("expected expression");
 
-			tuple: ast::[Config]OperatorExpression-std::Dyn := NULL;
+			tuple: ast::[Config]OperatorExpression-std::DynOpt;
 			WHILE(p.consume(:comma))
 			{
 				IF(!tuple)
@@ -30,12 +37,12 @@ INCLUDE "symbolconstant.rl"
 					tuple := :a(BARE);
 					tuple->Position := position;
 					tuple->Op := :tuple;
-					tuple->Operands += &&exp;
+					tuple->Operands += :!(&&exp);
 				}
 
 				IF!(exp := expression::parse(p))
 					p.fail("expected expression");
-				tuple->Operands += &&exp;
+				tuple->Operands += :!(&&exp);
 			}
 
 			end ::= p.expect(:parentheseClose).Content;
@@ -52,7 +59,7 @@ INCLUDE "symbolconstant.rl"
 		}
 
 		start ::= p.offset();
-		ret: ast::[Config]Expression - std::Dyn;
+		ret: ast::[Config]Expression - std::Dyn (BARE);
 		IF(detail::parse_impl(p, ret, parse_reference)
 		|| detail::parse_impl(p, ret, parse_symbol_constant)
 		|| detail::parse_impl(p, ret, parse_number)
@@ -93,7 +100,7 @@ INCLUDE "symbolconstant.rl"
 	{
 		IF(sym ::= symbol_constant::parse(p))
 		{
-			out.Symbol := sym!;
+			out.Symbol := &&sym!;
 			= TRUE;
 		}
 		= FALSE;
@@ -164,19 +171,17 @@ INCLUDE "symbolconstant.rl"
 
 		out.Method := lookup[type].(0);
 
-		IF(!(out.Type := parser::type::parse(p)))
-			p.fail("expected type");
+		IF(type ::= parser::type::parse(p))
+			out.Type := :!(&&type);
+		ELSE p.fail("expected type");
 
 		p.expect(lookup[type].(2));
 		p.expect(:parentheseOpen);
 		IF(lookup[type].(4) || !p.consume(:parentheseClose))
 		{
 			DO()
-			{
-				IF:!(value ::= expression::parse(p))
-					p.fail("expected expression");
-				out.Values += &&value;
-			} WHILE(lookup[type].(3) && p.consume(:comma))
+				out.Values += expression::parse_x(p);
+				WHILE(lookup[type].(3) && p.consume(:comma))
 
 			p.expect(:parentheseClose);
 		}
@@ -196,12 +201,14 @@ INCLUDE "symbolconstant.rl"
 		p.expect(:parentheseOpen);
 		IF(p.consume(:hash))
 		{
-			IF(!(out.Term := expression::parse(p)))
-				p.fail("expected expression");
+			IF(term ::= expression::parse(p))
+				out.Term := :!(&&term);
+			ELSE p.fail("expected expression");
 		} ELSE
 		{
-			IF(!(out.Term := type::parse(p)))
-				p.fail("expected type");
+			IF(term ::= type::parse(p))
+				out.Term := :!(&&term);
+			ELSE p.fail("expected type");
 		}
 
 		p.expect(:parentheseClose);
@@ -223,12 +230,14 @@ INCLUDE "symbolconstant.rl"
 		p.expect(:parentheseOpen);
 		IF(expectType)
 		{
-			IF(!(out.Term := type::parse(p)))
-				p.fail("expected type");
+			IF(term ::= type::parse(p))
+				out.Term := :!(&&term);
+			ELSE p.fail("expected type");
 		} ELSE
 		{
-			IF(!(out.Term := expression::parse(p)))
-				p.fail("expected expression");
+			IF(term ::= expression::parse(p))
+				out.Term := :!(&&term);
+			ELSE p.fail("expected expression");
 		}
 
 		p.expect(:parentheseClose);

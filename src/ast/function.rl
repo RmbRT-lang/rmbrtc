@@ -6,25 +6,24 @@ INCLUDE "templatedecl.rl"
 INCLUDE "statement.rl"
 
 
-::rlc::ast [Stage:TYPE] FnSignature VIRTUAL
+::rlc::ast [Stage:TYPE] FnSignature VIRTUAL -> [Stage]ScopeBase
 {
 	Arguments: [Stage]TypeOrArgument-std::DynVec;
 	IsCoroutine: BOOL;
 
 	<<<
-		p: [Stage::Prev+]FnSignature #\,
+		p: [Stage::Prev+]FnSignature #&,
 		f: Stage::PrevFile+,
-		s: Stage &
+		s: Stage &,
+		parent: [Stage]ScopeBase \
 	>>> THIS-std::Dyn
 	{
 		TYPE SWITCH(p)
 		{
 		[Stage::Prev+]UnresolvedSig:
-			= :dup(<[Stage]UnresolvedSig>(:transform(
-				<<[Stage::Prev+]UnresolvedSig #&>>(*p), f, s)));
+			= :a.[Stage]UnresolvedSig(:transform(>>p, f, s, parent));
 		[Stage::Prev+]ResolvedSig:
-			= :dup(<[Stage]ResolvedSig>(:transform(
-				<<[Stage::Prev+]ResolvedSig #&>>(*p), f, s)));
+			= :a.[Stage]ResolvedSig(:transform(>>p, f, s, parent));
 		}
 	}
 
@@ -33,13 +32,14 @@ INCLUDE "statement.rl"
 	:transform {
 		p: [Stage::Prev+]FnSignature #&,
 		f: Stage::PrevFile+,
-		s: Stage &
+		s: Stage &,
+		parent: [Stage]ScopeBase \
 	}:
 		Arguments := :reserve(##p.Arguments),
 		IsCoroutine := p.IsCoroutine
 	{
 		FOR(a ::= p.Arguments.start())
-			Arguments += <<<[Stage]TypeOrArgument>>>(a!, f, s);
+			Arguments += :make(a!, f, s, parent);
 	}
 }
 
@@ -50,8 +50,9 @@ INCLUDE "statement.rl"
 	:transform {
 		p: [Stage::Prev+]UnresolvedSig #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s):
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s, parent):
 		Return := :transform(p.Return);
 }
 
@@ -68,32 +69,33 @@ INCLUDE "statement.rl"
 	:transform{
 		p: [Stage::Prev+]ResolvedSig #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s):
-		Return := <<<[Stage]Type>>>(p.Return!, f, s);
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s, parent):
+		Return := :make(p.Return!, f, s, parent);
 }
 
 /// An anonymous function object.
-::rlc::ast [Stage:TYPE] Functoid VIRTUAL -> [Stage]Templateable, CodeObject
+::rlc::ast [Stage:TYPE] Functoid VIRTUAL ->
+	[Stage]Templateable,
+	CodeObject
 {
 	Signature: [Stage]FnSignature - std::Dyn;
-	Body: [Stage]ExprOrStatement - std::Dyn;
+	Body: [Stage]ExprOrStatement - std::DynOpt;
 	IsInline: BOOL;
 
 	:transform{
 		p: [Stage::Prev+]Functoid #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s), (p):
-		Signature := <<<[Stage]FnSignature>>>(p.Signature!, f, s),
-		IsInline := p.IsInline
-	{
-		IF(p.Body)
-			Body := <<<[Stage]ExprOrStatement>>>(p.Body!, f, s);
-	}
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s, parent), (p):
+		Signature := :make(p.Signature!, f, s, &THIS),
+		Body := :make_if(p.Body, p.Body.ok(), f, s, &Signature!),
+		IsInline := p.IsInline;
 
 	STATIC short_hand_body(e: [Stage]Expression-std::Dyn) [Stage]Statement-std::Dyn
-		:= :dup(<[Stage]ReturnStatement>(:exp(&&e)));
+		:= :a.[Stage]ReturnStatement(:exp(&&e));
 }
 
 ::rlc::ast [Stage: TYPE] VariantMergeError {
@@ -104,7 +106,7 @@ INCLUDE "statement.rl"
 }
 
 ::rlc::ast::function ENUM SpecialVariant {
-		null
+	null
 }
 
 (// A named function with potential callable variants. /)
@@ -112,34 +114,37 @@ INCLUDE "statement.rl"
 {
 	Default: [Stage]DefaultVariant-std::Shared;
 
-	SpecialVariants: std::[function::SpecialVariant; ast::[Stage]SpecialVariant-std::Shared]NatMap;
+	SpecialVariants: std::[function::SpecialVariant; ast::[Stage]SpecialVariant-std::Shared]Map;
 	(// The function's variant implementations. /)
-	Variants: std::[Stage-Name; [Stage]Variant-std::Shared]NatMap;
+	Variants: std::[Stage-Name; [Stage]Variant-std::Shared]Map;
 
 	:transform {
 		p: [Stage::Prev+]Function #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s)
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s, parent)
 	{
 		IF(p.Default)
-			Default := :a(:transform(*p.Default!, f, s));
+			Default := :a(:transform(p.Default!, f, s, parent));
 		FOR(var ::= p.SpecialVariants.start())
-			SpecialVariants.insert(var!.(0), :a(:transform(*var!.(1)!, f, s)));
+			SpecialVariants.insert(var!.Key, :a(:transform(var!.Value!, f, s, parent)));
 		FOR(var ::= p.Variants.start())
 			Variants.insert(
-				s.transform_name(var!.(0), f),
-				:a(:transform(*var!.(1)!, f, s)));
+				s.transform_name(var!.Key, f),
+				:a(:transform(var!.Value!, f, s, parent)));
 	}
+
+	# THIS<>(rhs: THIS #&) S1 := THIS.Name <> rhs.Name;
 
 	set_templates_after_parsing(tpl: [Stage]TemplateDecl &&) VOID
 	{
 		IF(Default)
 			Default->Templates := &&tpl;
 		ELSE IF(##SpecialVariants)
-			SpecialVariants.start()->(1)->Templates := &&tpl;
+			SpecialVariants.start()->Value->Templates := &&tpl;
 		ELSE
-			Variants.start()->(1)->Templates := &&tpl;
+			Variants.start()->Value->Templates := &&tpl;
 	}
 
 	PRIVATE FINAL merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID
@@ -154,12 +159,12 @@ INCLUDE "statement.rl"
 
 		FOR(var ::= from.Variants.start())
 		{
-			IF(prev ::= Variants.find(var!.(0)))
-				IF((*prev)! != var!.(1)!)
+			IF(prev ::= Variants.find(var!.Key))
+				IF(&(prev)! != &var!.Value!)
 					THROW <[Stage]VariantMergeError>(
-						&THIS, var!.(0),
-						*prev, var!.(1));
-			Variants.insert(var!.(0), var!.(1));
+						&THIS, var!.Key,
+						&prev!, &var!.Value!);
+			Variants.insert(&&var!.Key, &&var!.Value);
 		}
 	}
 }
@@ -169,8 +174,9 @@ INCLUDE "statement.rl"
 	:transform{
 		p: [Stage::Prev+]GlobalFunction #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (), (:transform, p, f, s);
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (), (:transform, p, f, s, parent);
 }
 
 /// A reference to an external function. Cannot have variants.
@@ -192,17 +198,19 @@ INCLUDE "statement.rl"
 	:transform{
 		p: [Stage::Prev+]ExternFunction #&,
 		f: Stage::PrevFile+,
-		s: Stage &
+		s: Stage &,
+		parent: [Stage]ScopeBase \
 	} -> (), (:transform, p, f, s), (:transform, p, f, s):
-		Signature(:transform(p.Signature, f, s));
+		Signature := :transform(p.Signature, f, s, parent);
 }
 
 ::rlc::ast [Stage:TYPE] DefaultVariant -> [Stage]Functoid {
 	:transform{
 		p: [Stage::Prev+]DefaultVariant #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s);
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s, parent);
 }
 ::rlc::ast [Stage:TYPE] SpecialVariant -> [Stage]Functoid {
 	Variant: function::SpecialVariant;
@@ -210,8 +218,9 @@ INCLUDE "statement.rl"
 	:transform{
 		p: [Stage::Prev+]SpecialVariant #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s):
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s, parent):
 		Variant := p.Variant;
 }
 ::rlc::ast [Stage:TYPE] Variant -> [Stage]Functoid {
@@ -220,8 +229,9 @@ INCLUDE "statement.rl"
 	:transform{
 		p: [Stage::Prev+]Variant #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s):
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s, parent):
 		Name := s.transform_name(p.Name, f);
 }
 
@@ -246,22 +256,23 @@ INCLUDE "statement.rl"
 
 
 	<<<
-		p: [Stage::Prev+]Abstractable #\,
+		p: [Stage::Prev+]Abstractable #&,
 		f: Stage::PrevFile+,
-		s: Stage &
+		s: Stage &,
+		parent: [Stage]ScopeBase \
 	>>> THIS - std::Dyn
 	{
 		TYPE SWITCH(p)
 		{
 		[Stage::Prev+]Converter:
-			= :dup(<[Stage]Converter>(:transform(
-				<<[Stage::Prev+]Converter #&>>(*p), f, s)));
+			= :a.[Stage]Converter(:transform(
+				<<[Stage::Prev+]Converter #&>>(p), f, s, parent));
 		[Stage::Prev+]MemberFunction:
-			= :dup(<[Stage]MemberFunction>(:transform(
-				<<[Stage::Prev+]MemberFunction #&>>(*p), f, s)));
+			= :a.[Stage]MemberFunction(:transform(
+				<<[Stage::Prev+]MemberFunction #&>>(p), f, s, parent));
 		[Stage::Prev+]Operator:
-			= :dup(<[Stage]Operator>(:transform(
-				<<[Stage::Prev+]Operator #&>>(*p), f, s)));
+			= :a.[Stage]Operator(:transform(
+				<<[Stage::Prev+]Operator #&>>(p), f, s, parent));
 		}
 	}
 }
@@ -272,10 +283,14 @@ INCLUDE "statement.rl"
 	:transform{
 		p: [Stage::Prev+]Converter #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p), (:transform, p, f, s);
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p), (:transform, p, f, s, parent);
 
-	# type() [Stage]Type #\ INLINE := <<[Stage]Type #\>>([Stage]Functoid::Return!);
+	# type() [Stage]Type #\ INLINE := &*<<[Stage]ResolvedSig #\>>(THIS.Signature)->Return;
+
+	// Make converters unique per type.
+	# THIS<>(rhs: THIS#&) S1 := *type() <> *rhs.type();
 }
 
 ::rlc::ast [Stage:TYPE] MemberFunction -> [Stage]Abstractable, [Stage]Function
@@ -283,8 +298,12 @@ INCLUDE "statement.rl"
 	:transform{
 		p: [Stage::Prev+]MemberFunction #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p), (:transform, p, f, s);
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p), (:transform, p, f, s, parent);
+
+	# THIS <> (rhs: THIS #&) S1 INLINE
+		:= <[Stage]Function&>(THIS) <> <[Stage]Function&>(rhs);
 }
 
 /// Custom operator implementation.
@@ -295,9 +314,12 @@ INCLUDE "statement.rl"
 	:transform{
 		p: [Stage::Prev+]Operator #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p), (:transform, p, f, s):
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p), (:transform, p, f, s, parent):
 		Op := p.Op;
+
+	# THIS <> (rhs: THIS #&) S1 := <S1>(Op) <> <S1>(rhs.Op);
 }
 
 ::rlc::ast [Stage:TYPE] Factory -> [Stage]Member, [Stage]Functoid
@@ -305,6 +327,7 @@ INCLUDE "statement.rl"
 	:transform{
 		p: [Stage::Prev+]Factory #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p), (:transform, p, f, s);
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p), (:transform, p, f, s, parent);
 }

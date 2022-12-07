@@ -1,18 +1,18 @@
 ::rlc::ast [Stage: TYPE] VarOrExpr VIRTUAL
 {
 	<<<
-		p: [Stage::Prev+]VarOrExpr #\,
+		p: [Stage::Prev+]VarOrExpr #&,
 		f: Stage::PrevFile+,
-		s: Stage &
+		s: Stage &,
+		parent: [Stage]ScopeBase \
 	>>> THIS-std::Dyn
 	{
 		TYPE SWITCH(p)
 		{
 		[Stage::Prev+]LocalVariable:
-			= :dup(<[Stage]LocalVariable>(:transform(
-				<<[Stage::Prev+]LocalVariable #&>>(*p), f, s)));
+			= :a.[Stage]LocalVariable(:transform(>>p, f, s, parent));
 		[Stage::Prev+]Expression:
-			= <<<[Stage]Expression>>>(<<[Stage::Prev+]Expression #\>>(p), f, s);
+			= :<>(<<<[Stage]Expression>>>(>>p, f, s, parent));
 		}
 	}
 }

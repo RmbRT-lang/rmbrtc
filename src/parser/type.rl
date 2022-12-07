@@ -89,11 +89,8 @@ INCLUDE "symbolconstant.rl"
 			IF(!p.consume(:bracketClose))
 			{
 				DO()
-				{
-					IF:!(bounds ::= expression::parse(p))
-						p.fail("expected expression");
-					out.ArraySize += &&bounds;
-				} WHILE(p.consume(:comma))
+					out.ArraySize += expression::parse_x(p);
+					WHILE(p.consume(:comma))
 
 				p.expect(:bracketClose);
 			}
@@ -104,7 +101,7 @@ INCLUDE "symbolconstant.rl"
 
 	::detail [T:TYPE] parse_impl(
 		p: Parser &,
-		ret: ast::[Config]Type - std::Dyn &,
+		ret: ast::[Config]Type - std::DynOpt &,
 		parse_fn: ((Parser &, T! &) BOOL)) BOOL
 	{
 		v: T (BARE);
@@ -117,7 +114,7 @@ INCLUDE "symbolconstant.rl"
 				IF(!parse_type_name(p, next))
 					p.fail("expected symbol");
 
-				next.Name.Children!.back().Templates += :vec(&&ret);
+				next.Name.Children!.back().Templates += :vec(:!(&&ret));
 				ret := :dup(&&next);
 			}
 			= TRUE;
@@ -127,9 +124,9 @@ INCLUDE "symbolconstant.rl"
 	}
 
 	parse(
-		p: Parser &) Type - std::Dyn
+		p: Parser &) Type - std::DynOpt
 	{
-		ret: Type-std::Dyn;
+		ret: Type-std::DynOpt;
 		IF(detail::parse_impl(p, ret, parse_typeof)
 		|| detail::parse_impl(p, ret, parse_tuple)
 		|| detail::parse_impl(p, ret, parse_signature)
@@ -141,6 +138,13 @@ INCLUDE "symbolconstant.rl"
 		|| detail::parse_impl(p, ret, parse_symbol_constant))
 			= &&ret;
 		= NULL;
+	}
+
+	parse_x(p: Parser &) Type - std::Dyn
+	{
+		IF:!(t ::= parse(p))
+			p.fail("expected type");
+		= :!(&&t);
 	}
 
 	::detail parse_generic_part(
@@ -179,19 +183,14 @@ INCLUDE "symbolconstant.rl"
 		IF(!p.consume(:parentheseClose))
 		{
 			DO()
-			{
-				IF:!(arg ::= type::parse(p))
-					p.fail("expected type");
-				out.Args += &&arg;
-			} WHILE(p.consume(:comma))
+				out.Args += type::parse_x(p);
+				WHILE(p.consume(:comma))
 			p.expect(:parentheseClose);
 		}
 
 		out.IsCoroutine := p.consume(:at);
 
-		IF:!(type ::= type::parse(p))
-			p.fail("expected type");
-		out.Ret := &&type;
+		out.Ret := type::parse_x(p);
 
 		p.expect(:parentheseClose);
 
@@ -238,14 +237,10 @@ INCLUDE "symbolconstant.rl"
 		IF(!p.consume(:braceOpen))
 			= FALSE;
 
-		IF(t ::= type::parse(p))
-			out.Types += &&t;
-		ELSE p.fail("expected type");
+		out.Types += type::parse_x(p);
 		p.expect(:comma);
 		DO()
-			IF(t ::= type::parse(p))
-				out.Types += &&t;
-			ELSE p.fail("expected type");
+			out.Types += type::parse_x(p);
 			WHILE(p.consume(:comma))
 		p.expect(:braceClose);
 
@@ -258,8 +253,7 @@ INCLUDE "symbolconstant.rl"
 		IF(!p.consume(:type))
 			= FALSE;
 		p.expect(:parentheseOpen);
-		IF(!(out.Expression := expression::parse(p)))
-			p.fail("expected expression");
+		out.Expression := expression::parse_x(p);
 		p.expect(:parentheseClose);
 
 		detail::parse_generic_part(p, out);

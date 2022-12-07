@@ -16,7 +16,7 @@ INCLUDE "member.rl"
 
 		visibility ::= Visibility::public;
 		WHILE(member ::= member::parse_union_member(p, visibility))
-			out.Members += &&member;
+			out.Members += :!(&&member);
 
 		p.expect(:braceClose);
 

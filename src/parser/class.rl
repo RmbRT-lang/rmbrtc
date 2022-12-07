@@ -37,42 +37,7 @@ INCLUDE "../ast/class.rl"
 
 		default ::= Visibility::public;
 		WHILE(member ::= member::parse_class_member(p, default))
-		{
-			IF(ctor ::= <<ast::[Config]Constructor *>>(member!))
-			{
-				TYPE SWITCH(ctor)
-				{
-				ast::[Config]NullConstructor:
-					IF(out.NullCtor)
-						p.fail("multiple NULL constructors");
-					ELSE out.NullCtor := &&member;
-				ast::[Config]BareConstructor:
-					IF(out.BareCtor)
-						p.fail("multiple BARE constructors");
-					ELSE out.BareCtor := &&member;
-				ast::[Config]StructuralConstructor:
-					IF(out.StructuralCtor)
-						p.fail("multiple structural constructors");
-					ELSE out.StructuralCtor := &&member;
-				ast::[Config]DefaultConstructor:
-					IF(out.DefaultCtor)
-						p.fail("multiple default constructors");
-					ELSE out.DefaultCtor := &&member;
-				ast::[Config]CopyConstructor:
-					IF(out.CopyCtor)
-						p.fail("multiple copy constructors");
-					ELSE out.CopyCtor := &&member;
-				ast::[Config]MoveConstructor:
-					IF(out.MoveCtor)
-						p.fail("multiple copy constructors");
-					ELSE out.MoveCtor := &&member;
-				ast::[Config]CustomConstructor:
-					/// Cannot enter them into the ctor set yet because src strings are not comparable. This has to be done at the next stage.
-					out.Members += &&member;
-				}
-			} ELSE
-				out.Members += &&member;
-		}
+			out.Members += :!(&&member);
 
 		p.expect(:braceClose);
 

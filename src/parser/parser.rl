@@ -32,7 +32,7 @@ INCLUDE 'std/tags'
 		fail(reason: CHAR#\) VOID
 		{
 			pos ::= (BufferSize)
-				? Buffer[BufferIndex].Position
+				?? Buffer[BufferIndex].Position
 				: Tokeniser.position();
 			
 			THROW <ReasonError>(
@@ -58,7 +58,7 @@ INCLUDE 'std/tags'
 			IF(tok ::= consume(type))
 				= &&*tok;
 			pos ::= (BufferSize)
-				? Buffer[BufferIndex].Position
+				?? Buffer[BufferIndex].Position
 				: Tokeniser.position();
 
 			THROW <ExpectedToken>(
@@ -123,17 +123,17 @@ INCLUDE 'std/tags'
 
 		# context() CHAR #\
 			:= Ctx
-				? Ctx->Name
-				: "<unknown context>";
+				?? Ctx->Name
+				: "global scope";
 
 		# progress() UINT := Progress;
 
 		# position() src::Position := BufferSize
-			? Buffer[BufferIndex].Position
+			?? Buffer[BufferIndex].Position
 			: Tokeniser.position();
 
 		# offset() UM := BufferSize
-			? Buffer[BufferIndex].Content.Start
+			?? Buffer[BufferIndex].Content.Start
 			: ##Source->Contents;
 		# prev_offset() UM := PrevOffset!;
 

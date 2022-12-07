@@ -98,12 +98,11 @@ main(
 	compiler: rlc::compiler::CCompiler;
 	TRY
 	{
-		build: rlc::compiler::Build-std::Dyn;
+		build: rlc::compiler::Build-std::Dyn (BARE);
 		IF(flag < argc)
 		{
 			str: std::Str := <std::str::CV>(argv[argc-1]);
-			b: rlc::compiler::Build := :withOutput(&&str, buildType);
-			build := :gc(std::heap::[rlc::compiler::Build]new(&&b));
+			build := :a(:withOutput(&&str, buildType));
 		}
 		ELSE
 			build := :a(buildType);
@@ -111,12 +110,12 @@ main(
 
 		cli::main.info("compiling ", :dec(##files), " files.\n");
 
-		compiler.compile(&&files, &&*build);
+		compiler.compile(&&files, &&build!);
 
 		= 0;
 	} CATCH(e: std::Error &)
 		cli::main.error(:stream(e), "\n");
-	CATCH(e: CHAR#\)
+	CATCH(e: CHAR#\) // "location: err"
 		cli::main.error(e, "\n");
 	CATCH(e: {CHAR#\, CHAR#\})
 		cli::main.error(e.(0), " (", e.(1), ")\n");

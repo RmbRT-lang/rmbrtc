@@ -7,9 +7,9 @@ INCLUDE "varorexpression.rl"
 	parse(
 		p: Parser&,
 		locals: ast::LocalPosition &
-	) ast::[Config]Statement-std::Dyn
+	) ast::[Config]Statement-std::DynOpt
 	{
-		ret: ast::[Config]Statement - std::Dyn;
+		ret: ast::[Config]Statement - std::Dyn (BARE);
 		IF(detail::parse_impl(p, ret, locals, parse_assert)
 		|| detail::parse_impl(p, ret, locals, parse_die)
 		|| detail::parse_impl(p, ret, locals, parse_yield)
@@ -51,9 +51,9 @@ INCLUDE "varorexpression.rl"
 	parse_body(
 		p: Parser &,
 		locals: ast::LocalPosition &
-	) ast::[Config]Statement - std::Dyn
+	) ast::[Config]Statement - std::DynOpt
 	{
-		ret: ast::[Config]Statement - std::Dyn;
+		ret: ast::[Config]Statement - std::Dyn (BARE);
 		IF(detail::parse_impl(p, ret, locals, parse_assert)
 		|| detail::parse_impl(p, ret, locals, parse_die)
 		|| detail::parse_impl(p, ret, locals, parse_yield)
@@ -74,6 +74,15 @@ INCLUDE "varorexpression.rl"
 			RETURN NULL;
 	}
 
+	parse_body_x(
+		p: Parser &, locals: ast::LocalPosition &
+	) ast::[Config]Statement - std::Dyn
+	{
+		IF:!(stmt ::= parse_body(p, locals))
+			p.fail("expected statement");
+		= :!(&&stmt);
+	}
+
 	parse_assert(
 		p: Parser &,
 		ast::LocalPosition&,
@@ -87,8 +96,9 @@ INCLUDE "varorexpression.rl"
 
 		p.expect(:parentheseOpen);
 
-		IF(!(out.Expression := parser::expression::parse(p)))
-			p.fail("expected expression");
+		IF(exp ::= parser::expression::parse(p))
+			out.Expression := :!(&&exp);
+		ELSE p.fail("expected expression");
 
 		p.expect(:parentheseClose);
 		p.expect(:semicolon);
@@ -135,8 +145,7 @@ INCLUDE "varorexpression.rl"
 		IF(p.match_ahead(:semicolon) || !p.consume(:tripleDot))
 			= FALSE;
 		t: Trace(&p, "sleep statement");
-		IF!(out.Duration := expression::parse(p))
-			p.fail("expected expression");
+		out.Duration := expression::parse_x(p);
 		p.expect(:semicolon);
 		= TRUE;
 	}
@@ -160,7 +169,7 @@ INCLUDE "varorexpression.rl"
 		WHILE(!p.consume(:braceClose))
 		{
 			IF(stmt ::= parser::statement::parse(p, locals))
-				out.Statements += &&stmt;
+				out.Statements += :!(&&stmt);
 			ELSE
 				p.fail("expected statement or '}'");
 		}
@@ -185,27 +194,29 @@ INCLUDE "varorexpression.rl"
 		p.expect(:parentheseOpen);
 
 		val ::= out.RevealsVariable
-			? <ast::[Config]VarOrExpr-std::Dyn>(
+			?? <ast::[Config]VarOrExpr-std::DynOpt>(
 				variable::parse_local(p, FALSE, locals))
 			: var_or_exp::parse(p, locals);
+
+		IF(!val)
+			p.fail(out.RevealsVariable
+				?? "expected variable"
+				:  "expected variable or expression");
 
 		IF(!out.Negated && p.consume(:semicolon))
 		{
 			out.Init := &&val;
-			val := var_or_exp::parse(p, locals);
+			IF!(val := var_or_exp::parse(p, locals))
+				p.fail("expected variable or expression");
 		}
-		out.Condition := &&val;
+		out.Condition := :!(&&val);
 
 		p.expect(:parentheseClose);
 
-		IF(!(out.Then := parser::statement::parse_body(p, locals)))
-			p.fail("expected statement");
+		out.Then := parser::statement::parse_body_x(p, locals);
 
 		IF(p.consume(:else))
-		{
-			IF(!(out.Else := statement::parse_body(p, locals)))
-				p.fail("expected statement");
-		}
+			out.Else := parser::statement::parse_body_x(p, locals);
 
 		= TRUE;
 	}
@@ -234,8 +245,9 @@ INCLUDE "varorexpression.rl"
 		out: ast::[Config]ExpressionStatement &
 	) BOOL
 	{
-		IF(!(out.Expression := parser::expression::parse(p)))
+		IF:!(x ::= parser::expression::parse(p))
 			= FALSE;
+		out.Expression := :!(&&x);
 		p.expect(:semicolon);
 		= TRUE;
 	}
@@ -264,8 +276,7 @@ INCLUDE "varorexpression.rl"
 		IF(!p.consume(:try))
 			= FALSE;
 
-		IF(!(out.Body := statement::parse_body(p, locals)))
-			p.fail("expected statement");
+		out.Body := statement::parse_body_x(p, locals);
 
 		FOR(catch: ast::[Config]CatchStatement (BARE);
 			detail::parse_catch(p, locals, catch);)
@@ -309,8 +320,7 @@ INCLUDE "varorexpression.rl"
 		}
 		p.expect(:parentheseClose);
 
-		IF(!(out.Body := statement::parse_body(p, locals)))
-			p.fail("expected statement");
+		out.Body := statement::parse_body_x(p, locals);
 
 		RETURN TRUE;
 	}
@@ -354,8 +364,7 @@ INCLUDE "varorexpression.rl"
 
 		loop::parse_loop_head(p, locals, out);
 
-		IF(!(out.Body := statement::parse_body(p, locals)))
-			p.fail("expected statement");
+		out.Body := statement::parse_body_x(p, locals);
 
 		IF(out.is_post_condition())
 			IF(!loop::parse_for_head(p, locals, out)
@@ -538,17 +547,12 @@ INCLUDE "varorexpression.rl"
 		IF(!p.consume(:default))
 		{
 			DO()
-			{
-				IF(value ::= expression::parse(p))
-					out.Values += &&value;
-				ELSE
-					p.fail("expected expression");
-			} WHILE(p.consume(:comma))
+				out.Values += expression::parse_x(p);
+				WHILE(p.consume(:comma))
 		}
 		p.expect(:colon);
 
-		IF(!(out.Body := statement::parse_body(p, locals)))
-			p.fail("expected statement");
+		out.Body := statement::parse_body_x(p, locals);
 
 		= TRUE;
 	}
@@ -598,18 +602,13 @@ INCLUDE "varorexpression.rl"
 	) BOOL
 	{
 		IF(!p.consume(:default))
-		{
 			DO()
-			{
-				IF(type ::= parser::type::parse(p))
-					out.Types += &&type;
-				ELSE p.fail("expected type");
-			} WHILE(p.consume(:comma))
-		}
+				out.Types += parser::type::parse_x(p);
+				WHILE(p.consume(:comma))
+
 		p.expect(:colon);
 
-		IF(!(out.Body := statement::parse_body(p, locals)))
-			p.fail("expected statement");
+		out.Body := statement::parse_body_x(p, locals);
 
 		= TRUE;
 	}

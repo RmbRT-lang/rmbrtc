@@ -14,38 +14,36 @@ INCLUDE 'std/memory'
 {
 	Initialisers VIRTUAL {
 		<<<
-			p: [Stage::Prev+]Constructor::Initialisers #\,
+			p: [Stage::Prev+]Constructor::Initialisers #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		>>> THIS - std::Dyn
 		{
 			TYPE SWITCH(p)
 			{
 			[Stage::Prev+]Constructor::ExplicitInits+:
-				= :dup(<ExplicitInits>(:transform(
-					<<[Stage::Prev+]Constructor::ExplicitInits+ #&>>(*p), f, s)));
+				= :a.ExplicitInits(:transform(>>p, f, s, parent));
 			[Stage::Prev+]Constructor::CtorAlias+:
-				= :dup(<CtorAlias>(:transform(
-					<<[Stage::Prev+]Constructor::CtorAlias #&>>(*p), f, s)));
+				= :a.CtorAlias(:transform(>>p, f, s, parent));
 			}
 		}
 	}
 
 	BaseInit -> CodeObject
 	{
-		Base: Stage::Inheritance;
 		Arguments: [Stage]Expression - std::DynVec;
 
 		:transform{
 			p: [Stage::Prev+]Constructor::BaseInit+ #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (p):
-			Base := s.transform_inheritance(p.Base, f),
 			Arguments := :reserve(##p.Arguments)
 		{
 			FOR(a ::= p.Arguments.start())
-				Arguments += <<<[Stage]Expression>>>(a!, f, s);
+				Arguments += :make(a!, f, s, parent);
 		}
 	}
 
@@ -57,13 +55,14 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]Constructor::MemberInit+ #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		} -> (p):
 			Member := s.transform_member_variable_reference(p.Member, f),
 			Arguments := :reserve(##p.Arguments)
 		{
 			FOR(a ::= p.Arguments.start())
-				Arguments += <<<[Stage]Expression>>>(a!, f, s);
+				Arguments += <<<[Stage]Expression>>>(a!, f, s, parent);
 		}
 	}
 
@@ -75,15 +74,16 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]Constructor::ExplicitInits+ #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		}:
 			BaseInits := :reserve(##p.BaseInits),
 			MemberInits := :reserve(##p.MemberInits)
 		{
 			FOR(i ::= p.BaseInits.start())
-				BaseInits += :transform(i!, f, s);
+				BaseInits += :transform(i!, f, s, parent);
 			FOR(i ::= p.MemberInits.start())
-				MemberInits += :transform(i!, f, s);
+				MemberInits += :transform(i!, f, s, parent);
 		}
 	}
 
@@ -94,58 +94,51 @@ INCLUDE 'std/memory'
 		:transform{
 			p: [Stage::Prev+]Constructor::CtorAlias+ #&,
 			f: Stage::PrevFile+,
-			s: Stage &
+			s: Stage &,
+			parent: [Stage]ScopeBase \
 		}:
 			Arguments := :reserve(##p.Arguments)
 		{
 			FOR(a ::= p.Arguments.start())
-				Arguments += <<<[Stage]Expression>>>(a!, f, s);
+				Arguments += :make(a!, f, s, parent);
 		}
 	}
 
-	Inits: Initialisers - std::Dyn;
-	Body: [Stage]BlockStatement - std::Dyn;
+	Inits: Initialisers - std::DynOpt;
+	Body: [Stage]BlockStatement - std::DynOpt;
 	Inline: BOOL;
 
 	:transform{
 		p: [Stage::Prev+]Constructor #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p), (:transform, p, f, s), (p):
-		Inline := p.Inline
-	{
-		IF(p.Inits)
-			Inits := <<<Initialisers>>>(p.Inits!, f, s);
-		IF(p.Body)
-			Body := :a(:transform(*p.Body!, f, s));
-	}
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p), (:transform, p, f, s, parent), (p):
+		Inits := :make_if(p.Inits, p.Inits.ok(), f, s, parent),
+		Body := :if(p.Body, :transform(p.Body.ok(), f, s, parent)),
+		Inline := p.Inline;
 
 	<<<
-		p: [Stage::Prev+]Constructor #\,
+		p: [Stage::Prev+]Constructor #&,
 		f: Stage::PrevFile+,
-		s: Stage &
+		s: Stage &,
+		parent: [Stage]ScopeBase \
 	>>> THIS - std::Dyn
 	{
 		TYPE SWITCH(p)
 		{
 		[Stage::Prev+]NullConstructor:
-		= :dup(<[Stage]NullConstructor>(:transform(
-			<<[Stage::Prev+]NullConstructor #&>>(*p), f, s)));
+			= :a.[Stage]NullConstructor(:transform(>>p, f, s, parent));
 		[Stage::Prev+]BareConstructor:
-		= :dup(<[Stage]BareConstructor>(:transform(
-			<<[Stage::Prev+]BareConstructor #&>>(*p), f, s)));
+			= :a.[Stage]BareConstructor(:transform(>>p, f, s, parent));
 		[Stage::Prev+]CustomConstructor:
-		= :dup(<[Stage]CustomConstructor>(:transform(
-			<<[Stage::Prev+]CustomConstructor #&>>(*p), f, s)));
+			= :a.[Stage]CustomConstructor(:transform(>>p, f, s, parent));
 		[Stage::Prev+]DefaultConstructor:
-			= :dup(<[Stage]DefaultConstructor>(:transform(
-				<<[Stage::Prev+]DefaultConstructor #&>>(*p), f, s)));
+			= :a.[Stage]DefaultConstructor(:transform(>>p, f, s, parent));
 		[Stage::Prev+]CopyConstructor:
-			= :dup(<[Stage]CopyConstructor>(:transform(
-				<<[Stage::Prev+]CopyConstructor #&>>(*p), f, s)));
+			= :a.[Stage]CopyConstructor(:transform(>>p, f, s, parent));
 		[Stage::Prev+]MoveConstructor:
-			= :dup(<[Stage]MoveConstructor>(:transform(
-				<<[Stage::Prev+]MoveConstructor #&>>(*p), f, s)));
+			= :a.[Stage]MoveConstructor(:transform(>>p, f, s, parent));
 		}
 	}
 }
@@ -156,8 +149,9 @@ INCLUDE 'std/memory'
 	:transform{
 		p: [Stage::Prev+]StructuralConstructor #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s);
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s, parent);
 }
 
 ::rlc::ast [Stage: TYPE] DefaultConstructor -> [Stage]Constructor
@@ -165,8 +159,9 @@ INCLUDE 'std/memory'
 	:transform{
 		p: [Stage::Prev+]DefaultConstructor #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s);
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s, parent);
 }
 
 ::rlc::ast [Stage: TYPE] NullConstructor -> [Stage]Constructor
@@ -174,8 +169,9 @@ INCLUDE 'std/memory'
 	:transform{
 		p: [Stage::Prev+]NullConstructor #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s);
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s, parent);
 }
 
 ::rlc::ast [Stage: TYPE] BareConstructor -> [Stage]Constructor
@@ -183,8 +179,9 @@ INCLUDE 'std/memory'
 	:transform{
 		p: [Stage::Prev+]BareConstructor #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s);
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s, parent);
 }
 
 ::rlc::ast [Stage: TYPE] CopyConstructor -> [Stage]Constructor
@@ -193,17 +190,18 @@ INCLUDE 'std/memory'
 
 	:named_arg{
 		name: Stage::Name
-	} -> (BARE): Argument(:a(name, :gc(std::heap::[[Stage]ThisType]new(:cref))));
+	} -> (BARE): Argument := :a(name, :a.[Stage]ThisType(:cref));
 	:unnamed_arg{} -> (BARE);
 
 	:transform{
 		p: [Stage::Prev+]CopyConstructor #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s)
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s, parent)
 	{
 		IF(p.Argument)
-			Argument := :a(:transform(p.Argument!, f, s));
+			Argument := :a(:transform(p.Argument!, f, s, parent));
 	}
 }
 
@@ -220,11 +218,12 @@ INCLUDE 'std/memory'
 	:transform{
 		p: [Stage::Prev+]MoveConstructor #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s)
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s, parent)
 	{
 		IF(p.Argument)
-			Argument := :a(:transform(p.Argument!, f, s));
+			Argument := :a(:transform(p.Argument!, f, s, parent));
 	}
 }
 
@@ -238,35 +237,17 @@ INCLUDE 'std/memory'
 	:transform{
 		p: [Stage::Prev+]CustomConstructor #&,
 		f: Stage::PrevFile+,
-		s: Stage &
-	} -> (:transform, p, f, s):
+		s: Stage &,
+		parent: [Stage]ScopeBase \
+	} -> (:transform, p, f, s, parent):
 		Arguments := :reserve(##p.Arguments)
 	{
 		IF(p.Name)
-			Name := :a(:transform(p.Name!, f, s));
+			Name := :a(:transform(p.Name!, f, s, parent));
 
 		FOR(a ::= p.Arguments.start())
-			Arguments += <<<[Stage]TypeOrArgument>>>(a!, f, s);
+			Arguments += :make(a!, f, s, parent);
 	}
 
-	PRIVATE TYPE Self := THIS;
-	Cmp
-	{
-		STATIC cmp(
-			lhs: Self#&,
-			rhs: Self#&) ?
-		{
-			IF(lhs.Name)
-			{
-				IF(rhs.Name)
-					= [Stage]SymbolConstant::Cmp::cmp(lhs.Name!, rhs.Name!);
-				ELSE
-					= 1;
-			} ELSE IF(rhs.Name)
-			{
-				= -1;
-			} ELSE
-				= 0;
-		}
-	}
+	# THIS <>(rhs: THIS#&) S1 := Name <> rhs.Name;
 }

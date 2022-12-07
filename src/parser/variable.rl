@@ -6,7 +6,7 @@ INCLUDE "stage.rl"
 
 ::rlc::parser::variable
 {
-	parse_global(p: Parser&) ast::[Config]GlobalVariable - std::Dyn
+	parse_global(p: Parser&) ast::[Config]GlobalVariable - std::DynOpt
 	{
 		t: Trace(&p, "global variable");
 		IF:!(nt ::= help::parse_initialised_name_and_type(p))
@@ -14,7 +14,7 @@ INCLUDE "stage.rl"
 
 		inits: ast::[Config]Expression - std::DynVec;
 
-		IF(<<ast::type::[Config]Auto *>>(nt->Type!))
+		IF(<<ast::type::[Config]Auto *>>(nt->Type))
 			inits += help::parse_auto_init(p, nt->ExpectShortHandInit);
 		ELSE
 			inits := help::parse_initialisers(p);
@@ -40,7 +40,7 @@ INCLUDE "stage.rl"
 	parse_member(
 		p: Parser&,
 		static: BOOL
-	) ast::[Config]MaybeAnonMemberVar - std::Dyn
+	) ast::[Config]MaybeAnonMemberVar - std::DynOpt
 	{
 		_: Trace(&p, "member variable");
 
@@ -50,7 +50,7 @@ INCLUDE "stage.rl"
 			{
 				inits: ast::[Config]Expression - std::DynVec;
 
-				IF(<<ast::type::[Config]Auto *>>(nt->Type!))
+				IF(<<ast::type::[Config]Auto *>>(nt->Type))
 					inits += help::parse_auto_init(p, nt->ExpectShortHandInit);
 				ELSE
 					inits := help::parse_initialisers(p);
@@ -81,7 +81,7 @@ INCLUDE "stage.rl"
 				p.expect(:semicolon);
 
 				v: ast::[Config]AnonMemberVariable (BARE);
-				v.Type := &&t;
+				v.Type := :!(&&t);
 				= :dup(&&v);
 			} ELSE = NULL;
 		}
@@ -90,19 +90,19 @@ INCLUDE "stage.rl"
 	parse_catch(
 		p: Parser &,
 		locals: ast::LocalPosition &
-	) ast::[Config]TypeOrCatchVariable - std::Dyn
+	) ast::[Config]TypeOrCatchVariable - std::DynOpt
 	{
 		_: Trace(&p, "catch variable");
 
 		IF(nt ::= help::parse_uninitialised_name_and_type(p))
 		{
-			= :gc(std::heap::[ast::[Config]CatchVariable]new(
-				&&nt->Name.Content, ++locals, &&nt->Type));
+			= :a.ast::[Config]CatchVariable(
+				&&nt->Name.Content, ++locals, :<>(&&nt->Type));
 		} ELSE IF(help::is_optionally_named_variable_start(p))
 		{	// Anonymous catch variable.
 			IF:!(t ::= type::parse(p))
 				p.fail("expected type");
-			= &&t;
+			= :<>(&&t);
 		}
 		= NULL;
 	}
@@ -111,7 +111,7 @@ INCLUDE "stage.rl"
 		p: Parser &,
 		expect_semicolon: BOOL,
 		locals: ast::LocalPosition &
-	) ast::[Config]LocalVariable - std::Dyn
+	) ast::[Config]LocalVariable - std::DynOpt
 	{
 		IF:!(nt ::= help::parse_initialised_name_and_type(p))
 			= NULL;
@@ -120,7 +120,7 @@ INCLUDE "stage.rl"
 
 		inits: ast::[Config]Expression - std::DynVec;
 
-		IF(<<ast::type::[Config]Auto *>>(nt->Type!))
+		IF(<<ast::type::[Config]Auto *>>(nt->Type))
 			inits += help::parse_auto_init(p, nt->ExpectShortHandInit);
 		ELSE
 			inits := help::parse_initialisers(p);
@@ -133,13 +133,13 @@ INCLUDE "stage.rl"
 
 	parse_fn_arg(
 		p: Parser&
-	) ast::[Config]TypeOrArgument-std::Dyn
+	) ast::[Config]TypeOrArgument-std::DynOpt
 	{
 		IF:!(nt ::= help::parse_variable_opt_name_and_type(p))
 			= NULL;
 
 		IF(nt->Name)
-			= :gc(std::heap::[ast::[Config]Argument]new(nt->Name->Content, &&nt->Type));
+			= :a.ast::[Config]Argument(nt->Name->Content, &&nt->Type);
 		ELSE
 			= &&nt->Type;
 	}
@@ -210,9 +210,7 @@ INCLUDE "stage.rl"
 
 		name ::= p.consume(:identifier)!;
 		p.expect(:colon);
-		IF:!(t ::= type::parse(p))
-			p.fail("expected type");
-		= :a(name, &&t);
+		= :a(name, type::parse_x(p));
 	}
 
 
@@ -240,7 +238,7 @@ INCLUDE "stage.rl"
 				type::parse_auto(p, auto);
 				= :a(name, :dup(&&auto), FALSE);
 			}
-			= :a(name, type::parse(p), FALSE);
+			= :a(name, :<>(type::parse_x(p)), FALSE);
 		} ELSE
 		{
 			STATIC k_need_ahead: tok::Type#[](
@@ -267,6 +265,8 @@ INCLUDE "stage.rl"
 	{
 		Name: tok::Token - std::Opt;
 		Type: ast::[Config]Type - std::Dyn;
+
+		{...}; // Suppress {}.
 	}
 
 	::help parse_variable_opt_name_and_type(
@@ -277,13 +277,11 @@ INCLUDE "stage.rl"
 		{
 			name ::= p.consume(:identifier)!;
 			p.eat_token()!;
-			t ::= type::parse(p);
-			IF(!t) p.fail("expected type");
-			= :a(:a(name), &&t);
+			= :a(:a(name), type::parse_x(p));
 		}
 
 		IF(t ::= type::parse(p))
-			= :a(NULL, &&t);
+			= :a(NULL, :!(&&t));
 		= NULL;
 	}
 
@@ -294,27 +292,21 @@ INCLUDE "stage.rl"
 
 		IF:!(init ::= expression::parse(p))
 			p.fail("expected expression");
-		= &&init;
+		= :!(&&init);
 	}
 
 	::help parse_initialisers(p: Parser &) ast::[Config]Expression - std::DynVec
 	{
 		inits: ast::[Config]Expression - std::DynVec;
 		IF(p.consume(:colonEqual))
-		{
-			IF:!(init ::= expression::parse(p))
-				p.fail("expected expression");
-			inits += &&init;
-		} ELSE IF(p.consume(:parentheseOpen))
+			inits += expression::parse_x(p);
+		ELSE IF(p.consume(:parentheseOpen))
 		{
 			IF(!p.consume(:parentheseClose))
 			{
 				DO()
-				{
-					IF:!(init ::= expression::parse(p))
-						p.fail("expected expression");
-					inits += &&init;
-				} WHILE(p.consume(:comma))
+					inits += expression::parse_x(p);
+					WHILE(p.consume(:comma))
 				p.expect(:parentheseClose);
 			}
 		}

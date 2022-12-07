@@ -2,7 +2,7 @@ INCLUDE "parser.rl"
 INCLUDE "../ast/constructor.rl"
 INCLUDE "stage.rl"
 
-::rlc::parser parse_constructor(p: Parser&) ast::[Config]Constructor - std::Dyn
+::rlc::parser parse_constructor(p: Parser&) ast::[Config]Constructor - std::DynOpt
 {
 	t: Trace(&p, "constructor");
 
@@ -16,32 +16,32 @@ INCLUDE "stage.rl"
 		position := tok->Position;
 	ELSE = NULL;
 
-	out: ast::[Config]Constructor - std::Dyn;
+	out: ast::[Config]Constructor - std::Dyn (BARE);
 	IF(!symbol && p.consume(:braceClose))
-		out := :dup(<ast::[Config]DefaultConstructor>(BARE));
+		out := :a.ast::[Config]DefaultConstructor(BARE);
 	ELSE IF(!symbol && p.consume_seq(:tripleDot, :braceClose))
-		out := :dup(<ast::[Config]StructuralConstructor>(BARE));
+		out := :a.ast::[Config]StructuralConstructor(BARE);
 	ELSE IF(!symbol && p.consume_seq(:null, :braceClose))
-		out := :dup(<ast::[Config]NullConstructor>(BARE));
+		out := :a.ast::[Config]NullConstructor(BARE);
 	ELSE IF(!symbol && p.consume_seq(:bare, :braceClose))
-		out := :dup(<ast::[Config]BareConstructor>(BARE));
+		out := :a.ast::[Config]BareConstructor(BARE);
 	ELSE
 	{
 		IF(!symbol && p.consume(:hash))
 		{
 			p.expect(:and);
 			IF(name ::= p.consume(:identifier))
-				out := :dup(<ast::[Config]CopyConstructor>(
-					:named_arg(name->Content)));
+				out := :a.ast::[Config]CopyConstructor(
+					:named_arg(name->Content));
 			ELSE
-				out := :dup(<ast::[Config]CopyConstructor>(:unnamed_arg));
+				out := :a.ast::[Config]CopyConstructor(:unnamed_arg);
 		} ELSE IF(!symbol && p.consume(:doubleAnd))
 		{
 			IF(name ::= p.consume(:identifier))
-				out := :dup(<ast::[Config]MoveConstructor>(
-					:named_arg(name->Content)));
+				out := :a.ast::[Config]MoveConstructor(
+					:named_arg(name->Content));
 			ELSE
-				out := :dup(<ast::[Config]MoveConstructor>(:unnamed_arg));
+				out := :a.ast::[Config]MoveConstructor(:unnamed_arg);
 		} ELSE
 		{
 			_out ::= std::heap::[ast::[Config]CustomConstructor]new(BARE);
@@ -49,12 +49,8 @@ INCLUDE "stage.rl"
 			_out->Name := &&symbol;
 			IF(!p.match(:braceClose))
 				DO()
-				{
-					IF:!(arg ::= function::help::parse_arg(p))
-						p.fail("expected argument");
-					_out->Arguments += &&arg;
-				} WHILE(p.consume(:comma))
-
+					_out->Arguments += function::help::parse_arg_x(p);
+					WHILE(p.consume(:comma))
 		}
 		p.expect(:braceClose);
 	}
@@ -68,19 +64,14 @@ INCLUDE "stage.rl"
 		out->Inits := :gc(alias);
 		IF(!p.match(:parentheseClose))
 			DO()
-			{
-				IF:!(exp ::= expression::parse(p))
-					p.fail("expected expression");
-				alias->Arguments += &&exp;
-			} WHILE(p.consume(:comma))
+				alias->Arguments += expression::parse_x(p);
+				WHILE(p.consume(:comma))
 		p.expect(:parentheseClose);
 	} ELSE IF(p.consume(:colonEqual))
 	{
 		alias ::= std::heap::[ast::[Config]Constructor::CtorAlias]new(BARE);
 		out->Inits := :gc(alias);
-		IF:!(exp ::= expression::parse(p))
-			p.fail("expected expression");
-		alias->Arguments += &&exp;
+		alias->Arguments += expression::parse_x(p);
 	} ELSE
 	{
 		inits: ast::[Config]Constructor::ExplicitInits (BARE);
@@ -94,11 +85,8 @@ INCLUDE "stage.rl"
 				IF(!p.consume(:parentheseClose))
 				{
 					DO()
-					{
-						IF(exp ::= expression::parse(p))
-							init.Arguments += &&exp;
-						ELSE p.fail("expected expression");
-					} WHILE(p.consume(:comma))
+						init.Arguments += expression::parse_x(p);
+						WHILE(p.consume(:comma))
 					p.expect(:parentheseClose);
 				}
 				inits.BaseInits += &&init;
@@ -114,22 +102,15 @@ INCLUDE "stage.rl"
 				(init.Member, init.Position) := (tok.Content, tok.Position);
 
 				IF(p.consume(:colonEqual))
-				{
-					IF:!(exp ::= expression::parse(p))
-						p.fail("expected expression");
-					init.Arguments += &&exp;
-				} ELSE
+					init.Arguments += expression::parse_x(p);
+				ELSE
 				{
 					p.expect(:parentheseOpen);
 					IF(!p.consume(:parentheseClose))
 					{
 						DO()
-						{
-							IF(exp ::= expression::parse(p))
-								init.Arguments += &&exp;
-							ELSE
-								p.fail("expected expression");
-						} WHILE(p.consume(:comma))
+							init.Arguments += expression::parse_x(p);
+							WHILE(p.consume(:comma))
 						p.expect(:parentheseClose);
 					}
 				}

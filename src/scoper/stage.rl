@@ -5,7 +5,7 @@ INCLUDE "includes.rl"
 INCLUDE "../ast/scopeitem.rl"
 INCLUDE "../ast/cache.rl"
 
-INCLUDE 'std/heaped'
+INCLUDE 'std/dyn'
 INCLUDE 'std/unicode'
 
 ::rlc::scoper Config
@@ -14,7 +14,7 @@ INCLUDE 'std/unicode'
 	Registry: ast::[THIS]FileRegistry;
 	IncludeDirs: std::Str - std::Buffer;
 
-	MSIs: ast::[THIS; ast::[THIS]MergeableScopeItem]Cache - std::Heaped;
+	MSIs: ast::[THIS; ast::[THIS]MergeableScopeItem]Cache - std::Dyn;
 
 	TYPE Prev := parser::Config;
 	TYPE PrevFile := ast::[parser::Config]File #\;
@@ -33,10 +33,10 @@ INCLUDE 'std/unicode'
 
 	Includes
 	{
-		From: ast::[Config]File \ -std::NatVecSet;
-		FromMissing: std::Str -std::AutoVecSet;
+		From: ast::[Config]File \ -std::VecSet;
+		FromMissing: std::Str -std::VecSet;
 
-		Into: ast::[Config]File \ -std::NatVecSet;
+		Into: ast::[Config]File \ -std::VecSet;
 	}
 
 	TYPE Name := std::str::CV;
@@ -52,7 +52,7 @@ INCLUDE 'std/unicode'
 
 		{...};
 		:nat{v: U8}: Sign := FALSE, Value := v;
-		:int{v: S8}: Sign := v < 0, Value := v < 0 ? -v : v;
+		:int{v: S8}: Sign := v < 0, Value := v < 0 ?? -v : v;
 	}
 
 	TYPE CharLiteral := U4;
@@ -60,10 +60,12 @@ INCLUDE 'std/unicode'
 	TYPE ControlLabelName := Name;
 	TYPE MemberVariableReference := Name;
 	
-	RootScope
+	RootScope -> ast::[Config]ScopeBase
 	{
-		ScopeItems: std::[std::str::CV; ast::[Config]ScopeItem]AutoDynMap;
+		ScopeItems: ast::[Config]GlobalScope;
 		Tests: ast::[Config]Test - std::Vec;
+
+		{}: ScopeItems := :childOf(&THIS);
 	}
 
 	{prev: parser::Config \, includes: std::Str - std::Buffer}:
@@ -73,17 +75,17 @@ INCLUDE 'std/unicode'
 	transform() VOID
 	{
 		FOR(f ::= ParsedRegistry->start())
-			Registry.get(f!->Source->Name);
+			Registry.get(f!.Source->Name);
 	}
 
 	transform_name(p: Prev::Name+ #&, f: PrevFile) Name INLINE
 		:= f->Source->content(p)++;
 	transform_control_label_name(p: Prev::ControlLabelName #&, f: PrevFile) ControlLabelName := f->Source->content(p.Content)++;
-	transform_member_reference(p: Prev::MemberReference+ #&, f: PrevFile) MemberReference INLINE
-		:= :transform(p, f, THIS);
+	transform_member_reference(p: Prev::MemberReference+ #&, f: PrevFile, parent: ast::[THIS]ScopeBase \) MemberReference INLINE
+		:= :transform(p, f, THIS, parent);
 	transform_member_variable_reference(p: Prev::MemberVariableReference+ #&, f: PrevFile) MemberVariableReference INLINE
 		:= transform_name(p, f);
-	transform_inheritance(p: Prev::Inheritance+ #&, f: PrevFile) Inheritance := :transform(p, f, THIS);
+	transform_inheritance(p: Prev::Inheritance+ #&, f: PrevFile, parent: ast::[THIS]ScopeBase \) Inheritance := :transform(p, f, THIS, parent);
 
 	transform_number(p: Prev::Number+ #&, f: PrevFile) Number INLINE
 	{
@@ -218,8 +220,9 @@ INCLUDE 'std/unicode'
 
 	transform_symbol(
 		p: Prev::Symbol #&,
-		f: PrevFile
-	) Symbol := :transform(p, f, THIS);
+		f: PrevFile,
+		parent: ast::[THIS]ScopeBase \
+	) Symbol := :transform(p, f, THIS, parent);
 
 	transform_includes(
 		out: Includes&,
@@ -253,27 +256,14 @@ INCLUDE 'std/unicode'
 	) VOID
 	{
 		FOR(g ::= p->Globals.start())
-		{
-			IF(s ::= <<parser::Config-ast::ScopeItem #\>>(g!))
+			IF(s ::= <<parser::Config-ast::ScopeItem #*>>(*g))
+				out.ScopeItems.insert_or_merge(
+					:<>(<<<ast::[Config]ScopeItem>>>(*s, p, THIS, &out)));
+			ELSE
 			{
-				conv ::= <<<Config-ast::ScopeItem>>>(s, p, THIS);
-				IF(found_old_si ::= out.ScopeItems.find(conv->Name!))
-				{
-					old_si ::= (*found_old_si)!;
-					IF:!(old ::= <<ast::[Config]MergeableScopeItem *>>(old_si))
-						THROW <ast::MergeError>(old_si, conv!);
-					IF:!(new ::= <<ast::[Config]MergeableScopeItem *>>(conv!))
-						THROW <ast::MergeError>(old_si, conv!);
-
-					old->merge(&&*new);
-				} ELSE
-					out.ScopeItems.insert(conv->Name!, &&conv);
-			} ELSE
-			{
-				test ::= <<parser::Config-ast::Test #\>>(g!);
-				out.Tests += :transform(*test, p, THIS);
+				test:?&:= <<parser::Config-ast::Test #&>>(g!);
+				out.Tests += :transform(test, p, THIS, &out);
 			}
-		}
 	}
 
 	create_file(file: std::str::CV#&) THIS-ast::File - std::Dyn

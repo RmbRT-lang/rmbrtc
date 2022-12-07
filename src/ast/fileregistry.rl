@@ -9,8 +9,8 @@ INCLUDE "file.rl"
 {
 PRIVATE:
 	Files: [Stage]File-std::DynVec;
-	FileByName: std::[std::str::CV, [Stage]File\]AutoMap;
-	Loading: std::[std::str::CV]AutoVecSet;
+	FileByName: std::[std::str::CV, [Stage]File\]Map;
+	Loading: std::[std::str::CV]VecSet;
 
 	Context: Stage \;
 PUBLIC:
@@ -24,16 +24,16 @@ PUBLIC:
 	{
 		entry ::= FileByName.find_loc(file!);
 		IF(f ::= entry.(0))
-			= (*f)!;
+			= *f;
 		ELSE
 		{
 			IF(Loading.has(file!))
 				THROW :loading;
 			Loading += file!;
 			processed ::= Context->create_file(file!);
-			FileByName.insert(processed->Source->Name!, processed!);
+			FileByName.insert(processed->Source->Name!, &processed!);
 			Loading -= file!;
-			= (Files += &&processed)!;
+			= (Files += &&processed);
 		}
 	}
 }

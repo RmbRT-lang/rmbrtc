@@ -18,6 +18,7 @@ INCLUDE "global.rl"
 	}:
 		Source := prev->Source
 	{
+		ASSERT(Source);
 		s.transform_includes(Includes, &THIS, prev);
 		s.transform_globals(Globals, prev);
 	}

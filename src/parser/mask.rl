@@ -17,7 +17,7 @@ INCLUDE "stage.rl"
 
 		DO(default_visibility: Visibility := Visibility::public)
 			IF(member ::= parser::member::parse_mask_member(p, default_visibility))
-				out.Members += &&member;
+				out.Members += :!(&&member);
 			ELSE
 				p.fail("expected member");
 			WHILE(!p.consume(:braceClose))

@@ -6,7 +6,7 @@ INCLUDE "variable.rl"
 
 INCLUDE 'std/dyn'
 
-::rlc::parser::var_or_exp parse_opt(p: Parser &, locals: ast::LocalPosition&) ast::[Config]VarOrExpr-std::Dyn
+::rlc::parser::var_or_exp parse_opt(p: Parser &, locals: ast::LocalPosition&) ast::[Config]VarOrExpr-std::DynOpt
 {
 	IF(variable::help::is_named_variable_start(p, TRUE))
 	{
@@ -21,5 +21,5 @@ INCLUDE 'std/dyn'
 {
 	IF:!(ret ::= parse_opt(p, locals))
 		p.fail("expected variable or expression");
-	= &&ret;
+	= :!(&&ret);
 }

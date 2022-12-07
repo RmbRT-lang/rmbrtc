@@ -17,7 +17,7 @@ INCLUDE "parser.rl"
 	IF(p.consume(:braceOpen))
 	{
 		WHILE(entry ::= global::parse(p))
-			out.Entries += &&entry;
+			out.Entries += :!(&&entry);
 
 		p.expect(:braceClose);
 
@@ -26,7 +26,7 @@ INCLUDE "parser.rl"
 
 	IF(entry ::= global::parse(p))
 	{
-		out.Entries += &&entry;
+		out.Entries += :!(&&entry);
 		= TRUE;
 	}
 

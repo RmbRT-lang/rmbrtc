@@ -12,12 +12,10 @@ INCLUDE "expression.rl"
 
 		t: Trace(&p, "rawtype");
 
-		IF(!(out.Size := expression::parse(p)))
-			p.fail("expected expression");
+		out.Size := expression::parse_x(p);
 
 		IF(p.consume(:comma))
-			IF(!(out.Alignment := expression::parse(p)))
-				p.fail("expected expression");
+			out.Alignment := expression::parse_x(p);
 
 		p.expect(:parentheseClose);
 
@@ -30,7 +28,7 @@ INCLUDE "expression.rl"
 
 		visibility ::= Visibility::public;
 		WHILE(member ::= member::parse_rawtype_member(p, visibility))
-			out.Members += &&member;
+			out.add_member(:!(&&member));
 
 		p.expect(:braceClose);
 

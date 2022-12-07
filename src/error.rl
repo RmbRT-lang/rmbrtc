@@ -17,3 +17,17 @@ INCLUDE "src/file.rl"
 
 	# ABSTRACT message(o: std::io::OStream &) VOID;
 }
+
+::rlc ReasonError -> Error
+{
+	Message: CHAR #\;
+
+	{
+		position: src::Position,
+		message: CHAR#\
+	} -> (position):
+		Message := message;
+
+	# FINAL message(o: std::io::OStream &) VOID
+		:= std::io::write(o, Message);
+}
