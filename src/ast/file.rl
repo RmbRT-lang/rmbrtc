@@ -5,7 +5,7 @@ INCLUDE "global.rl"
 	/// The file's includes.
 	Includes: Config::Includes;
 	/// The file's global scope.
-	Globals: Config::RootScope;
+	Globals: Config::RootScope+ - std::Shared;
 
 	Source: src::File # - std::Shared #;
 
@@ -15,11 +15,17 @@ INCLUDE "global.rl"
 	:transform{
 		prev: Config::PrevFile #&,
 		s: Config &
+	} := :transform_with_scope(prev, s, :a());
+
+	:transform_with_scope{
+		prev: Config::PrevFile #&,
+		s: Config &,
+		globals: Config::RootScope+ - std::Shared
 	}:
+		Globals := &&globals,
 		Source := prev->Source
 	{
-		ASSERT(Source);
 		s.transform_includes(Includes, &THIS, prev);
-		s.transform_globals(Globals, prev);
+		s.transform_globals(*Globals, prev);
 	}
 }

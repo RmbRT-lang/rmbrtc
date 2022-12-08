@@ -68,10 +68,14 @@ INCLUDE 'std/unicode'
 		{}: ScopeItems := :childOf(&THIS);
 	}
 
+	Globals: RootScope-std::Shared;
+
 	{prev: parser::Config \, includes: std::Str - std::Buffer}:
 		ParsedRegistry(&prev->Registry),
 		Registry(&THIS),
-		IncludeDirs(includes);
+		IncludeDirs(includes),
+		Globals := :a();
+
 	transform() VOID
 	{
 		FOR(f ::= ParsedRegistry->start())
@@ -255,7 +259,7 @@ INCLUDE 'std/unicode'
 		p: ast::[parser::Config]File #\
 	) VOID
 	{
-		FOR(g ::= p->Globals.start())
+		FOR(g ::= p->Globals->start())
 			IF(s ::= <<parser::Config-ast::ScopeItem #*>>(*g))
 				out.ScopeItems.insert_or_merge(
 					:<>(<<<ast::[Config]ScopeItem>>>(*s, p, THIS, &out)));
@@ -267,5 +271,5 @@ INCLUDE 'std/unicode'
 	}
 
 	create_file(file: std::str::CV#&) THIS-ast::File - std::Dyn
-		:= :a(:transform(ParsedRegistry->get(file), THIS));
+		:= :a(:transform_with_scope(ParsedRegistry->get(file), THIS, Globals));
 }
