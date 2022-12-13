@@ -124,9 +124,8 @@ INCLUDE "stage.rl"
 
 	IF(!p.consume(:semicolon))
 	{
-		locals: ast::LocalPosition;
 		body: ast::[Config]BlockStatement (BARE);
-		IF(!statement::parse_block(p, locals, body))
+		IF(!statement::parse_block(p, body))
 			p.fail("expected constructor body");
 		out->Body := :dup(&&body);
 	}

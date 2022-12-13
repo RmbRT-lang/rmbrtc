@@ -140,7 +140,45 @@ INCLUDE 'std/tags'
 		Ctx: Trace *;
 		Name: std::Str;
 		Source: src::File # - std::Shared #;
+		
+		locals() ast::LocalPosition
+		{
+			IF(!Locals)
+				= 0;
+			= Locals!;
+		}
+
+		add_local() ast::LocalPosition
+		{
+			IF(!Locals)
+				fail("registering local: Local tracking not configured");
+			= ++Locals!;
+		}
+
+		LocalTracker
+		{
+			P: Parser *;
+			{...};
+			{&&mv}: P := mv.P { mv.P := NULL; }
+
+			DESTRUCTOR
+			{
+				IF(P)
+					P->Locals := NULL;
+			}
+		}
+		// This function starts tracking local variables 
+		track_locals() LocalTracker
+		{
+			IF(!Locals)
+			{
+				Locals := :a(0);
+				= &THIS;
+			}
+			= NULL;
+		}
 	PRIVATE:
+		Locals: ast::LocalPosition -std::Opt;
 		Tokeniser: tok::Tokeniser;
 		Buffer: tok::Token[2]; // Lookahead buffer.
 		BufferIndex: UINT;

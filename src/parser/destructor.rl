@@ -8,8 +8,7 @@ INCLUDE "../ast/destructor.rl"
 	out.Position := t!.Position;
 	out.Inline := p.consume(:inline);
 
-	locals: ast::LocalPosition;
-	IF(!statement::parse_block(p, locals, out.Body))
+	IF(!statement::parse_block(p, out.Body))
 		p.fail("expected block statement");
 
 	= TRUE;

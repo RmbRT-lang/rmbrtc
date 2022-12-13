@@ -90,8 +90,6 @@ Can be called multiple times to append new arguments.
 	allow_body: BOOL,
 	out: ast::[Config]Functoid &) VOID
 {
-	locals: ast::LocalPosition;
-
 	IF(!allow_body)
 	{
 		IF(<<ast::[Config]UnresolvedSig *>>(out.Signature))
@@ -113,7 +111,7 @@ Can be called multiple times to append new arguments.
 		p.expect(:semicolon);
 	} ELSE
 	{
-		IF(!statement::parse_block(p, locals, body))
+		IF(!statement::parse_block(p, body))
 			p.fail("expected block statement");
 		out.Body := :dup(&&body);
 	}

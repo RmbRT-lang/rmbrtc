@@ -87,17 +87,14 @@ INCLUDE "stage.rl"
 		}
 	}
 
-	parse_catch(
-		p: Parser &,
-		locals: ast::LocalPosition &
-	) ast::[Config]TypeOrCatchVariable - std::DynOpt
+	parse_catch(p: Parser &) ast::[Config]TypeOrCatchVariable - std::DynOpt
 	{
 		_: Trace(&p, "catch variable");
 
 		IF(nt ::= help::parse_uninitialised_name_and_type(p))
 		{
 			= :a.ast::[Config]CatchVariable(
-				&&nt->Name.Content, ++locals, :<>(&&nt->Type));
+				&&nt->Name.Content, p.add_local(), :<>(&&nt->Type));
 		} ELSE IF(help::is_optionally_named_variable_start(p))
 		{	// Anonymous catch variable.
 			IF:!(t ::= type::parse(p))
@@ -109,8 +106,7 @@ INCLUDE "stage.rl"
 
 	parse_local(
 		p: Parser &,
-		expect_semicolon: BOOL,
-		locals: ast::LocalPosition &
+		expect_semicolon: BOOL
 	) ast::[Config]LocalVariable - std::DynOpt
 	{
 		IF:!(nt ::= help::parse_initialised_name_and_type(p))
@@ -128,7 +124,7 @@ INCLUDE "stage.rl"
 		IF(expect_semicolon)
 			p.expect(:semicolon);
 
-		= :a(nt->Name.Content, ++locals, &&nt->Type, &&inits);
+		= :a(nt->Name.Content, p.add_local(), &&nt->Type, &&inits);
 	}
 
 	parse_fn_arg(

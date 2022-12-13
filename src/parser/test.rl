@@ -12,8 +12,7 @@ INCLUDE "stage.rl"
 
 	out.Name := p.expect(:stringQuote).Content;
 
-	locals: ast::LocalPosition;
-	IF(!statement::parse_block(p, locals, out.Body))
+	IF(!statement::parse_block(p, out.Body))
 		p.fail("expected block statement");
 
 	= TRUE;
