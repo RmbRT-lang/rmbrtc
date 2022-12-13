@@ -7,10 +7,8 @@ INCLUDE "statement.rl"
 
 	:transform{
 		p: [Stage::Prev+]Destructor #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
+		ctx: Stage::Context+ #&
 	} -> (:transform, p), (p):
-		Body := :transform(p.Body, f, s, parent),
+		Body := :transform(p.Body, ctx),
 		Inline := p.Inline;
 }

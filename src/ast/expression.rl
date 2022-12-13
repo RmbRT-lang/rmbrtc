@@ -66,53 +66,55 @@ INCLUDE 'std/vector'
 		[Stage]ExprOrStatement
 	{
 		Range: src::String;
+		/// For local variable lookup.
+		LocalPos: LocalPosition;
+
+		/// Number of variables this expression declares.
+		# VIRTUAL variables() LocalCount := 0;
 
 		:transform{
 			p: [Stage::Prev+]Expression #&,
-			f: Stage::PrevFile+,
-			s: Stage &
+			ctx: Stage::Context+ #&
 		} -> (p), (), (), ():
 			Range := p.Range;
 
 		<<<
 			p: [Stage::Prev+]Expression #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		>>> [Stage]Expression-std::Dyn
 		{
 			TYPE SWITCH(p)
 			{
 			[Stage::Prev+]StatementExpression:
-				= :a.[Stage]StatementExpression(:transform(>>p!, f, s, parent));
+				= :a.[Stage]StatementExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]ReferenceExpression:
-				= :a.[Stage]ReferenceExpression(:transform(>>p!, f, s, parent));
+				= :a.[Stage]ReferenceExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]MemberReferenceExpression:
-				= :a.[Stage]MemberReferenceExpression(:transform(>>p!, f, s, parent));
+				= :a.[Stage]MemberReferenceExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]SymbolConstantExpression:
-				= :a.[Stage]SymbolConstantExpression(:transform(>>p!, f, s, parent));
+				= :a.[Stage]SymbolConstantExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]NumberExpression:
-				= :a.[Stage]NumberExpression(:transform(>>p!, f, s));
+				= :a.[Stage]NumberExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]BoolExpression:
-				= :a.[Stage]BoolExpression(:transform(>>p!, f, s));
+				= :a.[Stage]BoolExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]CharExpression:
-				= :a.[Stage]CharExpression(:transform(>>p!, f, s));
+				= :a.[Stage]CharExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]StringExpression:
-				= :a.[Stage]StringExpression(:transform(>>p!, f, s));
+				= :a.[Stage]StringExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]OperatorExpression:
-				= :a.[Stage]OperatorExpression(:transform(>>p!, f, s, parent));
+				= :a.[Stage]OperatorExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]ThisExpression:
-				= :a.[Stage]ThisExpression(:transform(>>p!, f, s));
+				= :a.[Stage]ThisExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]NullExpression:
-				= :a.[Stage]NullExpression(:transform(>>p!, f, s));
+				= :a.[Stage]NullExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]BareExpression:
-				= :a.[Stage]BareExpression(:transform(>>p!, f, s));
+				= :a.[Stage]BareExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]CastExpression:
-				= :a.[Stage]CastExpression(:transform(>>p!, f, s, parent));
+				= :a.[Stage]CastExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]SizeofExpression:
-				= :a.[Stage]SizeofExpression(:transform(>>p!, f, s, parent));
+				= :a.[Stage]SizeofExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]TypeofExpression:
-				= :a.[Stage]TypeofExpression(:transform(>>p!, f, s, parent));
+				= :a.[Stage]TypeofExpression(:transform(>>p!, ctx));
 			}
 
 			DIE;
@@ -126,11 +128,9 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]StatementExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
-			Statement := :make(p.Statement!, f, s, parent);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Statement := :make(p.Statement!, ctx);
 	}
 
 	/// A reference to a variable, function, or constant.
@@ -140,11 +140,9 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]ReferenceExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
-			Symbol := s.transform_symbol(p.Symbol, f, parent);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Symbol := ctx.transform_symbol(p.Symbol, THIS.LocalPos);
 	}
 
 	/// A reference to an object's member variable, function, or constant.
@@ -156,12 +154,10 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]MemberReferenceExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
-			Object := :make(p.Object!, f, s, parent),
-			Member := s.transform_member_reference(p.Member, f, parent),
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Object := :make(p.Object!, ctx),
+			Member := ctx.transform_member_reference(p.Member),
 			IsArrowAccess := p.IsArrowAccess;
 	}
 
@@ -172,11 +168,9 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]SymbolConstantExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
-			Symbol := :transform(p.Symbol, f, s, parent);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Symbol := :transform(p.Symbol, ctx);
 	}
 
 	/// A numeric expression.
@@ -186,10 +180,9 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]NumberExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (:transform, p, f, s):
-			Number := s.transform_number(p.Number, f);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Number := ctx.transform_number(p.Number);
 	}
 
 	/// A boolean expression.
@@ -199,9 +192,8 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]BoolExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (:transform, p, f, s):
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
 			Value := p.Value;
 	}
 
@@ -212,10 +204,9 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]CharExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (:transform, p, f, s):
-			Char := s.transform_char_literal(p.Char, f);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Char := ctx.transform_char_literal(p.Char);
 	}
 
 	/// A string literal expression.
@@ -225,10 +216,9 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]StringExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (:transform, p, f, s):
-			String := s.transform_string_literal(p.String!, f);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			String := ctx.transform_string_literal(p.String!);
 	}
 
 	(// Expression containing a user-overloadable operator. /)
@@ -239,15 +229,13 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]OperatorExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
 			Operands := :reserve(##p.Operands),
 			Op := p.Op
 		{
 			FOR(o ::= p.Operands.start())
-				Operands += :make(o!, f, s, parent);
+				Operands += :make(o!, ctx);
 		}
 
 		STATIC make_unary(
@@ -286,9 +274,8 @@ INCLUDE 'std/vector'
 	{
 		:transform{
 			p: [Stage::Prev+]ThisExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (:transform, p, f, s);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx);
 	}
 
 	/// `NULL` expression.
@@ -296,9 +283,8 @@ INCLUDE 'std/vector'
 	{
 		:transform{
 			p: [Stage::Prev+]NullExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (:transform, p, f, s);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx);
 	}
 
 	/// `BARE` expression.
@@ -306,9 +292,8 @@ INCLUDE 'std/vector'
 	{
 		:transform{
 			p: [Stage::Prev+]BareExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (:transform, p, f, s);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx);
 	}
 
 	/// Static, dynamic, or factory cast expression.
@@ -322,16 +307,14 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]CastExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
 			Method := p.Method,
-			Type := :make(p.Type!, f, s, parent),
+			Type := :make(p.Type!, ctx),
 			Values := :reserve(##p.Values)
 		{
 			FOR(v ::= p.Values.start())
-				Values += :make(v!, f, s, parent);
+				Values += :make(v!, ctx);
 		}
 	}
 
@@ -343,11 +326,9 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]SizeofExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
-			Term := :make(p.Term!, f, s, parent),
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Term := :make(p.Term!, ctx),
 			Variadic := p.Variadic;
 	}
 
@@ -359,11 +340,9 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]TypeofExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
-			Term := :make(p.Term!, f, s, parent),
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Term := :make(p.Term!, ctx),
 			StaticExp := p.StaticExp;
 	}
 }

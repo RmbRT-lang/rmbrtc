@@ -9,10 +9,9 @@ INCLUDE "name.rl"
 
 	:transform{
 		p: [Stage::Prev+] ExternSymbol #&,
-		f: Stage::PrevFile+,
-		s: Stage &
+		ctx: Stage::Context+ #&
 	} {
 		IF(p.LinkName)
-			LinkName := :a(s.transform_string_literal(p.LinkName!, f));
+			LinkName := :a(ctx.transform_string_literal(p.LinkName!));
 	}
 }

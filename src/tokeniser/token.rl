@@ -170,5 +170,11 @@ INCLUDE "../src/file.rl"
 		Position: src::Position;
 
 		{...};
+
+		# THIS++ ? {
+			IF(Position.File)
+				= Position.File!->content(Content)!++;
+			= <std::str::CV>()!++;
+		}
 	}
 }

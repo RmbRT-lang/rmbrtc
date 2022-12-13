@@ -4,11 +4,9 @@ INCLUDE 'std/vector'
 
 ::rlc::parser
 {
-	TYPE TemplateDecl := Config-ast::TemplateDecl;
-
 	parse_template_decl(
 		p: Parser &,
-		out: TemplateDecl &) BOOL
+		out: ast::[Config]TemplateDecl &) BOOL
 	{
 		IF(!p.consume(:bracketOpen))
 			RETURN FALSE;

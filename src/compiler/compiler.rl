@@ -33,7 +33,8 @@ INCLUDE 'std/optional'
 		{type: BuildType} INLINE:
 			Type(type)
 		{
-			SWITCH(type) {
+			SWITCH(type)
+			{
 			:checkSyntax, :createAST, :verifySimple, :verifyFull: {;}
 			DEFAULT: THROW "build flag: invalid no-output build type";
 			}

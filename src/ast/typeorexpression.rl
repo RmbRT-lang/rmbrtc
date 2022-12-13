@@ -2,17 +2,15 @@
 {
 	<<<
 		p: [Stage::Prev+]TypeOrExpr #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
+		ctx: Stage::Context+ #&
 	>>> THIS - std::Dyn
 	{
 		TYPE SWITCH(p)
 		{
 		[Stage::Prev+]Type:
-			= :<>(<<<[Stage]Type>>>(>>p, f, s, parent));
+			= :<>(<<<[Stage]Type>>>(>>p, ctx));
 		[Stage::Prev+]Expression:
-			= :<>(<<<[Stage]Expression>>>(>>p, f, s, parent));
+			= :<>(<<<[Stage]Expression>>>(>>p, ctx));
 		}
 	}
 }

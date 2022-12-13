@@ -1,5 +1,5 @@
 INCLUDE "type.rl"
-
+INCLUDE "scope.rl"
 
 ::rlc::ast
 {
@@ -11,62 +11,54 @@ INCLUDE "type.rl"
 
 		:transform{
 			p: [Stage::Prev+]TemplateDecl #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		}:
 			Arguments := :reserve(##p.Arguments)
 		{
 			FOR(a ::= p.Arguments.start())
-				Arguments += :make(a!, f, s, parent);
+				Arguments += :make(a!, ctx);
 		}
 
 		# exists() BOOL INLINE := ##Arguments != 0;
 	}
 
-	[Stage:TYPE] TemplateArgDecl VIRTUAL
+	[Stage:TYPE] TemplateArgDecl VIRTUAL -> [Stage]ScopeItem
 	{
-		Name: Stage::Name;
 		Variadic: BOOL;
 
 		# ABSTRACT type() TemplateDeclArgType;
 
 		:transform{
 			p: [Stage::Prev+]TemplateArgDecl #&,
-			f: Stage::PrevFile+,
-			s: Stage &
-		}:
-			Name := s.transform_name(p.Name, f),
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
 			Variadic := p.Variadic;
 
 		<<<
 			p: [Stage::Prev+]TemplateArgDecl #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		>>> THIS-std::Dyn
 		{
 			TYPE SWITCH(p)
 			{
 			[Stage::Prev+]TypeTemplateArgDecl:
-				= :a.[Stage]TypeTemplateArgDecl(:transform(>>p, f, s));
+				= :a.[Stage]TypeTemplateArgDecl(:transform(>>p, ctx));
 			[Stage::Prev+]ValueTemplateArgDecl:
-				= :a.[Stage]ValueTemplateArgDecl(:transform(>>p, f, s, parent));
+				= :a.[Stage]ValueTemplateArgDecl(:transform(>>p, ctx));
 			[Stage::Prev+]NumberTemplateArgDecl:
-				= :a.[Stage]NumberTemplateArgDecl(:transform(>>p, f, s));
+				= :a.[Stage]NumberTemplateArgDecl(:transform(>>p, ctx));
 			}
 		}
 	}
 
-	[Stage:TYPE] TypeTemplateArgDecl -> [Stage]TemplateArgDecl
+	[Stage:TYPE] TypeTemplateArgDecl -> [Stage]TemplateArgDecl, PotentialScope
 	{
 		# FINAL type() TemplateDeclArgType := :type;
 
 		:transform{
 			p: [Stage::Prev+]TypeTemplateArgDecl #&,
-			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (:transform, p, f, s);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx), ();
 	}
 
 	[Stage:TYPE] ValueTemplateArgDecl -> [Stage]TemplateArgDecl
@@ -76,11 +68,9 @@ INCLUDE "type.rl"
 
 		:transform{
 			p: [Stage::Prev+]ValueTemplateArgDecl #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
-			Type := :make(p.Type!, f, s, parent);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Type := :make(p.Type!, ctx);
 	}
 
 	[Stage:TYPE] NumberTemplateArgDecl -> [Stage]TemplateArgDecl
@@ -89,8 +79,7 @@ INCLUDE "type.rl"
 
 		:transform{
 			p: [Stage::Prev+]NumberTemplateArgDecl #&,
-			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (:transform, p, f, s);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx);
 	}
 }

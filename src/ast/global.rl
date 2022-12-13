@@ -3,35 +3,33 @@
 {
 	<<<
 		g: [Stage::Prev+]Global #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
+		ctx: Stage::Context+ #&
 	>>> THIS - std::Dyn
 	{
 		TYPE SWITCH(g)
 		{
 		[Stage::Prev+]Namespace:
-			= :a.[Stage]Namespace(:transform(>>g, f, s, parent));
+			= :a.[Stage]Namespace(:transform(>>g, ctx));
 		[Stage::Prev+]GlobalFunction:
-			= :a.[Stage]GlobalFunction(:transform(>>g, f, s, parent));
+			= :a.[Stage]GlobalFunction(:transform(>>g, ctx));
 		[Stage::Prev+]GlobalClass:
-			= :a.[Stage]GlobalClass(:transform(>>g, f, s, parent));
+			= :a.[Stage]GlobalClass(:transform(>>g, ctx));
 		[Stage::Prev+]GlobalRawtype:
-			= :a.[Stage]GlobalRawtype(:transform(>>g, f, s, parent));
+			= :a.[Stage]GlobalRawtype(:transform(>>g, ctx));
 		[Stage::Prev+]GlobalUnion:
-			= :a.[Stage]GlobalUnion(:transform(>>g, f, s, parent));
+			= :a.[Stage]GlobalUnion(:transform(>>g, ctx));
 		[Stage::Prev+]GlobalEnum:
-			= :a.[Stage]GlobalEnum(:transform(>>g, f, s, parent));
+			= :a.[Stage]GlobalEnum(:transform(>>g, ctx));
 		[Stage::Prev+]ExternFunction:
-			= :a.[Stage]ExternFunction(:transform(>>g, f, s, parent));
+			= :a.[Stage]ExternFunction(:transform(>>g, ctx));
 		[Stage::Prev+]ExternVariable:
-			= :a.[Stage]ExternVariable(:transform(>>g, f, s, parent));
+			= :a.[Stage]ExternVariable(:transform(>>g, ctx));
 		[Stage::Prev+]GlobalVariable:
-			= :a.[Stage]GlobalVariable(:transform(>>g, f, s, parent));
+			= :a.[Stage]GlobalVariable(:transform(>>g, ctx));
 		[Stage::Prev+]GlobalTypedef:
-			= :a.[Stage]GlobalTypedef(:transform(>>g, f, s, parent));
+			= :a.[Stage]GlobalTypedef(:transform(>>g, ctx));
 		[Stage::Prev+]GlobalMask:
-			= :a.[Stage]GlobalMask(:transform(>>g, f, s, parent));
+			= :a.[Stage]GlobalMask(:transform(>>g, ctx));
 		}
 	}
 }

@@ -10,11 +10,13 @@ INCLUDE "../parser/templatedecl.rl"
 INCLUDE "../parser/type.rl"
 INCLUDE "../parser/stage.rl"
 INCLUDE "../scoper/stage.rl"
+INCLUDE "../resolver/stage.rl"
 
 ::rlc::compiler CCompiler -> Compiler
 {
 	Parser: rlc::parser::Config;
 	Scoper: rlc::scoper::Config - std::Opt;
+	Resolver: rlc::resolver::Config - std::Opt;
 
 	FINAL compile(
 		files: std::Str - std::Vec,
@@ -23,13 +25,14 @@ INCLUDE "../scoper/stage.rl"
 	{
 		parsed: parser::Config - ast::File \ - std::VecSet;
 
-		// Parse all code first.
+		/// Parse all code first.
 		FOR(f ::= files.start())
 			parsed += Parser.Registry.get(util::absolute_file(f!));
 
 		IF(build.Type == :checkSyntax)
 			RETURN;
 
+		/// Parse included files.
 		Scoper := :a(&Parser, build.IncludePaths!);
 		Scoper!.transform();
 
@@ -37,7 +40,13 @@ INCLUDE "../scoper/stage.rl"
 
 		IF(build.Type == :createAST)
 			RETURN;
-(/
+
+
+		Resolver := :a(&&Scoper);
+
+		// Next step: Instantiator stage; use resolver::Symbol.
+
+(//
 		// Resolve all references.
 		resolved: resolver::Cache;
 		FOR(f ::= scoped.start())

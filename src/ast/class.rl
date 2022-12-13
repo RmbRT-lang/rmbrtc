@@ -15,13 +15,11 @@ INCLUDE 'std/set'
 
 	:transform{
 		p: [Stage::Prev+]Inheritance #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
+		ctx: Stage::Context+ #&
 	} -> (p):
 		Visibility := p.Visibility,
 		IsVirtual := p.IsVirtual,
-		Type := :transform(p.Type, f, s, parent);
+		Type := ctx.transform_inheritance(p.Type);
 
 	Visibility: rlc::Visibility;
 	IsVirtual: BOOL;
@@ -39,19 +37,17 @@ INCLUDE 'std/set'
 
 	:transform{
 		p: [Stage::Prev+]MemberFunctions #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
+		ctx: Stage::Context+ #&
 	}:
 		Functions := :reserve(##p.Functions),
-		Converter := :if(p.Converter, :transform(p.Converter.ok(), f, s, parent)),
+		Converter := :if(p.Converter, :transform(p.Converter.ok(), ctx)),
 		Operators := :reserve(##p.Operators),
-		Factory := :if(p.Factory, :transform(p.Factory.ok(), f, s, parent))
+		Factory := :if(p.Factory, :transform(p.Factory.ok(), ctx))
 	{
 		FOR(fn ::= p.Functions.start())
-			Functions += :transform(fn!, f, s, parent);
+			Functions += :transform(fn!, ctx);
 		FOR(o ::= p.Operators.start())
-			Operators += :transform(o!, f, s, parent);
+			Operators += :transform(o!, ctx);
 	}
 
 	THIS += (fn: [Stage]Abstractable-std::Dyn) VOID
@@ -86,6 +82,13 @@ INCLUDE 'std/set'
 			THROW <rlc::ReasonError>(pos, "duplicate factory");
 		}
 	}
+
+	#? item(name: Stage::Name #&) ?
+	{
+		fn: [Stage]MemberFunction (BARE);
+		fn.Name := name;
+		= Functions.find(fn).ptr();
+	}
 }
 
 ::rlc::ast [Stage: TYPE] Fields
@@ -97,18 +100,16 @@ INCLUDE 'std/set'
 
 	:transform{
 		p: [Stage::Prev+]Fields #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
+		ctx: Stage::Context+ #&
 	}:
-		NamedVars := :childOf(parent),
+		NamedVars := :childOf(ctx.Parent),
 		AnonVars := :reserve(##p.AnonVars)
 	{
 		FOR(m ::= p.NamedVars.start())
-			NamedVars.insert(:make(m!.Value!, f, s, parent));
+			NamedVars.insert(:make(m!.Value!, ctx));
 
 		FOR(v ::= p.AnonVars.start())
-			AnonVars += :transform(v!, f, s, parent);
+			AnonVars += :transform(v!, ctx);
 	}
 
 	THIS += (v: [Stage]MaybeAnonMemberVar-std::Dyn) VOID
@@ -121,6 +122,8 @@ INCLUDE 'std/set'
 			NamedVars.insert(:<>(&&v));
 		}
 	}
+
+	#? item(name: Stage::Name #&) ? := NamedVars.scope_item(name);
 }
 
 ::rlc::ast [Stage: TYPE] Constructors
@@ -139,28 +142,26 @@ INCLUDE 'std/set'
 
 	:transform{
 		p: [Stage::Prev+]Constructors #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
+		ctx: Stage::Context+ #&
 	}:
 		StructuralCtor:= :if(p.StructuralCtor,
-			:transform(p.StructuralCtor.ok(), f, s, parent)),
+			:transform(p.StructuralCtor.ok(), ctx)),
 		DefaultCtor := :if(p.DefaultCtor,
-				:transform(p.DefaultCtor.ok(), f, s, parent)),
+				:transform(p.DefaultCtor.ok(), ctx)),
 		CopyCtor := :if(p.CopyCtor,
-			:transform(p.CopyCtor.ok(), f, s, parent)),
+			:transform(p.CopyCtor.ok(), ctx)),
 		MoveCtor := :if(p.MoveCtor,
-			:transform(p.MoveCtor.ok(), f, s, parent)),
+			:transform(p.MoveCtor.ok(), ctx)),
 		NullCtor := :if(p.NullCtor,
-			:transform(p.NullCtor.ok(), f, s, parent)),
+			:transform(p.NullCtor.ok(), ctx)),
 		BareCtor := :if(p.BareCtor,
-			:transform(p.BareCtor.ok(), f, s, parent)),
+			:transform(p.BareCtor.ok(), ctx)),
 		ImplicitCtor := :if(p.ImplicitCtor,
-			:transform(p.ImplicitCtor.ok(), f, s, parent)),
+			:transform(p.ImplicitCtor.ok(), ctx)),
 		CustomCtors := :reserve(##p.CustomCtors)
 	{
 		FOR(ctor ::= p.CustomCtors.start())
-			CustomCtors += :transform(ctor!, f, s, parent);
+			CustomCtors += :transform(ctor!, ctx);
 	}
 
 	THIS += (ctor: [Stage]Constructor-std::Dyn) BOOL
@@ -208,18 +209,40 @@ INCLUDE 'std/set'
 
 	:transform{
 		p: [Stage::Prev+]ClassMembers #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
-	} -> (:childOf, parent):
-		Ctors := :transform(p.Ctors, f, s, &THIS),
-		Statics := :transform(p.Statics, f, s, &THIS),
-		Fields := :if(p.Fields, :transform(p.Fields.ok(), f, s, &THIS)),
-		Functions := :if(p.Functions, :transform(p.Functions.ok(), f, s, &THIS)),
-		Destructor := :if(p.Destructor, :transform(p.Destructor.ok(), f, s, &THIS));
+		ctx: Stage::Context+ #&
+	} -> (:childOf, ctx.Parent):
+		Ctors := :transform(p.Ctors, ctx.in_parent(&p, &THIS)),
+		Statics := :transform_virtual(p.Statics, ctx.in_parent(&p, &THIS)),
+		Fields := :if(p.Fields, :transform(p.Fields.ok(), ctx.in_parent(&p, &THIS))),
+		Functions := :if(p.Functions, :transform(p.Functions.ok(), ctx.in_parent(&p, &THIS))),
+		Destructor := :if(p.Destructor, :transform(p.Destructor.ok(), ctx.in_parent(&p, &THIS)));
+
+	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
+	{
+		IF(item ::= Statics.scope_item(name))
+			= item;
+		= NULL;
+	}
+
+	#? FINAL local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #? *
+	{
+		IF(Fields)
+			IF(item ::= Fields->item(name))
+				= item;
+		IF(Functions)
+			IF(item ::= Functions->item(name))
+				= item;
+		IF(item ::= Statics.item(name))
+				= item;
+		= NULL;
+	}
 
 	THIS += (member: [Stage]Member - std::Dyn) VOID
 	{
+		IF(named ::= <<[Stage]ScopeItem *>>(member))
+			IF(exists ::= local(named->Name, 0))
+				THROW <MergeError>(exists, named);
+
 		IF(member->Attribute == :static)
 			Statics.insert(&&member);
 		ELSE TYPE SWITCH(member!)
@@ -253,7 +276,8 @@ INCLUDE 'std/set'
 
 ::rlc::ast [Stage: TYPE] Class VIRTUAL ->
 	[Stage]ScopeItem,
-	[Stage]Templateable
+	[Stage]Templateable,
+	[Stage]ScopeBase
 {
 	Virtual: BOOL;
 	Inheritances: class::[Stage]Inheritance - std::Vec;
@@ -262,35 +286,32 @@ INCLUDE 'std/set'
 
 	:transform{
 		p: [Stage::Prev+]Class #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
-	} -> (:transform, p, f, s), (:transform, p, f, s, &THIS):
+		ctx: Stage::Context+ #&
+	} -> (:transform, p, ctx), (:transform, p, ctx.in_parent(&p, &THIS)), (:childOf, ctx.Parent):
 		Virtual := p.Virtual,
 		Inheritances := :reserve(##p.Inheritances),
-		Members := :transform(p.Members, f, s, &THIS)
+		Members := :transform(p.Members, ctx.in_parent(&p, &THIS))
 	{
 		FOR(i ::= p.Inheritances.start())
-			Inheritances += :transform(i!, f, s, parent);
+			Inheritances += :transform(i!, ctx);
 	}
+
+	#? scope_item(name: Stage::Name #&) [Stage]ScopeItem #? * := Members.scope_item(name);
+	#? local(name: Stage::Name #&, pos: LocalPosition) [Stage]ScopeItem #? * := NULL;
 }
 
 ::rlc::ast [Stage: TYPE] GlobalClass -> [Stage]Global, [Stage]Class
 {
 	:transform{
 		p: [Stage::Prev+]GlobalClass #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
-	} -> (), (:transform, p, f, s, parent);
+		ctx: Stage::Context+ #&
+	} -> (), (:transform, p, ctx);
 }
 
 ::rlc::ast [Stage: TYPE] MemberClass -> [Stage]Member, [Stage]Class
 {
 	:transform{
 		p: [Stage::Prev+]MemberClass #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
-	} -> (:transform, p), (:transform, p, f, s, parent);
+		ctx: Stage::Context+ #&
+	} -> (:transform, p), (:transform, p, ctx);
 }

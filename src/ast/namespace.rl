@@ -6,16 +6,15 @@ INCLUDE 'std/set'
 ::rlc::ast [Stage:TYPE] Namespace -> [Stage]MergeableScopeItem, [Stage]Global
 {
 	Entries: [Stage]GlobalScope;
+	Tests: [Stage]Test -std::Vec;
 
 	:childOf{parent: [Stage]ScopeBase \}: Entries := :childOf(parent);
 
 	:transform{
 		p: [Stage::Prev+]Namespace #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
-	} -> (:transform, p, f, s, parent), ():
-		Entries := :transform(p.Entries, f, s, parent);
+		ctx: Stage::Context+ #&
+	} -> (:transform, p, ctx), ():
+		Entries := :transform_virtual(p.Entries, ctx);
 
 	PRIVATE FINAL merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID
 	{
@@ -53,5 +52,28 @@ INCLUDE 'std/set'
 		}
 
 		ns.Entries := BARE;
+	}
+
+	PRIVATE FINAL include_impl(rhs: [Stage]MergeableScopeItem #&) VOID
+	{
+		ns: ?& := <<THIS #&>>(rhs);
+
+		FOR(rhs_entry ::= ns.Entries.start())
+		{
+			IF:!(rhs_entry_si ::= <<[Stage]ScopeItem #*>>(rhs_entry))
+				CONTINUE;
+			IF:!(lhs_entry ::= THIS.Entries[rhs_entry!.Key])
+				CONTINUE;
+			
+			IF:!(lhs_entry_si ::= <<[Stage]ScopeItem #*>>(lhs_entry))
+				CONTINUE;
+
+			IF:!(merge_lhs ::= <<[Stage]MergeableScopeItem *>>(lhs_entry))
+				THROW <MergeError>(lhs_entry_si, rhs_entry_si);
+			IF:!(merge_rhs ::= <<[Stage]MergeableScopeItem #*>>(&rhs_entry!.Value!))
+				THROW <MergeError>(lhs_entry_si, rhs_entry_si);
+
+			merge_lhs->include(merge_rhs);
+		}
 	}
 }

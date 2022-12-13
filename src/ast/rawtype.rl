@@ -17,18 +17,16 @@ INCLUDE 'std/vector'
 
 	:transform{
 		p: [Stage::Prev+]Rawtype #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
-	} -> (:transform, p, f, s), (:childOf, parent):
-		Size := :make(p.Size!, f, s, parent),
-		Alignment := :make_if(p.Alignment, p.Alignment.ok(), f, s, parent),
-		Functions := :transform(p.Functions, f, s, &THIS),
-		Ctors := :transform(p.Ctors, f, s, &THIS),
-		Statics := :transform(p.Statics, f, s, &THIS)
+		ctx: Stage::Context+ #&
+	} -> (:transform, p, ctx), (:childOf, ctx.Parent):
+		Size := :make(p.Size!, ctx),
+		Alignment := :make_if(p.Alignment, p.Alignment.ok(), ctx),
+		Functions := :transform(p.Functions, ctx.in_parent(&p, &THIS)),
+		Ctors := :transform(p.Ctors, ctx.in_parent(&p, &THIS)),
+		Statics := :transform_virtual(p.Statics, ctx.in_parent(&p, &THIS))
 	{
 		FOR(it ::= p.Statics.start())
-			Statics += <<<[Stage]Member>>>(it!.Value!, f, s, &THIS);
+			Statics += <<<[Stage]Member>>>(it!.Value!, ctx.in_parent(&p, &THIS));
 	}
 
 	add_member(member: ast::[Stage]Member - std::Dyn) VOID
@@ -43,24 +41,37 @@ INCLUDE 'std/vector'
 			Functions += :<>(&&member);
 		}
 	}
+
+
+	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
+	{
+		IF(item ::= Statics.item(name))
+			= item;
+		= NULL;
+	}
+
+	#? FINAL local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #? *
+	{
+		IF(item ::= Functions.item(name))
+			= item;
+		IF(item ::= Statics.item(name))
+			= item;
+		= NULL;
+	}
 }
 
 ::rlc::ast [Stage:TYPE] GlobalRawtype -> [Stage]Global, [Stage]Rawtype
 {
 	:transform{
 		p: [Stage::Prev+]GlobalRawtype #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
-	} -> (), (:transform, p, f, s, parent);
+		ctx: Stage::Context+ #&
+	} -> (), (:transform, p, ctx);
 }
 
 ::rlc::ast [Stage:TYPE] MemberRawtype -> [Stage]Member, [Stage]Rawtype
 {
 	:transform{
 		p: [Stage::Prev+]MemberRawtype #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
-	} -> (:transform, p), (:transform, p, f, s, parent);
+		ctx: Stage::Context+ #&
+	} -> (:transform, p), (:transform, p, ctx);
 }

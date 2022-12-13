@@ -55,7 +55,8 @@ INCLUDE "../symbol.rl"
 
 	parse_binary(
 		p: Parser&,
-		level: UINT) ast::[Config]Expression-std::DynOpt
+		level: UINT
+	) ast::[Config]Expression-std::DynOpt
 	{
 		IF:!(lhs ::= level
 				?? parse_binary(p, level-1)
@@ -105,7 +106,8 @@ INCLUDE "../symbol.rl"
 }
 
 ::rlc::parser::expression::op parse_postfix(
-	p: Parser&) ast::[Config]Expression - std::DynOpt
+	p: Parser&
+) ast::[Config]Expression - std::DynOpt
 {
 	IF:!(lhs ::= parse_atom(p))
 		= NULL;

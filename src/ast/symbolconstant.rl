@@ -31,13 +31,11 @@
 
 	:transform{
 		p: [Stage::Prev+]SymbolConstant #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
+		ctx: Stage::Context+ #&
 	}:
 		NameType := p.NameType,
-		Identifier := s.transform_name(p.Identifier, f),
-		TypeAnnotation := :make_if(p.TypeAnnotation, p.TypeAnnotation.ok(), f, s, parent);
+		Identifier := ctx.transform_name(p.Identifier),
+		TypeAnnotation := :make_if(p.TypeAnnotation, p.TypeAnnotation.ok(), ctx);
 
 	NameType: Type;
 	Identifier: Stage::Name;

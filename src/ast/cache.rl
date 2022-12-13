@@ -6,13 +6,13 @@
 {
 	References: std::[T::Prev+ #\; T - std::Shared]Map;
 
-	THIS[p: T::Prev+ #\, f: Stage::PrevFile+, s: Stage &, parent: [Stage]ScopeBase \] T - std::Shared
+	THIS[p: T::Prev+ #\, ctx: Stage::Context+] T - std::Shared
 	{
 		IF(entry ::= References.find(p))
 			= *entry;
 		ELSE
 		{
-			new: T-std::Shared := :make(*p, f, s, parent);
+			new: T-std::Shared := :make(*p, ctx);
 			References.insert(p, new);
 			= &&new;
 		}

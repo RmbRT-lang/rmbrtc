@@ -21,7 +21,7 @@ INCLUDE "templatedecl.rl"
 	{
 		parse_visibility(p, default_visibility, TRUE);
 
-		templates: TemplateDecl (BARE);
+		templates: ast::[Config]TemplateDecl (BARE);
 		parse_template_decl(p, templates);
 
 		visibility ::= parse_visibility(p, default_visibility, FALSE);
@@ -49,7 +49,7 @@ INCLUDE "templatedecl.rl"
 			IF(templates.exists())
 			{
 				IF(t ::= <<ast::[Config]Templateable *>>(ret))
-					t->Templates := &&templates;
+					<ast::[Config]TemplateDecl &>(t->Templates) := &&templates;
 				ELSE IF(fn ::= <<ast::[Config]Function *>>(ret))
 					fn->set_templates_after_parsing(&&templates);
 				ELSE IF(templates.exists())

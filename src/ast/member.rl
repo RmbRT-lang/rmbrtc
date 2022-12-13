@@ -30,43 +30,41 @@ INCLUDE "scopeitem.rl"
 
 	<<<
 		m: [Stage::Prev+]Member #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
+		ctx: Stage::Context+ #&
 	>>> THIS - std::Dyn
 	{
 		TYPE SWITCH(m)
 		{
 		[Stage::Prev+]MemberClass:
 			= :a.[Stage]MemberClass(:transform(
-				<<[Stage::Prev+]MemberClass #&>>(m), f, s, parent));
+				<<[Stage::Prev+]MemberClass #&>>(m), ctx));
 		[Stage::Prev+]MemberRawtype:
 			= :a.[Stage]MemberRawtype(:transform(
-				<<[Stage::Prev+]MemberRawtype #&>>(m), f, s, parent));
+				<<[Stage::Prev+]MemberRawtype #&>>(m), ctx));
 		[Stage::Prev+]Abstractable:
 			= :<>(<<<[Stage]Abstractable>>>(
-				<<[Stage::Prev+]Abstractable #&>>(m), f, s, parent));
+				<<[Stage::Prev+]Abstractable #&>>(m), ctx));
 		[Stage::Prev+]Factory:
 			= :a.[Stage]Factory(:transform(
-				<<[Stage::Prev+]Factory #&>>(m), f, s, parent));
+				<<[Stage::Prev+]Factory #&>>(m), ctx));
 		[Stage::Prev+]Constructor:
 			= :<>(<<<[Stage]Constructor>>>(
-				<<[Stage::Prev+]Constructor #&>>(m), f, s, parent));
+				<<[Stage::Prev+]Constructor #&>>(m), ctx));
 		[Stage::Prev+]Destructor:
 			= :a.[Stage]Destructor(:transform(
-				<<[Stage::Prev+]Destructor #&>>(m), f, s, parent));
+				<<[Stage::Prev+]Destructor #&>>(m), ctx));
 		[Stage::Prev+]MemberEnum:
 			= :a.[Stage]MemberEnum(:transform(
-				<<[Stage::Prev+]MemberEnum #&>>(m), f, s, parent));
+				<<[Stage::Prev+]MemberEnum #&>>(m), ctx));
 		[Stage::Prev+]MaybeAnonMemberVar:
 			= :<>(<<<[Stage]MaybeAnonMemberVar>>>(
-				<<[Stage::Prev+]MaybeAnonMemberVar #&>>(m), f, s, parent));
+				<<[Stage::Prev+]MaybeAnonMemberVar #&>>(m), ctx));
 		[Stage::Prev+]MemberTypedef:
 			= :a.[Stage]MemberTypedef(:transform(
-				<<[Stage::Prev+]MemberTypedef #&>>(m), f, s, parent));
+				<<[Stage::Prev+]MemberTypedef #&>>(m), ctx));
 		[Stage::Prev+]MemberUnion:
 			= :a.[Stage]MemberUnion(:transform(
-				<<[Stage::Prev+]MemberUnion #&>>(m), f, s, parent));
+				<<[Stage::Prev+]MemberUnion #&>>(m), ctx));
 		}
 	}
 }

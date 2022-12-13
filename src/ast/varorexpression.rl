@@ -2,17 +2,15 @@
 {
 	<<<
 		p: [Stage::Prev+]VarOrExpr #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
+		ctx: Stage::Context+ #&
 	>>> THIS-std::Dyn
 	{
 		TYPE SWITCH(p)
 		{
 		[Stage::Prev+]LocalVariable:
-			= :a.[Stage]LocalVariable(:transform(>>p, f, s, parent));
+			= :a.[Stage]LocalVariable(:transform(>>p, ctx));
 		[Stage::Prev+]Expression:
-			= :<>(<<<[Stage]Expression>>>(>>p, f, s, parent));
+			= :<>(<<<[Stage]Expression>>>(>>p, ctx));
 		}
 	}
 }

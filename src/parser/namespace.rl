@@ -1,4 +1,5 @@
 INCLUDE "../ast/namespace.rl"
+INCLUDE "../ast/test.rl"
 INCLUDE "parser.rl"
 
 
@@ -26,7 +27,13 @@ INCLUDE "parser.rl"
 
 	IF(entry ::= global::parse(p))
 	{
-		out.Entries += :!(&&entry);
+		TYPE SWITCH(entry!)
+		{
+		ast::[Config]Test:
+			out.Tests += <ast::[Config]Test&&>(&&entry!);
+		DEFAULT:
+			out.Entries += :!(&&entry);
+		}
 		= TRUE;
 	}
 

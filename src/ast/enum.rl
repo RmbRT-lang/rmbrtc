@@ -11,9 +11,8 @@ INCLUDE 'std/vector'
 
 		:transform{
 			e: [Stage::Prev+]Enum::Constant #&,
-			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (:transform, e, f, s):
+			ctx: Stage::Context+ #&
+		} -> (:transform, e, ctx):
 			Value := e.Value;
 	}
 
@@ -21,34 +20,37 @@ INCLUDE 'std/vector'
 
 	:transform{
 		e: [Stage::Prev+]Enum #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
+		ctx: Stage::Context+ #&
 	} ->
-		(:transform, e, f, s), (:childOf, parent):
+		(:transform, e, ctx), (:childOf, ctx.Parent):
 		Constants := :reserve(##e.Constants)
 	{
 		FOR(c ::= e.Constants.start())
-			Constants += <Constant>(:transform(c!, f, s));
+			Constants += <Constant>(:transform(c!, ctx));
 	}
+
+	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
+	{
+		c: Constant (BARE);
+		c.Name := name;
+		= Constants.find(c);
+	}
+
+	#? FINAL local(Stage::Name #&, LocalPosition) [Stage]ScopeItem #? * := NULL;
 }
 
 ::rlc::ast [Stage: TYPE] GlobalEnum -> [Stage]Global, [Stage]Enum
 {
 	:transform{
 		e: [Stage::Prev+]GlobalEnum #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
-	} -> (), (:transform, e, f, s, parent);
+		ctx: Stage::Context+ #&
+	} -> (), (:transform, e, ctx);
 }
 
 ::rlc::ast [Stage: TYPE] MemberEnum -> [Stage]Member, [Stage]Enum
 {
 	:transform{
 		e: [Stage::Prev+]MemberEnum #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
-	} -> (:transform, e), (:transform, e, f, s, parent);
+		ctx: Stage::Context+ #&
+	} -> (:transform, e), (:transform, e, ctx);
 }

@@ -12,24 +12,21 @@ INCLUDE "../error.rl"
 
 	:transform{
 		i: [Stage::Prev+]ScopeItem #&,
-		f: Stage::PrevFile+,
-		s: Stage &
+		ctx: Stage::Context+ #&
 	} -> (i):
-		Name := s.transform_name(i.Name, f);
+		Name := ctx.transform_name(i.Name);
 
 	<<<
 		i: [Stage::Prev+]ScopeItem #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
+		ctx: Stage::Context+ #&
 	>>> ScopeItem - std::Dyn
 	{
 		IF(g ::= <<[Stage::Prev+]Global #*>>(&i))
-			= :<>(<<<[Stage]Global>>>(*g, f, s, parent));
+			= :<>(<<<[Stage]Global>>>(*g, ctx));
 		ELSE IF(m ::= <<[Stage::Prev+]Member #*>>(&i))
-			= :<>(<<<[Stage]Member>>>(*m, f, s, parent));
+			= :<>(<<<[Stage]Member>>>(*m, ctx));
 		ELSE
-			= :<>(<<<[Stage]Local>>>(>>i, f, s, parent));
+			= :<>(<<<[Stage]Local>>>(>>i, ctx));
 	}
 
 	# THIS <> (rhs: THIS #&) S1 := Name <> rhs.Name;
@@ -64,34 +61,28 @@ INCLUDE "../error.rl"
 	TYPE Prev := [Stage::Prev+]MergeableScopeItem;
 
 	/// Definitions included from other files.
-	Included: std::[std::str::CV; [Stage]MergeableScopeItem #\]Map;
+	Included: [Stage]MergeableScopeItem #\ -std::VecSet;
 
 	<<<
 		p: [Stage::Prev+]MergeableScopeItem #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
+		ctx: Stage::Context+ #&
 	>>> THIS - std::Dyn
 	{
 		TYPE SWITCH(p)
 		{
 		[Stage::Prev+]Function:
-			= :<>(<<<[Stage]Function>>>(>>p, f, s, parent));
+			= :<>(<<<[Stage]Function>>>(>>p, ctx));
 		[Stage::Prev+]Namespace:
-			= :a.[Stage]Namespace(:transform(>>p, f, s, parent));
+			= :a.[Stage]Namespace(:transform(>>p, ctx));
 		}
 	}
 
 	:transform{
 		i: [Stage::Prev+]MergeableScopeItem #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
-	} -> (:transform, i, f, s):
+		ctx: Stage::Context+ #&
+	} -> (:transform, i, ctx):
 		Included := :reserve(##i.Included)
 	{
-		FOR(item ::= i.Included.start())
-			include(s.MSIs![item!.Value, f, s, parent]);
 	}
 
 	/// Include definitions from another file.
@@ -99,7 +90,11 @@ INCLUDE "../error.rl"
 		rhs: [Stage]MergeableScopeItem# \) VOID INLINE
 	{
 		ASSERT(TYPE(THIS) == TYPE(rhs));
-		Included.insert(rhs->Name!, rhs);
+		IF(Included.has(rhs))
+			RETURN;
+
+		include_impl(*rhs);
+		Included += rhs;
 	}
 
 	/// Merge definitions from the same file into a single entity.
@@ -109,6 +104,6 @@ INCLUDE "../error.rl"
 		merge_impl(&&rhs);
 	}
 
-
+	PRIVATE ABSTRACT include_impl(rhs: [Stage]MergeableScopeItem #&) VOID;
 	PRIVATE ABSTRACT merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID;
 }

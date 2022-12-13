@@ -2,9 +2,9 @@ INCLUDE "parser.rl"
 INCLUDE "../ast/controllabel.rl"
 INCLUDE "stage.rl"
 
-::rlc::parser::control_label parse(
+::rlc::parser::control_label parse_ref(
 	p: Parser &
-) ast::[Config]ControlLabel - std::Opt
+) tok::Token - std::Opt
 {
 	IF(!p.consume(:bracketOpen))
 		= NULL;
@@ -14,9 +14,20 @@ INCLUDE "stage.rl"
 	&& !p.match(:identifier))
 		p.fail("expected identifier, \"\" or `` string");
 
-	label: ast::[Config]ControlLabel (BARE);
 	tok ::= p.eat_token()!;
-	(label.Name, label.Position) := (tok, tok.Position);
 	p.expect(:bracketClose);
-	= :a(&&label);
+	= :a(&&tok);
+}
+
+::rlc::parser::control_label parse(
+	p: Parser &
+) ast::[Config]ControlLabel -std::Opt
+{
+	IF(name ::= parse_ref(p))
+	{
+		label: ast::[Config]ControlLabel (BARE);
+		(label.Name, label.Position) := (name!, name!.Position);
+		= :a(&&label);
+	}
+	= NULL;
 }

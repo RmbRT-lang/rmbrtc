@@ -8,57 +8,68 @@ INCLUDE 'std/memory'
 
 ::rlc::ast
 {
-	[Stage: TYPE] Statement VIRTUAL -> [Stage]ExprOrStatement
+	[Stage: TYPE] Statement VIRTUAL -> [Stage]ExprOrStatement, CodeObject
 	{
+		Parent: THIS *;
+
 		:transform{
 			p: [Stage::Prev+]Statement #&,
-			f: Stage::PrevFile+,
-			s: Stage &
-		};
+			ctx: Stage::Context+ #&
+		} -> (), (p):
+			Parent := ctx.Stmt;
 
 		<<<
 			p: [Stage::Prev+]Statement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		>>> THIS-std::Dyn
 		{
 			TYPE SWITCH(p)
 			{
 			[Stage::Prev+]AssertStatement:
-				= :a.[Stage]AssertStatement(:transform(>>p, f, s, parent));
+				= :a.[Stage]AssertStatement(:transform(>>p, ctx));
 			[Stage::Prev+]DieStatement:
-				= :a.[Stage]DieStatement(:transform(>>p, f, s));
+				= :a.[Stage]DieStatement(:transform(>>p, ctx));
 			[Stage::Prev+]YieldStatement:
-				= :a.[Stage]YieldStatement(:transform(>>p, f, s));
+				= :a.[Stage]YieldStatement(:transform(>>p, ctx));
 			[Stage::Prev+]SleepStatement:
-				= :a.[Stage]SleepStatement(:transform(>>p, f, s, parent));
+				= :a.[Stage]SleepStatement(:transform(>>p, ctx));
 			[Stage::Prev+]BlockStatement:
-				= :a.[Stage]BlockStatement(:transform(>>p, f, s, parent));
+				= :a.[Stage]BlockStatement(:transform(>>p, ctx));
 			[Stage::Prev+]IfStatement:
-				= :a.[Stage]IfStatement(:transform(>>p, f, s, parent));
+				= :a.[Stage]IfStatement(:transform(>>p, ctx));
 			[Stage::Prev+]VariableStatement:
-				= :a.[Stage]VariableStatement(:transform(>>p, f, s, parent));
+				= :a.[Stage]VariableStatement(:transform(>>p, ctx));
 			[Stage::Prev+]ExpressionStatement:
-				= :a.[Stage]ExpressionStatement(:transform(>>p, f, s, parent));
+				= :a.[Stage]ExpressionStatement(:transform(>>p, ctx));
 			[Stage::Prev+]ReturnStatement:
-				= :a.[Stage]ReturnStatement(:transform(>>p, f, s, parent));
+				= :a.[Stage]ReturnStatement(:transform(>>p, ctx));
 			[Stage::Prev+]TryStatement:
-				= :a.[Stage]TryStatement(:transform(>>p, f, s, parent));
+				= :a.[Stage]TryStatement(:transform(>>p, ctx));
 			[Stage::Prev+]ThrowStatement:
-				= :a.[Stage]ThrowStatement(:transform(>>p, f, s, parent));
+				= :a.[Stage]ThrowStatement(:transform(>>p, ctx));
 			[Stage::Prev+]LoopStatement:
-				= :a.[Stage]LoopStatement(:transform(>>p, f, s, parent));
+				= :a.[Stage]LoopStatement(:transform(>>p, ctx));
 			[Stage::Prev+]SwitchStatement:
-				= :a.[Stage]SwitchStatement(:transform(>>p, f, s, parent));
+				= :a.[Stage]SwitchStatement(:transform(>>p, ctx));
 			[Stage::Prev+]TypeSwitchStatement:
-				= :a.[Stage]TypeSwitchStatement(:transform(>>p, f, s, parent));
+				= :a.[Stage]TypeSwitchStatement(:transform(>>p, ctx));
 			[Stage::Prev+]BreakStatement:
-				= :a.[Stage]BreakStatement(:transform(>>p, f, s, parent));
+				= :a.[Stage]BreakStatement(:transform(>>p, ctx));
 			[Stage::Prev+]ContinueStatement:
-				= :a.[Stage]ContinueStatement(:transform(>>p, f, s, parent));
+				= :a.[Stage]ContinueStatement(:transform(>>p, ctx));
 			}
 		}
+	}
+
+	[Stage: TYPE] LabelledStatement VIRTUAL
+	{
+		Label: [Stage]ControlLabel - std::Opt;
+
+		:transform{
+			p: [Stage::Prev+]LabelledStatement #&,
+			ctx: Stage::Context+ #&
+		}:
+			Label := :if(p.Label, :transform(p.Label.ok(), ctx));
 	}
 
 	[Stage: TYPE] AssertStatement -> [Stage]Statement
@@ -67,11 +78,9 @@ INCLUDE 'std/memory'
 
 		:transform{
 			p: [Stage::Prev+]AssertStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
-			Expression := :make(p.Expression!, f, s, parent);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Expression := :make(p.Expression!, ctx);
 	}
 
 	[Stage: TYPE] DieStatement -> [Stage]Statement
@@ -80,21 +89,19 @@ INCLUDE 'std/memory'
 
 		:transform{
 			p: [Stage::Prev+]DieStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (:transform, p, f, s)
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx)
 		{
 			IF(p.Message)
-				Message := :a(:transform(p.Message!, f, s));
+				Message := :a(:transform(p.Message!, ctx));
 		}
 	}
 
 	[Stage: TYPE] YieldStatement -> [Stage]Statement {
 		:transform{
 			p: [Stage::Prev+]YieldStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (:transform, p, f, s);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx);
 	}
 	[Stage: TYPE] SleepStatement -> [Stage]Statement
 	{
@@ -102,11 +109,9 @@ INCLUDE 'std/memory'
 
 		:transform{
 			p: [Stage::Prev+]SleepStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
-			Duration := :make(p.Duration!, f, s, parent);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Duration := :make(p.Duration!, ctx);
 	}
 
 
@@ -116,21 +121,19 @@ INCLUDE 'std/memory'
 
 		:transform{
 			p: [Stage::Prev+]BlockStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
 			Statements := :reserve(##p.Statements)
 		{
 			FOR(stmt ::= p.Statements.start())
-				Statements += :make(stmt!, f, s, parent);
+				Statements += :make(stmt!, ctx);
 		}
 	}
 
-	[Stage: TYPE] IfStatement -> [Stage]Statement
+	[Stage: TYPE] IfStatement ->
+		[Stage]Statement,
+		[Stage]LabelledStatement
 	{
-		Label: [Stage]ControlLabel-std::Opt;
-
 		RevealsVariable: BOOL;
 		Negated: BOOL;
 
@@ -142,21 +145,17 @@ INCLUDE 'std/memory'
 
 		:transform{
 			p: [Stage::Prev+]IfStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx), (:transform, p, ctx):
 			RevealsVariable := p.RevealsVariable,
 			Negated := p.Negated,
-			Condition := :make(p.Condition!, f, s, parent),
-			Then := :make(p.Then!, f, s, parent)
+			Condition := :make(p.Condition!, ctx),
+			Then := :make(p.Then!, ctx)
 		{
-			IF(p.Label)
-				Label := :a(:transform(p.Label!, f, s));
 			IF(p.Init)
-				Init := :make(p.Init!, f, s, parent);
+				Init := :make(p.Init!, ctx);
 			IF(p.Else)
-				Else := :make(p.Then!, f, s, parent);
+				Else := :make(p.Then!, ctx);
 		}
 	}
 
@@ -167,11 +166,9 @@ INCLUDE 'std/memory'
 
 		:transform{
 			p: [Stage::Prev+]VariableStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
-			Variable := :transform(p.Variable, f, s, parent),
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Variable := :transform(p.Variable, ctx),
 			Static := p.Static;
 	}
 
@@ -181,11 +178,9 @@ INCLUDE 'std/memory'
 
 		:transform{
 			p: [Stage::Prev+]ExpressionStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
-			Expression := :make(p.Expression!, f, s, parent);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Expression := :make(p.Expression!, ctx);
 	}
 
 	[Stage: TYPE] ReturnStatement -> [Stage]Statement
@@ -200,13 +195,11 @@ INCLUDE 'std/memory'
 
 		:transform{
 			p: [Stage::Prev+]ReturnStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s)
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx)
 		{
 			IF(p.Expression)
-				Expression := :make(p.Expression!, f, s, parent);
+				Expression := :make(p.Expression!, ctx);
 		}
 
 		# is_void() BOOL INLINE := !Expression;
@@ -221,17 +214,15 @@ INCLUDE 'std/memory'
 
 		:transform{
 			p: [Stage::Prev+]TryStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
-			Body := :make(p.Body!, f, s, parent),
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Body := :make(p.Body!, ctx),
 			Catches := :reserve(##p.Catches)
 		{
 			FOR(c ::= p.Catches.start())
-				Catches += :transform(c!, f, s, parent);
+				Catches += :transform(c!, ctx);
 			IF(p.Finally)
-				Finally := :make(p.Finally!, f, s, parent);
+				Finally := :make(p.Finally!, ctx);
 		}
 
 		# has_finally() BOOL INLINE := Finally;
@@ -252,15 +243,13 @@ INCLUDE 'std/memory'
 
 		:transform{
 			p: [Stage::Prev+]CatchStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		}:
 			ExceptionType := p.ExceptionType,
-			Body := :make(p.Body!, f, s, parent)
+			Body := :make(p.Body!, ctx)
 		{
 			IF(p.Exception)
-				Exception := :make(p.Exception!, f, s, parent);
+				Exception := :make(p.Exception!, ctx);
 		}
 	}
 
@@ -278,14 +267,12 @@ INCLUDE 'std/memory'
 
 		:transform{
 			p: [Stage::Prev+]ThrowStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
 			ValueType := p.ValueType
 		{
 			IF(p.Value)
-				Value := :make(p.Value!, f, s, parent);
+				Value := :make(p.Value!, ctx);
 		}
 	}
 
@@ -297,61 +284,54 @@ INCLUDE 'std/memory'
 		reverseRange
 	}
 
-	[Stage: TYPE] LoopStatement -> [Stage]Statement
+	[Stage: TYPE] LoopStatement ->
+		[Stage]Statement,
+		[Stage]LabelledStatement
 	{
 		Type: LoopType;
 		Initial: [Stage]VarOrExpr - std::DynOpt;
 		Condition: [Stage]VarOrExpr - std::DynOpt;
 		Body: [Stage]Statement-std::Dyn;
 		PostLoop: [Stage]Expression-std::DynOpt;
-		Label: [Stage]ControlLabel-std::Opt;
 
 		# is_post_condition() BOOL := Type == :postCondition;
 
 		:transform{
 			p: [Stage::Prev+]LoopStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx), (:transform, p, ctx):
 			Type := p.Type,
-			Body := :make(p.Body!, f, s, parent)
+			Body := :make(p.Body!, ctx)
 		{
 			IF(p.Initial)
-				Initial := :make(p.Initial!, f, s, parent);
+				Initial := :make(p.Initial!, ctx);
 			IF(p.Condition)
-				Condition := :make(p.Condition!, f, s, parent);
+				Condition := :make(p.Condition!, ctx);
 			IF(p.PostLoop)
-				PostLoop := :make(p.PostLoop!, f, s, parent);
-			IF(p.Label)
-				Label := :a(:transform(p.Label!, f, s));
+				PostLoop := :make(p.PostLoop!, ctx);
 		}
 	}
 
-	[Stage: TYPE] SwitchStatement -> [Stage]Statement
+	[Stage: TYPE] SwitchStatement ->
+		[Stage]Statement,
+		[Stage]LabelledStatement
 	{
 		Strict: BOOL;
 		Initial: [Stage]VarOrExpr - std::DynOpt;
 		Value: [Stage]VarOrExpr - std::Dyn;
 		Cases: [Stage]CaseStatement - std::Vec;
-		Label: [Stage]ControlLabel-std::Opt;
 
 		:transform{
 			p: [Stage::Prev+]SwitchStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx), (:transform, p, ctx):
 			Strict := p.Strict,
-			Value := :make(p.Value!, f, s, parent),
-			Cases := :reserve(##p.Cases)
+			Value := :make(p.Value!, ctx),
+			Cases := :reserve(##p.Cases),
+			Initial := :make_if(p.Initial, p.Initial.ok(), ctx)
 		{
-			IF(p.Initial)
-				Initial := :make(p.Value!, f, s, parent);
 			FOR(c ::= p.Cases.start())
-				Cases += :transform(c!, f, s, parent);
-			IF(p.Label)
-				Label := :a(:transform(p.Label!, f, s));
+				Cases += :transform(c!, ctx);
 		}
 	}
 
@@ -362,15 +342,13 @@ INCLUDE 'std/memory'
 
 		:transform{
 			p: [Stage::Prev+]CaseStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		}:
 			Values := :reserve(##p.Values),
-			Body := :make(p.Body!, f, s, parent)
+			Body := :make(p.Body!, ctx)
 		{
 			FOR(v ::= p.Values.start())
-				Values += :make(v!, f, s, parent);
+				Values += :make(v!, ctx);
 		}
 
 		# is_default() BOOL INLINE := Values.empty();
@@ -387,21 +365,19 @@ INCLUDE 'std/memory'
 
 		:transform{
 			p: [Stage::Prev+]TypeSwitchStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
 			Static := p.Static,
 			Strict := p.Strict,
-			Value := :make(p.Value!, f, s, parent),
+			Value := :make(p.Value!, ctx),
 			Cases := :reserve(##p.Cases)
 		{
 			IF(p.Initial)
-				Initial := :make(p.Initial!, f, s, parent);
+				Initial := :make(p.Initial!, ctx);
 			FOR(c ::= p.Cases.start())
-				Cases += :transform(c!, f, s, parent);
+				Cases += :transform(c!, ctx);
 			IF(p.Label)
-				Label := :a(:transform(p.Label!, f, s));
+				Label := :a(:transform(p.Label!, ctx));
 		}
 	}
 
@@ -412,15 +388,13 @@ INCLUDE 'std/memory'
 
 		:transform{
 			p: [Stage::Prev+]TypeCaseStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		}:
 			Types := :reserve(##p.Types),
-			Body := <<<[Stage]Statement>>>(p.Body!, f, s, parent)
+			Body := <<<[Stage]Statement>>>(p.Body!, ctx)
 		{
 			FOR(t ::= p.Types.start())
-				Types += <<<[Stage]Type>>>(t!, f, s, parent);
+				Types += <<<[Stage]Type>>>(t!, ctx);
 		}
 
 		# is_default() BOOL INLINE := Types.empty();
@@ -428,33 +402,23 @@ INCLUDE 'std/memory'
 
 	[Stage: TYPE] BreakStatement -> [Stage]Statement
 	{
-		Label: [Stage]ControlLabel-std::Opt;
+		Label: Stage::ControlLabelReference+ -std::Opt;
 
 		:transform{
 			p: [Stage::Prev+]BreakStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s)
-		{
-			IF(p.Label)
-				Label := :a(:transform(p.Label!, f, s));
-		}
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Label := ctx.transform_control_label_reference(p.Label, p.Position);
 	}
 
 	[Stage: TYPE] ContinueStatement -> [Stage]Statement
 	{
-		Label: [Stage]ControlLabel-std::Opt;
+		Label: Stage::ControlLabelReference+ -std::Opt;
 
 		:transform{
 			p: [Stage::Prev+]ContinueStatement #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s)
-		{
-			IF(p.Label)
-				Label := :a(:transform(p.Label!, f, s));
-		}
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Label := ctx.transform_control_label_reference(p.Label, p.Position);
 	}
 }

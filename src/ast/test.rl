@@ -10,10 +10,8 @@ INCLUDE "codeobject.rl"
 
 	:transform{
 		p: [Stage::Prev+]Test #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
+		ctx: Stage::Context+ #&
 	} -> (), (p):
-		Name := s.transform_name(p.Name, f),
-		Body := :transform(p.Body, f, s, parent);
+		Name := ctx.transform_string(p.Name),
+		Body := :transform(p.Body, ctx);
 }

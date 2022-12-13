@@ -6,12 +6,15 @@ INCLUDE "../tokeniser/token.rl"
 	(// Identifier or string. /)
 	Name: Stage::ControlLabelName;
 
-	{name: Stage::ControlLabelName}: Name(name);
+	{
+		name: Stage::ControlLabelName,
+		position: src::Position
+	} -> (position):
+		Name := name;
 
 	:transform{
 		p: [Stage::Prev+]ControlLabel #&,
-		f: Stage::PrevFile+,
-		s: Stage &
+		ctx: Stage::Context+ #&
 	} -> (p):
-		Name := s.transform_control_label_name(p.Name, f);
+		Name := ctx.transform_control_label_name(p.Name);
 }

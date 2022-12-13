@@ -26,6 +26,7 @@ INCLUDE "global.rl"
 		TYPE StringLiteral := tok::Token - std::Vec;
 		TYPE Name := src::String;
 		TYPE ControlLabelName := tok::Token;
+		TYPE ControlLabelReference := tok::Token;
 		TYPE Number := tok::Token;
 
 		TYPE Inheritance := Symbol;

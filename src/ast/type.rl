@@ -9,17 +9,15 @@ INCLUDE "symbolconstant.rl"
 	{
 		<<<
 			p: [Stage::Prev+]TypeOrArgument #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		>>> THIS-std::Dyn
 		{
 			TYPE SWITCH(p)
 			{
 			[Stage::Prev+]Type:
-				= :<>(<<<[Stage]Type>>>(>>p, f, s, parent));
+				= :<>(<<<[Stage]Type>>>(>>p, ctx));
 			[Stage::Prev+]Argument:
-				= :a.[Stage]Argument(:transform(>>p, f, s, parent));
+				= :a.[Stage]Argument(:transform(>>p, ctx));
 			}
 		}
 	}
@@ -29,17 +27,15 @@ INCLUDE "symbolconstant.rl"
 	{
 		<<<
 			p: [Stage::Prev+]TypeOrCatchVariable #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		>>> THIS-std::Dyn
 		{
 			TYPE SWITCH(p)
 			{
 			[Stage::Prev+]Type:
-				= :<>(<<<[Stage]Type>>>(>>p, f, s, parent));
+				= :<>(<<<[Stage]Type>>>(>>p, ctx));
 			[Stage::Prev+]CatchVariable:
-				= :a.[Stage]CatchVariable(:transform(>>p, f, s, parent));
+				= :a.[Stage]CatchVariable(:transform(>>p, ctx));
 			}
 		}
 	}
@@ -49,15 +45,13 @@ INCLUDE "symbolconstant.rl"
 	{
 		<<<
 			p: [Stage::Prev+]MaybeAutoType #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		>>> THIS-std::Dyn
 		{
 			TYPE SWITCH(p)
 			{
 			[Stage::Prev+]Type:
-				= :<>(<<<[Stage]Type>>>(>>p, f, s, parent));
+				= :<>(<<<[Stage]Type>>>(>>p, ctx));
 			type::[Stage::Prev+]Auto:
 				= :a.type::[Stage]Auto(:transform(>>p));
 			}
@@ -130,9 +124,7 @@ INCLUDE "symbolconstant.rl"
 
 		:transform{
 			p: [Stage::Prev+]Modifier #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		}:
 			Indirection := p.Indirection,
 			Qualifier := p.Qualifier,
@@ -140,7 +132,7 @@ INCLUDE "symbolconstant.rl"
 			ArraySize := :reserve(##p.ArraySize)
 		{
 			FOR(sz ::= p.ArraySize.start())
-				ArraySize += :make(sz!, f, s, parent);
+				ArraySize += :make(sz!, ctx);
 		}
 
 		# |THIS ? := (Indirection, Qualifier, IsArray, ArraySize);
@@ -163,45 +155,41 @@ INCLUDE "symbolconstant.rl"
 
 		:transform{
 			p: [Stage::Prev+]Type #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		}:
 			Modifiers := :reserve(##p.Modifiers),
 			Reference := p.Reference,
 			Variadic := p.Variadic
 		{
 			FOR(m ::= p.Modifiers.start())
-				Modifiers += :transform(m!, f, s, parent);
+				Modifiers += :transform(m!, ctx);
 		}
 
 		<<<
 			p: [Stage::Prev+]Type #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		>>> THIS-std::Dyn
 		{
 			TYPE SWITCH(p)
 			{
 			[Stage::Prev+]Signature:
-				= :a.[Stage]Signature(:transform(>>p, f, s, parent));
+				= :a.[Stage]Signature(:transform(>>p, ctx));
 			[Stage::Prev+]Void:
-				= :a.[Stage]Void(:transform(>>p, f, s, parent));
+				= :a.[Stage]Void(:transform(>>p, ctx));
 			[Stage::Prev+]Null:
-				= :a.[Stage]Null(:transform(>>p, f, s, parent));
+				= :a.[Stage]Null(:transform(>>p, ctx));
 			[Stage::Prev+]SymbolConstantType:
-				= :a.[Stage]SymbolConstantType(:transform(>>p, f, s, parent));
+				= :a.[Stage]SymbolConstantType(:transform(>>p, ctx));
 			[Stage::Prev+]TupleType:
-				= :a.[Stage]TupleType(:transform(>>p, f, s, parent));
+				= :a.[Stage]TupleType(:transform(>>p, ctx));
 			[Stage::Prev+]TypeOfExpression:
-				= :a.[Stage]TypeOfExpression(:transform(>>p, f, s, parent));
+				= :a.[Stage]TypeOfExpression(:transform(>>p, ctx));
 			[Stage::Prev+]TypeName:
-				= :a.[Stage]TypeName(:transform(>>p, f, s, parent));
+				= :a.[Stage]TypeName(:transform(>>p, ctx));
 			[Stage::Prev+]BuiltinType:
-				= :a.[Stage]BuiltinType(:transform(>>p, f, s, parent));
+				= :a.[Stage]BuiltinType(:transform(>>p, ctx));
 			[Stage::Prev+]ThisType:
-				= :a.[Stage]ThisType(:transform(>>p, f, s, parent));
+				= :a.[Stage]ThisType(:transform(>>p, ctx));
 			}
 		}
 	}
@@ -215,16 +203,14 @@ INCLUDE "symbolconstant.rl"
 
 		:transform{
 			p: [Stage::Prev+]Signature #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s, parent):
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
 			Args := :reserve(##p.Args),
-			Ret := :make(p.Ret!, f, s, parent),
+			Ret := :make(p.Ret!, ctx),
 			IsCoroutine := p.IsCoroutine
 		{
 			FOR(a ::= p.Args.start())
-				Args += :make(a!, f, s, parent);
+				Args += :make(a!, ctx);
 		}
 	}
 
@@ -232,20 +218,16 @@ INCLUDE "symbolconstant.rl"
 	{
 		:transform{
 			p: [Stage::Prev+]Void #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s, parent);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx);
 	}
 
 	[Stage: TYPE] Null -> [Stage]Type
 	{
 		:transform{
 			p: [Stage::Prev+]Null #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s, parent);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx);
 	}
 
 	[Stage: TYPE] SymbolConstantType -> [Stage]Type
@@ -254,11 +236,9 @@ INCLUDE "symbolconstant.rl"
 
 		:transform{
 			p: [Stage::Prev+]SymbolConstantType #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s, parent):
-			Name := :transform(p.Name, f, s, parent);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Name := :transform(p.Name, ctx);
 	}
 
 	[Stage: TYPE] TupleType -> [Stage]Type
@@ -267,14 +247,12 @@ INCLUDE "symbolconstant.rl"
 
 		:transform{
 			p: [Stage::Prev+]TupleType #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s, parent):
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
 			Types := :reserve(##p.Types)
 		{
 			FOR(t ::= p.Types.start())
-				Types += :make(t!, f, s, parent);
+				Types += :make(t!, ctx);
 		}
 	}
 
@@ -284,11 +262,9 @@ INCLUDE "symbolconstant.rl"
 
 		:transform{
 			p: [Stage::Prev+]TypeOfExpression #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s, parent):
-			Expression := :make(p.Expression!, f, s, parent);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Expression := :make(p.Expression!, ctx);
 	}
 
 	[Stage: TYPE] TypeName -> [Stage]Type
@@ -299,11 +275,9 @@ INCLUDE "symbolconstant.rl"
 
 		:transform{
 			p: [Stage::Prev+]TypeName #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s, parent):
-			Name := :transform(p.Name, f, s, parent),
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Name := ctx.transform_symbol(p.Name, 0),
 			NoDecay := p.NoDecay;
 	}
 
@@ -326,10 +300,8 @@ INCLUDE "symbolconstant.rl"
 
 		:transform{
 			p: [Stage::Prev+]BuiltinType #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s, parent):
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
 			Kind := p.Kind;
 	}
 
@@ -346,9 +318,7 @@ INCLUDE "symbolconstant.rl"
 
 		:transform{
 			p: [Stage::Prev+]ThisType #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s, parent);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx);
 	}
 }

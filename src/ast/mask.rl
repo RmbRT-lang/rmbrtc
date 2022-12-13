@@ -15,14 +15,12 @@ INCLUDE 'std/memory'
 
 	:transform{
 		p: [Stage::Prev+]Mask #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
-	} -> (:transform, p, f, s), (:transform, p, f, s, parent):
+		ctx: Stage::Context+ #&
+	} -> (:transform, p, ctx), (:transform, p, ctx):
 		Members := :reserve(##p.Members)
 	{
 		FOR(m ::= p.Members.start())
-			Members += <<<[Stage]Member>>>(m!, f, s, parent);
+			Members += <<<[Stage]Member>>>(m!, ctx);
 	}
 }
 
@@ -30,8 +28,6 @@ INCLUDE 'std/memory'
 {
 	:transform{
 		p: [Stage::Prev+]GlobalMask #&,
-		f: Stage::PrevFile+,
-		s: Stage &,
-		parent: [Stage]ScopeBase \
-	} -> (), (:transform, p, f, s, parent);
+		ctx: Stage::Context+ #&
+	} -> (), (:transform, p, ctx);
 }

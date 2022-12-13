@@ -11,7 +11,7 @@ INCLUDE "namespace.rl"
 {
 	parse(p: Parser &) ast::[Config]Global - std::DynOpt
 	{
-		templates: TemplateDecl (BARE);
+		templates: ast::[Config]TemplateDecl (BARE);
 		parse_template_decl(p, templates);
 
 		pos ::= p.position();
@@ -29,7 +29,7 @@ INCLUDE "namespace.rl"
 		|| parse_global_impl(p, ret, test::parse))
 		{
 			IF(t ::= <<ast::[Config]Templateable *>>(ret))
-				t->Templates := &&templates;
+				<ast::[Config]TemplateDecl &>(t->Templates) := &&templates;
 			ELSE IF(fn ::= <<ast::[Config]Function *>>(ret))
 				fn->set_templates_after_parsing(&&templates);
 			ELSE IF(templates.exists())

@@ -17,7 +17,9 @@ INCLUDE "symbolconstant.rl"
 	}
 
 	/// Parses a non-operator expression.
-	parse_atom(p: Parser &) ast::[Config]Expression-std::DynOpt
+	parse_atom(
+		p: Parser &
+	) ast::[Config]Expression-std::DynOpt
 	{
 		// The start of the expression.
 		position ::= p.position();

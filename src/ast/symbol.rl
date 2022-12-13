@@ -7,6 +7,20 @@ INCLUDE 'std/vector'
 ::rlc::ast
 {
 	[Stage: TYPE] TYPE TemplateArg := [Stage]TypeOrExpr - std::DynVec;
+	[Stage: TYPE] transform_template_args(
+		prev: [Stage::Prev+]TemplateArg# - std::Buffer,
+		ctx: Stage::Context+ #&
+	) [Stage]TemplateArg - std::Vec
+	{
+		ret: [Stage]TemplateArg - std::Vec := :reserve(##prev);
+		FOR(tpl ::= prev.start())
+		{
+			it:?& :=  ret += :reserve(##tpl!);
+			FOR(v ::= tpl!.start())
+				it += :make(v!, ctx);
+		}
+		= &&ret;
+	}
 
 	[Stage: TYPE] Symbol
 	{
@@ -18,24 +32,13 @@ INCLUDE 'std/vector'
 
 			:transform{
 				prev: [Stage::Prev+]Symbol::Child #&,
-				f: Stage::PrevFile+,
-				s: Stage &,
-				parent: [Stage]ScopeBase \
+				ctx: Stage::Context+ #&
 			}:
-				Name := s.transform_name(prev.Name, f),
-				Templates := :reserve(##prev.Templates),
-				Position := prev.Position
-			{
-				FOR(pt ::= prev.Templates.start())
-				{
-					t:?&:= Templates += :reserve(##pt!);
-					FOR(pa ::= pt!.start())
-						IF(e ::= <<ast::[Stage::Prev+]Expression #*>>(&pa!))
-							t += :<>(<<<ast::[Stage]Expression>>>(*e, f, s, parent));
-						ELSE
-							t += :<>(<<<ast::[Stage]Type>>>(>>pa!, f, s, parent));
-				}
-			}
+				Name := ctx.transform_name(prev.Name),
+				Position := prev.Position,
+				Templates := 
+					[Stage]transform_template_args(
+						prev.Templates!++, ctx);
 		}
 
 		Children: Child - std::Vec;
@@ -43,15 +46,13 @@ INCLUDE 'std/vector'
 
 		:transform{
 			prev: [Stage::Prev+]Symbol #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		}:
 			Children := :reserve(##prev.Children),
 			IsRoot := prev.IsRoot
 		{
 			FOR(c ::= prev.Children.start())
-				Children += :transform(c!, f, s, parent);
+				Children += :transform(c!, ctx);
 		}
 	}
 }

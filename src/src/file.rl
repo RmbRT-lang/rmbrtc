@@ -36,6 +36,8 @@ INCLUDE 'std/math/limit'
 		# end() Index := Start + Length;
 
 		# THIS<>(rhs: THIS#&) S1 := (Start, Length) <> (rhs.Start, Length);
+
+		# THIS++ std::str::CV { DIE; }
 	}
 
 	(// A line:column position inside a file. /)

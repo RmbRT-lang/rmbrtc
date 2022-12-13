@@ -17,9 +17,8 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]Variable #&,
-			f: Stage::PrevFile+,
-			s: Stage &
-		} -> (:transform, p, f, s);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx);
 	}
 
 	(//
@@ -46,15 +45,13 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]InitialisedVariable #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s) :
-			Type := :make(p.Type!, f, s, parent),
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx) :
+			Type := :make(p.Type!, ctx),
 			InitValues := :reserve(##p.InitValues)
 		{
 			FOR(v ::= p.InitValues.start())
-				InitValues += :make(v!, f, s, parent);
+				InitValues += :make(v!, ctx);
 		}
 	}
 
@@ -75,11 +72,9 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]UninitialisedVariable #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s):
-			Type := :make(p.Type!, f, s, parent);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Type := :make(p.Type!, ctx);
 	}
 
 	/// A variable in global scope.
@@ -93,10 +88,8 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]GlobalVariable #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (), (:transform, p, f, s, parent);
+			ctx: Stage::Context+ #&
+		} -> (), (:transform, p, ctx);
 	}
 
 	[Stage: TYPE] ExternVariable ->
@@ -112,32 +105,28 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]ExternVariable #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (), (:transform, p, f, s, parent), (:transform, p, f, s);
+			ctx: Stage::Context+ #&
+		} -> (), (:transform, p, ctx), (:transform, p, ctx);
 	}
 
 	[Stage: TYPE] MaybeAnonMemberVar VIRTUAL -> [Stage]Member
 	{
 		<<<
 			p: [Stage::Prev+]MaybeAnonMemberVar #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		>>> THIS-std::Dyn
 		{
 			TYPE SWITCH(p)
 			{
 			[Stage::Prev+]MemberVariable:
 				= :a.[Stage]MemberVariable(:transform(
-					<<[Stage::Prev+]MemberVariable #&>>(p), f, s, parent));
+					<<[Stage::Prev+]MemberVariable #&>>(p), ctx));
 			[Stage::Prev+]AnonMemberVariable:
 				= :a.[Stage]AnonMemberVariable(:transform(
-					<<[Stage::Prev+]AnonMemberVariable #&>>(p), f, s, parent));
+					<<[Stage::Prev+]AnonMemberVariable #&>>(p), ctx));
 			[Stage::Prev+]StaticMemberVariable:
 				= :a.[Stage]StaticMemberVariable(:transform(
-					<<[Stage::Prev+]StaticMemberVariable #&>>(p), f, s, parent));
+					<<[Stage::Prev+]StaticMemberVariable #&>>(p), ctx));
 			}
 		}
 
@@ -153,10 +142,8 @@ INCLUDE 'std/vector'
 	{
 		:transform{
 			p: [Stage::Prev+]MemberVariable #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p, f, s, parent), (:transform, p);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx), (:transform, p);
 	}
 
 	[Stage:TYPE] AnonMemberVariable -> [Stage]MaybeAnonMemberVar
@@ -165,11 +152,9 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]AnonMemberVariable #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		} -> (:transform, p):
-			Type := :make(p.Type!, f, s, parent);
+			Type := :make(p.Type!, ctx);
 	}
 
 	[Stage:TYPE] StaticMemberVariable ->
@@ -184,13 +169,13 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]StaticMemberVariable #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p), (:transform, p, f, s, parent);
+			ctx: Stage::Context+ #&
+		} -> (:transform, p), (:transform, p, ctx);
 	}
 
-	TYPE LocalPosition := U2;
+	TYPE LocalPosition := U2; /// Local variable index.
+	TYPE LocalCount := U2; /// Number of local variables.
+
 	/// A function-local entity whose visibility depends on order of occurrence.
 	[Stage:TYPE] Local VIRTUAL
 	{
@@ -203,19 +188,17 @@ INCLUDE 'std/vector'
 
 		<<<
 			g: [Stage::Prev+]Local #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
+			ctx: Stage::Context+ #&
 		>>> THIS - std::Dyn
 		{
 			TYPE SWITCH(g)
 			{
 			[Stage::Prev+]Argument:
-				= :a.[Stage]Argument(:transform(>>g, f, s, parent));
+				= :a.[Stage]Argument(:transform(>>g, ctx));
 			[Stage::Prev+]LocalVariable:
-				= :a.[Stage]LocalVariable(:transform(>>g, f, s, parent));
+				= :a.[Stage]LocalVariable(:transform(>>g, ctx));
 			[Stage::Prev+]CatchVariable:
-				= :a.[Stage]CatchVariable(:transform(>>g, f, s, parent));
+				= :a.[Stage]CatchVariable(:transform(>>g, ctx));
 			}
 		}
 	}
@@ -233,10 +216,8 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]Argument #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:arg), (:transform, p, f, s, parent), ();
+			ctx: Stage::Context+ #&
+		} -> (:arg), (:transform, p, ctx), ();
 	}
 
 	/// A local variable inside a function.
@@ -254,10 +235,8 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]LocalVariable #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p), (:transform, p, f, s, parent), ();
+			ctx: Stage::Context+ #&
+		} -> (:transform, p), (:transform, p, ctx), ();
 	}
 
 	/// The named exception variable of a CATCH statement.
@@ -274,9 +253,7 @@ INCLUDE 'std/vector'
 
 		:transform{
 			p: [Stage::Prev+]CatchVariable #&,
-			f: Stage::PrevFile+,
-			s: Stage &,
-			parent: [Stage]ScopeBase \
-		} -> (:transform, p), (:transform, p, f, s, parent), ();
+			ctx: Stage::Context+ #&
+		} -> (:transform, p), (:transform, p, ctx), ();
 	}
 }
