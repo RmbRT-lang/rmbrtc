@@ -1,70 +1,47 @@
 INCLUDE "type.rl"
-INCLUDE "parser.rl"
-
+INCLUDE "stage.rl"
 INCLUDE 'std/vector'
 
 ::rlc::parser
 {
-	ENUM TemplateDeclType
+	parse_template_decl(
+		p: Parser &,
+		out: ast::[Config]TemplateDecl &) BOOL
 	{
-		number,
-		type,
-		value
-	}
+		IF(!p.consume(:bracketOpen))
+			RETURN FALSE;
 
-	TemplateDecl
-	{
-		Child
+		IF(!p.consume(:bracketClose))
 		{
-			{};
+			DO()
 			{
-				type: TemplateDeclType,
-				name: src::String #&}:
-				Type(type),
-				Name(name);
+				name ::= p.expect(:identifier).Content;
+				variadic ::= p.consume(:tripleDot);
+				p.expect(:colon);
 
-			Type: TemplateDeclType;
-			TypeName: std::[parser::Type]Dynamic;
-			Name: src::String;
-			Variadic: BOOL;
-		}
-		Children: std::[Child]Vector;
-
-		parse(
-			p: Parser &) BOOL
-		{
-			IF(!p.consume(:bracketOpen))
-				RETURN FALSE;
-
-			IF(!p.consume(:bracketClose))
-			{
-				DO()
+				arg: Config-ast::TemplateArgDecl-std::Dyn (BARE);
+				IF(p.consume(:type))
+					arg := :a.Config-ast::TypeTemplateArgDecl(BARE);
+				ELSE IF(p.consume(:number))
+					arg := :a.Config-ast::NumberTemplateArgDecl(BARE);
+				ELSE IF(t ::= type::parse(p))
 				{
-					c: Child;
-					name: tok::Token;
-					p.expect(:identifier, &name);
-					c.Name := name.Content;
-					c.Variadic := p.consume(:tripleDot);
-					p.expect(:colon);
+					vArg: Config-ast::ValueTemplateArgDecl(BARE);
+					vArg.Type := :!(&&t);
+					arg := :dup(&&vArg);
+				}
+				ELSE
+					p.fail("expected 'TYPE', 'NUMBER', or type");
 
-					IF(p.consume(:type))
-						c.Type := :type;
-					ELSE IF(p.consume(:number))
-						c.Type := :number;
-					ELSE IF(c.TypeName := :gc(Type::parse(p)))
-						c.Type := :value;
-					ELSE
-						p.fail("expected 'TYPE', 'NUMBER', or type");
+				arg->Name := name;
+				arg->Variadic := variadic;
 
-					Children += &&c;
-				} WHILE(p.consume(:semicolon))
+				out.Arguments += &&arg;
+			} WHILE(p.consume(:semicolon))
 
-				p.expect(:bracketClose);
-			}
-
-			RETURN TRUE;
+			p.expect(:bracketClose);
 		}
 
-		# exists() BOOL := ##Children != 0;
+		RETURN TRUE;
 	}
 }

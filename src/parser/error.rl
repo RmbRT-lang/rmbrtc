@@ -1,94 +1,93 @@
 INCLUDE 'std/error'
 INCLUDE 'std/string'
 INCLUDE 'std/io/format'
+INCLUDE 'std/io/streamutil'
 
 ::rlc::parser Error -> std::Error
 {
-	File: std::Utf8;
+	File: std::Str;
 	Line: UINT;
 	Column: UINT;
 	Tokens: tok::Token[2];
-	TokenContent: std::[CHAR]Buffer[2];
+	TokenContent: std::Str[2];
 	TokenCount: UINT;
-	Context: std::Utf8;
+	Context: std::Str;
 
 	{
 		file: src::File #\,
 		line: UINT,
 		column: UINT,
-		tokens: tok::Token#[2]&,
+		tokens: tok::Token#\,
 		tokenIndex: UINT,
 		tokenCount: UINT,
 		p: Parser#&}:
-		File(std::Utf8(file->Name)),
+		File(file->Name),
 		Line(line),
 		Column(column),
 		TokenCount(tokenCount),
-		Context(p.context())
+		Context(p.context()),
+		Tokens(NOINIT),
+		TokenContent(NOINIT)
 	{
+		FOR(i ::= 0; i < ##Tokens; i++) Tokens[i].{BARE};
+		FOR(i ::= 0; i < ##TokenContent; i++) TokenContent[i].{BARE};
+
 		IF(tokenCount)
 		{
-			Tokens[0] := tokens[tokenIndex];
-			TokenContent[0] := std::clone(file->content(Tokens[0].Content));
+			// TODO: bug prevents copy := operator to be used.
+			Tokens[0].{tokens[tokenIndex]};
+			TokenContent[0] := file->content(Tokens[0].Content)++;
 		}
 		IF(tokenCount == 2)
 		{
-			Tokens[1] := tokens[tokenIndex^1];
-			TokenContent[1] := std::clone(file->content(Tokens[1].Content));
-
+			Tokens[1].{tokens[tokenIndex^1]};
+			TokenContent[1] := file->content(Tokens[1].Content)++;
 		}
 	}
 
 	# ABSTRACT reason(std::io::OStream &) VOID;
 
-	# FINAL print(o: std::io::OStream &) VOID
+	# FINAL stream(o: std::io::OStream &) VOID
 	{
-		o.write(File!);
-		o.write(":");
-		std::io::format::dec(o, Line);
-		o.write(":");
-		std::io::format::dec(o, Column);
-		o.write(": unexpected ");
+		std::io::write(o,
+			File!++, :ch(':'), :dec(Line), ":", :dec(Column), ": unexpected ");
 		IF(TokenCount)
 		{
-			o.write(TokenContent[0]);
+			std::io::write(o, TokenContent[0]!++);
 			IF(TokenCount > 1)
-			{
-				o.write(" ");
-				o.write(TokenContent[1]);
-			}
+				std::io::write(o, :ch(' '), TokenContent[1]!++);
 		} ELSE
-			o.write("end of file");
+			std::io::write(o, "end of file");
 
-		o.write(" in ");
-		o.write(Context!);
-		o.write(": ");
+		std::io::write(o, " in ", Context!++, ": ");
 		reason(o);
-		o.write(".\n");
+		std::io::write(o, :ch('.'));
 	}
 }
 
 ::rlc::parser ReasonError -> Error
 {
-	Reason: std::Utf8;
+	Reason: std::Str;
 
 	{
 		file: src::File #\,
 		line: UINT,
 		column: UINT,
-		tokens: tok::Token#[2]&,
+		tokens: tok::Token#\,
 		tokenIndex: UINT,
 		tokenCount: UINT,
 		p: Parser#&,
-		reason: CHAR #\
-	}->	Error(file, line, column, tokens, tokenIndex, tokenCount, p)
-	:	Reason(reason, :cstring);
+		reason: std::str::CV#&
+	} ->
+		(file, line, column, tokens, tokenIndex, tokenCount, p):
+		Reason(reason);
 
 	# FINAL reason(o: std::io::OStream &) VOID
 	{
-		o.write(Reason!);
+		std::io::write(o, Reason!++);
 	}
 }
+
 ::rlc::parser ExpectedToken -> Error
 {
 	Expected: tok::Type;
@@ -97,18 +96,18 @@ INCLUDE 'std/io/format'
 		file: src::File #\,
 		line: UINT,
 		column: UINT,
-		tokens: tok::Token#[2]&,
+		tokens: tok::Token#\,
 		tokenIndex: UINT,
 		tokenCount: UINT,
 		p: Parser#&,
 		expected: tok::Type
-	}->	Error(file, line, column, tokens, tokenIndex, tokenCount, p)
-	:	Expected(expected);
+	} ->
+		(file, line, column, tokens, tokenIndex, tokenCount, p):
+		Expected(expected);
 
 	# OVERRIDE reason(
 		o: std::io::OStream &) VOID
 	{
-		o.write("expected ");
-		o.write(<CHAR #\>(Expected));
+		std::io::write(o, "expected ", <CHAR #\>(Expected));
 	}
 }

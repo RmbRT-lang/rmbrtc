@@ -1,89 +1,74 @@
-INCLUDE "scopeitem.rl"
+INCLUDE "stage.rl"
+
 INCLUDE "parser.rl"
-INCLUDE "../src/file.rl"
+INCLUDE "member.rl"
 
-INCLUDE 'std/vector'
-INCLUDE 'std/memory'
+INCLUDE "../ast/class.rl"
 
-
-::rlc::parser Class VIRTUAL -> ScopeItem
+::rlc::parser::class
 {
-	Inheritance
-	{
-		Visibility: rlc::Visibility;
-		IsVirtual: BOOL;
-		Type: Symbol;
-
-		parse(p: Parser &) VOID
-		{
-			STATIC lookup: {tok::Type, rlc::Visibility}#[](
-				(:public, :public),
-				(:private, :private),
-				(:protected, :protected));
-
-			t: Trace(&p, "inheritance");
-
-			Visibility := :public;
-			FOR(i ::= 0; i < ##lookup; i++)
-				IF(p.consume(lookup[i].(0)))
-				{
-					Visibility := lookup[i].(1);
-					BREAK;
-				}
-
-			IsVirtual := p.consume(:virtual);
-
-			IF(!Type.parse(p))
-				p.fail("expected type");
-		}
-	}
-
-	Name: src::String;
-	Virtual: BOOL;
-	Members: Member - std::DynVector;
-	Inheritances: std::[Inheritance]Vector;
-
-	# FINAL name() src::String #& := Name;
-	# FINAL overloadable() BOOL := FALSE;
-
-	parse(p: Parser &) BOOL
+	parse(p: Parser &, out: Config-ast::Class &) BOOL
 	{
 		IF(!p.match(:identifier)
 		|| (!p.match_ahead(:braceOpen)
 			&& !p.match_ahead(:minusGreater)
 			&& !p.match_ahead(:virtual)))
-			RETURN FALSE;
+			= FALSE;
 
 		t: Trace(&p, "class");
 
-		p.expect(:identifier, &Name);
+		tok ::= p.expect(:identifier);
+		(out.Name, out.Position) := (tok.Content, tok.Position);
 
-		Virtual := p.consume(:virtual);
+		out.Virtual := p.consume(:virtual);
 
 		IF(p.consume(:minusGreater))
-			DO(i: Inheritance)
+			DO(i: ast::class::[Config]Inheritance (BARE))
 			{
-				i.parse(p);
-				Inheritances += &&i;
+				parse_inheritance(p, i);
+
+				/// HACK: tolerate quirks of the bootstrap compiler.
+				p.consume(:plus);
+
+				out.Inheritances += &&i;
 			} WHILE(p.consume(:comma))
 
 		p.expect(:braceOpen);
 
 		default ::= Visibility::public;
-		WHILE(member ::= Member::parse(p, default))
-			Members += :gc(member);
+		WHILE(member ::= member::parse_class_member(p, default))
+			out.Members += :!(&&member);
 
 		p.expect(:braceClose);
 
-		RETURN TRUE;
+		= TRUE;
 	}
-}
 
-::rlc::parser GlobalClass -> Global, Class
-{
-	parse(p: Parser &) INLINE BOOL := Class::parse(p);
-}
-::rlc::parser MemberClass -> Member, Class
-{
-	parse(p: Parser &) INLINE BOOL := Class::parse(p);
+	parse_inheritance(p: Parser &, out: ast::class::[Config]Inheritance &) VOID
+	{
+		STATIC lookup: {tok::Type, rlc::Visibility}#[](
+			(:public, :public),
+			(:private, :private),
+			(:protected, :protected));
+
+		t: Trace(&p, "inheritance");
+
+		out.Visibility := :public;
+		FOR(i ::= 0; i < ##lookup; i++)
+			IF(p.consume(lookup[i].(0)))
+			{
+				out.Visibility := lookup[i].(1);
+				BREAK;
+			}
+
+		out.IsVirtual := p.consume(:virtual);
+
+		IF(!symbol::parse(p, out.Type))
+			p.fail("expected type");
+	}
+
+	parse_member(p: Parser &, out: ast::[Config]MemberClass &) BOOL
+		:= parse(p, out);
+	parse_global(p: Parser &, out: ast::[Config]GlobalClass &) BOOL
+		:= parse(p, out);
 }

@@ -1,45 +1,30 @@
+INCLUDE "../ast/mask.rl"
 INCLUDE "parser.rl"
-INCLUDE "global.rl"
-INCLUDE "member.rl"
-INCLUDE "function.rl"
-INCLUDE "templatedecl.rl"
-INCLUDE "scopeitem.rl"
-INCLUDE "global.rl"
-INCLUDE "member.rl"
+INCLUDE "stage.rl"
 
-INCLUDE 'std/vector'
-INCLUDE 'std/memory'
-
-::rlc::parser Mask VIRTUAL -> ScopeItem
+::rlc::parser::mask
 {
-	Members: Member - std::DynVector;
-	Name: src::String;
-
-	# FINAL name() src::String#& := Name;
-	# FINAL overloadable() BOOL := FALSE;
-
-	parse(p: Parser&) BOOL
+	parse(p: Parser&, out: ast::[Config]Mask &) BOOL
 	{
-		IF(!p.consume(:mask))
-			RETURN FALSE;
+		IF(tok ::= p.consume(:mask))
+			out.Position := tok->Position;
+		ELSE = FALSE;
 
 		t: Trace(&p, "mask");
 
-		p.expect(:identifier, &Name);
+		out.Name := p.expect(:identifier).Content;
 		p.expect(:braceOpen);
 
 		DO(default_visibility: Visibility := Visibility::public)
-			IF(member ::= detail::parse_mask_member(p, default_visibility))
-				Members += :gc(member);
+			IF(member ::= parser::member::parse_mask_member(p, default_visibility))
+				out.Members += :!(&&member);
 			ELSE
 				p.fail("expected member");
 			WHILE(!p.consume(:braceClose))
 
-		RETURN TRUE;
+		= TRUE;
 	}
-}
 
-::rlc::parser GlobalMask -> Global, Mask
-{
-	parse(p: Parser&) BOOL := Mask::parse(p);
+	parse_global(p: Parser&, out: ast::[Config]GlobalMask &) BOOL INLINE
+		:= mask::parse(p, out);
 }

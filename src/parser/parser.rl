@@ -10,16 +10,17 @@ INCLUDE 'std/tags'
 		std::NoMove;
 
 		{
-			file: src::File #\,
-			fileIndex: U1
+			file: src::File # - std::Shared
 		}:
-			File(file),
-			Tokeniser(file, fileIndex),
+			Source(file),
+			Tokeniser(file),
 			Ctx(NULL),
+			Buffer(NOINIT),
 			BufferSize(0),
 			BufferIndex(0),
 			Progress(0)
 		{
+			FOR(i ::= 0; i < ##Buffer; i++) Buffer[i].{BARE};
 			IF(!Tokeniser.parse_next(&Buffer[0]))
 				RETURN;
 			IF(Tokeniser.parse_next(&Buffer[1]))
@@ -30,115 +31,58 @@ INCLUDE 'std/tags'
 
 		fail(reason: CHAR#\) VOID
 		{
-			line: UINT;
-			column: UINT;
-			IF(BufferSize)
-			{
-				File->position(
-					Buffer[BufferIndex].Content.Start,
-					&line,
-					&column);
-			} ELSE
-				Tokeniser.position(&line, &column);
+			pos ::= (BufferSize)
+				?? Buffer[BufferIndex].Position
+				: Tokeniser.position();
 			
-			THROW ReasonError(
-				File,
-				line,
-				column,
-				Buffer,
+			THROW <ReasonError>(
+				Source,
+				pos.Line,
+				pos.Column,
+				Buffer!,
 				BufferIndex,
 				BufferSize,
 				THIS,
 				reason);
 		}
 
-		consume(type: tok::Type) BOOL
-			:= consume(type, <tok::Token*>(NULL));
-
-		consume(type: tok::Type, pos: src::Position \) BOOL
-		{
-			token: tok::Token;
-			IF(consume(type, &token))
-			{
-				*pos := token.Position;
-				RETURN TRUE;
-			}
-			RETURN FALSE;
-		}
-
-		consume(
-			type: tok::Type,
-			out: tok::Token *) BOOL
+		consume(type: tok::Type) tok::Token - std::Opt
 		{
 			IF(match(type))
+				= :a(&&eat_token()!);
+			= NULL;
+		}
+
+		expect(type: tok::Type) tok::Token
+		{
+			IF(tok ::= consume(type))
+				= &&*tok;
+			pos ::= (BufferSize)
+				?? Buffer[BufferIndex].Position
+				: Tokeniser.position();
+
+			THROW <ExpectedToken>(
+				Source, pos.Line, pos.Column,
+				Buffer!, BufferIndex, BufferSize,
+				THIS,
+				type);
+		}
+
+		match_seq(tok1: tok::Type, tok2: tok::Type) BOOL
+		{
+			IF(BufferSize < 2) = FALSE;
+			= Buffer[BufferIndex].Type == tok1
+				&& Buffer[BufferIndex^1].Type == tok2;
+		}
+
+		consume_seq(tok1: tok::Type, tok2: tok::Type) BOOL
+		{
+			IF:(ret ::= match_seq(tok1, tok2))
 			{
-				consume(out);
-				RETURN TRUE;
+				eat_token();
+				eat_token();
 			}
-
-			RETURN FALSE;
-		}
-
-		consume(type: tok::Type, out: src::String \) BOOL
-		{
-			token: tok::Token;
-			IF(consume(type, &token))
-			{
-				*out := token.Content;
-				RETURN TRUE;
-			}
-			RETURN FALSE;
-		}
-
-		consume(type: tok::Type, out: src::String \, pos: src::Position \) BOOL
-		{
-			token: tok::Token;
-			IF(consume(type, &token))
-			{
-				*out := token.Content;
-				*pos := token.Position;
-				RETURN TRUE;
-			}
-			RETURN FALSE;
-		}
-
-		expect(type: tok::Type) VOID
-			:= expect(type, <tok::Token *>(NULL));
-
-		expect(type: tok::Type, out: tok::Token *) VOID
-		{
-			IF(!consume(type, out))
-			{
-				line: UINT;
-				column: UINT;
-				IF(BufferSize)
-				{
-					File->position(
-						Buffer[BufferIndex].Content.Start,
-						&line,
-						&column);
-				}
-				ELSE
-				{
-					Tokeniser.position(&line, &column);
-				}
-				THROW ExpectedToken(File, line, column, Buffer, BufferIndex, BufferSize, THIS, type);
-			}
-		}
-
-		expect(type: tok::Type, out: src::String \) VOID
-		{
-			token: tok::Token;
-			expect(type, &token);
-			*out := token.Content;
-		}
-
-		expect(type: tok::Type, out: src::String \, pos: src::Position \) VOID
-		{
-			token: tok::Token;
-			expect(type, &token);
-			*out := token.Content;
-			*pos := token.Position;
+			= ret;
 		}
 
 		match(type: tok::Type) BOOL
@@ -149,14 +93,6 @@ INCLUDE 'std/tags'
 			RETURN Buffer[BufferIndex].Type == type;
 		}
 
-		match(type: tok::Type, out: src::String \) BOOL
-		{
-			ret: BOOL;
-			IF(ret := match(type))
-				*out := Buffer[BufferIndex].Content;
-			RETURN ret;
-		}
-
 		match_ahead(type: tok::Type) BOOL
 		{
 			IF(BufferSize != 2)
@@ -165,13 +101,14 @@ INCLUDE 'std/tags'
 			RETURN Buffer[BufferIndex^1].Type == type;
 		}
 
-		consume(out: tok::Token *) BOOL
+		eat_token() tok::Token - std::Opt
 		{
 			IF(!BufferSize)
-				RETURN FALSE;
+				RETURN NULL;
 
-			IF(out)
-				*out := Buffer[BufferIndex];
+			PrevOffset := :a(Buffer[BufferIndex].Content.end());
+
+			out ::= Buffer[BufferIndex];
 
 			IF(!Tokeniser.parse_next(&Buffer[BufferIndex]))
 				--BufferSize;
@@ -179,30 +116,75 @@ INCLUDE 'std/tags'
 			BufferIndex := BufferIndex ^ 1;
 			++Progress;
 
-			RETURN TRUE;
+			= :a(&&out);
 		}
 
 		# eof() BOOL := BufferSize == 0;
 
 		# context() CHAR #\
 			:= Ctx
-				? Ctx->Name
-				: "<unknown context>";
+				?? Ctx->Name
+				: "global scope";
 
 		# progress() UINT := Progress;
 
-		# position() UM := BufferSize
-			? Buffer[BufferIndex].Content.Start
-			: ##File->Contents;
+		# position() src::Position := BufferSize
+			?? Buffer[BufferIndex].Position
+			: Tokeniser.position();
+
+		# offset() UM := BufferSize
+			?? Buffer[BufferIndex].Content.Start
+			: ##Source->Contents;
+		# prev_offset() UM := PrevOffset!;
 
 		Ctx: Trace *;
+		Name: std::Str;
+		Source: src::File # - std::Shared #;
+		
+		locals() ast::LocalPosition
+		{
+			IF(!Locals)
+				= 0;
+			= Locals!;
+		}
+
+		add_local() ast::LocalPosition
+		{
+			IF(!Locals)
+				fail("registering local: Local tracking not configured");
+			= ++Locals!;
+		}
+
+		LocalTracker
+		{
+			P: Parser *;
+			{...};
+			{&&mv}: P := mv.P { mv.P := NULL; }
+
+			DESTRUCTOR
+			{
+				IF(P)
+					P->Locals := NULL;
+			}
+		}
+		// This function starts tracking local variables 
+		track_locals() LocalTracker
+		{
+			IF(!Locals)
+			{
+				Locals := :a(0);
+				= &THIS;
+			}
+			= NULL;
+		}
 	PRIVATE:
-		File: src::File #\;
+		Locals: ast::LocalPosition -std::Opt;
 		Tokeniser: tok::Tokeniser;
 		Buffer: tok::Token[2]; // Lookahead buffer.
 		BufferIndex: UINT;
 		BufferSize: UINT;
 		Progress: UINT;
+		PrevOffset: UINT-std::Opt;
 	}
 
 	Trace

@@ -1,40 +1,31 @@
-INCLUDE "scopeitem.rl"
-INCLUDE "global.rl"
+INCLUDE "stage.rl"
+INCLUDE "../ast/union.rl"
 INCLUDE "member.rl"
 
-::rlc::parser Union VIRTUAL -> ScopeItem
+::rlc::parser::union
 {
-	Name: src::String;
-	Members: Member - std::DynVector;
-
-	# FINAL name() src::String #& := Name;
-	# FINAL overloadable() BOOL := FALSE;
-
-	parse(p: Parser &) BOOL
+	parse(p: Parser &, out: ast::[Config]Union &) BOOL
 	{
 		IF(!p.consume(:union))
-			RETURN FALSE;
+			= FALSE;
 
-		p.expect(:identifier, &Name);
+		tok ::= p.expect(:identifier);
+		(out.Name, out.Position) := (tok.Content, tok.Position);
 
 		p.expect(:braceOpen);
 
 		visibility ::= Visibility::public;
-		WHILE(member ::= Member::parse(p, visibility))
-			Members += :gc(member);
+		WHILE(member ::= member::parse_union_member(p, visibility))
+			out.Members += :!(&&member);
 
 		p.expect(:braceClose);
 
-		RETURN TRUE;
+		= TRUE;
 	}
-}
 
-::rlc::parser GlobalUnion -> Global, Union
-{
-	parse(p: Parser &) INLINE BOOL := Union::parse(p);
-}
+	parse_global(p: Parser &, out: ast::[Config]GlobalUnion &) BOOL INLINE
+		:= parse(p, out);
 
-::rlc::parser MemberUnion -> Member, Union
-{
-	parse(p: Parser &) INLINE BOOL := Union::parse(p);
+	parse_member(p: Parser &, out: ast::[Config]MemberUnion &) BOOL INLINE
+		:= parse(p, out);
 }

@@ -1,27 +1,19 @@
-INCLUDE "global.rl"
-INCLUDE "scopeitem.rl"
-INCLUDE "statement.rl"
+INCLUDE "../ast/test.rl"
+INCLUDE "parser.rl"
+INCLUDE "stage.rl"
 
-::rlc::parser Test -> Global, ScopeItem
+::rlc::parser::test parse(p: Parser &, out: ast::[Config]Test &) BOOL
 {
-	Name: tok::Token;
-	Body: BlockStatement;
+	IF:!(tok ::= p.consume(:test))
+		= FALSE;
+	out.Position := tok->Position;
 
-	# FINAL name() src::String#& := src::String::empty;
-	# FINAL overloadable() BOOL := FALSE;
+	t: Trace(&p, "test");
 
-	parse(p: Parser &) BOOL
-	{
-		IF(!p.consume(:test))
-			RETURN FALSE;
+	out.Name := p.expect(:stringQuote).Content;
 
-		t: Trace(&p, "test");
+	IF(!statement::parse_block(p, out.Body))
+		p.fail("expected block statement");
 
-		p.expect(:stringQuote, &Name);
-
-		IF(!Body.parse(p))
-			p.fail("expected block statement");
-
-		RETURN TRUE;
-	}
+	= TRUE;
 }

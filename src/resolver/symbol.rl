@@ -1,12 +1,6 @@
-INCLUDE "../scoper/symbol.rl"
-INCLUDE "../scoper/error.rl"
+INCLUDE "../ast/symbol.rl"
 
-INCLUDE "templates.rl"
-
-INCLUDE 'std/error'
-INCLUDE 'std/err/unimplemented'
-INCLUDE 'std/io/format'
-INCLUDE "../scoper/fileregistry.rl"
+INCLUDE 'std/io/streamutil'
 
 (//
 	Potentially half-resolved symbol type (due to accessing templates). Only resolves into a scope item group, and a group element has to be selected upon use based on context.
@@ -17,451 +11,185 @@ INCLUDE "../scoper/fileregistry.rl"
 /)
 ::rlc::resolver Symbol
 {
-	(// Explicitly stated parent nodes of the resolved item. /)
-	Resolved
-	{
-		(// Inner-most resolved item. /)
-		Tail: scoper::ScopeItem # *;
-		(// All specified path nodes' templates. /)
-		Templates: TemplateArg - std::DynVector - std::Vector;
-
-		{
-			scope: scoper::Scope # *,
-			tail: scoper::ScopeItem # *,
-			symbol: scoper::Symbol #&,
-			depth: UM
-		}:	Tail(tail)
-		{
-			FOR(i ::= 0; i+1 < depth; i++)
-			{
-				child # ::= &symbol.Children[i];
-				templates: TemplateArg - std::DynVector;
-				FOR(tpl ::= child->Templates.start(); tpl; ++tpl)
-					templates += :gc(<<<TemplateArg>>>(scope, tpl!));
-				Templates += &&templates;
-			}
-		}
-
-		(// The amount of resolved items. /)
-		# depth() INLINE UM := ##Templates;
-	}
 	(// A typedef's or template place-holder's referenced children. /)
 	Unresolved
 	{
-		Symbols: scoper::Symbol::Child # - std::Buffer;
-		Templates: TemplateArgs - std::Vector;
+		Symbols: scoper::Config::Symbol::Child # - std::Buffer;
+		Templates: ast::[Config]TemplateArg - std::Vec - std::Vec;
+
+		{};
 
 		{
-			scope: scoper::Scope #\,
-			symbol: scoper::Symbol #&,
-			resolved: UM
-		}:	Symbols(symbol.Children!.drop_start(resolved))
+			symbol: ast::[scoper::Config]Symbol #&,
+			resolved: UINT,
+			templates: ast::[Config]TemplateArg -std::Vec -std::Buffer
+		}:
+			Symbols := symbol.Children!.drop_start(resolved)++,
+			Templates := :reserve(##templates - resolved)
 		{
-			FOR(child ::= Symbols.start().ok(); child; ++child)
-			{
-				templates: TemplateArg - std::DynVector;
-				FOR(tpl ::= child!.Templates.start().ok(); tpl; ++tpl)
-					templates += :gc(<<<TemplateArg>>>(scope, tpl!));
-				Templates += &&templates;
-			}
+			FOR(i ::= 0; i < ##Templates; i++)
+				Templates[i] := &&templates[resolved + i];
 		}
 	}
 
-	(// A reference to a specific code entity, either a scope item or template place-holder. /)
-	UNION Reference
-	{
-		TemplateArg: scoper::TemplateDecl #\;
-		ItemGroup: scoper::detail::ScopeItemGroup #\;
-	}
-
 	(// The resolved parents of `Item`. /)
-	Trail: Resolved;
+	AncestorTemplates: ast::[Config]TemplateArg - std::Vec - std::Vec;
 
-	(// Whether the resolved item is a template argument or scope item. /)
-	IsTemplate: BOOL;
 	(// The inner-most resolvable part of the symbol. /)
-	Item: Reference;
+	Item: ast::[scoper::Config]ScopeItem #\;
 	(// Templates of `Item`. /)
-	ItemTemplates: TemplateArg - std::DynVector;
+	ItemTemplates: ast::[Config]TemplateArg - std::Vec;
 
 	(// Symbol children depending on an uninstantiated template or typedef. /)
 	Rest: Unresolved;
 
-	{
-		:resolve,
-		scope: scoper::Scope #&,
-		reference: scoper::Symbol #&
-	}->	Symbol(resolve(scope, reference));
+	:resolve{
+		reference: ast::[scoper::Config]Symbol #&,
+		ctx: Context #&
+	} := resolve(reference, ctx);
 
-	{
-		:resolve,
-		scope: scoper::Scope #&,
-		reference: scoper::Symbol #&,
-		position: UM
-	}->	Symbol(resolve(scope, reference, position));
+	:resolve_local{
+		reference: ast::[scoper::Config]Symbol #&,
+		position: ast::LocalPosition,
+		ctx: Context #&
+	} := resolve_local(reference, position, ctx);
 
-	NotResolved -> scoper::Error
-	{
-		Scope: scoper::Scope #\;
-		Name: scoper::String;
-		ParentName: scoper::String;
-		Number: UM;
-		Reason: CHAR #\;
-
-		{
-			scope: scoper::Scope #\,
-			name: scoper::String #&,
-			pos: src::Position #&,
-			reason: CHAR #\
-		}->	scoper::Error(pos)
-		:	Scope(scope),
-			Name(name),
-			Reason(reason),
-			Number(0);
-
-		{
-			scope: scoper::Scope #\,
-			name: scoper::String #&,
-			pos: src::Position #&,
-			reason: CHAR #\,
-			number: UM
-		}->	scoper::Error(pos)
-		:	Scope(scope),
-			Name(name),
-			Reason(reason),
-			Number(number+1);
-
-		{
-			scope: scoper::Scope #\,
-			parentName: scoper::String #&,
-			name: scoper::String #&,
-			pos: src::Position #&,
-			reason: CHAR #\
-		}->	scoper::Error(pos)
-		:	Scope(scope),
-			ParentName(parentName),
-			Name(name),
-			Reason(reason),
-			Number(0);
-
-		# OVERRIDE print_msg(
-			o: std::io::OStream &) VOID
-		{
-			o.write_all("Resolving ", Name, " in ");
-			
-			IF(Scope->is_root())
-				o.write("global scope");
-			ELSE
-				Scope->print_name(o);
-			IF(ParentName)
-				o.write_all("::", ParentName);
-			
-			o.write(" failed");
-			IF(Reason)
-				o.write_all(": ", Reason);
-			IF(Number)
-			{
-				o.write("(template #");
-				std::io::format::dec(o, Number);
-				o.write(")");
-			}
-			o.write(".");
-		}
-	}
 
 	STATIC resolve(
-		scope: scoper::Scope #&,
-		reference: scoper::Symbol #&
-	) Symbol := resolve(scope, reference, 0);
+		reference: ast::[scoper::Config]Symbol #&,
+		ctx: Context #&
+	) Symbol := resolve_local(reference, 0, ctx);
 
-	STATIC resolve(
-		scope: scoper::Scope #&,
-		reference: scoper::Symbol #&,
-		position: UM
+	STATIC resolve_local(
+		reference: ast::[scoper::Config]Symbol #&,
+		position: ast::LocalPosition,
+		ctx: Context #&
 	) Symbol
 	{
-		(/
-		The symbol itself is resolved either relative to the current scope or to the root scope, while the template arguments are resolved independently.
-		/)
-		symbolScope: scoper::Scope #\ := reference.IsRoot
-			? scope.root()
-			: &scope;
-		ASSERT(symbolScope);
+		/// Resolve all template arguments.
+		child_templates: ast::[Config]TemplateArg -std::Vec -std::Vec;
+		FOR(child ::= reference.Children.start().ok())
+			child_templates += ast::[Config]transform_template_args(child!.Templates!++, ctx);
 
-		// The inner-most item that could be resolved.
-		itemGroup: scoper::detail::ScopeItemGroup #* := NULL;
-		// The parent of the inner-most resolved item, if part of the symbol.
-		trail: scoper::ScopeItem #* := NULL;
+		/// Resolve the first symbol child.
+		symbolScope ::= ctx.PrevParent!;
+		IF(reference.IsRoot)
+			symbolScope := symbolScope->root();
 
-		FOR(i ::= 0; i < ##reference.Children; i++)
+		initScope ::= symbolScope;
+
+		IF:!(item ::= symbolScope->local(reference.Children[:ok(0)].Name, position))
 		{
-			origSymScope # ::= symbolScope;
-			ASSERT(reference.Children[i].Name.Size != 123);
-			oldItemGroup ::= itemGroup;
-
-			// Try to resolve scope item within scope.
-			itemGroup := symbolScope->find(reference.Children[i].Name);
-
-
-			(/
-			If we found no item within the scope, and this is the first symbol child, look for template place-holders in the current scope or search the parent scope. Only non-root symbols can address template place-holders.
-			/)
-			IF(!i
-			&& !is_match(itemGroup, position, 0, reference)
-			&& !reference.IsRoot
-			&& symbolScope->Parent)
+			WHILE(!symbolScope->is_root())
 			{
-				name ::= reference.Children[0].Name;
-				DO()
-				{
-					IF(item ::= <<scoper::ScopeItem #*>>(symbolScope->Owner))
-					{
-						IF(decl ::= item->Templates.find(name))
-							IF(reference.Children[0].Templates)
-								THROW <NotResolved>(
-									symbolScope,
-									name,
-									reference.Children[0].Position,
-									"template arguments must not have templates");
-							ELSE
-								RETURN (symbolScope, decl, &reference);
-
-					}
-					symbolScope := symbolScope->Parent;
-					IF(itemGroup := symbolScope->find(name))
-						IF(!is_match(itemGroup, position, 0, reference))
-							itemGroup := NULL;
-				} WHILE(!itemGroup && symbolScope->Parent)
-			}
-			IF(!itemGroup)
-				THROW <NotResolved>(
-					origSymScope,
-					reference.Children[i].Name,
-					reference.Children[i].Position,
-					"not found");
-
-			IF(!is_match(itemGroup, position, i, reference))
-				THROW <NotResolved>(
-					origSymScope,
-					reference.Children[i].Name,
-					reference.Children[i].Position,
-					"not a suitable candidate");
-
-			IF(<<scoper::LocalVariable #*>>(itemGroup->Items[0]))
-			{
-				IF(reference.Children[i].Templates)
-					THROW <NotResolved>(
-						itemGroup->Scope,
-						itemGroup->Name,
-						reference.Children[i].Position,
-						"variables must not have templates");
+				symbolScope := symbolScope->Parent!;
+				IF(item := symbolScope->local(reference.Children[:ok(0)].Name, position))
+					BREAK;
 			}
 
-			(/
-			If there are more symbol children, then the item we have found must be unique so we can progress. Also check whether it is a typedef, in which case resolving stops early.
-			/)
-			IF(i != ##reference.Children - 1)
-			{
-				child # ::= &reference.Children[i];
-				IF(##itemGroup->Items > 1)
-					THROW <NotResolved>(
-						symbolScope,
-						child->Name,
-						child->Position,
-						"ambiguous");
-
-				item # ::= &*itemGroup->Items[0];
-
-				// Check template argument count.
-				IF(##child->Templates > ##item->Templates)
-					THROW <NotResolved>(
-						symbolScope,
-						child->Name,
-						child->Position,
-						"too many template arguments");
-
-				// Check template argument kind compatibility (value/type). Ignore empty and omitted template arguments
-				FOR(j ::= 0; j < ##child->Templates; j++)
-					IF(child->Templates[j])
-						SWITCH(type ::= item->Templates.Templates[j].Type)
-						{
-						:number, :value:
-							IF(!child->Templates[j][0].is_expression())
-								THROW <NotResolved>(
-									symbolScope,
-									child->Name,
-									child->Position,
-									"expression expected as template argument", j);
-						:type:
-							IF(!child->Templates[j][0].is_type())
-								THROW <NotResolved>(
-									symbolScope,
-									child->Name,
-									child->Position,
-									"type expected as template argument", j);
-						DEFAULT:
-							THROW <std::err::Unimplemented>(<CHAR#\>(type));
-						}
-
-				oldSymbolScope # ::= symbolScope;
-				isValidParent: BOOL;
-				(symbolScope, isValidParent) := primaryScope(item);
-				// Is it a candidate for having children?
-				IF(!isValidParent)
-					THROW <NotResolved>(
-		 				oldSymbolScope,
-						child->Name,
-						reference.Children[i+1].Name,
-						reference.Children[i+1].Position,
-						"parent cannot have children");
-				ELSE IF(!symbolScope) // Typedefs cannot be resolved further.
-					RETURN <Symbol>(trail, &scope, itemGroup, &reference, i+1);
-
-				// Remember as parent of next iteration.
-				trail := item;
-			}
+			IF(!item)
+				THROW <NotResolved>(:root(initScope, reference, "no such entity"));
 		}
 
-		IF(##itemGroup->Items == 1)
+		/// Resolve the remaining symbol children.
+		FOR(child ::= ++reference.Children!.start().ok())
 		{
-			child # ::= &reference.Children!.back();
-			item # ::= itemGroup->Items[0]!;
+			IF:!(item_as_scope ::= <<ast::[scoper::Config]ScopeBase #*>>(item))
+				IF(<<ast::PotentialScope #*>>(item))
+					= :partially_resolved(item, reference, child.i(), &&child_templates);
+				ELSE THROW <NotResolved>(:child(symbolScope, *item, child!,
+					"parent cannot have children"));
 
-			// Check template argument count.
-			IF(##child->Templates > ##item->Templates)
-				THROW <NotResolved>(
-					symbolScope,
-					child->Name,
-					child->Position,
-					"number of template arguments exceeds declaration");
 
-			// Check template argument kind compatibility (value/type). Ignore empty and omitted template arguments
-			FOR(j ::= 0; j < ##child->Templates; j++)
-				IF(child->Templates[j])
-					SWITCH(type ::= item->Templates.Templates[j].Type)
-					{
-					:number, :value:
-						IF(!child->Templates[j][0].is_expression())
-							THROW <NotResolved>(
-								symbolScope,
-								child->Name,
-								child->Position,
-								"expression expected as template argument", j);
-					:type:
-						IF(!child->Templates[j][0].is_type())
-							THROW <NotResolved>(
-								symbolScope,
-								child->Name,
-								child->Position,
-								"type expected as template argument", j);
-					DEFAULT:
-						THROW <std::err::Unimplemented>(<CHAR#\>(type));
-					}
+			IF:!(next_child ::= item_as_scope->scope_item(child!.Name))
+				THROW <NotResolved>(:child(symbolScope, *item, child!, "no such child"));
+
+			symbolScope := item_as_scope;
+			item := next_child;
 		}
 
-		RETURN <Symbol>(trail, &scope, itemGroup, &reference);
+		= :resolved(item, &&child_templates);
 	}
 
-	STATIC is_match(
-		itemGroup: scoper::detail::ScopeItemGroup #*,
-		position: UM,
-		index: UM,
-		symbol: scoper::Symbol #&
-	) BOOL
-	{
-		IF(!itemGroup)
-			RETURN FALSE;
 
-		item # ::= &*itemGroup->Items[0];
-		IF(index == ##symbol.Children-1)
+	:resolved{
+		tip: ast::[scoper::Config]ScopeItem #\,
+		templates: ast::[Config]TemplateArg -std::Vec -std::Vec &&
+	}:
+		AncestorTemplates := &&templates,
+		Item := tip;
+
+	:partially_resolved{
+		tip: ast::[scoper::Config]ScopeItem #\,
+		symbol: ast::[scoper::Config]Symbol #&,
+		resolved_children: UM,
+		templates: ast::[Config]TemplateArg -std::Vec -std::Vec &&
+	}:
+		AncestorTemplates := &&templates,
+		Item := tip,
+		ItemTemplates := &&AncestorTemplates[resolved_children],
+		Rest(symbol, resolved_children, AncestorTemplates!)
+	{
+		AncestorTemplates.resize(resolved_children-1);
+	}
+}
+
+
+::rlc::resolver NotResolved -> rlc::Error
+{
+	Scope: ast::[scoper::Config]ScopeBase #\;
+	Name: ast::[scoper::Config]String;
+	ParentName: ast::[scoper::Config]String - std::Opt;
+	TemplateArg: UM - std::Opt;
+	Reason: CHAR #\;
+
+	:root{
+		scope: ast::[scoper::Config]ScopeBase #\,
+		reference: ast::[scoper::Config]Symbol #&,
+		reason: CHAR #\
+	} -> (reference.Children[:ok(0)].Position):
+		Scope := scope,
+		Name := reference.Children[:ok(0)].Name,
+		Reason(reason);
+
+	:child{
+		parentScope: ast::[scoper::Config]ScopeBase #\,
+		parent: ast::[scoper::Config]ScopeItem #&,
+		child: ast::[scoper::Config]Symbol::Child #&,
+		reason: CHAR #\
+	} -> (child.Position):
+		Scope := parentScope,
+		ParentName := :a(parent.Name),
+		Name := child.Name,
+		Reason := reason;
+
+	# OVERRIDE message(
+		o: std::io::OStream &) VOID
+	{
+		std::io::write(o, "Resolving ", Name!++, " in ");
+		
+		IF(Scope->is_root())
+			std::io::write(o, "global scope");
+		ELSE
 		{
-			TYPE SWITCH(item)
-			{
-			scoper::Variable:
+			delim # ::= Scope->print_name(o) ?? "::" : "";
+			IF(ParentName)
+				std::io::write(o, delim, ParentName!++);
+			DO(parent ::= Scope)
+				IF(item ::= <<ast::[scoper::Config]ScopeItem # *>>(parent))
 				{
-					IF(var ::= <<scoper::LocalVariable #*>>(item))
-						RETURN var->Position <= position;
-					RETURN TRUE;
+					IF(<<ast::[scoper::Config]Function # *>>(item))
+						std::io::write(o, "()");
+					BREAK;
 				}
-			scoper::Function, scoper::ExternSymbol:
-				RETURN TRUE;
-			}
+				FOR(parent->Parent; parent := parent->Parent!)
 		}
-
-		TYPE SWITCH(item)
-		{
-		scoper::Variable,
-		scoper::Function,
-		scoper::ExternSymbol:
-			RETURN FALSE;
-		}
-
-		RETURN TRUE;
-	}
-	(//
-		Returns the primary scope of a scope item, if it has one.
-	/)
-	STATIC primaryScope(item: scoper::ScopeItem #\) {scoper::Scope #*, BOOL}
-	{
-		TYPE SWITCH(item)
-		{
-		DEFAULT:
-			THROW <std::err::Unimplemented>(TYPE(item));
-		scoper::Class:
-			RETURN (<scoper::Class #\>(item), TRUE);
-		scoper::Rawtype:
-			RETURN (<scoper::Rawtype #\>(item), TRUE);
-		scoper::Union:
-			RETURN (<scoper::Union #\>(item), TRUE);
-		scoper::Enum:
-			RETURN (<scoper::Enum #\>(item), TRUE);
-		scoper::Namespace:
-			RETURN (<scoper::Namespace #\>(item), TRUE);
-		scoper::Mask:
-			RETURN (<scoper::Mask #\>(item), TRUE);
-		scoper::Typedef:
-			RETURN (NULL, TRUE);
-		scoper::Variable,
-		scoper::Enum::Constant,
-		scoper::Function,
-		scoper::ExternSymbol:
-			RETURN (NULL, FALSE);
-		}
-	}
-
-	(// Creates a fully resolved symbol. /)
-	{
-		parent: scoper::ScopeItem #*,
-		origScope: scoper::Scope #\,
-		itemGroup: scoper::detail::ScopeItemGroup #\,
-		symbol: scoper::Symbol #\
-	}->	Symbol(parent, origScope, itemGroup, symbol, ##symbol->Children);
-
-	(// Creates a partially resolved symbol.
-	@param resolved:
-		The number of resolved symbol children. /)
-	{
-		parent: scoper::ScopeItem #*,
-		origScope: scoper::Scope #\,
-		group: scoper::detail::ScopeItemGroup #\,
-		symbol: scoper::Symbol #\,
-		resolved: UM
-	}:	IsTemplate(FALSE),
-		Trail(origScope, parent, *symbol, resolved),
-		Rest(group->Scope, *symbol, resolved)
-	{
-		Item.ItemGroup := group;
-	}
-
-	(// Creates a symbol resolving to a template argument. /)
-	{
-		scope: scoper::Scope #\,
-		template: scoper::TemplateDecl #\,
-		symbol: scoper::Symbol #\
-	}:	IsTemplate(TRUE),
-		Trail(NULL, NULL, *symbol, 1),
-		Rest(scope, *symbol, 1)
-	{
-		Item.TemplateArg := template;
+		
+		std::io::write(o, " failed");
+		IF(Reason)
+			std::io::write(o, ": ", Reason);
+		IF(TemplateArg)
+			std::io::write(o, "(template #", :dec(TemplateArg!), ")");
+		std::io::write(o, ".");
 	}
 }

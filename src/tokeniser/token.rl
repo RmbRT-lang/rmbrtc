@@ -6,6 +6,7 @@ INCLUDE "../src/file.rl"
 	{
 		identifier,
 		numberLiteral,
+		floatLiteral,
 		stringApostrophe,
 		stringQuote,
 		stringBacktick,
@@ -14,6 +15,7 @@ INCLUDE "../src/file.rl"
 		// Keywords.
 		abstract,
 		assert,
+		bare,
 		bool,
 		break,
 		catch,
@@ -21,6 +23,7 @@ INCLUDE "../src/file.rl"
 		continue,
 		default,
 		destructor,
+		die,
 		do,
 		else,
 		enum,
@@ -37,7 +40,6 @@ INCLUDE "../src/file.rl"
 		noinit,
 		null,
 		number,
-		operator,
 		override,
 		private,
 		protected,
@@ -103,17 +105,21 @@ INCLUDE "../src/file.rl"
 		tildeColon,
 		tilde,
 
-		tripleAnd,
-		doubleAndEqual,
-		doubleAnd,
-		andEqual,
+		tripleAmp,
+		doubleAmpEqual,
+		doubleAmp,
+		ampEqual,
+		amp,
+
 		and,
+		or,
 
 		doublePipeEqual,
 		doublePipe,
 		pipeEqual,
 		pipe,
 
+		doubleQuestionMark,
 		questionMark,
 
 		doubleColonEqual,
@@ -130,6 +136,8 @@ INCLUDE "../src/file.rl"
 		comma,
 		semicolon,
 		doubleEqual,
+		equalGreater,
+		equal,
 
 		bracketOpen,
 		bracketClose,
@@ -165,12 +173,12 @@ INCLUDE "../src/file.rl"
 		Content: src::String;
 		Position: src::Position;
 
-		{} INLINE;
-		{
-			type: tok::Type,
-			content: src::String#&,
-			position: src::Position
-		}:	Type(type),
-			Content(content);
+		{...};
+
+		# THIS++ ? {
+			IF(Position.File)
+				= Position.File!->content(Content)!++;
+			= <std::str::CV>()!++;
+		}
 	}
 }

@@ -1,56 +1,42 @@
-INCLUDE "scopeitem.rl"
-INCLUDE "global.rl"
+INCLUDE "../ast/rawtype.rl"
 INCLUDE "member.rl"
 INCLUDE "expression.rl"
-INCLUDE "../src/file.rl"
 
-INCLUDE 'std/memory'
-INCLUDE 'std/vector'
-
-::rlc::parser Rawtype VIRTUAL -> ScopeItem
+::rlc::parser::rawtype
 {
-	Size: std::[Expression]Dynamic;
-	Members: Member - std::DynVector;
-	Name: src::String;
-
-	# FINAL name() src::String #& := Name;
-	# FINAL overloadable() BOOL := FALSE;
-
-	parse(p: Parser &) BOOL
+	parse(p: Parser &, out: ast::[Config]Rawtype &) BOOL
 	{
-		IF(!p.consume(:parentheseOpen))
-			RETURN FALSE;
+		IF(tok ::= p.consume(:parentheseOpen))
+			out.Position := tok->Position;
+		ELSE = FALSE;
 
 		t: Trace(&p, "rawtype");
 
-		IF(!(Size := :gc(Expression::parse(p))))
-			p.fail("expected expression");
+		out.Size := expression::parse_x(p);
+
+		IF(p.consume(:comma))
+			out.Alignment := expression::parse_x(p);
 
 		p.expect(:parentheseClose);
 
-		p.expect(:identifier, &Name);
+		out.Name := p.expect(:identifier).Content;
 
 		IF(p.consume(:semicolon))
-			RETURN TRUE;
+			= TRUE;
 
 		p.expect(:braceOpen);
 
 		visibility ::= Visibility::public;
-		WHILE(member ::= Member::parse(p, visibility))
-			Members += :gc(member);
+		WHILE(member ::= member::parse_rawtype_member(p, visibility))
+			out.add_member(:!(&&member));
 
 		p.expect(:braceClose);
 
-		RETURN TRUE;
+		= TRUE;
 	}
-}
-
-::rlc::parser GlobalRawtype -> Global, Rawtype
-{
-	parse(p: Parser &) INLINE BOOL := Rawtype::parse(p);
-}
-
-::rlc::parser MemberRawtype -> Member, Rawtype
-{
-	parse(p: Parser &) INLINE BOOL := Rawtype::parse(p);
+	
+	parse_global(p: Parser &, out: ast::[Config]GlobalRawtype &) BOOL INLINE
+		:= parse(p, out);
+	parse_member(p: Parser &, out: ast::[Config]MemberRawtype &) BOOL INLINE
+		:= parse(p, out);
 }

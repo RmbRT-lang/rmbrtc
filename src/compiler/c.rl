@@ -1,45 +1,64 @@
 INCLUDE "compiler.rl"
-INCLUDE "../scoper/fileregistry.rl"
-INCLUDE "../scoper/itemmsgerror.rl"
+INCLUDE "../ast/fileregistry.rl"
 INCLUDE "../util/file.rl"
+INCLUDE "../ast/symbol.rl"
 INCLUDE 'std/streambuffer'
 INCLUDE 'std/vector'
 INCLUDE 'std/set'
 
+INCLUDE "../parser/templatedecl.rl"
+INCLUDE "../parser/type.rl"
+INCLUDE "../parser/stage.rl"
+INCLUDE "../scoper/stage.rl"
+INCLUDE "../resolver/stage.rl"
+
 ::rlc::compiler CCompiler -> Compiler
 {
-	Registry: scoper::FileRegistry;
+	Parser: rlc::parser::Config;
+	Scoper: rlc::scoper::Config - std::DynOpt;
+	Resolver: rlc::resolver::Config - std::DynOpt;
+
 	FINAL compile(
-		files: std::Utf8 - std::Vector,
+		files: std::Str - std::Vec,
 		build: Build
 	) VOID
 	{
-		// Processed input files.
-		scoped: scoper::File \ - std::NatVectorSet;
+		parsed: parser::Config - ast::File \ - std::VecSet;
 
-		IF(build.LegacyScoping)
-			Registry.LegacyScope := :create(NULL, NULL);
-
-		build.AdditionalIncludePaths.append(Registry.IncludeDirs!, :move);
-		Registry.IncludeDirs := &&build.AdditionalIncludePaths;
-
-		// Parse all code first.
-		FOR(f ::= files.start(); f; ++f)
-		{
-			abs ::= util::absolute_file(f!);
-			scoped += Registry.get(<std::Utf8>(abs, :cstring)!);
-		}
+		/// Parse all code first.
+		FOR(f ::= files.start())
+			parsed += Parser.Registry.get(util::absolute_file(f!));
 
 		IF(build.Type == :checkSyntax)
 			RETURN;
 
+		/// Parse included files.
+		Scoper := :a(&Parser, build.IncludePaths!);
+		Scoper!.transform();
+
+		std::io::write(&std::io::out,
+			:dec(##Scoper!.Registry), " files recursively scoped\n");
+
+		IF(build.Type == :createAST)
+			RETURN;
+
+		Resolver := :a(Scoper!);
+		Resolver!.transform();
+
+		IF(build.Type == :verifySimple)
+			RETURN;
+
+		// Next step: Instantiator stage; use resolver::Symbol.
+
+(//
 		// Resolve all references.
 		resolved: resolver::Cache;
-		FOR(f ::= scoped.start(); f; ++f)
-			FOR(group ::= f!->Scope->Items.start(); group; ++group)
-				FOR(it ::= group!->Items.start(); it; ++it)
+		FOR(f ::= scoped.start())
+			FOR(group ::= f!->Scope->Items.start())
+				FOR(it ::= group!->Items.start())
 					resolved += it!;
 
+		instances: instantiator::Cache(&resolved);
 		SWITCH(build.Type)
 		{
 		DEFAULT: THROW <std::err::Unimplemented>(<CHAR#\>(build.Type));
@@ -48,7 +67,7 @@ INCLUDE 'std/set'
 		{
 			mainFn: scoper::ScopeItem * := NULL;
 			mainName ::= std::str::buf("main");
-			FOR ["main"] (f ::= scoped.start(); f; ++f)
+			FOR ["main"] (f ::= scoped.start())
 				IF(group ::= f!->Scope->find(mainName))
 					TYPE SWITCH(group->Items[0]!)
 					{
@@ -66,17 +85,24 @@ INCLUDE 'std/set'
 			IF(!mainFn)
 				THROW "no ::main function found.";
 
-			THROW <std::err::Unimplemented>("executable code generation");
+			instances.insert(NULL, resolved.get(mainFn));
 		}
 		:library,
 		:sharedLibrary:
 		{
-			THROW <std::err::Unimplemented>("library code generation");
+			FOR(f ::= scoped.start())
+				instances.insert_all_untemplated(f!->Scope, resolved);
+		}
+		:test:
+		{
+			THROW <std::err::Unimplemented>("test build");
 		}
 		:verifyFull:
 		{
 			THROW <std::err::Unimplemented>("full verification");
 		}
 		}
+		/)
+		DIE "not implemented";
 	}
 }

@@ -4,7 +4,7 @@ INCLUDE 'std/string'
 
 ::rlc::tok Error -> std::Error
 {
-	File: std::Utf8;
+	File: std::Str;
 	Line: UINT;
 	Column: UINT;
 
@@ -16,18 +16,13 @@ INCLUDE 'std/string'
 		Line(Line),
 		Column(Column);
 
-	# OVERRIDE print(
+	# OVERRIDE stream(
 		o: std::io::OStream &) VOID
 	{
-		o.write(File!);
-		o.write(":");
-		std::io::format::dec(o, Line);
-		o.write(":");
-		std::io::format::dec(o, Column);
-		o.write(": ");
+		std::io::write(o, File!++, ":", :dec(Line), ":", :dec(Column), ": ");
 
 		reason(o);
-		o.write(".");
+		std::io::write(o, ".");
 	}
 
 	# ABSTRACT reason(
@@ -36,31 +31,31 @@ INCLUDE 'std/string'
 
 ::rlc::tok UnexpectedChar -> Error
 {
-	Char: std::SYM;
+	Char: U4;
 	{
 		File: src::File #\,
 		Line: UINT,
 		Column: UINT,
-		Char: std::SYM
-	}->	Error(File, Line, Column)
+		Char: U4
+	} -> (File, Line, Column)
 	:	Char(Char);
 
 	# OVERRIDE reason(
 		o: std::io::OStream &) VOID
 	{
-		o.write("unexpected character '");
+		std::io::write(o, "unexpected character '");
 		SWITCH(Char)
 		{
-		'\t': o.write("\\t");
-		'\n': o.write("\\n");
+		'\t': std::io::write(o, "\\t");
+		'\n': std::io::write(o, "\\n");
 		DEFAULT:
 			{
-				u8: CHAR[4];
-				len ::= std::code::utf8::encode(Char, u8);
-				o.write(&u8, len);
+				u8: CHAR[4] (NOINIT);
+				len ::= std::code::utf8::encode(Char, u8!);
+				std::io::write(o, :buf(u8!, len));
 			}
 		}
-		o.write("'");
+		std::io::write(o, "'");
 	}
 }
 
@@ -70,12 +65,12 @@ INCLUDE 'std/string'
 		file: src::File #\,
 		line: UINT,
 		column: UINT
-	}->	Error(file, line, column);
+	} -> (file, line, column);
 
 	# OVERRIDE reason(
 		o: std::io::OStream &) VOID
 	{
-		o.write("unexpected end of file");
+		std::io::write(o, "unexpected end of file");
 	}
 }
 
@@ -85,11 +80,11 @@ INCLUDE 'std/string'
 		file: src::File #\,
 		line: UINT,
 		column: UINT
-	}->	Error(file, line, column);
+	} -> (file, line, column);
 
 	# OVERRIDE reason(
 		o: std::io::OStream &) VOID
 	{
-		o.write("invalid character sequence");
+		std::io::write(o, "invalid character sequence");
 	}
 }

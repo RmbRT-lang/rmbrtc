@@ -1,55 +1,35 @@
-INCLUDE "scopeitem.rl"
-INCLUDE "parser.rl"
-INCLUDE "../src/file.rl"
+INCLUDE "stage.rl"
 
-INCLUDE 'std/vector'
+INCLUDE "../ast/enum.rl"
 
-::rlc::parser Enum VIRTUAL -> ScopeItem
+::rlc::parser::enum
 {
-	Constant -> ScopeItem, Member
+	parse(p: Parser &, out: ast::[Config]Enum &) BOOL
 	{
-		Name: src::String;
-		Value: src::Index;
-
-		# FINAL name() src::String#& := Name;
-		# FINAL overloadable() BOOL := FALSE;
-	}
-
-	Name: src::String;
-	Constants: std::[Constant]Vector;
-
-	# FINAL name() src::String#& := Name;
-	# FINAL overloadable() BOOL := FALSE;
-
-	parse(p: Parser &) BOOL
-	{
-		IF(!p.consume(:enum))
-			RETURN FALSE;
+		IF(tok ::= p.consume(:enum))
+			out.Position := tok->Position;
+		ELSE = FALSE;
 
 		t: Trace(&p, "enum");
 
-		p.expect(:identifier, &Name);
+		out.Name := p.expect(:identifier).Content;
 		p.expect(:braceOpen);
 
-		DO(c: Constant)
+		DO(c: ast::[Config]Enum::Constant (BARE))
 			DO()
 			{
-				p.expect(:identifier, &c.Name);
-				Constants += &&c;
+				tok ::= p.expect(:identifier);
+				(c.Name, c.Position) := (tok.Content, tok.Position);
+				out.Constants += &&c;
 			} WHILE(p.consume(:colonEqual))
 		FOR(p.consume(:comma); c.Value++)
 
 		p.expect(:braceClose);
 		RETURN TRUE;
 	}
-}
 
-::rlc::parser GlobalEnum -> Global, Enum
-{
-	parse(p: Parser&) BOOL := Enum::parse(p);
-}
-
-::rlc::parser MemberEnum -> Member, Enum
-{
-	parse(p: Parser&) BOOL := Enum::parse(p);
+	parse_global(p: Parser &, out: ast::[Config]GlobalEnum &) BOOL
+		:= parse(p, out);
+	parse_member(p: Parser &, out: ast::[Config]MemberEnum &) BOOL
+		:= parse(p, out);
 }

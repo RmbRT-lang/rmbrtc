@@ -1,276 +1,313 @@
-INCLUDE "parser.rl"
+INCLUDE "../ast/variable.rl"
+INCLUDE "../ast/type.rl"
+INCLUDE "expression.rl"
 INCLUDE "type.rl"
-INCLUDE "symbol.rl"
-INCLUDE "global.rl"
-INCLUDE "member.rl"
+INCLUDE "stage.rl"
 
-INCLUDE 'std/memory'
-INCLUDE 'std/vector'
-
-INCLUDE "../util/dynunion.rl"
-
-::rlc::parser
+::rlc::parser::variable
 {
-	VariableType
+	parse_global(p: Parser&) ast::[Config]GlobalVariable - std::DynOpt
 	{
-		PRIVATE V: util::[Type; Type::Auto]DynUnion;
+		t: Trace(&p, "global variable");
+		IF:!(nt ::= help::parse_initialised_name_and_type(p))
+			= NULL;
 
-		{};
-		{:gc, t: Type \}: V(:gc(t));
-		{:gc, t: Type::Auto \}: V(:gc(t));
+		inits: ast::[Config]Expression - std::DynVec;
 
-		# is_type() INLINE BOOL := V.is_first();
-		# type() INLINE Type \ := V.first();
-		# is_auto() INLINE BOOL := V.is_second();
-		# auto() INLINE Type::Auto \ := V.second();
+		IF(<<ast::type::[Config]Auto *>>(nt->Type))
+			inits += help::parse_auto_init(p, nt->ExpectShortHandInit);
+		ELSE
+			inits := help::parse_initialisers(p);
 
-		# <BOOL> INLINE := V;
+		p.expect(:semicolon);
 
-		[T:TYPE] THIS:=(v: T!&&) VariableType &
-			:= std::help::custom_assign(THIS, <T!&&>(v));
+		= :a(nt->Name.Content, nt->Name.Position, &&nt->Type, &&inits);
 	}
 
-	Variable VIRTUAL -> ScopeItem
+	parse_extern(
+		p: Parser&,
+		linkName: tok::Token - std::Vec - std::Opt
+	) ast::[Config]ExternVariable - std::Opt
 	{
-		Name: src::String;
-		Type: VariableType;
-		HasInitialiser: BOOL;
-		InitValues: Expression - std::DynVector;
+		_: Trace(&p, "extern variable");
 
-		# FINAL name() src::String#& := Name;
-		# FINAL overloadable() BOOL := !Name;
+		IF:!(nt ::= help::parse_uninitialised_name_and_type(p))
+			= NULL;
+		p.expect(:semicolon);
+		= :a(&&nt->Name.Content, nt->Name.Position, &&nt->Type, &&linkName);
+	}
 
-		parse_fn_arg(p: Parser&) BOOL
-			:= parse(p, FALSE, FALSE, FALSE);
-		parse_var_decl(p: Parser &) BOOL
-			:= parse(p, TRUE, TRUE, FALSE);
-		parse_extern(p: Parser&) BOOL
-			:= parse(p, TRUE, FALSE, FALSE);
+	parse_member(
+		p: Parser&,
+		static: BOOL
+	) ast::[Config]MaybeAnonMemberVar - std::DynOpt
+	{
+		_: Trace(&p, "member variable");
 
-		parse(p: Parser&,
-			needs_name: BOOL,
-			allow_initialiser: BOOL,
-			force_initialiser: BOOL) BOOL
+		IF(static)
 		{
-			STATIC k_needed_without_name: tok::Type#[](
-				:bracketOpen,
-				:braceOpen,
-				:doubleColon,
-				:colon,
-				:void,
-				:bool,
-				:char,
-				:int,
-				:uint,
-				:sm,
-				:um,
-				:null);
-
-			STATIC k_needed_after_name: {tok::Type, BOOL}#[](
-				(:colon, TRUE),
-				(:colonEqual, TRUE),
-				(:doubleColonEqual, TRUE),
-				(:hash, TRUE),
-				(:dollar, TRUE),
-				(:exclamationMark, FALSE),
-				(:and, FALSE),
-				(:doubleAnd, FALSE),
-				(:asterisk, FALSE),
-				(:backslash, FALSE),
-				(:at, FALSE),
-				(:doubleAt, FALSE),
-				(:doubleDotExclamationMark, FALSE),
-				(:doubleDotQuestionMark, FALSE),
-				(:doubleColon, FALSE),
-				(:semicolon, FALSE),
-				(:comma, FALSE),
-				(:parentheseClose, FALSE),
-				(:braceClose, FALSE));
-
-			IF(needs_name
-			&& !p.match(:identifier))
-				RETURN FALSE;
-			ELSE
+			IF(nt ::= help::parse_initialised_name_and_type(p))
 			{
-				found ::= FALSE;
-				IF(p.match(:identifier))
-				{
-					FOR(i ::= 0; i < ##k_needed_after_name; i++)
-						IF((!needs_name || k_needed_after_name[i].(1))
-						&& p.match_ahead(k_needed_after_name[i].(0)))
-						{
-							found := TRUE;
-							BREAK;
-						}
-				}
+				inits: ast::[Config]Expression - std::DynVec;
+
+				IF(<<ast::type::[Config]Auto *>>(nt->Type))
+					inits += help::parse_auto_init(p, nt->ExpectShortHandInit);
 				ELSE
-					FOR(i ::= 0; i < ##k_needed_without_name; i++)
-						IF(p.match(k_needed_without_name[i]))
-						{
-							found := TRUE;
-							BREAK;
-						}
+					inits := help::parse_initialisers(p);
 
-				IF(!found)
-					RETURN FALSE;
-			}
-
-			needs_type ::= TRUE;
-			has_name ::= FALSE;
-
-			t: Trace(&p, "variable");
-
-			name: tok::Token;
-			IF(p.match(:identifier))
-			{
-				// "name: type" style variable?
-				IF(p.match_ahead(:colon))
-				{
-					has_name := TRUE;
-
-					p.expect(:identifier, &name);
-					p.consume(NULL);
-
-					IF(p.consume(:questionMark))
-					{
-						Type := :gc(std::[parser::Type::Auto]new());
-						Type.auto()->parse(p);
-						p.expect(:colonEqual);
-						needs_type := FALSE;
-					}
-				} ELSE IF(allow_initialiser)
-				{
-					STATIC k_need_ahead: tok::Type#[](
-						:hash,
-						:dollar,
-						:doubleColonEqual);
-
-					FOR(i ::= 0; i < ##k_need_ahead; i++)
-					{
-						IF(p.match_ahead(k_need_ahead[i]))
-						{
-							p.expect(:identifier, &name);
-
-							Type := :gc(std::[parser::Type::Auto]new());
-							Type.auto()->parse(p, FALSE);
-
-							// "name ::=" style variable?
-							p.expect(:doubleColonEqual);
-
-							has_name := TRUE;
-							needs_type := FALSE;
-							BREAK;
-						}
-					}
-				}
-			} // If !isArgument, "name: type" is expected.
-			IF(!has_name && needs_name)
-				RETURN FALSE;
-
-			Name := has_name
-				? name.Content
-				: (p.position(), 0);
-
-
-			IF(!needs_type)
-			{
-				init ::= Expression::parse(p);
-				IF(!init)
-					p.fail("expected expression");
-				InitValues += :gc(init);
-			} ELSE
-			{
-				IF(!(Type := :gc(parser::Type::parse(p))))
-				{
-					IF(needs_name)
-						p.fail("expected name");
-					ELSE
-						RETURN FALSE;
-				}
-
-				IF(allow_initialiser)
-				{
-					isParenthese ::= 0;
-					IF(p.consume(:colonEqual)
-					|| (isParenthese := p.consume(:parentheseOpen)))
-					{
-						// check for empty initialiser.
-						IF(!isParenthese
-						|| !p.consume(:parentheseClose))
-						{
-							DO()
-							{
-								arg ::= Expression::parse(p);
-								IF(!arg)
-									p.fail("expected expression");
-								InitValues += :gc(arg);
-							} WHILE(isParenthese && p.consume(:comma))
-
-							IF(isParenthese)
-								p.expect(:parentheseClose);
-						}
-					} ELSE IF(force_initialiser)
-					{
-						p.fail("expected ':=' or '('");
-					}
-				}
-			}
-
-			RETURN TRUE;
-		}
-	}
-
-	GlobalVariable -> Global, Variable
-	{
-		parse(p: Parser&) BOOL
-		{
-			IF(!Variable::parse_var_decl(p))
-				RETURN FALSE;
-			p.expect(:semicolon);
-			RETURN TRUE;
-		}
-
-		parse_extern(p: Parser&) BOOL
-		{
-			IF(!Variable::parse_extern(p))
-				RETURN FALSE;
-			p.expect(:semicolon);
-			RETURN TRUE;
-		}
-	}
-
-	MemberVariable -> Member, Variable
-	{
-		parse(p: Parser&, static: BOOL) BOOL
-		{
-			IF(static)
-			{
-				IF(!Variable::parse_var_decl(p))
-					RETURN FALSE;
-			}
-			ELSE
-			{
-				IF(!Variable::parse_fn_arg(p))
-					RETURN FALSE;
-			}
-			p.expect(:semicolon);
-			RETURN TRUE;
-		}
-	}
-
-	Local VIRTUAL {}
-
-	LocalVariable -> Local, Variable
-	{
-		parse(p: Parser &, expect_semicolon: BOOL) BOOL
-		{
-			IF(!Variable::parse_var_decl(p))
-				RETURN FALSE;
-			IF(expect_semicolon)
 				p.expect(:semicolon);
-			RETURN TRUE;
+
+				v: ast::[Config]StaticMemberVariable (BARE);
+				v.Name := nt->Name.Content;
+				v.Type := &&nt->Type;
+				v.InitValues := &&inits;
+				= :dup(&&v);
+			} ELSE = NULL;
+		}
+		ELSE
+		{
+			IF(nt ::= help::parse_uninitialised_name_and_type(p))
+			{
+				p.expect(:semicolon);
+
+				v: ast::[Config]MemberVariable (BARE);
+				v.Name := nt->Name.Content;
+				v.Type := &&nt->Type;
+				= :dup(&&v);
+			} ELSE IF(help::is_optionally_named_variable_start(p))
+			{	// Anonymous member variable.
+				IF:!(t ::= type::parse(p))
+					p.fail("expected type");
+				p.expect(:semicolon);
+
+				v: ast::[Config]AnonMemberVariable (BARE);
+				v.Type := :!(&&t);
+				= :dup(&&v);
+			} ELSE = NULL;
+		}
+	}
+
+	parse_catch(p: Parser &) ast::[Config]TypeOrCatchVariable - std::DynOpt
+	{
+		_: Trace(&p, "catch variable");
+
+		IF(nt ::= help::parse_uninitialised_name_and_type(p))
+		{
+			= :a.ast::[Config]CatchVariable(
+				&&nt->Name.Content, nt->Name.Position, p.add_local(), :<>(&&nt->Type));
+		} ELSE IF(help::is_optionally_named_variable_start(p))
+		{	// Anonymous catch variable.
+			IF:!(t ::= type::parse(p))
+				p.fail("expected type");
+			= :<>(&&t);
+		}
+		= NULL;
+	}
+
+	parse_local(
+		p: Parser &,
+		expect_semicolon: BOOL
+	) ast::[Config]LocalVariable - std::DynOpt
+	{
+		IF:!(nt ::= help::parse_initialised_name_and_type(p))
+			= NULL;
+
+		_: Trace(&p, "local variable");
+
+		inits: ast::[Config]Expression - std::DynVec;
+
+		IF(<<ast::type::[Config]Auto *>>(nt->Type))
+			inits += help::parse_auto_init(p, nt->ExpectShortHandInit);
+		ELSE
+			inits := help::parse_initialisers(p);
+
+		IF(expect_semicolon)
+			p.expect(:semicolon);
+
+		= :a(nt->Name.Content, nt->Name.Position, p.add_local(), &&nt->Type, &&inits);
+	}
+
+	parse_fn_arg(
+		p: Parser&
+	) ast::[Config]TypeOrArgument-std::DynOpt
+	{
+		IF:!(nt ::= help::parse_variable_opt_name_and_type(p))
+			= NULL;
+
+		IF(nt->Name)
+			= :a.ast::[Config]Argument(
+				nt->Name->Content, nt->Name->Position, &&nt->Type);
+		ELSE
+			= &&nt->Type;
+	}
+
+	::help needed_without_name: tok::Type#[](
+		:bracketOpen, :braceOpen,
+		:doubleColon, :colon,
+		:void, :bool, :char, :int, :uint, :sm, :um, :null);
+
+	// (token, acceptableIfNeedsName)
+	::help needed_after_name: {tok::Type, BOOL}#[](
+		(:colon, TRUE),
+		(:doubleColonEqual, TRUE),
+		(:hash, TRUE),
+		(:dollar, TRUE),
+		(:exclamationMark, FALSE),
+		(:amp, FALSE),
+		(:doubleAmp, FALSE),
+		(:asterisk, FALSE),
+		(:backslash, FALSE),
+		(:at, FALSE),
+		(:doubleAt, FALSE),
+		(:doubleDotExclamationMark, FALSE),
+		(:doubleDotQuestionMark, FALSE),
+		(:doubleColon, FALSE),
+		(:minus, FALSE),
+		(:semicolon, FALSE),
+		(:comma, FALSE),
+		(:parentheseClose, FALSE),
+		(:braceClose, FALSE));
+
+	::help is_named_variable_start(p: Parser &, needs_name: BOOL) BOOL
+	{
+		IF(!p.match(:identifier))
+			= FALSE;
+		FOR(i ::= 0; i < ##help::needed_after_name; i++)
+			IF((!needs_name || help::needed_after_name[i].(1))
+			&& p.match_ahead(help::needed_after_name[i].(0)))
+				= TRUE;
+		= FALSE;
+	}
+
+	::help is_optionally_named_variable_start(p: Parser &) BOOL
+	{
+		IF(is_named_variable_start(p, FALSE))
+			= TRUE;
+		FOR(i ::= 0; i < ##help::needed_without_name; i++)
+			IF(p.match(help::needed_without_name[i]))
+				= TRUE;
+		= FALSE;
+	}
+
+	::help UninitialisedNameAndType
+	{
+		Name: tok::Token;
+		Type: ast::[Config]Type - std::Dyn;
+
+		{...};
+	}
+
+	/// A named uninitialised variable.
+	::help parse_uninitialised_name_and_type(
+		p: Parser &
+	) UninitialisedNameAndType - std::Opt
+	{
+		IF(!is_named_variable_start(p, TRUE))
+			= NULL;
+
+		name ::= p.consume(:identifier)!;
+		p.expect(:colon);
+		= :a(name, type::parse_x(p));
+	}
+
+
+	::help NameAndInitType
+	{
+		Name: tok::Token;
+		Type: ast::[Config]MaybeAutoType - std::Dyn;
+		ExpectShortHandInit: BOOL;
+
+		{...};
+	}
+	::help parse_initialised_name_and_type(p: Parser &) NameAndInitType - std::Opt
+	{
+		IF(!is_named_variable_start(p, TRUE))
+			= NULL;
+
+		name ::= p.expect(:identifier);
+
+		// "name: type" style variable?
+		IF(p.consume(:colon))
+		{
+			IF(p.consume(:questionMark))
+			{
+				auto: ast::type::[Config]Auto;
+				type::parse_auto(p, auto);
+				= :a(name, :dup(&&auto), FALSE);
+			}
+			= :a(name, :<>(type::parse_x(p)), FALSE);
+		} ELSE
+		{
+			STATIC k_need_ahead: tok::Type#[](
+				:hash,
+				:dollar,
+				:doubleColonEqual);
+
+			FOR(i ::= 0; i < ##k_need_ahead; i++)
+			{
+				IF(p.match(k_need_ahead[i]))
+				{
+					auto: ast::type::[Config]Auto;
+					type::parse_auto_no_ref(p, auto);
+					= :a(name, :dup(&&auto), TRUE);
+				}
+			}
+			p.fail("dying, expected #, $, or ::=.");
 		}
 
-		parse_catch(p: Parser &) BOOL := Variable::parse_fn_arg(p);
+		DIE;
+	}
+
+	::help OptNameAndType
+	{
+		Name: tok::Token - std::Opt;
+		Type: ast::[Config]Type - std::Dyn;
+
+		{...}; // Suppress {}.
+	}
+
+	::help parse_variable_opt_name_and_type(
+		p: Parser &
+	) OptNameAndType - std::Opt
+	{
+		IF(p.match_seq(:identifier, :colon))
+		{
+			name ::= p.consume(:identifier)!;
+			p.eat_token()!;
+			= :a(:a(name), type::parse_x(p));
+		}
+
+		IF(t ::= type::parse(p))
+			= :a(NULL, :!(&&t));
+		= NULL;
+	}
+
+	::help parse_auto_init(p: Parser &, shortHand: BOOL) ast::[Config]Expression-std::Dyn
+	{
+		IF(shortHand) p.expect(:doubleColonEqual);
+		ELSE p.expect(:colonEqual);
+
+		IF:!(init ::= expression::parse(p))
+			p.fail("expected expression");
+		= :!(&&init);
+	}
+
+	::help parse_initialisers(p: Parser &) ast::[Config]Expression - std::DynVec
+	{
+		inits: ast::[Config]Expression - std::DynVec;
+		IF(p.consume(:colonEqual))
+			inits += expression::parse_x(p);
+		ELSE IF(p.consume(:parentheseOpen))
+		{
+			IF(!p.consume(:parentheseClose))
+			{
+				DO()
+					inits += expression::parse_x(p);
+					WHILE(p.consume(:comma))
+				p.expect(:parentheseClose);
+			}
+		}
+
+		= &&inits;
 	}
 }

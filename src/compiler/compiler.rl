@@ -1,5 +1,6 @@
 INCLUDE 'std/string'
 INCLUDE 'std/vector'
+INCLUDE 'std/optional'
 
 ::rlc::compiler
 {
@@ -10,16 +11,17 @@ INCLUDE 'std/vector'
 		sharedLibrary,
 		test,
 		checkSyntax,
+		createAST,
 		verifySimple,
 		verifyFull
 	}
 
 	Build
 	{
-		Output: std::Utf8;
+		Output: std::Str - std::Opt;
 		Type: BuildType;
 		Debug: BOOL;
-		AdditionalIncludePaths: std::Utf8-std::Vector;
+		IncludePaths: std::Str-std::Vec;
 		Verbose: BOOL;
 
 		(//
@@ -28,19 +30,39 @@ INCLUDE 'std/vector'
 		/)
 		LegacyScoping: BOOL;
 
-		{type: BuildType} INLINE -> Build(<std::Utf8>(), type)
+		{type: BuildType} INLINE:
+			Type(type)
 		{
-			SWITCH(type) {
-			:checkSyntax, :verifySimple, :verifyFull: {;}
+			SWITCH(type)
+			{
+			:checkSyntax, :createAST, :verifySimple, :verifyFull: {;}
 			DEFAULT: THROW "build flag: invalid no-output build type";
 			}
+
+			load_include_dirs();
 		}
 
-		{output: std::Utf8, type: BuildType}:
-			Output(&&output),
-			Type(type),
-			Debug(FALSE),
-			LegacyScoping(FALSE);
+		:withOutput{output: std::Str, type: BuildType}:
+			Output(:a(&&output)),
+			Type(type)
+		{
+			load_include_dirs();
+		}
+
+		/// Loads default include directories from the environment variable.
+		PRIVATE load_include_dirs() VOID
+		{
+			incs ::= std::str::view(detail::getenv("RLINCLUDE"));
+			DO(len: UM)
+			{
+				FOR(len := 0; len < ##incs; len++)
+					IF(incs[len] == ':')
+						BREAK;
+
+				IF(len)
+					IncludePaths += incs.cut(len)++;
+			} FOR(len < ##incs; incs := incs.drop_start(len+1)++)
+		}
 	}
 
 	MASK Compiler
@@ -49,8 +71,10 @@ INCLUDE 'std/vector'
 			Compiles the given input files according to the specified build flags.
 		/)
 		compile(
-			files: std::Utf8 - std::Vector,
+			files: std::Str - std::Vec,
 			build: Build
 		) VOID;
 	}
+
+	::detail EXTERN getenv(CHAR #*) CHAR # *;
 }

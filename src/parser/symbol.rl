@@ -1,104 +1,69 @@
+INCLUDE "../ast/symbol.rl"
 INCLUDE "parser.rl"
-INCLUDE "type.rl"
-INCLUDE "expression.rl"
 
-INCLUDE "../src/file.rl"
 
-INCLUDE 'std/vector'
-
-::rlc::parser
+::rlc::parser::symbol [Symbol:TYPE] parse(p: Parser&, out: Symbol! &) BOOL
 {
-	TYPE TemplateArg := TypeOrExpr - std::Vector;
+	t: Trace(&p, "symbol");
 
-	// std::[T]Vector
-	Symbol
+	out.IsRoot := p.consume(:doubleColon);
+	expect ::= out.IsRoot;
+
+	DO(child: Symbol::Child+ (BARE))
 	{
-		// [T]Vector
-		Child
+		IF(!parse_child(p, child))
 		{
-			Name: src::String;
-			Templates: std::[TemplateArg]Vector;
-			Position: src::Position;
+			IF(expect)
+				p.fail("expected symbol child");
+			RETURN FALSE;
+		}
 
-			parse(p: Parser&) BOOL := parse(p, FALSE);
-			parse(
-				p: Parser &,
-				isValue: BOOL) BOOL
+		out.Children += &&child;
+	} FOR(p.consume(:doubleColon); expect := TRUE)
+
+	RETURN TRUE;
+}
+
+::rlc::parser::symbol [SymbolChild:TYPE] parse_child(
+	p: Parser&,
+	out: SymbolChild! &
+) BOOL
+{
+	IF(p.consume(:bracketOpen))
+	{
+		IF(!p.consume(:bracketClose))
+		{
+			DO()
 			{
-				IF(p.consume(:bracketOpen))
-				{
-					IF(!p.consume(:bracketClose))
+				tArg: ast::[Config]TemplateArg;
+				IF(p.consume(:semicolon))
+					{ ; }
+				ELSE IF(p.consume(:hash))
+					DO()
 					{
-						DO()
-						{
-							tArg: TemplateArg;
-							IF(p.consume(:semicolon))
-								{ ; }
-							ELSE IF(p.consume(:hash))
-								DO(arg: Expression *)
-								{
-									IF(!(arg := Expression::parse(p)))
-										p.fail("expected expression");
-									tArg += :gc(arg);
-								} WHILE(p.consume(:comma))
-							ELSE
-								DO(arg: Type *)
-								{
-									IF(!(arg := Type::parse(p)))
-										p.fail("expected type");
-									tArg += :gc(arg);
-								} WHILE(p.consume(:comma))
-							Templates += &&tArg;
-						} WHILE(p.consume(:semicolon))
-						p.expect(:bracketClose);
-					}
-					p.expect(:identifier, &Name, &Position);
-					RETURN TRUE;
-				} ELSE
-					RETURN p.consume(:identifier, &Name, &Position);
-			}
+						IF:!(arg ::= expression::parse(p))
+							p.fail("expected expression");
+						tArg += :!(&&arg);
+					} WHILE(p.consume(:comma))
+				ELSE
+					DO()
+					{
+						IF:!(arg ::= type::parse(p))
+							p.fail("expected type");
+						tArg += :!(&&arg);
+					} WHILE(p.consume(:comma))
+				out.Templates += &&tArg;
+			} WHILE(p.consume(:semicolon))
+			p.expect(:bracketClose);
 		}
-
-		Children: std::[Child]Vector;
-		IsRoot: BOOL;
-
-		parse(p: Parser&) BOOL := parse(p, FALSE);
-		parse(
-			p: Parser &,
-			isValue: BOOL) BOOL
-		{
-			t: Trace(&p, "symbol");
-
-			IsRoot := p.consume(:doubleColon);
-			expect ::= IsRoot;
-
-			DO(child: Child)
-			{
-				IF(!child.parse(p, isValue))
-				{
-					IF(expect)
-						p.fail("expected symbol child");
-					RETURN FALSE;
-				}
-
-				Children += &&child;
-			} FOR(p.consume(:doubleColon); expect := TRUE)
-
-			RETURN TRUE;
-		}
-	}
-
-	SymbolChildExpression -> Expression
+		id ::= p.expect(:identifier);
+		(out.Name, out.Position) := (id.Content, id.Position);
+		= TRUE;
+	} ELSE IF(id ::= p.consume(:identifier))
 	{
-		Child: Symbol::Child;
-
-		parse(p: Parser &) BOOL := Child.parse(p, TRUE);
+		(out.Name, out.Position) := (id->Content, id->Position);
+		= TRUE;
 	}
 
-	SymbolExpression -> Expression
-	{
-		Symbol: parser::Symbol;
-
-		parse(p: Parser &) BOOL := Symbol.parse(p, TRUE);
-	}
+	= FALSE;
 }

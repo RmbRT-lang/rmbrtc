@@ -1,24 +1,15 @@
-INCLUDE "statement.rl"
+INCLUDE "stage.rl"
+INCLUDE "../ast/destructor.rl"
 
-::rlc::parser Destructor -> Member, ScopeItem
+::rlc::parser::destructor parse(p: Parser&, out: ast::[Config]Destructor &) BOOL
 {
-	# FINAL name() src::String#& := Name;
-	# FINAL overloadable() BOOL := FALSE;
+	IF:!(t ::= p.consume(:destructor))
+		= FALSE;
+	out.Position := t!.Position;
+	out.Inline := p.consume(:inline);
 
-	Name: src::String; // Always DESTRUCTOR.
-	Body: BlockStatement;
-	Inline: BOOL;
+	IF(!statement::parse_block(p, out.Body))
+		p.fail("expected block statement");
 
-	parse(p: Parser&) BOOL
-	{
-		IF(!p.consume(:destructor, &Name))
-			RETURN FALSE;
-
-		Inline := p.consume(:inline);
-
-		IF(!Body.parse(p))
-			p.fail("expected body");
-
-		RETURN TRUE;
-	}
+	= TRUE;
 }

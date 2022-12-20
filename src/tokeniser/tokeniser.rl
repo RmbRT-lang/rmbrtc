@@ -9,21 +9,15 @@ INCLUDE 'std/unicode'
 	Tokeniser
 	{
 		{
-			file: src::File #\,
-			fileNumber: U1
+			file: src::File #\
 		}:
 			File(file),
 			Read(0),
 			Start(0),
-			Position(0, 0, fileNumber);
+			Position(1, 1, :a(file));
 
 		# eof() BOOL := Read == ##File->Contents;
-		# position(
-			line: UINT \,
-			column: UINT \) VOID
-		{
-			File->position(Read, line, column);
-		}
+		# position() src::Position #& := Position;
 
 		parse_next(out: Token \) BOOL
 		{
@@ -82,7 +76,7 @@ INCLUDE 'std/unicode'
 			c ::= File->Contents[Read++];
 			IF(c == '\n')
 			{
-				Position.Column := 0;
+				Position.Column := 1;
 				Position.Line++;
 			} ELSE
 				Position.Column++;
@@ -93,34 +87,28 @@ INCLUDE 'std/unicode'
 		{
 			c: CHAR;
 			WHILE(c := look())
-			{
-				IF(c == ' '
-				|| c == '\t'
-				|| c =='\r'
-				|| c == '\n')
+				SWITCH(c)
 				{
+				' ', '\t', '\r', '\n':
 					getc();
-				}
-				ELSE
+				DEFAULT:
 					RETURN;
-			}
+				}
 		}
 
-		eatString(str: CHAR#\) BOOL {
-			buf# ::= std::str::buf(str);
-			FOR(i ::= 0; i < buf.Size; i++)
-				IF(look(i) != buf.Data[i])
+		eatString(str: std::str::CV#&) BOOL {
+			FOR(i ::= 0; i < ##str; i++)
+				IF(look(i) != str[:ok(i)])
 					RETURN FALSE;
-			Read += buf.Size;
-			Position.Column += buf.Size;
+			Read += ##str;
+			Position.Column += ##str;
 			RETURN TRUE;
 		}
 
 		# error() VOID
 		{
-			line: UINT;
-			column: UINT;
-			position(&line, &column);
+			line ::= Position.Line;
+			column ::= Position.Column;
 
 			IF(eof())
 				THROW <UnexpectedEOF>(
@@ -138,7 +126,7 @@ INCLUDE 'std/unicode'
 				IF(len > left)
 					THROW <InvalidCharSeq>(File, line, column);
 
-				buf: CHAR[4];
+				buf: CHAR[4] (NOINIT);
 				FOR(i ::= 0; i < len; i++)
 					buf[i] := look(i);
 
@@ -146,7 +134,7 @@ INCLUDE 'std/unicode'
 					File,
 					line,
 					column,
-					std::code::utf8::point(buf));
+					std::code::utf8::point(buf!));
 			}
 		}
 
@@ -207,17 +195,21 @@ INCLUDE 'std/unicode'
 				("~:", :tildeColon),
 				("~", :tilde),
 
-				("&&&", :tripleAnd),
-				("&&=", :doubleAndEqual),
-				("&&", :doubleAnd),
-				("&=", :andEqual),
-				("&", :and),
+				("&&&", :tripleAmp),
+				("&&=", :doubleAmpEqual),
+				("&&", :doubleAmp),
+				("&=", :ampEqual),
+				("&", :amp),
+
+				("AND", :and),
+				("OR", :or),
 
 				("||=", :doublePipeEqual),
 				("||", :doublePipe),
 				("|=", :pipeEqual),
 				("|", :pipe),
 
+				("?""?", :doubleQuestionMark),
 				("?", :questionMark),
 
 				("::=", :doubleColonEqual),
@@ -234,6 +226,8 @@ INCLUDE 'std/unicode'
 				(",", :comma),
 				(";", :semicolon),
 				("==", :doubleEqual),
+				("=>", :equalGreater),
+				("=", :equal),
 
 				("[", :bracketOpen),
 				("]", :bracketClose),
@@ -281,9 +275,10 @@ INCLUDE 'std/unicode'
 			++Position.Column;
 			WHILE(is_alnum(look())) (++Read, ++Position.Column);
 
-			STATIC keywords: {CHAR#\, Type}#[](
+			STATIC keywords: {std::str::CV, Type}#[](
 				("ABSTRACT", :abstract),
 				("ASSERT", :assert),
+				("BARE", :bare),
 				("BOOL", :bool),
 				("BREAK", :break),
 				("CATCH", :catch),
@@ -291,6 +286,7 @@ INCLUDE 'std/unicode'
 				("CONTINUE", :continue),
 				("DEFAULT", :default),
 				("DESTRUCTOR", :destructor),
+				("DIE", :die),
 				("DO", :do),
 				("ELSE", :else),
 				("ENUM", :enum),
@@ -304,9 +300,9 @@ INCLUDE 'std/unicode'
 				("INLINE", :inline),
 				("INT", :int),
 				("MASK", :mask),
+				("NOINIT", :noinit),
 				("NULL", :null),
 				("NUMBER", :number),
-				("OPERATOR", :operator),
 				("OVERRIDE", :override),
 				("PRIVATE", :private),
 				("PROTECTED", :protected),
@@ -340,11 +336,11 @@ INCLUDE 'std/unicode'
 				("WHILE", :while)
 			);
 
+			ASSERT(##keywords[0].(0) != 0);
 			str ::= tok_str();
+			ASSERT(##str != 0);
 			FOR(i: UM := 0; i < ##keywords; i++)
-				IF(!std::str::cmp(
-					str,
-					std::str::buf(keywords[i].(0))))
+				IF(keywords[i].(0) == str++)
 				{
 					out->Type := keywords[i].(1);
 					RETURN TRUE;
@@ -379,7 +375,15 @@ INCLUDE 'std/unicode'
 			WHILE(is_digit(look()))
 				++Read;
 
-			out->Type := :numberLiteral;
+			IF(look() == '.')
+			{
+				++Read;
+				WHILE(is_digit(look()))
+					++Read;
+				out->Type := :floatLiteral;
+			} ELSE {
+				out->Type := :numberLiteral;
+			}
 			RETURN TRUE;
 		}
 
@@ -390,8 +394,7 @@ INCLUDE 'std/unicode'
 				out->Type := :stringTick;
 				WHILE(!eatString("´"))
 				{
-					c ::= getc();
-					IF(!c)
+					IF:!(c ::= getc())
 						error();
 					IF(c == '\\')
 						IF(!getc())
@@ -411,8 +414,7 @@ INCLUDE 'std/unicode'
 			}
 
 			++Read;
-			c: CHAR;
-			WHILE((c := getc()) != delim)
+			FOR(c: CHAR; (c := getc()) != delim;)
 			{
 				IF(!c) error();
 				IF(c == '\\')

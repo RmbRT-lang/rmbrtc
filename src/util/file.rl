@@ -1,18 +1,20 @@
 INCLUDE 'std/string'
+INCLUDE 'std/str'
 INCLUDE 'std/memory'
 INCLUDE 'std/vector'
 INCLUDE 'std/err/filenotfound'
 
 ::rlc::util
 {
-	absolute_file(name: std::[CHAR#]Buffer #&) std::Utf8
+	absolute_file(name: std::str::CV #&) std::Str
 	{
-		n: std::Utf8(name, :cstring);
+		n: std::Str(name);
+		n.append(:ch(0));
 
-		IF(real ::= detail::realpath(n.data(), &detail::path_buf[0]))
-			RETURN std::Utf8(real, :cstring);
+		IF:!(real ::= detail::realpath(n.data(), &detail::path_buf[0]))
+			THROW <std::io::FileNotFound>(name);
 
-		THROW std::io::FileNotFound(name);
+		= <std::Str>(real);
 	}
 
 	(// Returns the parent directory, including the final '/'. /)
@@ -27,14 +29,13 @@ INCLUDE 'std/err/filenotfound'
 	concat_paths(
 		base: std::[CHAR#]Buffer #&,
 		relative: std::[CHAR#]Buffer #&
-	) std::Utf8
+	) std::Str
 	{
-		path: std::Utf8(base);
-		IF(!base.Size)
-			THROW;
+		path: std::Str(<std::str::CV>(base++));
+		ASSERT(base.Size);
 		IF(base[base.Size-1] != '/')
-			path.append('/');
-		path.append(relative);
+			path.append(:ch('/'));
+		path.append(relative++);
 
 		RETURN path;
 	}
@@ -42,6 +43,6 @@ INCLUDE 'std/err/filenotfound'
 
 ::rlc::util::detail
 {
-	path_buf: std::[CHAR]Vector(:move, std::[CHAR]alloc(4097));
+	path_buf: std::[CHAR]Vec := 4097;
 	EXTERN realpath(CHAR #\, CHAR \) CHAR #*;
 }

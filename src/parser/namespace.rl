@@ -1,45 +1,49 @@
-INCLUDE "scopeitem.rl"
-INCLUDE "global.rl"
+INCLUDE "../ast/namespace.rl"
+INCLUDE "../ast/test.rl"
 INCLUDE "parser.rl"
 
-INCLUDE 'std/vector'
 
-::rlc::parser Namespace -> ScopeItem, Global
+::rlc::parser::namespace parse(
+	p: Parser &,
+	out: ast::[Config]Namespace &) BOOL
 {
-	Entries: ScopeItem - std::DynVector;
-	Name: src::String;
+	IF(!p.consume(:doubleColon))
+		= FALSE;
 
-	# FINAL name() src::String#& := Name;
-	# FINAL overloadable() BOOL := TRUE;
+	t: Trace(&p, "namespace");
+	name ::= p.expect(:identifier);
+	out.Name := name.Content;
+	out.Position := name.Position;
+	out.Parent := NULL; /// Sanitise parent.
 
-	parse(
-		p: Parser &) BOOL
+	IF(p.consume(:braceOpen))
 	{
-		IF(!p.consume(:doubleColon))
-			RETURN FALSE;
+		WHILE(entry ::= global::parse(p))
+			TYPE SWITCH(entry!)
+			{
+			ast::[Config]Test:
+				out.Tests += <ast::[Config]Test&&>(&&entry!);
+			DEFAULT:
+				out.Entries += :!(&&entry);
+			}
 
-		t: Trace(&p, "namespace");
-		name: tok::Token;
-		p.expect(:identifier, &name);
-		Name := name.Content;
+		p.expect(:braceClose);
 
-		IF(p.consume(:braceOpen))
-		{
-			WHILE(entry ::= Global::parse(p))
-				Entries += :gc(<<ScopeItem \>>(entry));
-
-			p.expect(:braceClose);
-
-			RETURN TRUE;
-		}
-
-		IF(entry ::= Global::parse(p))
-		{
-			Entries += :gc(<<ScopeItem \>>(entry));
-			RETURN TRUE;
-		}
-
-		p.fail("expected scope entry");
-		RETURN FALSE;
+		= TRUE;
 	}
+
+	IF(entry ::= global::parse(p))
+	{
+		TYPE SWITCH(entry!)
+		{
+		ast::[Config]Test:
+			out.Tests += <ast::[Config]Test&&>(&&entry!);
+		DEFAULT:
+			out.Entries += :!(&&entry);
+		}
+		= TRUE;
+	}
+
+	p.fail("expected scope entry");
+	= FALSE;
 }
