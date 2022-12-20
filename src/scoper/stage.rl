@@ -137,6 +137,8 @@ INCLUDE 'std/unicode'
 		PrevFile := p,
 		Stage := s;
 
+	# visit_scope_item(_, _) VOID INLINE {}
+
 	# transform_name(
 		p: Prev::Name+ #&
 	) Config::Name INLINE

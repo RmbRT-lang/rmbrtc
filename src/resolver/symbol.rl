@@ -35,8 +35,10 @@ INCLUDE 'std/io/streamutil'
 	(// The resolved parents of `Item`. /)
 	AncestorTemplates: ast::[Config]TemplateArg - std::Vec - std::Vec;
 
-	(// The inner-most resolvable part of the symbol. /)
-	Item: ast::[scoper::Config]ScopeItem #\;
+	(// The inner-most resolvable part of the symbol (previous stage). /)
+	PrevItem: ast::[scoper::Config]ScopeItem #\;
+	/// Lazily initialised: this stage's scope item this symbol points to. Needs dynamic alloc because it's a receiver and we might move.
+	Item: ast::[Config]ScopeItem * - std::Dyn;
 	(// Templates of `Item`. /)
 	ItemTemplates: ast::[Config]TemplateArg - std::Vec;
 
@@ -96,7 +98,7 @@ INCLUDE 'std/io/streamutil'
 		{
 			IF:!(item_as_scope ::= <<ast::[scoper::Config]ScopeBase #*>>(item))
 				IF(<<ast::PotentialScope #*>>(item))
-					= :partially_resolved(item, reference, child.i(), &&child_templates);
+					= :partially_resolved(item, reference, child.i(), &&child_templates, ctx);
 				ELSE THROW <NotResolved>(:child(symbolScope, *item, child!,
 					"parent cannot have children"));
 
@@ -108,29 +110,36 @@ INCLUDE 'std/io/streamutil'
 			item := next_child;
 		}
 
-		= :resolved(item, &&child_templates);
+		= :resolved(item, &&child_templates, ctx);
 	}
 
 
 	:resolved{
 		tip: ast::[scoper::Config]ScopeItem #\,
-		templates: ast::[Config]TemplateArg -std::Vec -std::Vec &&
+		templates: ast::[Config]TemplateArg -std::Vec -std::Vec &&,
+		ctx: Context #&
 	}:
 		AncestorTemplates := &&templates,
-		Item := tip;
+		PrevItem := tip
+	{
+		ctx.Root->register_symbol_writeback(tip, &Item!);
+	}
 
 	:partially_resolved{
 		tip: ast::[scoper::Config]ScopeItem #\,
 		symbol: ast::[scoper::Config]Symbol #&,
 		resolved_children: UM,
-		templates: ast::[Config]TemplateArg -std::Vec -std::Vec &&
+		templates: ast::[Config]TemplateArg -std::Vec -std::Vec &&,
+		ctx: Context #&
 	}:
 		AncestorTemplates := &&templates,
-		Item := tip,
+		PrevItem := tip,
 		ItemTemplates := &&AncestorTemplates[resolved_children],
 		Rest(symbol, resolved_children, AncestorTemplates!)
 	{
 		AncestorTemplates.resize(resolved_children-1);
+
+		ctx.Root->register_symbol_writeback(tip, &Item!);
 	}
 }
 

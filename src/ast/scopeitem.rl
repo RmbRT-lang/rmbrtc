@@ -14,7 +14,10 @@ INCLUDE "../error.rl"
 		i: [Stage::Prev+]ScopeItem #&,
 		ctx: Stage::Context+ #&
 	} -> (i):
-		Name := ctx.transform_name(i.Name);
+		Name := ctx.transform_name(i.Name)
+	{
+		ctx.visit_scope_item(&i, &THIS);
+	}
 
 	<<<
 		i: [Stage::Prev+]ScopeItem #&,

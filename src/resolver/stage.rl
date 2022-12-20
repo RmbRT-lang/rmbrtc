@@ -37,16 +37,16 @@ INCLUDE "../ast/stage.rl"
 			{
 				processed: RootScope - std::Dyn;
 				transform_root_scope(scoped!.Globals!, processed!);
+				processed->post_process();
 				Processed.insert(&scoped!.Globals!, &&processed);
 			}
-
 	}
 
 	transform_root_scope(
 		root: scoper::Config::RootScope #&,
 		out: RootScope &) VOID
 	{
-		ctx ::= <Context>().in_parent(&root.ScopeItems, &out.ScopeItems);
+		ctx ::= <Context>(&out).in_parent(&root.ScopeItems, &out.ScopeItems);
 		FOR(item ::= root.ScopeItems.start())
 			out.ScopeItems += :make(item!.Value!, ctx);
 
@@ -57,8 +57,34 @@ INCLUDE "../ast/stage.rl"
 
 ::rlc::resolver::detail RootScope
 {
+	PRIVATE SymbolResolver
+	{
+		Item: ast::[Config]ScopeItem *;
+		WriteBack: ast::[Config]ScopeItem ** -std::Vec;
+	}
+
+	Symbols: SymbolResolver - std::[ast::[scoper::Config]ScopeItem #\]Map;
+
 	ScopeItems: ast::[Config]GlobalScope;
 	Tests: ast::[Config]Test - std::Vec;
+
+	register_symbol_writeback(
+		prev: ast::[scoper::Config]ScopeItem #\,
+		writeback: ast::[Config]ScopeItem **
+	) VOID {
+		Symbols.ensure(prev).WriteBack += writeback;
+	}
+
+	post_process() VOID
+	{
+		FOR(symbol ::= Symbols.start())
+		{
+			it ::= symbol!.Value.Item;
+			FOR(writeBack ::= symbol!.Value.WriteBack.start())
+				*writeBack! := it;
+		}
+		Symbols := BARE;
+	}
 
 	{}: ScopeItems := :root;
 }
@@ -66,6 +92,18 @@ INCLUDE "../ast/stage.rl"
 ::rlc::resolver Context -> ast::[Config]DefaultContext
 {
 	TYPE Prev := scoper::Config;
+
+	Root: detail::RootScope \;
+
+	{...};
+
+	# visit_scope_item(
+		p: ast::[scoper::Config]ScopeItem #\,
+		n: ast::[Config]ScopeItem \
+	) VOID INLINE
+	{
+		Root->Symbols.ensure(p).Item := n;
+	}
 
 	# transform_string(p: scoper::Config::String #&) ? := p;
 	# transform_name(p: scoper::Config::Name#&) ? #& := p;

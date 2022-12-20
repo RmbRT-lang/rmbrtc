@@ -115,8 +115,8 @@ main(
 		= 0;
 	} CATCH(e: std::Error &)
 		cli::main.error(:stream(e), "\n");
-	(/CATCH(e: CHAR#\) // "location: err"
-		cli::main.error(e, "\n"); /)
+	CATCH(e: CHAR#\) // "location: err"
+		cli::main.error(e, "\n");
 	CATCH(e: {CHAR#\, CHAR#\})
 		cli::main.error(e.(0), " (", e.(1), ")\n");
 	FINALLY{}
