@@ -16,7 +16,7 @@ INCLUDE 'std/vector'
 			Value := e.Value;
 	}
 
-	Constants: std::[Constant]VecSet;
+	Constants: std::[Constant]DynVecSet;
 
 	:transform{
 		e: [Stage::Prev+]Enum #&,
@@ -26,14 +26,16 @@ INCLUDE 'std/vector'
 		Constants := :reserve(##e.Constants)
 	{
 		FOR(c ::= e.Constants.start())
-			Constants += <Constant>(:transform(c!, ctx));
+			Constants += :transform(c!, ctx);
 	}
 
 	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
 	{
 		c: Constant (BARE);
 		c.Name := name;
-		= Constants.find(c);
+		IF(found ::= Constants.find(&c))
+			= &found!;
+		= NULL;
 	}
 
 	#? FINAL local(Stage::Name #&, LocalPosition) [Stage]ScopeItem #? * := NULL;

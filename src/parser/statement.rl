@@ -348,6 +348,8 @@ INCLUDE "varorexpression.rl"
 			&& !loop::parse_while_head(p, out))
 				p.fail("expected 'FOR' or 'WHILE'");
 
+		ASSERT(!out.Initial._1);
+		ASSERT(!out.Condition._1);
 		= TRUE;
 	}
 

@@ -7,6 +7,7 @@ INCLUDE "../error.rl"
 {
 	(// The scope item's name. /)
 	Name: Stage::Name;
+	_1: {std::NoCopy, std::NoMove}-std::Opt;
 
 	{name: Stage::Name+, position: src::Position} -> (position): Name := &&name;
 
@@ -14,7 +15,8 @@ INCLUDE "../error.rl"
 		i: [Stage::Prev+]ScopeItem #&,
 		ctx: Stage::Context+ #&
 	} -> (i):
-		Name := ctx.transform_name(i.Name)
+		Name := ctx.transform_name(i.Name),
+		_1 := :a
 	{
 		ctx.visit_scope_item(&i, &THIS);
 	}
@@ -62,6 +64,7 @@ INCLUDE "../error.rl"
 ::rlc::ast [Stage: TYPE] MergeableScopeItem VIRTUAL -> [Stage]ScopeItem
 {
 	TYPE Prev := [Stage::Prev+]MergeableScopeItem;
+
 
 	/// Definitions included from other files.
 	Included: [Stage]MergeableScopeItem #\ -std::VecSet;

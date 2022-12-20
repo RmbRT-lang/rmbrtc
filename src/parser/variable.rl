@@ -106,8 +106,7 @@ INCLUDE "stage.rl"
 
 	parse_local(
 		p: Parser &,
-		expect_semicolon: BOOL
-	) ast::[Config]LocalVariable - std::DynOpt
+		expect_semicolon: BOOL) ast::[Config]LocalVariable - std::DynOpt
 	{
 		IF:!(nt ::= help::parse_initialised_name_and_type(p))
 			= NULL;

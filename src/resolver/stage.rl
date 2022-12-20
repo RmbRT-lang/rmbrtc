@@ -37,7 +37,7 @@ INCLUDE "../ast/stage.rl"
 			{
 				processed: RootScope - std::Dyn;
 				transform_root_scope(scoped!.Globals!, processed!);
-				processed->post_process();
+				processed->post_process(TRUE);
 				Processed.insert(&scoped!.Globals!, &&processed);
 			}
 	}
@@ -59,14 +59,15 @@ INCLUDE "../ast/stage.rl"
 {
 	PRIVATE SymbolResolver
 	{
-		Item: ast::[Config]ScopeItem *;
+		Item: ast::[Config]ScopeItem * - std::Opt;
+		References: UM;
 		WriteBack: ast::[Config]ScopeItem ** -std::Vec;
 	}
 
 	Symbols: SymbolResolver - std::[ast::[scoper::Config]ScopeItem #\]Map;
 
 	ScopeItems: ast::[Config]GlobalScope;
-	Tests: ast::[Config]Test - std::Vec;
+	Tests: ast::[Config]Test - std::DynVec;
 
 	register_symbol_writeback(
 		prev: ast::[scoper::Config]ScopeItem #\,
@@ -75,15 +76,23 @@ INCLUDE "../ast/stage.rl"
 		Symbols.ensure(prev).WriteBack += writeback;
 	}
 
-	post_process() VOID
+	post_process(warnUnused: BOOL) VOID
 	{
 		FOR(symbol ::= Symbols.start())
 		{
-			it ::= symbol!.Value.Item;
-			FOR(writeBack ::= symbol!.Value.WriteBack.start())
+			v: ?& := symbol!.Value;
+			IF(!v.Item)
+				std::io::write(&std::io::out,
+					:stream(symbol!.Key->Position), ": error: '",
+					symbol!.Key->Name!++,
+					" is referenced but not in resolved AST.\n");
+			ASSERT(v.Item);
+			it ::= v.Item!;
+			v.References := ##v.WriteBack;
+			FOR(writeBack ::= v.WriteBack.start())
 				*writeBack! := it;
+			v.WriteBack := BARE;
 		}
-		Symbols := BARE;
 	}
 
 	{}: ScopeItems := :root;
@@ -102,7 +111,7 @@ INCLUDE "../ast/stage.rl"
 		n: ast::[Config]ScopeItem \
 	) VOID INLINE
 	{
-		Root->Symbols.ensure(p).Item := n;
+		Root->Symbols.ensure(p).Item := :a(n);
 	}
 
 	# transform_string(p: scoper::Config::String #&) ? := p;

@@ -7,12 +7,12 @@
 	// This file's parent of this scope.
 	Parent: [Stage]ScopeBase \-std::Opt;
 
-	std::NoMove;
-	std::NoCopy;
+	_1: std::NoMove -std::Opt;
+	_2: std::NoCopy -std::Opt;
 
-	{BARE}: Parent := NULL;
-	:childOf{p: [Stage]ScopeBase \-std::Opt}: Parent := p { ASSERT(Parent); }
-	:root{}: Parent := NULL;
+	{BARE}: Parent := NULL, _1 := NULL, _2 := NULL { ASSERT(!_1); ASSERT(!_2); }
+	:childOf{p: [Stage]ScopeBase \-std::Opt}: Parent := p, _1(:a),_2(:a) { ASSERT(Parent); }
+	:root{}: Parent := NULL, _1(:a),_2(:a);
 
 	# is_root() BOOL INLINE := !Parent;
 	# root() [Stage]ScopeBase #\
@@ -53,9 +53,6 @@
 {
 	// This scope's elements coming from this file only.
 	Elements: std::[Name #-std::Ref; Elem-std::Dyn]Map;
-
-	std::NoCopy;
-	std::NoMove;
 
 	:childOf{parent: [Stage]ScopeBase \-std::Opt} -> (:childOf, parent);
 	:root{} -> (:root);
@@ -262,7 +259,7 @@ DynScoped -> [Stage]ScopeBase, std::[T]Dyn
 {
 	PRIVATE #? item() ? INLINE := <<[Stage]ScopeItem #? *>>(THIS.ptr());
 
-	:parsed{v: std::[T]Dyn &&} -> (:root), (&&v);
+	:parsed{v: std::[T]Dyn &&} -> (BARE), (&&v);
 
 	[Prev: TYPE]
 	:a{
@@ -286,7 +283,7 @@ DynScoped -> [Stage]ScopeBase, std::[T]Dyn
 {
 	PRIVATE #? item() ? INLINE := <<[Stage]ScopeItem #? *>>(THIS.ptr());
 
-	:parsed{v: std::[T]DynOpt &&} -> (:root), (&&v);
+	:parsed{v: std::[T]DynOpt &&} -> (BARE), (&&v);
 
 	[Prev: TYPE]
 	:if{
