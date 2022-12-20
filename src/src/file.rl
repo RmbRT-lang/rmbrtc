@@ -26,7 +26,7 @@ INCLUDE 'std/math/limit'
 		# span(other: String) String
 		{
 			start ::= std::math::min(Start, other.Start);
-			end ::= std::math::max(Start+Length, other.Start+other.Length);
+			end ::= std::math::max(THIS.end(), other.end());
 
 			RETURN (start, end-start);
 		}
@@ -35,9 +35,10 @@ INCLUDE 'std/math/limit'
 
 		# end() Index := Start + Length;
 
-		# THIS<>(rhs: THIS#&) S1 := (Start, Length) <> (rhs.Start, Length);
+		# THIS<>(rhs: THIS#&) S1 := (Start, Length) <> (rhs.Start, rhs.Length);
+		# THIS==(rhs: THIS#&) BOOL := (Start, Length) == (rhs.Start, rhs.Length);
 
-		# THIS++ std::str::CV { DIE; }
+		# THIS++ {:buf, CHAR #\, UM} { DIE; }
 	}
 
 	(// A line:column position inside a file. /)

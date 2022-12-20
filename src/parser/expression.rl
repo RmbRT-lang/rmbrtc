@@ -37,6 +37,7 @@ INCLUDE "symbolconstant.rl"
 				IF(!tuple)
 				{
 					tuple := :a(BARE);
+					tuple->LocalPos := p.locals();
 					tuple->Position := position;
 					tuple->Op := :tuple;
 					tuple->Operands += :!(&&exp);
@@ -71,6 +72,7 @@ INCLUDE "symbolconstant.rl"
 		|| detail::parse_impl(p, ret, parse_this)
 		|| detail::parse_impl(p, ret, parse_null)
 		|| detail::parse_impl(p, ret, parse_bare)
+		|| detail::parse_impl(p, ret, parse_noinit)
 		|| detail::parse_impl(p, ret, parse_cast)
 		|| detail::parse_impl(p, ret, parse_sizeof)
 		|| detail::parse_impl(p, ret, parse_typeof))
@@ -91,7 +93,10 @@ INCLUDE "symbolconstant.rl"
 	{
 		v: T (BARE);
 		IF:(ok ::= parse_fn(p, v))
+		{
+			v.LocalPos := p.locals();
 			ret := :dup(&&v);
+		}
 		= ok;
 	}
 
@@ -150,6 +155,9 @@ INCLUDE "symbolconstant.rl"
 
 	parse_bare(p: Parser &, out: ast::[Config]BareExpression &) BOOL
 		:= p.consume(:bare);
+
+	parse_noinit(p: Parser &, out: ast::[Config]NoinitExpression &) BOOL
+		:= p.consume(:noinit);
 
 	parse_cast(p: Parser&, out: ast::[Config]CastExpression &) BOOL
 	{

@@ -15,7 +15,7 @@ INCLUDE "scope.rl"
 			p: [Stage::Prev+]Typedef #&,
 			ctx: Stage::Context+ #&
 		} -> (:transform, p, ctx), (:transform, p, ctx), ():
-			Type := :make(p.Type!, ctx);
+			Type := :make(p.Type!, ctx.in_parent(&p.Templates, &THIS.Templates));
 	}
 
 	[Stage:TYPE] GlobalTypedef -> [Stage]Global, [Stage]Typedef

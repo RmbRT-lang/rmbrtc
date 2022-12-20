@@ -4,15 +4,15 @@ INCLUDE "../ast/stage.rl"
 
 ::rlc::resolver Config
 {
-	ScopedRegistry: ast::[scoper::Config]FileRegistry;
-	Registry: ast::[THIS]FileRegistry;
+	ScopedRegistry: ast::[scoper::Config]FileRegistry #\;
+	Processed: std::[scoper::Config::RootScope #\, detail::RootScope-std::Dyn]Map;
 
 	TYPE Context := resolver::Context;
 	TYPE Symbol := resolver::Symbol;
 	TYPE Prev := scoper::Config;
 	TYPE PrevFile := _;
 	Includes {}
-	TYPE RootScope := resolver::RootScope;
+	TYPE RootScope := resolver::detail::RootScope;
 
 	TYPE String := std::str::CV;
 	TYPE StringLiteral := std::str::CV;
@@ -27,67 +27,45 @@ INCLUDE "../ast/stage.rl"
 	TYPE ControlLabelReference := ast::[Config]LabelledStatement \;
 	TYPE ControlLabelName := Name;
 
-	{prev: scoper::Config-std::Opt &&}:
-		ScopedRegistry := &&prev!.Registry,
-		Registry := &THIS
-	{
-		prev := NULL;
-	}
+	{prev: scoper::Config #&}:
+		ScopedRegistry := &prev!.Registry;
 
 	transform() VOID
 	{
+		FOR(scoped ::= ScopedRegistry->start())
+			IF(!Processed.find(&scoped!.Globals!))
+			{
+				processed: RootScope - std::Dyn;
+				transform_root_scope(scoped!.Globals!, processed!);
+				Processed.insert(&scoped!.Globals!, &&processed);
+			}
+
 	}
 
 	transform_root_scope(
 		root: scoper::Config::RootScope #&,
 		out: RootScope &) VOID
 	{
+		ctx ::= <Context>().in_parent(&root.ScopeItems, &out.ScopeItems);
 		FOR(item ::= root.ScopeItems.start())
-			out.ScopeItems += :make(item!.Value!, <Context>());
+			out.ScopeItems += :make(item!.Value!, ctx);
 
 		FOR(test ::= root.Tests.start())
-			out.Tests += :transform(test!, <Context>());
+			out.Tests += :transform(test!, ctx);
 	}
 }
 
-::rlc::resolver RootScope -> ast::[Config]ScopeBase
+::rlc::resolver::detail RootScope
 {
 	ScopeItems: ast::[Config]GlobalScope;
 	Tests: ast::[Config]Test - std::Vec;
 
-	{}: ScopeItems := :childOf(&THIS);
+	{}: ScopeItems := :root;
 }
 
 ::rlc::resolver Context -> ast::[Config]DefaultContext
 {
 	TYPE Prev := scoper::Config;
-
-	PrevParent: ast::[scoper::Config]ScopeBase #*;
-	Parent: ast::[Config]ScopeBase *;
-	Stmt: ast::[Config]Statement *;
-
-	# in_parent(
-		prev: ast::[scoper::Config]ScopeBase #*,
-		parent: ast::[Config]ScopeBase *
-	) THIS
-	{
-		ret ::= THIS;
-		ret.PrevParent := prev;
-		ret.Parent := parent;
-		= &&ret;
-	}
-
-	# in_stmt(
-		prev: ast::[scoper::Config]Statement #*,
-		cur: ast::[Config]Statement *
-	) THIS
-	{
-		ret ::= THIS;
-		ret.PrevStmt := prev;
-		ret.Stmt := cur;
-		= ret;
-	}
-
 
 	# transform_string(p: scoper::Config::String #&) ? := p;
 	# transform_name(p: scoper::Config::Name#&) ? #& := p;
@@ -124,7 +102,7 @@ INCLUDE "../ast/stage.rl"
 		pos: src::Position #&
 	) Config::ControlLabelReference - std::Opt
 	{
-		FOR(stmt ::= THIS.Stmt; stmt; stmt := stmt->Parent)
+		FOR(stmt ::= THIS.Stmt!; stmt; stmt := stmt->Parent)
 			IF(labelled ::= <<ast::[Config]LabelledStatement *>>(stmt))
 				IF(!p)
 				{

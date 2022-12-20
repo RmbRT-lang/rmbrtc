@@ -36,9 +36,9 @@ INCLUDE "../error.rl"
 {
 	OldLoc: src::Position;
 
-	[Stage: TYPE] {
-		old: [Stage!]ScopeItem #\,
-		new: [Stage!]ScopeItem #\
+	[Stage1: TYPE; Stage2: TYPE] {
+		old: [Stage1!]ScopeItem #\,
+		new: [Stage2!]ScopeItem #\
 	} -> (new->Position):
 		OldLoc := old->Position;
 

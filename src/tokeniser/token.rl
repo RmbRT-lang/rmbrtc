@@ -105,11 +105,14 @@ INCLUDE "../src/file.rl"
 		tildeColon,
 		tilde,
 
-		tripleAnd,
-		doubleAndEqual,
-		doubleAnd,
-		andEqual,
+		tripleAmp,
+		doubleAmpEqual,
+		doubleAmp,
+		ampEqual,
+		amp,
+
 		and,
+		or,
 
 		doublePipeEqual,
 		doublePipe,
@@ -133,6 +136,7 @@ INCLUDE "../src/file.rl"
 		comma,
 		semicolon,
 		doubleEqual,
+		equalGreater,
 		equal,
 
 		bracketOpen,

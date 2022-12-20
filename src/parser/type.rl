@@ -22,8 +22,8 @@ INCLUDE "symbolconstant.rl"
 	parse_reference_type(p: Parser&) ReferenceType
 	{
 		STATIC table: {tok::Type, ReferenceType}#[](
-			(:and, :reference),
-			(:doubleAnd, :tempReference));
+			(:amp, :reference),
+			(:doubleAmp, :tempReference));
 
 		FOR(i ::= 0; i < ##table; i++)
 			IF(p.consume(table[i].(0)))

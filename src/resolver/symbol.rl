@@ -72,21 +72,23 @@ INCLUDE 'std/io/streamutil'
 			child_templates += ast::[Config]transform_template_args(child!.Templates!++, ctx);
 
 		/// Resolve the first symbol child.
-		symbolScope ::= ctx.PrevParent;
+		symbolScope ::= ctx.PrevParent!;
 		IF(reference.IsRoot)
 			symbolScope := symbolScope->root();
+
+		initScope ::= symbolScope;
 
 		IF:!(item ::= symbolScope->local(reference.Children[:ok(0)].Name, position))
 		{
 			WHILE(!symbolScope->is_root())
 			{
-				symbolScope := symbolScope->Parent;
+				symbolScope := symbolScope->Parent!;
 				IF(item := symbolScope->local(reference.Children[:ok(0)].Name, position))
 					BREAK;
 			}
 
 			IF(!item)
-				THROW <NotResolved>(:root(symbolScope, reference, "no such entity"));
+				THROW <NotResolved>(:root(initScope, reference, "no such entity"));
 		}
 
 		/// Resolve the remaining symbol children.
@@ -173,6 +175,14 @@ INCLUDE 'std/io/streamutil'
 			delim # ::= Scope->print_name(o) ?? "::" : "";
 			IF(ParentName)
 				std::io::write(o, delim, ParentName!++);
+			DO(parent ::= Scope)
+				IF(item ::= <<ast::[scoper::Config]ScopeItem # *>>(parent))
+				{
+					IF(<<ast::[scoper::Config]Function # *>>(item))
+						std::io::write(o, "()");
+					BREAK;
+				}
+				FOR(parent->Parent; parent := parent->Parent!)
 		}
 		
 		std::io::write(o, " failed");

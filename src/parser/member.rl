@@ -52,7 +52,7 @@ INCLUDE "templatedecl.rl"
 					<ast::[Config]TemplateDecl &>(t->Templates) := &&templates;
 				ELSE IF(fn ::= <<ast::[Config]Function *>>(ret))
 					fn->set_templates_after_parsing(&&templates);
-				ELSE IF(templates.exists())
+				ELSE
 					p.fail("preceding member must not have templates");
 			}
 			ret->Attribute := attr;

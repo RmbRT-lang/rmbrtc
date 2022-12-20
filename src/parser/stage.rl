@@ -13,7 +13,7 @@ INCLUDE "global.rl"
 		TYPE PrevScopeEntry := :nothing;
 		TYPE PrevExpression := :nothing;
 		TYPE Prev := Config!;
-		TYPE Context := :nothing#;
+		TYPE Context := :nothing;
 
 		Registry: ast::[Config]FileRegistry;
 		SourceFiles: src::File - std::Shared - std::Vec;
@@ -66,7 +66,7 @@ INCLUDE "global.rl"
 			file: std::str::CV#&
 		) Config-ast::File - std::Dyn
 		{
-			s: src::File#-std::Shared := SourceFiles += :a(file);
+			s: src::File#-std::Shared := :<>( SourceFiles += :a(file) );
 			p: Parser(&&s);
 			= :a(:transform(&p, THIS));
 		}

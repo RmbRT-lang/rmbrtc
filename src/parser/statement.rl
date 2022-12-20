@@ -187,11 +187,13 @@ INCLUDE "varorexpression.rl"
 
 		IF(!out.Negated && p.consume(:semicolon))
 		{
-			out.Init := &&val;
+			<ast::[Config]VarOrExpr-std::DynOpt &>(
+				out.Init) := &&val;
 			IF!(val := var_or_exp::parse(p))
 				p.fail("expected variable or expression");
 		}
-		out.Condition := :!(&&val);
+		<ast::[Config]VarOrExpr-std::Dyn &>(
+			out.Condition) := :!(&&val);
 
 		p.expect(:parentheseClose);
 
@@ -292,7 +294,7 @@ INCLUDE "varorexpression.rl"
 		} ELSE
 		{
 			out.ExceptionType := :specific;
-			IF(!(out.Exception := variable::parse_catch(p)))
+			IF(!(out.Exception := :parsed(variable::parse_catch(p))))
 				p.fail("expected variable");
 		}
 		p.expect(:parentheseClose);
@@ -440,14 +442,14 @@ INCLUDE "varorexpression.rl"
 
 			IF(p.consume(:semicolon))
 			{
-				out.Initial := &&v;
+				out.Initial := :parsed(&&v);
 				v := var_or_exp::parse(p);
 			}
 
-			out.Condition := &&v;
+			out.Condition := :parsed(&&v);
 		} ELSE
 		{
-			IF(!(out.Condition := expression::parse(p)))
+			IF(!(out.Condition := :parsed(expression::parse(p))))
 				p.fail("expected expression");
 		}
 
@@ -460,7 +462,7 @@ INCLUDE "varorexpression.rl"
 		out: ast::[Config]LoopStatement &
 	) VOID
 	{
-		out.Initial := var_or_exp::parse_opt(p);
+		out.Initial := :parsed(var_or_exp::parse_opt(p));
 	}
 
 	::loop parse_condition(
@@ -468,7 +470,7 @@ INCLUDE "varorexpression.rl"
 		out: ast::[Config]LoopStatement &
 	) VOID
 	{
-		out.Condition := var_or_exp::parse(p);
+		out.Condition := :parsed(var_or_exp::parse(p));
 	}
 
 	parse_switch(
@@ -487,10 +489,10 @@ INCLUDE "varorexpression.rl"
 
 		IF(p.consume(:semicolon))
 		{
-			out.Initial := &&val;
+			out.Initial := :parsed(&&val);
 			val := var_or_exp::parse(p);
 		}
-		out.Value := &&val;
+		out.Value := :parsed(&&val);
 
 		p.expect(:parentheseClose);
 		p.expect(:braceOpen);
@@ -542,10 +544,10 @@ INCLUDE "varorexpression.rl"
 		val ::= var_or_exp::parse(p);
 		IF(p.consume(:semicolon))
 		{
-			out.Initial := &&val;
+			out.Initial := :parsed(&&val);
 			val ::= var_or_exp::parse(p);
 		}
-		out.Value := &&val;
+		out.Value := :parsed(&&val);
 
 		p.expect(:parentheseClose);
 		p.expect(:braceOpen);

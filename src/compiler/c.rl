@@ -15,8 +15,8 @@ INCLUDE "../resolver/stage.rl"
 ::rlc::compiler CCompiler -> Compiler
 {
 	Parser: rlc::parser::Config;
-	Scoper: rlc::scoper::Config - std::Opt;
-	Resolver: rlc::resolver::Config - std::Opt;
+	Scoper: rlc::scoper::Config - std::DynOpt;
+	Resolver: rlc::resolver::Config - std::DynOpt;
 
 	FINAL compile(
 		files: std::Str - std::Vec,
@@ -36,13 +36,17 @@ INCLUDE "../resolver/stage.rl"
 		Scoper := :a(&Parser, build.IncludePaths!);
 		Scoper!.transform();
 
-		printf("%zu files recursively scoped\n", ##Scoper!.Registry);
+		std::io::write(&std::io::out,
+			:dec(##Scoper!.Registry), " files recursively scoped\n");
 
 		IF(build.Type == :createAST)
 			RETURN;
 
+		Resolver := :a(Scoper!);
+		Resolver!.transform();
 
-		Resolver := :a(&&Scoper);
+		IF(build.Type == :verifySimple)
+			RETURN;
 
 		// Next step: Instantiator stage; use resolver::Symbol.
 

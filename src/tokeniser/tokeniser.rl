@@ -195,11 +195,14 @@ INCLUDE 'std/unicode'
 				("~:", :tildeColon),
 				("~", :tilde),
 
-				("&&&", :tripleAnd),
-				("&&=", :doubleAndEqual),
-				("&&", :doubleAnd),
-				("&=", :andEqual),
-				("&", :and),
+				("&&&", :tripleAmp),
+				("&&=", :doubleAmpEqual),
+				("&&", :doubleAmp),
+				("&=", :ampEqual),
+				("&", :amp),
+
+				("AND", :and),
+				("OR", :or),
 
 				("||=", :doublePipeEqual),
 				("||", :doublePipe),
@@ -223,6 +226,7 @@ INCLUDE 'std/unicode'
 				(",", :comma),
 				(";", :semicolon),
 				("==", :doubleEqual),
+				("=>", :equalGreater),
 				("=", :equal),
 
 				("[", :bracketOpen),
@@ -296,6 +300,7 @@ INCLUDE 'std/unicode'
 				("INLINE", :inline),
 				("INT", :int),
 				("MASK", :mask),
+				("NOINIT", :noinit),
 				("NULL", :null),
 				("NUMBER", :number),
 				("OVERRIDE", :override),

@@ -17,22 +17,12 @@ INCLUDE 'std/unicode'
 	ParsedRegistry: ast::[parser::Config]FileRegistry \;
 	Registry: ast::[THIS]FileRegistry;
 	IncludeDirs: std::Str - std::Buffer;
+	DummyScope: ast::[parser::Config]GlobalScope;
 
 	TYPE Prev := parser::Config;
 	TYPE PrevFile := ast::[Prev]File #\;
 
 	TYPE Context := scoper::Context;
-
-	Include
-	{
-		/// First, we only link to the previous stage's file.
-		Parsed: PrevFile;
-		/// After all files are linked, we link to the resolved files.
-		Resolved: ast::[Config]File \ - std::Opt;
-
-		:parsed{f: PrevFile}:
-			Parsed := f;
-	}
 
 	Includes
 	{
@@ -78,7 +68,8 @@ INCLUDE 'std/unicode'
 		ParsedRegistry(&prev->Registry),
 		Registry(&THIS),
 		IncludeDirs(includes),
-		Globals := :a();
+		Globals := :a(),
+		DummyScope := :root;
 
 	transform() VOID
 	{
@@ -117,14 +108,14 @@ INCLUDE 'std/unicode'
 		p: ast::[parser::Config]File #\
 	) VOID
 	{
+		ctx ::= <Context>(p, &THIS).in_parent(&DummyScope, &out.ScopeItems);
 		FOR(g ::= p->Globals->start())
 			IF(s ::= <<parser::Config-ast::ScopeItem #*>>(*g))
-				out.ScopeItems.insert_or_merge(
-					:<>(<<<ast::[Config]ScopeItem>>>(*s, (p, &THIS, &out.ScopeItems))));
+				out.ScopeItems.insert_or_merge(s->Name, *s, ctx);
 			ELSE
 			{
 				test:?&:= <<parser::Config-ast::Test #&>>(g!);
-				out.Tests += :transform(test, (p, &THIS, &out.ScopeItems));
+				out.Tests += :transform(test, ctx);
 			}
 	}
 
@@ -138,9 +129,13 @@ INCLUDE 'std/unicode'
 
 	PrevFile: ast::[Prev]File #\;
 	Stage: Config \;
-	Parent: ast::[Config]ScopeBase \;
 
-	{...};
+	{
+		p: ast::[Prev]File #\,
+		s: Config \
+	} -> ():
+		PrevFile := p,
+		Stage := s;
 
 	# transform_name(
 		p: Prev::Name+ #&

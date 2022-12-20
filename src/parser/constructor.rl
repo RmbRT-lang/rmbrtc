@@ -29,17 +29,17 @@ INCLUDE "stage.rl"
 	{
 		IF(!symbol && p.consume(:hash))
 		{
-			p.expect(:and);
+			p.expect(:amp);
 			IF(name ::= p.consume(:identifier))
 				out := :a.ast::[Config]CopyConstructor(
-					:named_arg(name->Content));
+					:named_arg(name->Content, name->Position));
 			ELSE
 				out := :a.ast::[Config]CopyConstructor(:unnamed_arg);
-		} ELSE IF(!symbol && p.consume(:doubleAnd))
+		} ELSE IF(!symbol && p.consume(:doubleAmp))
 		{
 			IF(name ::= p.consume(:identifier))
 				out := :a.ast::[Config]MoveConstructor(
-					:named_arg(name->Content));
+					:named_arg(name->Content, name->Position));
 			ELSE
 				out := :a.ast::[Config]MoveConstructor(:unnamed_arg);
 		} ELSE
@@ -49,7 +49,7 @@ INCLUDE "stage.rl"
 			_out->Name := &&symbol;
 			IF(!p.match(:braceClose))
 				DO()
-					_out->Arguments += function::help::parse_arg_x(p);
+					_out->Args += function::help::parse_arg_x(p);
 					WHILE(p.consume(:comma))
 		}
 		p.expect(:braceClose);

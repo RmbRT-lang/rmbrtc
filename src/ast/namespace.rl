@@ -3,18 +3,36 @@ INCLUDE "global.rl"
 
 INCLUDE 'std/set'
 
-::rlc::ast [Stage:TYPE] Namespace -> [Stage]MergeableScopeItem, [Stage]Global
+::rlc::ast [Stage:TYPE] Namespace ->
+	[Stage]MergeableScopeItem,
+	[Stage]Global,
+	[Stage]ScopeBase
 {
 	Entries: [Stage]GlobalScope;
-	Tests: [Stage]Test -std::Vec;
+	Tests: [Stage]Test -std::DynVec;
 
 	:childOf{parent: [Stage]ScopeBase \}: Entries := :childOf(parent);
 
 	:transform{
 		p: [Stage::Prev+]Namespace #&,
 		ctx: Stage::Context+ #&
-	} -> (:transform, p, ctx), ():
-		Entries := :transform_virtual(p.Entries, ctx);
+	} -> (:transform, p, ctx), (), (:childOf, ctx.Parent):
+		Entries := :transform_virtual(p.Entries, ctx.in_parent(&p, &THIS))
+	{
+		FOR(t ::= p.Tests.start())
+			Tests += :transform(t!, ctx.in_parent(&p, &THIS));
+	}
+
+
+	#? scope_item(name: Stage::Name #&) [Stage]ScopeItem #? * {
+		IF(found ::= Entries.scope_item(name))
+			= found;
+		(/FOR(inc ::= THIS.Included.start())
+			IF(found ::= <<THIS#? \>>(inc!)->scope_item(name))
+				= found;/)
+		= NULL;
+	}
+	#? local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #? * := scope_item(name);
 
 	PRIVATE FINAL merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID
 	{
@@ -24,7 +42,7 @@ INCLUDE 'std/set'
 		{
 			IF:!(rhs_entry_si ::= <<[Stage]ScopeItem *>>(rhs_entry!.Value))
 			{
-				Entries += &&rhs_entry!.Value;
+				Entries.insert(&&rhs_entry!.Value);
 				CONTINUE;
 			}
 
@@ -48,7 +66,7 @@ INCLUDE 'std/set'
 				}
 			}
 			// If no collision was found, just insert.
-			Entries += &&rhs_entry!.Value;
+			Entries.insert(&&rhs_entry!.Value);
 		}
 
 		ns.Entries := BARE;
@@ -64,7 +82,7 @@ INCLUDE 'std/set'
 				CONTINUE;
 			IF:!(lhs_entry ::= THIS.Entries[rhs_entry!.Key])
 				CONTINUE;
-			
+
 			IF:!(lhs_entry_si ::= <<[Stage]ScopeItem #*>>(lhs_entry))
 				CONTINUE;
 

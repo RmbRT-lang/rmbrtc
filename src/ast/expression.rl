@@ -14,6 +14,7 @@ INCLUDE 'std/vector'
 	equals, notEquals, less, lessEquals, greater, greaterEquals, cmp,
 	bitAnd, bitOr, bitXor, bitNot,
 	logAnd, logOr, logNot,
+	natAnd, natOr,
 	shiftLeft, shiftRight, rotateLeft, rotateRight,
 	neg, pos,
 	subscript, call, visit, reflectVisit, conditional,
@@ -76,6 +77,7 @@ INCLUDE 'std/vector'
 			p: [Stage::Prev+]Expression #&,
 			ctx: Stage::Context+ #&
 		} -> (p), (), (), ():
+			LocalPos := p.LocalPos,
 			Range := p.Range;
 
 		<<<
@@ -109,6 +111,8 @@ INCLUDE 'std/vector'
 				= :a.[Stage]NullExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]BareExpression:
 				= :a.[Stage]BareExpression(:transform(>>p!, ctx));
+			[Stage::Prev+]NoinitExpression:
+				= :a.[Stage]NoinitExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]CastExpression:
 				= :a.[Stage]CastExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]SizeofExpression:
@@ -245,6 +249,7 @@ INCLUDE 'std/vector'
 		) [Stage]Expression - std::Dyn
 		{
 			ret: OperatorExpression-std::Dyn := :a(BARE);
+			ret->LocalPos := lhs->LocalPos;
 			ret->Op := op;
 			ret->Position := opPosition;
 			ret->Range := lhs->Range;
@@ -260,6 +265,7 @@ INCLUDE 'std/vector'
 		) [Stage]Expression - std::Dyn
 		{
 			ret: OperatorExpression-std::Dyn := :a(BARE);
+			ret->LocalPos := lhs->LocalPos;
 			ret->Op := op;
 			ret->Position := opPosition;
 			ret->Range := lhs->Range.span(rhs->Range);
@@ -292,6 +298,15 @@ INCLUDE 'std/vector'
 	{
 		:transform{
 			p: [Stage::Prev+]BareExpression #&,
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx);
+	}
+
+	/// `BARE` expression.
+	[Stage: TYPE] NoinitExpression -> [Stage]Expression
+	{
+		:transform{
+			p: [Stage::Prev+]NoinitExpression #&,
 			ctx: Stage::Context+ #&
 		} -> (:transform, p, ctx);
 	}

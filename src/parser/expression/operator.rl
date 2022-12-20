@@ -22,6 +22,7 @@ INCLUDE "../symbol.rl"
 			{
 				op ::= group->Table[i].(1);
 				ret: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
+				ret->LocalPos := p.locals();
 				ret->Op := op;
 				range ::= lhs->Range;
 				ret->Operands += &&lhs;
@@ -73,6 +74,7 @@ INCLUDE "../symbol.rl"
 				p.fail("expected expression");
 
 			ret: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
+			ret->LocalPos := p.locals();
 			ret->Range := lhs->Range.span(else->Range);
 			ret->Position := op.Position;
 			ret->Op := :conditional;
@@ -91,6 +93,7 @@ INCLUDE "../symbol.rl"
 			IF(tok ::= p.consume(detail::k_prefix_ops[i].(0)))
 			{
 				xp: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
+				xp->LocalPos := p.locals();
 				xp->Op := detail::k_prefix_ops[i].(1);
 				IF:!(rhs ::= parse_prefix(p))
 					p.fail("expected expression");
@@ -141,6 +144,7 @@ INCLUDE "../symbol.rl"
 		IF(open ::= p.consume(:bracketOpen))
 		{
 			sub: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
+			sub->LocalPos := p.locals();
 			sub->Op := :subscript;
 			sub->Position := open->Position;
 			sub->Operands += :!(&&lhs);
@@ -161,6 +165,7 @@ INCLUDE "../symbol.rl"
 			isReflect ::= p.consume(:asterisk);
 			p.expect(:parentheseOpen);
 			visit: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
+			visit->LocalPos := p.locals();
 			visit->Op := isReflect ?? Operator::reflectVisit : Operator::visit;
 			visit->Position := op->Position;
 			visit->Operands += :!(&&lhs);
@@ -181,11 +186,12 @@ INCLUDE "../symbol.rl"
 		IF(tok ::= p.consume(:parentheseOpen))
 		{
 			call: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
+			call->LocalPos := p.locals();
 			call->Op := :call;
 			call->Operands += :!(&&lhs);
 			call->Position := tok->Position;
 
-			cls: tok::Token - std::Opt;
+			cls: rlc::tok::Token - std::Opt;
 			FOR(comma ::= FALSE;
 				!(cls := p.consume(:parentheseClose));
 				comma := TRUE)
@@ -238,6 +244,7 @@ INCLUDE "../symbol.rl"
 				ELSE
 				{
 					exp: ast::[Config]MemberReferenceExpression-std::Dyn := :a(BARE);
+					exp->LocalPos := p.locals();
 					exp->Object := :!(&&lhs);
 					exp->IsArrowAccess := (i != 0);
 					exp->Position := op->Position;

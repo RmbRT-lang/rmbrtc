@@ -28,9 +28,9 @@ INCLUDE 'std/set'
 
 ::rlc::ast [Stage: TYPE] MemberFunctions
 {
-	Functions: ast::[Stage]MemberFunction-std::VecSet;
+	Functions: ast::[Stage]MemberFunction-std::DynVecSet;
 	Converter: ast::[Stage]Converter-std::DynOpt;
-	Operators: ast::[Stage]Operator-std::VecSet;
+	Operators: ast::[Stage]Operator-std::DynVecSet;
 	Factory: ast::[Stage]Factory-std::DynOpt;
 
 	{};
@@ -61,13 +61,13 @@ INCLUDE 'std/set'
 			ELSE THROW <rlc::ReasonError>(pos, "multiple converters");
 		ast::[Stage]MemberFunction:
 		{
-			fn_: [Stage]MemberFunction & := >>fn!;
+			fn_: [Stage]MemberFunction-std::Dyn := :<>(&&fn);
 			IF(existing ::= Functions.find(fn_))
-				existing->merge(&&fn_);
+				existing!.merge(&&fn_!);
 			ELSE ASSERT(Functions += &&fn_);
 		}
 		ast::[Stage]Operator:
-			IF!(Operators += &&<<ast::[Stage]Operator&>>(fn!))
+			IF!(Operators += :<>(&&fn))
 				THROW <rlc::ReasonError>(pos, "duplicate operator");
 		}
 	}
@@ -83,11 +83,13 @@ INCLUDE 'std/set'
 		}
 	}
 
-	#? item(name: Stage::Name #&) ?
+	#? item(name: Stage::Name #&) [Stage]MemberFunction #? *
 	{
 		fn: [Stage]MemberFunction (BARE);
 		fn.Name := name;
-		= Functions.find(fn).ptr();
+		IF(found ::= Functions.find(&fn))
+			= &found!;
+		= NULL;
 	}
 }
 
@@ -96,7 +98,7 @@ INCLUDE 'std/set'
 	NamedVars: [Stage]MemberScope;
 	AnonVars: [Stage]AnonMemberVariable - std::Vec;
 
-	{parent: [Stage]ScopeBase \}: NamedVars := :childOf(parent);
+	:childOf{parent: [Stage]ScopeBase \-std::Opt}: NamedVars := :childOf(parent);
 
 	:transform{
 		p: [Stage::Prev+]Fields #&,
@@ -137,7 +139,7 @@ INCLUDE 'std/set'
 	BareCtor: [Stage]BareConstructor-std::DynOpt;
 	/// Custom unnamed constructor. If there is a structural ctor, they must differ in their argument count.
 	ImplicitCtor: [Stage]CustomConstructor-std::DynOpt;
-	CustomCtors: [Stage]CustomConstructor-std::VecSet;
+	CustomCtors: [Stage]CustomConstructor-std::DynVecSet;
 
 
 	:transform{
@@ -191,21 +193,27 @@ INCLUDE 'std/set'
 			ELSE = CopyCtor := :<>(&&ctor);
 		ast::[Stage]MoveConstructor:
 			IF(MoveCtor)
-				THROW <ReasonError>(pos, "multiple copy constructors");
+				THROW <ReasonError>(pos, "multiple move constructors");
 			ELSE = MoveCtor := :<>(&&ctor);
 		ast::[Stage]CustomConstructor:
-			= CustomCtors += <[Stage]CustomConstructor&&>(&&ctor!);
+			= CustomCtors += :<>(&&ctor);
 		}
 	}
 }
 
 ::rlc::ast [Stage: TYPE] ClassMembers -> [Stage]ScopeBase
 {
-	Fields: ast::[Stage]Fields - std::DynOpt;
-	Functions: [Stage]MemberFunctions-std::DynOpt;
+	Fields: ast::[Stage]Fields;
+	Functions: [Stage]MemberFunctions;
 	Ctors: ast::[Stage]Constructors;
 	Destructor: ast::[Stage]Destructor-std::DynOpt;
 	Statics: [Stage]MemberScope;
+
+	:childOf{
+		parent: [Stage]ScopeBase \
+	} -> (:childOf, parent):
+		Fields := :childOf(&THIS),
+		Statics := :childOf(&THIS);
 
 	:transform{
 		p: [Stage::Prev+]ClassMembers #&,
@@ -213,9 +221,10 @@ INCLUDE 'std/set'
 	} -> (:childOf, ctx.Parent):
 		Ctors := :transform(p.Ctors, ctx.in_parent(&p, &THIS)),
 		Statics := :transform_virtual(p.Statics, ctx.in_parent(&p, &THIS)),
-		Fields := :if(p.Fields, :transform(p.Fields.ok(), ctx.in_parent(&p, &THIS))),
-		Functions := :if(p.Functions, :transform(p.Functions.ok(), ctx.in_parent(&p, &THIS))),
-		Destructor := :if(p.Destructor, :transform(p.Destructor.ok(), ctx.in_parent(&p, &THIS)));
+		Fields := :transform(p.Fields, ctx.in_parent(&p, &THIS)),
+		Functions := :transform(p.Functions, ctx.in_parent(&p, &THIS)),
+		Destructor := :if(p.Destructor,
+			:transform(p.Destructor.ok(), ctx.in_parent(&p, &THIS)));
 
 	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
 	{
@@ -226,14 +235,12 @@ INCLUDE 'std/set'
 
 	#? FINAL local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #? *
 	{
-		IF(Fields)
-			IF(item ::= Fields->item(name))
-				= item;
-		IF(Functions)
-			IF(item ::= Functions->item(name))
-				= item;
+		IF(item ::= Fields.item(name))
+			= item;
+		IF(item ::= Functions.item(name))
+			= item;
 		IF(item ::= Statics.item(name))
-				= item;
+			= item;
 		= NULL;
 	}
 
@@ -258,11 +265,11 @@ INCLUDE 'std/set'
 			Destructor := :<>(&&member);
 		}
 		ast::[Stage]Abstractable:
-			Functions.ensure() += :<>(&&member);
+			Functions += :<>(&&member);
 		ast::[Stage]Factory:
-			Functions.ensure().set_factory(:<>(&&member));
+			Functions.set_factory(:<>(&&member));
 		ast::[Stage]MaybeAnonMemberVar:
-			Fields.ensure() += :<>(&&member);
+			Fields += :<>(&&member);
 
 		ast::[Stage]MemberTypedef,
 		ast::[Stage]MemberClass,
@@ -287,17 +294,24 @@ INCLUDE 'std/set'
 	:transform{
 		p: [Stage::Prev+]Class #&,
 		ctx: Stage::Context+ #&
-	} -> (:transform, p, ctx), (:transform, p, ctx.in_parent(&p, &THIS)), (:childOf, ctx.Parent):
+	} ->
+		(:transform, p, ctx),
+		(:transform, p, ctx),
+		(:childOf, :a(&THIS.Templates))
+	:
 		Virtual := p.Virtual,
 		Inheritances := :reserve(##p.Inheritances),
 		Members := :transform(p.Members, ctx.in_parent(&p, &THIS))
 	{
 		FOR(i ::= p.Inheritances.start())
-			Inheritances += :transform(i!, ctx);
+			Inheritances += :transform(i!,
+				ctx.in_parent(&p.Templates, &THIS.Templates));
 	}
 
-	#? scope_item(name: Stage::Name #&) [Stage]ScopeItem #? * := Members.scope_item(name);
-	#? local(name: Stage::Name #&, pos: LocalPosition) [Stage]ScopeItem #? * := NULL;
+	#? scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
+		:= Members.scope_item(name);
+	#? local(name: Stage::Name #&, pos: LocalPosition) [Stage]ScopeItem #? *
+		:= Members.local(name, pos);
 }
 
 ::rlc::ast [Stage: TYPE] GlobalClass -> [Stage]Global, [Stage]Class

@@ -94,6 +94,7 @@ INCLUDE 'std/memory'
 		}
 	}
 
+	Args: [Stage]ArgScope;
 	Inits: Initialisers - std::DynOpt;
 	Body: [Stage]BlockStatement - std::DynOpt;
 	Inline: BOOL;
@@ -102,8 +103,12 @@ INCLUDE 'std/memory'
 		p: [Stage::Prev+]Constructor #&,
 		ctx: Stage::Context+ #&
 	} -> (:transform, p), (:transform, p, ctx), (p):
-		Inits := :make_if(p.Inits, p.Inits.ok(), ctx),
-		Body := :if(p.Body, :transform(p.Body.ok(), ctx)),
+		Args := :transform(p.Args,
+			ctx.in_parent(&p.Templates, &THIS.Templates)),
+		Inits := :make_if(p.Inits, p.Inits.ok(),
+			ctx.in_parent(&p.Args, &THIS.Args)),
+		Body := :if(p.Body, :transform(p.Body.ok(),
+			ctx.in_parent(&p.Args, &THIS.Args))),
 		Inline := p.Inline;
 
 	<<<
@@ -164,61 +169,64 @@ INCLUDE 'std/memory'
 
 ::rlc::ast [Stage: TYPE] CopyConstructor -> [Stage]Constructor
 {
-	Argument: ast::[Stage]Argument-std::Opt;
-
 	:named_arg{
-		name: Stage::Name
-	} -> (BARE): Argument := :a(name, :a.[Stage]ThisType(:cref));
-	:unnamed_arg{} -> (BARE);
+		name: Stage::Name,
+		pos: src::Position #&
+	} -> (BARE) {
+		THIS.Args += :a.[Stage]Argument(name, pos, :a.[Stage]ThisType(:cref));
+	}
+	:unnamed_arg{} -> (BARE) {
+		THIS.Args += :a.[Stage]ThisType(:cref);
+	}
 
 	:transform{
 		p: [Stage::Prev+]CopyConstructor #&,
 		ctx: Stage::Context+ #&
-	} -> (:transform, p, ctx)
-	{
-		IF(p.Argument)
-			Argument := :a(:transform(p.Argument!, ctx));
+	} -> (:transform, p, ctx) {
+		ASSERT(##THIS.Args == 1);
 	}
 }
 
 ::rlc::ast [Stage: TYPE] MoveConstructor -> [Stage]Constructor
 {
-	Argument: ast::[Stage]Argument-std::Opt;
-
-	{};
 	:named_arg{
-		name: Stage::Name
-	} -> (BARE): Argument(:a(name, :gc(std::heap::[[Stage]ThisType]new(:tempRef))));
-	:unnamed_arg{} -> (BARE);
+		name: Stage::Name,
+		pos: src::Position #&
+	} -> (BARE) {
+		THIS.Args += :a.[Stage]Argument(name, pos, :a.[Stage]ThisType(:tempRef));
+	}
+	:unnamed_arg{} -> (BARE) {
+		THIS.Args += :a.[Stage]ThisType(:tempRef);
+	}
 
 	:transform{
 		p: [Stage::Prev+]MoveConstructor #&,
 		ctx: Stage::Context+ #&
-	} -> (:transform, p, ctx)
-	{
-		IF(p.Argument)
-			Argument := :a(:transform(p.Argument!, ctx));
+	} -> (:transform, p, ctx) {
+		ASSERT(##THIS.Args == 1);
 	}
 }
 
 ::rlc::ast [Stage: TYPE] CustomConstructor -> [Stage]Constructor
 {
 	Name: [Stage]SymbolConstant - std::Opt;
-	Arguments: [Stage]TypeOrArgument - std::DynVec;
+
+	std::NoCopy;
+	std::NoMove;
+
 
 	# named() BOOL INLINE := Name;
 
 	:transform{
 		p: [Stage::Prev+]CustomConstructor #&,
 		ctx: Stage::Context+ #&
-	} -> (:transform, p, ctx):
-		Arguments := :reserve(##p.Arguments)
+	} -> (:transform, p, ctx)
 	{
 		IF(p.Name)
-			Name := :a(:transform(p.Name!, ctx));
+			Name := :a(:transform(p.Name!,
+				ctx.in_parent(&p.Templates, &THIS.Templates)));
 
-		FOR(a ::= p.Arguments.start())
-			Arguments += :make(a!, ctx);
+		ASSERT(Name || ##THIS.Args != 0);
 	}
 
 	# THIS <>(rhs: THIS#&) S1 := Name <> rhs.Name;

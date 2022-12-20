@@ -13,7 +13,7 @@ INCLUDE 'std/vector'
 	/// Generic named variable.
 	[Stage:TYPE] Variable VIRTUAL -> [Stage]ScopeItem
 	{
-		{ name: Stage::Name } -> (&&name, NULL);
+		{ name: Stage::Name, position: src::Position } -> (&&name, position);
 
 		:transform{
 			p: [Stage::Prev+]Variable #&,
@@ -32,15 +32,16 @@ INCLUDE 'std/vector'
 
 		{
 			name: Stage::Name,
+			pos: src::Position #&,
 			type: [Stage]MaybeAutoType - std::Dyn,
 			initValues: [Stage]Expression - std::DynVec
 		} ->
-			(&&name):
+			(&&name, pos):
 			Type(&&type),
 			InitValues(&&initValues)
 		{
 			// Make sure that an auto variable has a single-value initialiser.
-			ASSERT(!<<Stage-type::Auto *>>(Type) || ##InitValues == 1);
+			ASSERT(!<<Stage-ast::type::Auto *>>(Type) || ##InitValues == 1);
 		}
 
 		:transform{
@@ -65,9 +66,10 @@ INCLUDE 'std/vector'
 
 		{
 			name: Stage::Name,
+			position: src::Position #&,
 			type: ast::[Stage]Type-std::Dyn
 		} ->
-			(&&name):
+			(&&name, position):
 			Type(&&type);
 
 		:transform{
@@ -82,9 +84,10 @@ INCLUDE 'std/vector'
 	{
 		{
 			name: Stage::Name,
+			position: src::Position #&,
 			type: [Stage]MaybeAutoType - std::Dyn,
 			initValues: [Stage]Expression - std::DynVec
-		} -> (), (&&name, &&type, &&initValues);
+		} -> (), (&&name, position, &&type, &&initValues);
 
 		:transform{
 			p: [Stage::Prev+]GlobalVariable #&,
@@ -99,9 +102,10 @@ INCLUDE 'std/vector'
 	{
 		{
 			name: Stage::Name,
+			position: src::Position #&,
 			type: [Stage]Type - std::Dyn,
 			linkName: Stage::StringLiteral+ - std::Opt
-		} -> (), (&&name, &&type), (&&linkName);
+		} -> (), (&&name, position, &&type), (&&linkName);
 
 		:transform{
 			p: [Stage::Prev+]ExternVariable #&,
@@ -181,6 +185,8 @@ INCLUDE 'std/vector'
 	{
 		Position: LocalPosition;
 
+		# visible(pos: LocalPosition) BOOL INLINE := pos >= Position;
+
 		{pos: LocalPosition}: Position(pos) { ASSERT(pos > 0); }
 		:arg{}: Position(0);
 
@@ -211,8 +217,9 @@ INCLUDE 'std/vector'
 	{
 		{
 			name: Stage::Name,
+			pos: src::Position #&,
 			type: [Stage]Type-std::Dyn
-		} -> (:arg), (&&name, &&type), ();
+		} -> (:arg), (&&name, pos, &&type), ();
 
 		:transform{
 			p: [Stage::Prev+]Argument #&,
@@ -228,10 +235,11 @@ INCLUDE 'std/vector'
 	{
 		{
 			name: Stage::Name,
+			codePos: src::Position #&,
 			position: LocalPosition,
 			type: [Stage]MaybeAutoType-std::Dyn,
 			initValues: [Stage]Expression-std::DynVec
-		} -> (position), (&&name, &&type, &&initValues), ();
+		} -> (position), (&&name, codePos, &&type, &&initValues), ();
 
 		:transform{
 			p: [Stage::Prev+]LocalVariable #&,
@@ -247,9 +255,10 @@ INCLUDE 'std/vector'
 	{
 		{
 			name: Stage::Name,
+			codePos: src::Position #&,
 			position: LocalPosition,
 			type: [Stage]Type-std::Dyn
-		} -> (position), (&&name, &&type), ();
+		} -> (position), (&&name, codePos, &&type), ();
 
 		:transform{
 			p: [Stage::Prev+]CatchVariable #&,

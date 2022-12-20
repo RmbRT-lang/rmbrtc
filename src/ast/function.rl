@@ -6,21 +6,9 @@ INCLUDE "templatedecl.rl"
 INCLUDE "statement.rl"
 
 
-::rlc::ast [Stage:TYPE] FnSignature VIRTUAL -> [Stage]ScopeBase
+::rlc::ast [Stage:TYPE] FnSignature VIRTUAL -> [Stage]ArgScope
 {
-	Arguments: [Stage]TypeOrArgument-std::DynVec;
 	IsCoroutine: BOOL;
-
-	#? FINAL scope_item(Stage::Name #&) [Stage]ScopeItem #? * := NULL;
-
-	#? FINAL local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #? *
-	{
-		FOR(arg ::= Arguments.start().ok())
-			IF(named ::= <<[Stage]Argument #? *>>(&arg!))
-				IF(named->Name == name)
-					= named;
-		= NULL;
-	}
 
 	<<<
 		p: [Stage::Prev+]FnSignature #&,
@@ -34,20 +22,20 @@ INCLUDE "statement.rl"
 		[Stage::Prev+]ResolvedSig:
 			= :a.[Stage]ResolvedSig(:transform(>>p, ctx));
 		}
+		DIE;
 	}
 
-	{...};
+	{
+		arguments: [Stage]TypeOrArgument - std::DynVec &&,
+		isCoroutine: BOOL
+	} -> (&&arguments):
+		IsCoroutine := isCoroutine;
 
 	:transform {
 		p: [Stage::Prev+]FnSignature #&,
 		ctx: Stage::Context+ #&
-	}:
-		Arguments := :reserve(##p.Arguments),
-		IsCoroutine := p.IsCoroutine
-	{
-		FOR(a ::= p.Arguments.start())
-			Arguments += :make(a!, ctx);
-	}
+	} -> (:transform, p, ctx):
+		IsCoroutine := p.IsCoroutine;
 }
 
 ::rlc::ast [Stage:TYPE] UnresolvedSig -> [Stage]FnSignature
@@ -75,7 +63,7 @@ INCLUDE "statement.rl"
 		p: [Stage::Prev+]ResolvedSig #&,
 		ctx: Stage::Context+ #&
 	} -> (:transform, p, ctx):
-		Return := :make(p.Return!, ctx);
+		Return := :make(p.Return!, ctx.in_parent(&p, &THIS));
 }
 
 /// An anonymous function object.
@@ -91,7 +79,7 @@ INCLUDE "statement.rl"
 		p: [Stage::Prev+]Functoid #&,
 		ctx: Stage::Context+ #&
 	} -> (:transform, p, ctx), (p):
-		Signature := :make(p.Signature!, ctx),
+		Signature := :make(p.Signature!, ctx.in_parent(&p.Templates, &THIS.Templates)),
 		Body := :make_if(p.Body, p.Body.ok(), ctx.in_parent(&p.Signature!, &Signature!)),
 		IsInline := p.IsInline;
 
@@ -106,15 +94,15 @@ INCLUDE "statement.rl"
 	VarName: std::str::CV -std::Opt;
 	OldPos: src::Position;
 
-	[Stage: TYPE] {
+	[Stage: TYPE; Stage2: TYPE; Stage3: TYPE] {
 		fn: [Stage!]Function #&,
-		old: [Stage!]Functoid #&,
-		new: [Stage!]Functoid #&
+		old: [Stage2!]Functoid #&,
+		new: [Stage3!]Functoid #&
 	} -> (new.Position):
 		FnName := fn.Name!++,
 		OldPos := old.Position
 	{
-		IF(old_var ::= <<[Stage]Variant #*>>(&old))
+		IF(old_var ::= <<[Stage2]Variant #*>>(&old))
 			VarName := :a(old_var->Name!++);
 	}
 
@@ -136,7 +124,7 @@ INCLUDE "statement.rl"
 }
 
 (// A named function with potential callable variants. /)
-::rlc::ast [Stage:TYPE] Function VIRTUAL -> [Stage]MergeableScopeItem
+::rlc::ast [Stage:TYPE] Function VIRTUAL -> [Stage]MergeableScopeItem, [Stage]ScopeBase
 {
 	Default: [Stage]DefaultVariant-std::Shared;
 
@@ -147,16 +135,16 @@ INCLUDE "statement.rl"
 	:transform {
 		p: [Stage::Prev+]Function #&,
 		ctx: Stage::Context+ #&
-	} -> (:transform, p, ctx)
+	} -> (:transform, p, ctx), (:childOf, ctx.Parent)
 	{
 		IF(p.Default)
-			Default := :a(:transform(p.Default!, ctx));
+			Default := :a(:transform(p.Default!, ctx.in_parent(&p, &THIS)));
 		FOR(var ::= p.SpecialVariants.start())
-			SpecialVariants.insert(var!.Key, :a(:transform(var!.Value!, ctx)));
+			SpecialVariants.insert(var!.Key, :a(:transform(var!.Value!, ctx.in_parent(&p, &THIS))));
 		FOR(var ::= p.Variants.start())
 			Variants.insert(
 				ctx.transform_name(var!.Key),
-				:a(:transform(var!.Value!, ctx)));
+				:a(:transform(var!.Value!, ctx.in_parent(&p, &THIS))));
 	}
 
 	# THIS<>(rhs: THIS #&) S1 := THIS.Name <> rhs.Name;
@@ -170,6 +158,9 @@ INCLUDE "statement.rl"
 		ELSE
 			<[Stage]TemplateDecl &>(Variants.start()->Value->Templates) := &&tpl;
 	}
+
+	PRIVATE #? FINAL scope_item(Stage::Name+ #&) [Stage]ScopeItem #? * := NULL;
+	PRIVATE #? FINAL local(Stage::Name+ #&, LocalPosition) [Stage]ScopeItem #? * := NULL;
 
 	PRIVATE FINAL merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID
 	{

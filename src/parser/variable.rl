@@ -21,7 +21,7 @@ INCLUDE "stage.rl"
 
 		p.expect(:semicolon);
 
-		= :a(nt->Name.Content, &&nt->Type, &&inits);
+		= :a(nt->Name.Content, nt->Name.Position, &&nt->Type, &&inits);
 	}
 
 	parse_extern(
@@ -34,7 +34,7 @@ INCLUDE "stage.rl"
 		IF:!(nt ::= help::parse_uninitialised_name_and_type(p))
 			= NULL;
 		p.expect(:semicolon);
-		= :a(&&nt->Name.Content, &&nt->Type, &&linkName);
+		= :a(&&nt->Name.Content, nt->Name.Position, &&nt->Type, &&linkName);
 	}
 
 	parse_member(
@@ -94,7 +94,7 @@ INCLUDE "stage.rl"
 		IF(nt ::= help::parse_uninitialised_name_and_type(p))
 		{
 			= :a.ast::[Config]CatchVariable(
-				&&nt->Name.Content, p.add_local(), :<>(&&nt->Type));
+				&&nt->Name.Content, nt->Name.Position, p.add_local(), :<>(&&nt->Type));
 		} ELSE IF(help::is_optionally_named_variable_start(p))
 		{	// Anonymous catch variable.
 			IF:!(t ::= type::parse(p))
@@ -124,7 +124,7 @@ INCLUDE "stage.rl"
 		IF(expect_semicolon)
 			p.expect(:semicolon);
 
-		= :a(nt->Name.Content, p.add_local(), &&nt->Type, &&inits);
+		= :a(nt->Name.Content, nt->Name.Position, p.add_local(), &&nt->Type, &&inits);
 	}
 
 	parse_fn_arg(
@@ -135,7 +135,8 @@ INCLUDE "stage.rl"
 			= NULL;
 
 		IF(nt->Name)
-			= :a.ast::[Config]Argument(nt->Name->Content, &&nt->Type);
+			= :a.ast::[Config]Argument(
+				nt->Name->Content, nt->Name->Position, &&nt->Type);
 		ELSE
 			= &&nt->Type;
 	}
@@ -152,8 +153,8 @@ INCLUDE "stage.rl"
 		(:hash, TRUE),
 		(:dollar, TRUE),
 		(:exclamationMark, FALSE),
-		(:and, FALSE),
-		(:doubleAnd, FALSE),
+		(:amp, FALSE),
+		(:doubleAmp, FALSE),
 		(:asterisk, FALSE),
 		(:backslash, FALSE),
 		(:at, FALSE),

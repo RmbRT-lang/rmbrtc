@@ -14,11 +14,18 @@ INCLUDE "parser.rl"
 	name ::= p.expect(:identifier);
 	out.Name := name.Content;
 	out.Position := name.Position;
+	out.Parent := NULL; /// Sanitise parent.
 
 	IF(p.consume(:braceOpen))
 	{
 		WHILE(entry ::= global::parse(p))
-			out.Entries += :!(&&entry);
+			TYPE SWITCH(entry!)
+			{
+			ast::[Config]Test:
+				out.Tests += <ast::[Config]Test&&>(&&entry!);
+			DEFAULT:
+				out.Entries += :!(&&entry);
+			}
 
 		p.expect(:braceClose);
 

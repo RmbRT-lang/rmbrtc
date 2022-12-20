@@ -16,7 +16,7 @@ INCLUDE 'std/memory'
 			p: [Stage::Prev+]Statement #&,
 			ctx: Stage::Context+ #&
 		} -> (), (p):
-			Parent := ctx.Stmt;
+			Parent := ctx.Stmt ?? ctx.Stmt! : NULL;
 
 		<<<
 			p: [Stage::Prev+]Statement #&,
@@ -115,18 +115,40 @@ INCLUDE 'std/memory'
 	}
 
 
-	[Stage: TYPE] BlockStatement -> [Stage]Statement
+	[Stage: TYPE] BlockStatement -> [Stage]Statement, [Stage]ScopeBase
 	{
 		Statements: [Stage]Statement - std::DynVec;
 
 		:transform{
 			p: [Stage::Prev+]BlockStatement #&,
 			ctx: Stage::Context+ #&
-		} -> (:transform, p, ctx):
+		} -> (:transform, p, ctx), (:childOf, ctx.Parent):
 			Statements := :reserve(##p.Statements)
 		{
+			c #::= ctx.in_stmt(&p, &THIS).in_parent(&p, &THIS);
 			FOR(stmt ::= p.Statements.start())
-				Statements += :make(stmt!, ctx);
+				Statements += :make(stmt!, c);
+		}
+
+		#? FINAL scope_item(Stage::Name #&) [Stage]ScopeItem #? * := NULL;
+		#? FINAL local(name: Stage::Name #&, pos: LocalPosition) [Stage]ScopeItem #? *
+		{
+			FOR(stmt ::= Statements.end(); --)
+				IF(var ::= <<[Stage]VariableStatement #?*>>(&stmt!))
+				{
+					IF(var->Variable.visible(pos) && var->Variable.Name == name)
+						= &var->Variable;
+				} ELSE IF(if ::= <<[Stage]IfStatement #?*>>(&stmt!))
+					IF(if->RevealsVariable)
+					{
+						IF(init ::= <<[Stage]LocalVariable #?*>>(if->Init.ptr()))
+							IF(init->visible(pos) && init->Name == name)
+								= init;
+						IF(cond ::= <<[Stage]LocalVariable #?*>>(if->Condition.ptr()))
+							IF(cond->visible(pos) && cond->Name == name)
+								= cond;
+					}
+			= NULL;
 		}
 	}
 
@@ -137,8 +159,8 @@ INCLUDE 'std/memory'
 		RevealsVariable: BOOL;
 		Negated: BOOL;
 
-		Init: [Stage]VarOrExpr-std::DynOpt;
-		Condition: [Stage]VarOrExpr-std::Dyn;
+		Init: [Stage]VarOrExpr - [Stage]DynOptScoped;
+		Condition: [Stage]VarOrExpr - [Stage]DynScoped;
 
 		Then: [Stage]Statement - std::Dyn;
 		Else: [Stage]Statement - std::DynOpt;
@@ -149,14 +171,12 @@ INCLUDE 'std/memory'
 		} -> (:transform, p, ctx), (:transform, p, ctx):
 			RevealsVariable := p.RevealsVariable,
 			Negated := p.Negated,
-			Condition := :make(p.Condition!, ctx),
-			Then := :make(p.Then!, ctx)
-		{
-			IF(p.Init)
-				Init := :make(p.Init!, ctx);
-			IF(p.Else)
-				Else := :make(p.Then!, ctx);
-		}
+			Init := :make_if(p.Init, ctx),
+			Condition := :make(p.Condition, ctx.in_parent(&p.Init, &Init)),
+			Then := :make(p.Then!,
+				ctx.in_stmt(&p, &THIS).in_parent(&p.Condition, &Condition)),
+			Else := :make_if(p.Else, p.Else.ok(),
+				ctx.in_stmt(&p, &THIS).in_parent(&p.Condition, &Condition));
 	}
 
 	[Stage: TYPE] VariableStatement -> [Stage]Statement
@@ -238,7 +258,7 @@ INCLUDE 'std/memory'
 		}
 
 		ExceptionType: Type;
-		Exception: [Stage]TypeOrCatchVariable - std::DynOpt;
+		Exception: [Stage]TypeOrCatchVariable - [Stage]DynOptScoped;
 		Body: [Stage]Statement - std::Dyn;
 
 		:transform{
@@ -246,11 +266,8 @@ INCLUDE 'std/memory'
 			ctx: Stage::Context+ #&
 		}:
 			ExceptionType := p.ExceptionType,
-			Body := :make(p.Body!, ctx)
-		{
-			IF(p.Exception)
-				Exception := :make(p.Exception!, ctx);
-		}
+			Exception := :make_if(p.Exception, ctx),
+			Body := :make(p.Body!, ctx.in_parent(&p.Exception, &Exception));
 	}
 
 	[Stage: TYPE] ThrowStatement -> [Stage]Statement
@@ -289,8 +306,8 @@ INCLUDE 'std/memory'
 		[Stage]LabelledStatement
 	{
 		Type: LoopType;
-		Initial: [Stage]VarOrExpr - std::DynOpt;
-		Condition: [Stage]VarOrExpr - std::DynOpt;
+		Initial: [Stage]VarOrExpr - ast::[Stage]DynOptScoped;
+		Condition: [Stage]VarOrExpr - ast::[Stage]DynOptScoped;
 		Body: [Stage]Statement-std::Dyn;
 		PostLoop: [Stage]Expression-std::DynOpt;
 
@@ -301,15 +318,12 @@ INCLUDE 'std/memory'
 			ctx: Stage::Context+ #&
 		} -> (:transform, p, ctx), (:transform, p, ctx):
 			Type := p.Type,
-			Body := :make(p.Body!, ctx)
-		{
-			IF(p.Initial)
-				Initial := :make(p.Initial!, ctx);
-			IF(p.Condition)
-				Condition := :make(p.Condition!, ctx);
-			IF(p.PostLoop)
-				PostLoop := :make(p.PostLoop!, ctx);
-		}
+			Initial := :make_if(p.Initial, ctx),
+			Condition := :make_if(p.Condition, ctx.in_parent(&p.Initial, &Initial)),
+			Body := :make(p.Body!,
+				ctx.in_stmt(&p, &THIS).in_parent(&p.Condition, &Condition)),
+			PostLoop := :make_if(p.PostLoop,
+				p.PostLoop.ok(), ctx.in_parent(&p.Initial, &Initial));
 	}
 
 	[Stage: TYPE] SwitchStatement ->
@@ -317,8 +331,8 @@ INCLUDE 'std/memory'
 		[Stage]LabelledStatement
 	{
 		Strict: BOOL;
-		Initial: [Stage]VarOrExpr - std::DynOpt;
-		Value: [Stage]VarOrExpr - std::Dyn;
+		Initial: [Stage]VarOrExpr - ast::[Stage]DynOptScoped;
+		Value: [Stage]VarOrExpr - ast::[Stage]DynScoped;
 		Cases: [Stage]CaseStatement - std::Vec;
 
 		:transform{
@@ -326,12 +340,13 @@ INCLUDE 'std/memory'
 			ctx: Stage::Context+ #&
 		} -> (:transform, p, ctx), (:transform, p, ctx):
 			Strict := p.Strict,
-			Value := :make(p.Value!, ctx),
-			Cases := :reserve(##p.Cases),
-			Initial := :make_if(p.Initial, p.Initial.ok(), ctx)
+			Initial := :make_if(p.Initial, ctx),
+			Value := :make(p.Value, ctx.in_parent(&p.Initial, &Initial)),
+			Cases := :reserve(##p.Cases)
 		{
+			_ctx ::= ctx.in_stmt(&p, &THIS).in_parent(&p.Value, &Value);
 			FOR(c ::= p.Cases.start())
-				Cases += :transform(c!, ctx);
+				Cases += :transform(c!, _ctx);
 		}
 	}
 
@@ -358,8 +373,8 @@ INCLUDE 'std/memory'
 	{
 		Static: BOOL;
 		Strict: BOOL;
-		Initial: [Stage]VarOrExpr - std::DynOpt;
-		Value: [Stage]VarOrExpr - std::Dyn;
+		Initial: [Stage]VarOrExpr - ast::[Stage]DynOptScoped;
+		Value: [Stage]VarOrExpr - ast::[Stage]DynScoped;
 		Cases: [Stage]TypeCaseStatement - std::Vec;
 		Label: [Stage]ControlLabel-std::Opt;
 
@@ -369,13 +384,12 @@ INCLUDE 'std/memory'
 		} -> (:transform, p, ctx):
 			Static := p.Static,
 			Strict := p.Strict,
-			Value := :make(p.Value!, ctx),
+			Initial := :make_if(p.Initial, ctx),
+			Value := :make(p.Value, ctx.in_parent(&p.Initial, &Initial)),
 			Cases := :reserve(##p.Cases)
 		{
-			IF(p.Initial)
-				Initial := :make(p.Initial!, ctx);
 			FOR(c ::= p.Cases.start())
-				Cases += :transform(c!, ctx);
+				Cases += :transform(c!, ctx.in_parent(&p.Value, &Value));
 			IF(p.Label)
 				Label := :a(:transform(p.Label!, ctx));
 		}

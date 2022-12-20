@@ -5,9 +5,13 @@
 ::rlc::ast [Stage: TYPE] ScopeBase VIRTUAL
 {
 	// This file's parent of this scope.
-	Parent: [Stage]ScopeBase *;
+	Parent: [Stage]ScopeBase \-std::Opt;
 
-	:childOf{p: [Stage]ScopeBase \}: Parent := p;
+	std::NoMove;
+	std::NoCopy;
+
+	{BARE}: Parent := NULL;
+	:childOf{p: [Stage]ScopeBase \-std::Opt}: Parent := p { ASSERT(Parent); }
 	:root{}: Parent := NULL;
 
 	# is_root() BOOL INLINE := !Parent;
@@ -15,7 +19,7 @@
 	{
 		p ::= &THIS;
 		WHILE(p->Parent)
-			p := p->Parent;
+			p := p->Parent!;
 		= p;
 	}
 
@@ -23,13 +27,15 @@
 	#? ABSTRACT local(Stage::Name #&, LocalPosition) [Stage]ScopeItem #?*;
 
 	/// Returns whether any name was printed.
-	# print_name(o: std::io::OStream &) BOOL := print_name_impl(o, NULL);
+	# print_name(o: std::io::OStream &) BOOL {
+		= print_name_impl(o, NULL);
+	}
 
 	PRIVATE # print_name_impl(o: std::io::OStream &, lastOwner: [Stage]ScopeItem #*) BOOL
 	{
 		owner ::= <<[Stage]ScopeItem #*>>(&THIS);
 
-		printed_parent ::= Parent && Parent->print_name_impl(o, owner ?? owner : lastOwner);
+		printed_parent ::= Parent && Parent!->print_name_impl(o, owner ?? owner : lastOwner);
 
 		IF:(ret ::= owner && owner != lastOwner)
 		{
@@ -51,7 +57,7 @@
 	std::NoCopy;
 	std::NoMove;
 
-	:childOf{parent: [Stage]ScopeBase \} -> (:childOf, parent);
+	:childOf{parent: [Stage]ScopeBase \-std::Opt} -> (:childOf, parent);
 	:root{} -> (:root);
 
 	[Prev: TYPE]
@@ -61,19 +67,9 @@
 	} -> (:childOf, ctx.Parent):
 		Elements := :reserve(##p.Elements)
 	{
+		_ctx ::= ctx.in_parent(&p, &THIS);
 		FOR(e ::= p.Elements.start())
-			THIS += :make(e!.Value!, ctx.in_parent(&p, &THIS));
-	}
-
-	[Prev: TYPE]
-	:transform_discrete{
-		p: Prev! #&,
-		ctx: Stage::Context+ #&
-	} -> (:childOf, ctx.Parent):
-		Elements := :reserve(##p.Elements)
-	{
-		FOR(e ::= p.Elements.start())
-			THIS += :transform(e!.Value!, ctx.in_parent(&p, &THIS));
+			insert_or_merge(e!.Key, e!.Value!, _ctx);
 	}
 
 	#? start() ? INLINE := Elements.start();
@@ -86,35 +82,36 @@
 		= NULL;
 	}
 
-	merge_locally(rhs: THIS &&) VOID
+	[Prev: TYPE]
+	insert_or_merge(
+		name: Stage::Prev::Name+ #&,
+		p: Prev! #&,
+		ctx: Stage::Context #&
+	) VOID
 	{
-		FOR(kv ::= rhs.Elements.start())
-			insert_or_merge(kv!.Value);
-		rhs := BARE;
-	}
-
-	insert_or_merge(entry: Elem-std::Dyn) VOID
-	{
-		name ::= &<<[Stage]ScopeItem #&>>(entry!).Name;
-		IF:!(existing ::= Elements.find(name))
-			ASSERT( THIS += &&entry );
-		ELSE
+		eName ::= ctx.transform_name(name);
+		IF:!(existing ::= Elements.find(&eName))
 		{
-			new ::= <<[Stage]ScopeItem \>>(entry);
-			old ::= <<[Stage]ScopeItem \>>(*existing);
-			IF:!(merge_lhs ::= <<[Stage]MergeableScopeItem *>>(old))
-				THROW <MergeError>(old, new);
-			IF:!(merge_rhs ::= <<[Stage]MergeableScopeItem *>>(new))
-				THROW <MergeError>(old, new);
-			merge_lhs->merge(&&*merge_rhs);
+			THIS += :make(>>p, ctx);
+			RETURN;
 		}
+		existItem :?&:= <<[Stage]ScopeItem &>>(existing!);
+		eItem :?&:= <<[Stage::Prev+]ScopeItem #&>>(p);
+		IF:!(mergeable ::= <<[Stage]MergeableScopeItem *>>(&existItem))
+			THROW <MergeError>(&existItem, &eItem);
+		IF:!(prevMergeable ::= <<[Stage::Prev+]MergeableScopeItem #*>>(&eItem))
+			THROW <MergeError>(&existItem, &eItem);
+
+		ctx.extend_with(*mergeable, *prevMergeable);
 	}
 
 	// v must be a scope item.
-	insert(v: Elem-std::Dyn) BOOL
-		:= Elements.insert(&<<[Stage]ScopeItem #&>>(v!).Name, &&v);
+	insert(v: Elem-std::Dyn) VOID
+	{
+		ASSERT( Elements.insert(&<<[Stage]ScopeItem #&>>(v!).Name, &&v) );
+	}
 
-	THIS += (v: Elem-std::Dyn) BOOL INLINE := insert(&&v);
+	THIS += (v: Elem-std::Dyn) VOID INLINE := insert(&&v);
 
 	#? item(name: Stage::Name #&) [Stage]ScopeItem #?*
 	{
@@ -126,20 +123,13 @@
 
 ::rlc::ast [Stage:TYPE] MemberScope -> [Stage; Stage::Name+; ast::[Stage]Member+]Scope
 {
-	:childOf{parent: [Stage]ScopeBase \} -> (:childOf, parent);
+	:childOf{parent: [Stage]ScopeBase \-std::Opt} -> (:childOf, parent);
 
 	[Prev: TYPE]
 	:transform_virtual{
 		p: Prev! #&,
 		ctx: Stage::Context+ #&
 	} -> (:transform_virtual, p, ctx);
-
-	[Prev: TYPE]
-	:transform_discrete{
-		p: Prev! #&,
-		ctx: Stage::Context+ #&
-	} -> (:transform_discrete, p, ctx);
-
 
 	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
 		:= >>THIS[name];
@@ -158,12 +148,6 @@
 		ctx: Stage::Context+ #&
 	} -> (:transform_virtual, p, ctx);
 
-	[Prev: TYPE]
-	:transform_discrete{
-		p: Prev! #&,
-		ctx: Stage::Context+ #&
-	} -> (:transform_discrete, p, ctx);
-
 	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
 		:= >>THIS[name];
 	#? FINAL local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #? *
@@ -172,7 +156,7 @@
 
 ::rlc::ast [Stage:TYPE] LocalScope -> [Stage; Stage::Name+; ast::[Stage]Local+]Scope
 {
-	:childOf{parent: [Stage]ScopeBase \} -> (:childOf, parent);
+	:childOf{parent: [Stage]ScopeBase \-std::Opt} -> (:childOf, parent);
 
 	[Prev: TYPE]
 	:transform_virtual{
@@ -192,7 +176,132 @@
 	{
 		IF(local ::= THIS[name])
 			IF(local->Position <= pos)
-				= local;
+				= >>local;
 		= NULL;
 	}
+}
+
+::rlc::ast [Stage:TYPE] ArgScope -> [Stage]ScopeBase
+{
+	Args: [Stage]TypeOrArgument - std::DynVec;
+
+	:childOf{
+		parent: [Stage]ScopeBase \-std::Opt
+	} -> (:childOf, parent);
+
+	{args: [Stage]TypeOrArgument - std::DynVec &&} -> (:root): Args := &&args;
+
+	:transform{
+		p: [Stage::Prev+]ArgScope #&,
+		ctx: Stage::Context+ #&
+	} -> (:childOf, ctx.Parent):
+		Args := :reserve(##p.Args)
+	{
+		_ctx ::= ctx.in_parent(&p, &THIS);
+		FOR(arg ::= p.Args.start())
+			THIS += :make(arg!, _ctx);
+	}
+
+	THIS += (arg: [Stage]TypeOrArgument - std::Dyn) VOID
+	{
+		IF(argItem ::= <<[Stage]ScopeItem #*>>(arg))
+			IF(old ::= local(argItem->Name, 0))
+				IF(argItem->Name == old->Name)
+					THROW <MergeError>(old, argItem);
+		Args += &&arg;
+	}
+
+	# at(i: std::Index) [Stage]TypeOrArgument # * INLINE := Args[i].ptr();
+	# ## THIS UM := ##Args;
+
+	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? * := NULL;
+	#? FINAL local(name: Stage::Name #&, pos: LocalPosition) [Stage]ScopeItem #? *
+	{
+		FOR(arg ::= Args.start())
+			IF(argItem ::= <<[Stage]ScopeItem #?*>>(&arg!))
+				IF(argItem->Name == name)
+					= argItem;
+		= NULL;
+	}
+}
+
+::rlc::ast [Stage: TYPE; T: TYPE] Scoped -> [Stage]ScopeBase, T
+{
+	PRIVATE #? item() ? INLINE := <<[Stage]ScopeItem #? \>>(&THIS);
+
+	[Prev: TYPE]
+	:transform{
+		p: Prev! #&,
+		ctx: Stage::Context+ #&
+	} -> (:childOf, ctx.Parent), (:transform, p, ctx);
+
+	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
+		:= THIS.item()->Name <> name ??  NULL : THIS.item();
+	#? FINAL local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #? *
+		:= scope_item(name);
+}
+
+::rlc::ast [Stage: TYPE; T: TYPE] OptScoped -> [Stage]ScopeBase, std::[T]Opt
+{
+	PRIVATE #? item() ? INLINE := <<[Stage]ScopeItem #? \>>(&THIS.ok());
+
+	[Prev: TYPE]
+	:transform{
+		p: Prev! #&,
+		ctx: Stage::Context+ #&
+	} -> (:childOf, ctx.Parent), (:if, p, :transform(p.ok(), ctx));
+
+	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
+		:= THIS ?? THIS.item()->Name <> name ??  NULL : THIS.item() : NULL;
+	#? FINAL local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #? *
+		:= scope_item(name);
+}
+
+::rlc::ast [Stage: TYPE; T: TYPE] 
+DynScoped -> [Stage]ScopeBase, std::[T]Dyn
+{
+	PRIVATE #? item() ? INLINE := <<[Stage]ScopeItem #? *>>(THIS.ptr());
+
+	:parsed{v: std::[T]Dyn &&} -> (:root), (&&v);
+
+	[Prev: TYPE]
+	:a{
+		p: Prev! #&,
+		ctx: Stage::Context+ #&
+	} -> (:childOf, ctx.Parent), (:a, :transform(p!, ctx));
+
+	[Prev: TYPE]
+	:make{
+		p: Prev! #&,
+		ctx: Stage::Context+ #&
+	} -> (:childOf, ctx.Parent), (:make, p!, ctx);
+
+	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
+		:= THIS.item() && THIS.item()->Name == name ?? THIS.item() : NULL;
+	#? FINAL local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #? *
+		:= scope_item(name);
+}
+
+::rlc::ast [Stage: TYPE; T: TYPE] DynOptScoped -> [Stage]ScopeBase, std::[T]DynOpt
+{
+	PRIVATE #? item() ? INLINE := <<[Stage]ScopeItem #? *>>(THIS.ptr());
+
+	:parsed{v: std::[T]DynOpt &&} -> (:root), (&&v);
+
+	[Prev: TYPE]
+	:if{
+		p: Prev! #&,
+		ctx: Stage::Context+ #&
+	} -> (:childOf, ctx.Parent), (:if, p, :transform(p.ok(), ctx));
+
+	[Prev: TYPE]
+	:make_if{
+		p: Prev! #&,
+		ctx: Stage::Context+ #&
+	} -> (:childOf, ctx.Parent), (:make_if, p, p.ok(), ctx);
+
+	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
+		:= THIS.item() && THIS.item()->Name == name ?? THIS.item() : NULL;
+	#? FINAL local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #? *
+		:= scope_item(name);
 }

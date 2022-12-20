@@ -93,7 +93,7 @@
 
 		k_bit: {tok::Type, rlc::Operator, BOOL}#[](
 			// bit arithmetic operators.
-			(:and, :bitAnd, TRUE),
+			(:amp, :bitAnd, TRUE),
 			(:circumflex, :bitXor, TRUE),
 			(:pipe, :bitOr, TRUE));
 
@@ -109,8 +109,8 @@
 
 		k_log_and: {tok::Type, rlc::Operator, BOOL}#[](
 			// boolean arithmetic.
-			(:doubleAnd, :logAnd, TRUE),
-			(:doubleAnd, :logAnd, TRUE));
+			(:doubleAmp, :logAnd, TRUE),
+			(:doubleAmp, :logAnd, TRUE));
 
 		k_log_or: {tok::Type, rlc::Operator, BOOL}#[](
 			(:doublePipe, :logOr, TRUE),
@@ -118,6 +118,12 @@
 
 		k_stream_feed: {tok::Type, rlc::Operator, BOOL}# :=
 			(:lessMinus, :streamFeed, TRUE);
+
+		k_nat_and: {tok::Type, rlc::Operator, BOOL}# :=
+			(:amp, :natAnd, FALSE);
+
+		k_nat_or: {tok::Type, rlc::Operator, BOOL}# :=
+			(:or, :natOr, FALSE);
 
 		k_assign: {tok::Type, rlc::Operator, BOOL}#[](
 			// assignments.
@@ -127,10 +133,10 @@
 			(:asteriskEqual, :mulAssign, TRUE),
 			(:forwardSlashEqual, :divAssign, TRUE),
 			(:percentEqual, :modAssign, TRUE),
-			(:andEqual, :bitAndAssign, TRUE),
+			(:ampEqual, :bitAndAssign, TRUE),
 			(:pipeEqual, :bitOrAssign, TRUE),
 			(:circumflexEqual, :bitXorAssign, TRUE),
-			(:doubleAndEqual, :logAndAssign, TRUE),
+			(:doubleAmpEqual, :logAndAssign, TRUE),
 			(:doublePipeEqual, :logOrAssign, TRUE),
 			(:doubleLessEqual, :shiftLeftAssign, TRUE),
 			(:doubleGreaterEqual, :shiftRightAssign, TRUE),
@@ -164,12 +170,12 @@
 				(:tildeColon, :bitNotAssign, TRUE),
 				(:exclamationMark, :logNot, TRUE),
 				(:exclamationMarkColon, :logNotAssign, TRUE),
-				(:and, :address, FALSE),
-				(:doubleAnd, :move, FALSE),
+				(:amp, :address, FALSE),
+				(:doubleAmp, :move, FALSE),
 				(:asterisk, :dereference, TRUE),
 				(:lessMinus, :await, TRUE),
 				(:doubleHash, :count, TRUE),
-				(:tripleAnd, :baseAddr, FALSE),
+				(:tripleAmp, :baseAddr, FALSE),
 				(:doubleGreater, :autoDynamicCast, FALSE),
 				(:pipe, :structure, TRUE));
 	}

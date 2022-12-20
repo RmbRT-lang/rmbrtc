@@ -19,8 +19,9 @@ INCLUDE 'std/memory'
 	} -> (:transform, p, ctx), (:transform, p, ctx):
 		Members := :reserve(##p.Members)
 	{
+		_ctx ::= ctx.in_parent(&p.Templates, &THIS.Templates);
 		FOR(m ::= p.Members.start())
-			Members += <<<[Stage]Member>>>(m!, ctx);
+			Members += <<<[Stage]Member>>>(m!, _ctx);
 	}
 }
 

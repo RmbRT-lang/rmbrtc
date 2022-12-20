@@ -10,7 +10,7 @@ INCLUDE "statement.rl"
 ) VOID
 {
 	p.expect(:parentheseOpen);
-	out.Arguments := help::parse_args(p, allow_multiple_args, allow_no_args);
+	out.Args := help::parse_args(p, allow_multiple_args, allow_no_args);
 	p.expect(:parentheseClose);
 	out.IsCoroutine := p.consume(:at);
 	out.Return := type::parse_x(p);
@@ -39,7 +39,7 @@ INCLUDE "statement.rl"
 			&&arguments, isCoroutine, :!(&&return));
 	
 	ret: ast::[Config]UnresolvedSig (BARE);
-	ret.Arguments := &&arguments;
+	ret.Args := &&arguments;
 	ret.IsCoroutine := isCoroutine;
 	p.expect(:questionMark);
 	type::parse_auto(p, ret.Return);
