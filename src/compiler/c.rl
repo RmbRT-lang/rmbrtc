@@ -18,6 +18,8 @@ INCLUDE "../resolver/stage.rl"
 	Scoper: rlc::scoper::Config - std::DynOpt;
 	Resolver: rlc::resolver::Config - std::DynOpt;
 
+	{cli: ::cli::Console \}: Parser(cli);
+
 	FINAL compile(
 		files: std::Str - std::Vec,
 		build: Build

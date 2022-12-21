@@ -16,9 +16,10 @@ INCLUDE "global.rl"
 		TYPE Context := :nothing;
 
 		Registry: ast::[Config]FileRegistry;
+		Cli: ::cli::Console \;
 		SourceFiles: src::File - std::Shared - std::Vec;
 
-		{}: Registry(&THIS);
+		{cli: ::cli::Console \}: Registry(&THIS), Cli := cli;
 
 		TYPE Symbol := Config-ast::Symbol;
 		TYPE String := src::String;
@@ -67,7 +68,7 @@ INCLUDE "global.rl"
 		) Config-ast::File - std::Dyn
 		{
 			s: src::File#-std::Shared := :<>( SourceFiles += :a(file) );
-			p: Parser(&&s);
+			p: Parser(&&s, Cli);
 			= :a(:transform(&p, THIS));
 		}
 	}

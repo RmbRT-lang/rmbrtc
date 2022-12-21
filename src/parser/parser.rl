@@ -10,7 +10,8 @@ INCLUDE 'std/tags'
 		std::NoMove;
 
 		{
-			file: src::File # - std::Shared
+			file: src::File # - std::Shared,
+			cli: ::cli::Console \
 		}:
 			Source(file),
 			Tokeniser(file),
@@ -18,7 +19,8 @@ INCLUDE 'std/tags'
 			Buffer(NOINIT),
 			BufferSize(0),
 			BufferIndex(0),
-			Progress(0)
+			Progress(0),
+			Cli := cli
 		{
 			FOR(i ::= 0; i < ##Buffer; i++) Buffer[i].{BARE};
 			IF(!Tokeniser.parse_next(&Buffer[0]))
@@ -177,6 +179,7 @@ INCLUDE 'std/tags'
 			}
 			= NULL;
 		}
+		Cli: ::cli::Console \;
 	PRIVATE:
 		Locals: ast::LocalPosition -std::Opt;
 		Tokeniser: tok::Tokeniser;

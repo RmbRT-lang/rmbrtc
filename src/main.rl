@@ -95,7 +95,7 @@ main(
 		= 1;
 	}
 
-	compiler: rlc::compiler::CCompiler;
+	compiler: rlc::compiler::CCompiler (&cli::main);
 	TRY
 	{
 		build: rlc::compiler::Build-std::Dyn (BARE);
