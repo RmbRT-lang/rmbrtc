@@ -25,6 +25,8 @@ INCLUDE 'std/tags'
 			FOR(i ::= 0; i < ##Buffer; i++) Buffer[i].{BARE};
 			IF(!Tokeniser.parse_next(&Buffer[0]))
 				RETURN;
+			LastLine := Buffer[0].Position.Line;
+			LineIndent := Buffer[0].Position.Column;
 			IF(Tokeniser.parse_next(&Buffer[1]))
 				BufferSize := 2;
 			ELSE
@@ -115,6 +117,12 @@ INCLUDE 'std/tags'
 			IF(!Tokeniser.parse_next(&Buffer[BufferIndex]))
 				--BufferSize;
 
+			IF(out.Position.Line != LastLine)
+			{
+				LineIndent := out.Position.Column;
+				LastLine := out.Position.Line;
+			}
+
 			BufferIndex := BufferIndex ^ 1;
 			++Progress;
 
@@ -128,7 +136,7 @@ INCLUDE 'std/tags'
 				?? Ctx->Name
 				: "global scope";
 
-		# progress() UINT := Progress;
+		# progress() UINT INLINE := Progress;
 
 		# position() src::Position := BufferSize
 			?? Buffer[BufferIndex].Position
@@ -138,6 +146,8 @@ INCLUDE 'std/tags'
 			?? Buffer[BufferIndex].Content.Start
 			: ##Source->Contents;
 		# prev_offset() UM := PrevOffset!;
+
+		# indent() UINT INLINE := LineIndent;
 
 		Ctx: Trace *;
 		Name: std::Str;
@@ -181,6 +191,8 @@ INCLUDE 'std/tags'
 		}
 		Cli: ::cli::Console \;
 	PRIVATE:
+		LastLine: UINT; /// Last read line number.
+		LineIndent: UINT; /// Last read token's line's first token's column.
 		Locals: ast::LocalPosition -std::Opt;
 		Tokeniser: tok::Tokeniser;
 		Buffer: tok::Token[2]; // Lookahead buffer.
