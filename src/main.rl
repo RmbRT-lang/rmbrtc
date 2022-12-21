@@ -16,7 +16,7 @@ main(
 	argv: CHAR **) INT
 {
 	out ::= <<<std::io::OStream>>>(&std::io::out);
-	cli::main := :plain(&out);
+	cli::main := :configure_from_env(&out);
 
 	IF(argc < 2)
 	{

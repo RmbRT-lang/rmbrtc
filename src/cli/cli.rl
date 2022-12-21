@@ -38,6 +38,9 @@ INCLUDE 'std/err/unimplemented'
 	}
 
 
+	::detail::unix EXTERN getenv(CHAR#*) CHAR#*;
+	::detail getenv(name: CHAR#\) std::str::CV := unix::getenv(name);
+
 	Console
 	{
 		WithColours: BOOL;
@@ -50,6 +53,11 @@ INCLUDE 'std/err/unimplemented'
 		:plain{o: std::io::OStream \}:
 			Out(o),
 			Context := :normal;
+
+		:configure_from_env{o: std::io::OStream \}:
+			Out := o,
+			Context := :normal,
+			WithColours := detail::getenv("COLOURS") == "ON";
 
 		PRIVATE context(ctx: cli::Context) VOID
 		{
