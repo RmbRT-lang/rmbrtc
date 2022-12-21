@@ -38,9 +38,6 @@ INCLUDE "../resolver/stage.rl"
 		Scoper := :a(&Parser, build.IncludePaths!);
 		Scoper!.transform();
 
-		std::io::write(&std::io::out,
-			:dec(##Scoper!.Registry), " files recursively scoped\n");
-
 		IF(build.Type == :createAST)
 			RETURN;
 
