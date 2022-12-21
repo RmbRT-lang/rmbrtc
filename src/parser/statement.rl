@@ -35,8 +35,10 @@ INCLUDE "varorexpression.rl"
 	) BOOL
 	{
 		v: T (BARE);
+		pos ::= p.position();
 		IF(parse_fn(p, v))
 		{
+			v.Position := pos;
 			ret := :dup(&&v);
 			= TRUE;
 		}
@@ -132,14 +134,29 @@ INCLUDE "varorexpression.rl"
 		= TRUE;
 	}
 
+	warn_indentation_mismatch(
+		p: Parser &,
+		open: src::Position, openName: CHAR#\,
+		close: src::Position, closeName: CHAR#\,
+		hint: CHAR#*
+	) VOID
+	{
+		p.Cli->warn(:stream(close), ": warning: ");
+		IF(hint)
+			p.Cli->info(hint, "; ");
+		p.Cli->warn(closeName, " indentation mismatches ", openName);
+		p.Cli->info("\n", :stream(open), ": paired here.\n");
+	}
 
 	parse_block(
 		p: Parser&,
 		out: ast::[Config]BlockStatement &
 	) BOOL
 	{
-		IF(!p.consume(:braceOpen))
+		IF:!(open ::= p.consume(:braceOpen))
 			= FALSE;
+
+		openIndent ::= p.indent();
 
 		_ ::= p.track_locals();
 
@@ -149,25 +166,50 @@ INCLUDE "varorexpression.rl"
 			= TRUE;
 		}
 
-		WHILE(!p.consume(:braceClose))
+		lastStart: src::Position - std::Opt;
+		warned ::= FALSE;
+		close: tok::Token -std::Opt;
+		WHILE(!(close := p.consume(:braceClose)))
 		{
 			IF(stmt ::= parser::statement::parse(p))
+			{
+				IF(!warned && lastStart
+				&& lastStart!.Line != stmt!.Position.Line
+				&& lastStart!.Column != stmt!.Position.Column)
+				{
+					warned := TRUE;
+					warn_indentation_mismatch(p,
+						lastStart!, "previous",
+						stmt!.Position, "current",
+						"missing '}'?");
+				}
+				lastStart := :a(stmt!.Position);
+
 				out.Statements += :!(&&stmt);
+			}
 			ELSE
 				p.fail("expected statement or '}'");
 		}
 
+		IF(!warned && p.indent() != openIndent)
+		{
+			warn_indentation_mismatch(p,
+				open!.Position, "{", close!.Position, "}",
+				p.indent() < openIndent ?? "missing '}'?" : NULL);
+		}
+
 		= TRUE;
 	}
-
 
 	parse_if(
 		p: Parser &,
 		out: ast::[Config]IfStatement &
 	) BOOL
 	{
-		IF(!p.consume(:if))
+		IF:!(ifTok ::= p.consume(:if))
 			= FALSE;
+
+		ifIndent ::= p.indent();
 
 		t: Trace(&p, "if statement");
 		out.RevealsVariable := p.consume(:colon);
@@ -199,8 +241,18 @@ INCLUDE "varorexpression.rl"
 
 		out.Then := parser::statement::parse_body_x(p);
 
-		IF(p.consume(:else))
+		IF(elseTok ::= p.consume(:else))
+		{
+			elseIndent ::= p.indent();
 			out.Else := parser::statement::parse_body_x(p);
+
+			/// Check for indentation mismatch:
+			IF(ifIndent != elseIndent)
+				warn_indentation_mismatch(p,
+					ifTok!.Position, "IF",
+					elseTok!.Position, "ELSE",
+					"missing braces around inner if?");
+		}
 
 		= TRUE;
 	}
@@ -263,9 +315,10 @@ INCLUDE "varorexpression.rl"
 			out.Catches += &&catch;
 
 		IF(p.consume(:finally))
+		{
 			IF(!(out.Finally := parser::statement::parse_body(p)))
 				p.fail("expected statement");
-		ELSE
+		} ELSE
 			out.Finally := NULL;
 
 		= TRUE;
