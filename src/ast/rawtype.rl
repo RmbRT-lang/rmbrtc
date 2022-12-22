@@ -7,7 +7,10 @@ INCLUDE "../src/file.rl"
 INCLUDE 'std/memory'
 INCLUDE 'std/vector'
 
-::rlc::ast [Stage:TYPE] Rawtype VIRTUAL -> [Stage]ScopeItem, [Stage]ScopeBase
+::rlc::ast [Stage:TYPE] Rawtype VIRTUAL ->
+	[Stage]ScopeItem,
+	[Stage]ScopeBase,
+	[Stage]CoreType
 {
 	Size: [Stage]Expression-std::Dyn;
 	Alignment: [Stage]Expression-std::DynOpt;
@@ -18,7 +21,7 @@ INCLUDE 'std/vector'
 	:transform{
 		p: [Stage::Prev+]Rawtype #&,
 		ctx: Stage::Context+ #&
-	} -> (:transform, p, ctx), (:childOf, ctx.Parent):
+	} -> (:transform, p, ctx), (:childOf, ctx.Parent), ():
 		Size := :make(p.Size!, ctx),
 		Alignment := :make_if(p.Alignment, p.Alignment.ok(), ctx),
 		Functions := :transform(p.Functions, ctx.in_parent(&p, &THIS)),

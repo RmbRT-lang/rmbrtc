@@ -9,14 +9,17 @@ INCLUDE "member.rl"
 INCLUDE 'std/vector'
 INCLUDE 'std/memory'
 
-::rlc::ast [Stage:TYPE] Mask VIRTUAL -> [Stage]ScopeItem, [Stage]Templateable
+::rlc::ast [Stage:TYPE] Mask VIRTUAL ->
+	[Stage]ScopeItem,
+	[Stage]Templateable,
+	[Stage]CoreType
 {
 	Members: [Stage]Member - std::DynVec;
 
 	:transform{
 		p: [Stage::Prev+]Mask #&,
 		ctx: Stage::Context+ #&
-	} -> (:transform, p, ctx), (:transform, p, ctx):
+	} -> (:transform, p, ctx), (:transform, p, ctx), ():
 		Members := :reserve(##p.Members)
 	{
 		_ctx ::= ctx.in_parent(&p.Templates, &THIS.Templates);

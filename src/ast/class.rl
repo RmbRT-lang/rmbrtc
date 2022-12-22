@@ -2,6 +2,7 @@ INCLUDE "scopeitem.rl"
 INCLUDE "scope.rl"
 INCLUDE "codeobject.rl"
 INCLUDE "constructor.rl"
+INCLUDE "coretype.rl"
 INCLUDE "../src/file.rl"
 
 INCLUDE 'std/vector'
@@ -284,7 +285,8 @@ INCLUDE 'std/set'
 ::rlc::ast [Stage: TYPE] Class VIRTUAL ->
 	[Stage]ScopeItem,
 	[Stage]Templateable,
-	[Stage]ScopeBase
+	[Stage]ScopeBase,
+	[Stage]CoreType
 {
 	Virtual: BOOL;
 	Inheritances: class::[Stage]Inheritance - std::Vec;
@@ -297,7 +299,8 @@ INCLUDE 'std/set'
 	} ->
 		(:transform, p, ctx),
 		(:transform, p, ctx),
-		(:childOf, :a(&THIS.Templates))
+		(:childOf, :a(&THIS.Templates)),
+		()
 	:
 		Virtual := p.Virtual,
 		Inheritances := :reserve(##p.Inheritances),

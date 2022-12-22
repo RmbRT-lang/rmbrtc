@@ -3,7 +3,10 @@ INCLUDE "../src/file.rl"
 
 INCLUDE 'std/vector'
 
-::rlc::ast [Stage: TYPE] Enum VIRTUAL -> [Stage]ScopeItem, [Stage]ScopeBase
+::rlc::ast [Stage: TYPE] Enum VIRTUAL ->
+	[Stage]ScopeItem,
+	[Stage]ScopeBase,
+	[Stage]CoreType
 {
 	Constant -> [Stage]ScopeItem
 	{
@@ -22,7 +25,7 @@ INCLUDE 'std/vector'
 		e: [Stage::Prev+]Enum #&,
 		ctx: Stage::Context+ #&
 	} ->
-		(:transform, e, ctx), (:childOf, ctx.Parent):
+		(:transform, e, ctx), (:childOf, ctx.Parent), ():
 		Constants := :reserve(##e.Constants)
 	{
 		FOR(c ::= e.Constants.start())

@@ -2,14 +2,16 @@ INCLUDE "scopeitem.rl"
 INCLUDE "global.rl"
 INCLUDE "member.rl"
 
-::rlc::ast [Stage:TYPE] Union VIRTUAL -> [Stage]ScopeItem
+::rlc::ast [Stage:TYPE] Union VIRTUAL ->
+	[Stage]ScopeItem,
+	[Stage]CoreType
 {
 	Members: [Stage]Fields;
 
 	:transform{
 		p: [Stage::Prev+]Union #&,
 		ctx: Stage::Context+ #&
-	} -> (:transform, p, ctx):
+	} -> (:transform, p, ctx), ():
 		Members := :transform(p.Members, ctx);
 }
 
