@@ -35,8 +35,9 @@ INCLUDE "../ast/class.rl"
 
 		p.expect(:braceOpen);
 
+		fields: UM;
 		default ::= Visibility::public;
-		WHILE(member ::= member::parse_class_member(p, default))
+		WHILE(member ::= member::parse_class_member(p, default, fields))
 			out.Members += :!(&&member);
 
 		p.expect(:braceClose);

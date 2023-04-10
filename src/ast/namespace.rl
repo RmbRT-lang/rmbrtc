@@ -19,8 +19,9 @@ INCLUDE 'std/set'
 	} -> (:transform, p, ctx), (), (:childOf, ctx.Parent):
 		Entries := :transform_virtual(p.Entries, ctx.in_parent(&p, &THIS))
 	{
+		_ctx ::= ctx.in_parent(&p, &THIS);
 		FOR(t ::= p.Tests.start())
-			Tests += :transform(t!, ctx.in_parent(&p, &THIS));
+			Tests += :transform(t!, _ctx);
 	}
 
 

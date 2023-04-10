@@ -27,32 +27,37 @@ INCLUDE 'std/vector'
 	/)
 	[Stage:TYPE] InitialisedVariable VIRTUAL -> [Stage]Variable
 	{
-		Type: [Stage]MaybeAutoType - std::Dyn;
-		InitValues: Stage-Expression - std::DynVec;
+		Type: [Stage]MaybeAutoType -std::Dyn;
+		InitValues: Stage-Expression -std::DynVec -std::Opt;
+
+		# is_noinit() BOOL INLINE := !InitValues;
 
 		{
 			name: Stage::Name,
 			pos: src::Position #&,
 			type: [Stage]MaybeAutoType - std::Dyn,
-			initValues: [Stage]Expression - std::DynVec
+			initValues: [Stage]Expression -std::DynVec-std::Opt
 		} ->
 			(&&name, pos):
 			Type(&&type),
 			InitValues(&&initValues)
 		{
 			// Make sure that an auto variable has a single-value initialiser.
-			ASSERT(!<<Stage-ast::type::Auto *>>(Type) || ##InitValues == 1);
+			ASSERT(!<<Stage-ast::type::Auto *>>(Type) || InitValues && ##InitValues! == 1);
 		}
 
 		:transform{
 			p: [Stage::Prev+]InitialisedVariable #&,
 			ctx: Stage::Context+ #&
 		} -> (:transform, p, ctx) :
-			Type := :make(p.Type!, ctx),
-			InitValues := :reserve(##p.InitValues)
+			Type := :make(p.Type!, ctx)
 		{
-			FOR(v ::= p.InitValues.start())
-				InitValues += :make(v!, ctx);
+			IF(p.InitValues)
+			{
+				InitValues := :a(:reserve(##p.InitValues!));
+				FOR(v ::= p.InitValues!.start())
+					*InitValues += :make(v!, ctx);
+			}
 		}
 	}
 
@@ -86,7 +91,7 @@ INCLUDE 'std/vector'
 			name: Stage::Name,
 			position: src::Position #&,
 			type: [Stage]MaybeAutoType - std::Dyn,
-			initValues: [Stage]Expression - std::DynVec
+			initValues: [Stage]Expression - std::DynVec - std::Opt
 		} -> (), (&&name, position, &&type, &&initValues);
 
 		:transform{
@@ -144,21 +149,25 @@ INCLUDE 'std/vector'
 		[Stage]UninitialisedVariable,
 		[Stage]MaybeAnonMemberVar
 	{
+		Index: UM;
 		:transform{
 			p: [Stage::Prev+]MemberVariable #&,
 			ctx: Stage::Context+ #&
-		} -> (:transform, p, ctx), (:transform, p);
+		} -> (:transform, p, ctx), (:transform, p):
+			Index := p.Index;
 	}
 
 	[Stage:TYPE] AnonMemberVariable -> [Stage]MaybeAnonMemberVar
 	{
+		Index: UM;
 		Type: ast::[Stage]Type - std::Dyn;
 
 		:transform{
 			p: [Stage::Prev+]AnonMemberVariable #&,
 			ctx: Stage::Context+ #&
 		} -> (:transform, p):
-			Type := :make(p.Type!, ctx);
+			Type := :make(p.Type!, ctx),
+			Index := p.Index;
 	}
 
 	[Stage:TYPE] StaticMemberVariable ->
@@ -238,7 +247,7 @@ INCLUDE 'std/vector'
 			codePos: src::Position #&,
 			position: LocalPosition,
 			type: [Stage]MaybeAutoType-std::Dyn,
-			initValues: [Stage]Expression-std::DynVec
+			initValues: [Stage]Expression-std::DynVec-std::Opt
 		} -> (position), (&&name, codePos, &&type, &&initValues), ();
 
 		:transform{

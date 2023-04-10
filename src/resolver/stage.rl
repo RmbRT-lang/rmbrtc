@@ -24,7 +24,7 @@ INCLUDE "../ast/stage.rl"
 	TYPE CharLiteral := U4;
 	TYPE Inheritance := Symbol;
 
-	TYPE ControlLabelReference := ast::[Config]LabelledStatement \;
+	TYPE ControlLabelReference := U2;
 	TYPE ControlLabelName := Name;
 
 	{prev: scoper::Config #&}:
@@ -46,7 +46,7 @@ INCLUDE "../ast/stage.rl"
 		root: scoper::Config::RootScope #&,
 		out: RootScope &) VOID
 	{
-		ctx ::= <Context>(&out).in_parent(&root.ScopeItems, &out.ScopeItems);
+		ctx ::= <Context>(&out).in_parent(&root.ScopeItems, &out.ScopeItems).in_path(NULL);
 		FOR(item ::= root.ScopeItems.start())
 			out.ScopeItems += :make(item!.Value!, ctx);
 
@@ -82,15 +82,20 @@ INCLUDE "../ast/stage.rl"
 		{
 			v: ?& := symbol!.Value;
 			IF(!v.Item)
+			{
 				std::io::write(&std::io::out,
 					:stream(symbol!.Key->Position), ": error: '",
 					symbol!.Key->Name!++,
-					" is referenced but not in resolved AST.\n");
-			ASSERT(v.Item);
-			it ::= v.Item!;
-			v.References := ##v.WriteBack;
-			FOR(writeBack ::= v.WriteBack.start())
-				*writeBack! := it;
+					"' is referenced (", :dec(##v.WriteBack), ") but not in resolved AST.\n");
+				CONTINUE;
+			} ELSE
+			{
+				ASSERT(v.Item);
+				it ::= v.Item!;
+				v.References := ##v.WriteBack;
+				FOR(writeBack ::= v.WriteBack.start())
+					*writeBack! := it;
+			}
 			v.WriteBack := BARE;
 		}
 	}
@@ -149,14 +154,18 @@ INCLUDE "../ast/stage.rl"
 		pos: src::Position #&
 	) Config::ControlLabelReference - std::Opt
 	{
+		ref: Config::ControlLabelReference;
 		FOR(stmt ::= THIS.Stmt!; stmt; stmt := stmt->Parent)
+		{
 			IF(labelled ::= <<ast::[Config]LabelledStatement *>>(stmt))
 				IF(!p)
 				{
 					IF(<<ast::[Config]LoopStatement *>>(labelled))
-						= :a(labelled);
+						= :a(ref);
 				} ELSE IF(labelled->Label && labelled->Label->Name == *p)
-					= :a(labelled);
+					= :a(ref);
+			++ref;
+		}
 
 		IF(p)
 			THROW <rlc::ReasonError>(pos, "unknown control label name");

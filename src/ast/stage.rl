@@ -18,6 +18,7 @@ __
 	Parent: ast::[Stage]ScopeBase \ - std::Opt;
 	PrevStmt: [Stage::Prev+]Statement # \ - std::Opt;
 	Stmt: ast::[Stage]Statement \ - std::Opt;
+	ParentInst: ast::[Stage]Instantiable * - std::Opt;
 
 	{};
 	{BARE} ();
@@ -56,10 +57,15 @@ __
 	) Stage::Context+
 	{
 		ret ::= <Stage::Context+ &>(THIS);
-		ASSERT(prev);
 		ret.PrevStmt := :a(prev);
-		ASSERT(cur);
 		ret.Stmt := :a(cur);
+		= ret;
+	}
+
+	# in_path(instance: [Stage]Instantiable *) Stage::Context+
+	{
+		ret ::= <Stage::Context+ &>(THIS);
+		ret.ParentInst := :a(instance);
 		= ret;
 	}
 
@@ -89,7 +95,7 @@ __
 		{
 			this: ?& := <<[Stage]Function &>>(lhs);
 			from: ?& := <<[Stage::Prev+]Function #&>>(rhs);
-			_ctx ::= in_parent(&from, &this);
+			_ctx: ?& :=  <Stage::Context+#&>(THIS);
 
 			IF(from.Default)
 			{

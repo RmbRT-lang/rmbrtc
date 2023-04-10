@@ -78,6 +78,7 @@
 			= &(*e)!;
 		= NULL;
 	}
+	# ##THIS UM INLINE := ##Elements;
 
 	[Prev: TYPE]
 	insert_or_merge(

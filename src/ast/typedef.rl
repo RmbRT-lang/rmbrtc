@@ -7,14 +7,18 @@ INCLUDE "scope.rl"
 
 ::rlc::ast
 {
-	[Stage:TYPE] Typedef VIRTUAL -> [Stage]ScopeItem, [Stage]Templateable, PotentialScope
+	[Stage:TYPE] Typedef VIRTUAL ->
+		[Stage]ScopeItem,
+		[Stage]Templateable,
+		[Stage]Instantiable,
+		PotentialScope
 	{
 		Type: ast::[Stage]Type-std::Dyn;
 
 		:transform{
 			p: [Stage::Prev+]Typedef #&,
 			ctx: Stage::Context+ #&
-		} -> (:transform, p, ctx), (:transform, p, ctx), ():
+		} -> (:transform, p, ctx), (:transform, p, ctx), (:childOf, ctx.ParentInst!), ():
 			Type := :make(p.Type!, ctx.in_parent(&p.Templates, &THIS.Templates));
 	}
 

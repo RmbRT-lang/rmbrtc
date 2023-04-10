@@ -12,17 +12,18 @@ INCLUDE 'std/memory'
 ::rlc::ast [Stage:TYPE] Mask VIRTUAL ->
 	[Stage]ScopeItem,
 	[Stage]Templateable,
-	[Stage]CoreType
+	[Stage]CoreType,
+	[Stage]Instantiable
 {
 	Members: [Stage]Member - std::DynVec;
 
 	:transform{
 		p: [Stage::Prev+]Mask #&,
 		ctx: Stage::Context+ #&
-	} -> (:transform, p, ctx), (:transform, p, ctx), ():
+	} -> (:transform, p, ctx), (:transform, p, ctx), (), (:childOf, ctx.ParentInst!):
 		Members := :reserve(##p.Members)
 	{
-		_ctx ::= ctx.in_parent(&p.Templates, &THIS.Templates);
+		_ctx ::= ctx.in_parent(&p.Templates, &THIS.Templates).in_path(&THIS);
 		FOR(m ::= p.Members.start())
 			Members += <<<[Stage]Member>>>(m!, _ctx);
 	}

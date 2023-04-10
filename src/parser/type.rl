@@ -155,7 +155,8 @@ INCLUDE "symbolconstant.rl"
 			out.Modifiers += &&mod;
 
 		out.Reference := parse_reference_type(p);
-		out.Variadic := p.consume(:tripleDot);
+		IF(v ::= p.consume(:tripleDot))
+			out.Variadic := :a(v!.Position);
 	}
 
 	parse_auto_no_ref(p: Parser &, out: Auto &) VOID
@@ -277,7 +278,7 @@ INCLUDE "symbolconstant.rl"
 
 	parse_builtin(p: Parser&, out: BuiltinType &) BOOL
 	{
-		STATIC table: {tok::Type, ast::[Config]BuiltinType::Primitive}#[](
+		STATIC table: {tok::Type, ast::Primitive}#[](
 			(:bool, :bool),
 			(:char, :char), (:uchar, :uchar),
 			(:int, :int), (:uint,:uint),

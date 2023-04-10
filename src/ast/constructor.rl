@@ -10,9 +10,11 @@ INCLUDE 'std/memory'
 ::rlc::ast [Stage: TYPE] Constructor VIRTUAL ->
 	[Stage]Member,
 	[Stage]Templateable,
-	CodeObject
+	CodeObject,
+	[Stage]Instantiable
 {
-	Initialisers VIRTUAL {
+	Initialisers VIRTUAL
+	{
 		<<<
 			p: [Stage::Prev+]Constructor::Initialisers #&,
 			ctx: Stage::Context+ #&
@@ -46,17 +48,22 @@ INCLUDE 'std/memory'
 	MemberInit -> CodeObject
 	{
 		Member: Stage::MemberVariableReference;
-		Arguments: [Stage]Expression - std::DynVec;
+		Arguments: [Stage]Expression - std::DynVec-std::Opt;
+
+		# is_noinit() BOOL INLINE := !Arguments;
 
 		:transform{
 			p: [Stage::Prev+]Constructor::MemberInit+ #&,
 			ctx: Stage::Context+ #&
 		} -> (p):
-			Member := ctx.transform_member_variable_reference(p.Member),
-			Arguments := :reserve(##p.Arguments)
+			Member := ctx.transform_member_variable_reference(p.Member)
 		{
-			FOR(a ::= p.Arguments.start())
-				Arguments += <<<[Stage]Expression>>>(a!, ctx);
+			IF(p.Arguments)
+			{
+				Arguments := :a(:reserve(##p.Arguments!));
+				FOR(a ::= p.Arguments!.start())
+					*Arguments += <<<[Stage]Expression>>>(a!, ctx);
+			}
 		}
 	}
 
@@ -102,7 +109,12 @@ INCLUDE 'std/memory'
 	:transform{
 		p: [Stage::Prev+]Constructor #&,
 		ctx: Stage::Context+ #&
-	} -> (:transform, p), (:transform, p, ctx), (p):
+	} ->
+		(:transform, p),
+		(:transform, p, ctx),
+		(p),
+		(:childOf, ctx.ParentInst!)
+	:
 		Args := :transform(p.Args,
 			ctx.in_parent(&p.Templates, &THIS.Templates)),
 		Inits := :make_if(p.Inits, p.Inits.ok(),

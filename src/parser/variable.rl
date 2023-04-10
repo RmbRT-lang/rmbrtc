@@ -12,10 +12,11 @@ INCLUDE "stage.rl"
 		IF:!(nt ::= help::parse_initialised_name_and_type(p))
 			= NULL;
 
-		inits: ast::[Config]Expression - std::DynVec;
+		inits: ast::[Config]Expression - std::DynVec - std::Opt;
 
 		IF(<<ast::type::[Config]Auto *>>(nt->Type))
-			inits += help::parse_auto_init(p, nt->ExpectShortHandInit);
+			inits := :a(:vec(
+				help::parse_auto_init(p, nt->ExpectShortHandInit)));
 		ELSE
 			inits := help::parse_initialisers(p);
 
@@ -39,7 +40,8 @@ INCLUDE "stage.rl"
 
 	parse_member(
 		p: Parser&,
-		static: BOOL
+		static: BOOL,
+		member_var_index: UM *
 	) ast::[Config]MaybeAnonMemberVar - std::DynOpt
 	{
 		_: Trace(&p, "member variable");
@@ -48,10 +50,11 @@ INCLUDE "stage.rl"
 		{
 			IF(nt ::= help::parse_initialised_name_and_type(p))
 			{
-				inits: ast::[Config]Expression - std::DynVec;
+				inits: ast::[Config]Expression - std::DynVec - std::Opt;
 
 				IF(<<ast::type::[Config]Auto *>>(nt->Type))
-					inits += help::parse_auto_init(p, nt->ExpectShortHandInit);
+					inits := :a(:vec(
+						help::parse_auto_init(p, nt->ExpectShortHandInit)));
 				ELSE
 					inits := help::parse_initialisers(p);
 
@@ -66,6 +69,8 @@ INCLUDE "stage.rl"
 		}
 		ELSE
 		{
+			ASSERT(member_var_index != NULL);
+
 			IF(nt ::= help::parse_uninitialised_name_and_type(p))
 			{
 				p.expect(:semicolon);
@@ -73,6 +78,7 @@ INCLUDE "stage.rl"
 				v: ast::[Config]MemberVariable (BARE);
 				v.Name := nt->Name.Content;
 				v.Type := &&nt->Type;
+				v.Index := (*member_var_index)++;
 				= :dup(&&v);
 			} ELSE IF(help::is_optionally_named_variable_start(p))
 			{	// Anonymous member variable.
@@ -82,6 +88,8 @@ INCLUDE "stage.rl"
 
 				v: ast::[Config]AnonMemberVariable (BARE);
 				v.Type := :!(&&t);
+				v.Index := (*member_var_index)++;
+
 				= :dup(&&v);
 			} ELSE = NULL;
 		}
@@ -94,7 +102,10 @@ INCLUDE "stage.rl"
 		IF(nt ::= help::parse_uninitialised_name_and_type(p))
 		{
 			= :a.ast::[Config]CatchVariable(
-				&&nt->Name.Content, nt->Name.Position, p.add_local(), :<>(&&nt->Type));
+				&&nt->Name.Content,
+				nt->Name.Position,
+				p.add_local(),
+				:<>(&&nt->Type));
 		} ELSE IF(help::is_optionally_named_variable_start(p))
 		{	// Anonymous catch variable.
 			IF:!(t ::= type::parse(p))
@@ -113,17 +124,23 @@ INCLUDE "stage.rl"
 
 		_: Trace(&p, "local variable");
 
-		inits: ast::[Config]Expression - std::DynVec;
+		inits: ast::[Config]Expression - std::DynVec-std::Opt;
 
 		IF(<<ast::type::[Config]Auto *>>(nt->Type))
-			inits += help::parse_auto_init(p, nt->ExpectShortHandInit);
+			inits := :a(:vec(
+				help::parse_auto_init(p, nt->ExpectShortHandInit)));
 		ELSE
 			inits := help::parse_initialisers(p);
 
 		IF(expect_semicolon)
 			p.expect(:semicolon);
 
-		= :a(nt->Name.Content, nt->Name.Position, p.add_local(), &&nt->Type, &&inits);
+		= :a(
+			nt->Name.Content,
+			nt->Name.Position,
+			p.add_local(),
+			&&nt->Type,
+			&&inits);
 	}
 
 	parse_fn_arg(
@@ -218,7 +235,9 @@ INCLUDE "stage.rl"
 
 		{...};
 	}
-	::help parse_initialised_name_and_type(p: Parser &) NameAndInitType - std::Opt
+	::help parse_initialised_name_and_type(
+		p: Parser &
+	) NameAndInitType - std::Opt
 	{
 		IF(!is_named_variable_start(p, TRUE))
 			= NULL;
@@ -291,22 +310,33 @@ INCLUDE "stage.rl"
 		= :!(&&init);
 	}
 
-	::help parse_initialisers(p: Parser &) ast::[Config]Expression - std::DynVec
+	::help parse_initialisers(
+		p: Parser &
+	) ast::[Config]Expression - std::DynVec - std::Opt
 	{
-		inits: ast::[Config]Expression - std::DynVec;
+		inits: ast::[Config]Expression - std::DynVec - std::Opt;
 		IF(p.consume(:colonEqual))
-			inits += expression::parse_x(p);
+		{
+			IF(!p.consume(:noinit))
+				inits := :a(:vec(expression::parse_x(p)));
+		}
 		ELSE IF(p.consume(:parentheseOpen))
 		{
-			IF(!p.consume(:parentheseClose))
-			{
-				DO()
-					inits += expression::parse_x(p);
-					WHILE(p.consume(:comma))
+			IF(p.consume(:noinit))
 				p.expect(:parentheseClose);
+			ELSE
+			{
+				inits := :a;
+				IF(!p.consume(:parentheseClose))
+				{
+					DO()
+						*inits += expression::parse_x(p);
+						WHILE(p.consume(:comma))
+					p.expect(:parentheseClose);
+				}
 			}
-		}
-
+		} ELSE
+			inits := :a;
 		= &&inits;
 	}
 }

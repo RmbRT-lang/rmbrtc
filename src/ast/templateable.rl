@@ -22,6 +22,8 @@
 
 	Templates: TemplateScope;
 
+	# has_templates() BOOL INLINE := Templates.exists();
+
 	:childOf{parent: [Stage]ScopeBase \}: TemplateScope := :childOf(parent);
 
 	:transform{

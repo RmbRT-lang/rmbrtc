@@ -16,7 +16,8 @@ INCLUDE "templatedecl.rl"
 		p: Parser&,
 		default_visibility: Visibility &,
 		allow_variable: BOOL,
-		allow_abstract_fn: BOOL
+		allow_abstract_fn: BOOL,
+		member_var_index: UM &
 	) ast::[Config]Member-std::DynOpt
 	{
 		parse_visibility(p, default_visibility, TRUE);
@@ -36,8 +37,8 @@ INCLUDE "templatedecl.rl"
 			&& (ret := abstractable::parse(p)))
 		|| (ret := parse_constructor(p))
 		|| (attr == :static
-			?? <BOOL>(ret := variable::parse_member(p, TRUE))
-			: allow_variable && (ret := variable::parse_member(p, FALSE)))
+			?? <BOOL>(ret := variable::parse_member(p, TRUE, NULL))
+			: allow_variable && (ret := variable::parse_member(p, FALSE, &member_var_index)))
 		|| (attr == :none && parse_impl(p, ret, function::parse_factory))
 		|| parse_impl(p, ret, class::parse_member)
 		|| parse_impl(p, ret, rawtype::parse_member)
@@ -66,27 +67,33 @@ INCLUDE "templatedecl.rl"
 
 	parse_class_member(
 		p: Parser &,
-		default_visibility: Visibility &
+		default_visibility: Visibility &,
+		fields: UM&
 	) ast::[Config]Member-std::DynOpt
-		:= parse_generic(p, default_visibility, TRUE, TRUE);
+		:= parse_generic(p, default_visibility, TRUE, TRUE, fields);
 
 	parse_union_member(
 		p: Parser &,
-		default_visibility: Visibility &
+		default_visibility: Visibility &,
+		fields: UM&
 	) ast::[Config]Member - std::DynOpt
-		:= parse_generic(p, default_visibility, TRUE, FALSE);
+		:= parse_generic(p, default_visibility, TRUE, FALSE, fields);
 
 	parse_rawtype_member(
 		p: Parser &,
 		default_visibility: Visibility &
 	) ast::[Config]Member - std::DynOpt
-		:= parse_generic(p, default_visibility, FALSE, FALSE);
+	{
+		dummy: UM;
+		= parse_generic(p, default_visibility, FALSE, FALSE, dummy);
+	}
 
 	parse_mask_member(
 		p: Parser &,
-		default_visibility: Visibility &
+		default_visibility: Visibility &,
+		fields: UM&
 	) ast::[Config]Member-std::DynOpt
-		:= parse_generic(p, default_visibility, FALSE, FALSE);
+		:= parse_generic(p, default_visibility, FALSE, FALSE, fields);
 
 	[T:TYPE] parse_impl(
 		p: Parser &,

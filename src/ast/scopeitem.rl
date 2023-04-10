@@ -1,5 +1,6 @@
 INCLUDE "templatedecl.rl"
 INCLUDE "cache.rl"
+INCLUDE "instantiable.rl"
 INCLUDE "../error.rl"
 
 (// All identifier-addressable code entities. /)

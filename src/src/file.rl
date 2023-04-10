@@ -7,7 +7,7 @@ INCLUDE 'std/math/limit'
 	TYPE Index := U2;
 	TYPE Size := U2;
 	TYPE Line := U2;
-	TYPE Column := U1;
+	TYPE Column := U2;
 
 	(// String inside a source file. /)
 	String
@@ -76,6 +76,10 @@ INCLUDE 'std/math/limit'
 				Contents.append(:buf(buf!, read));
 			}
 		}
+
+		:fromString{name: std::Str, content: std::Str}:
+			Name := &&name,
+			Contents := &&content;
 
 		# content(str: String #&) std::[CHAR#]Buffer
 			:= Contents!.range((str.Start, str.Length));

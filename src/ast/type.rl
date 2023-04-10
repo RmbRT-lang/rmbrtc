@@ -148,7 +148,7 @@ INCLUDE "symbolconstant.rl"
 	{
 		Modifiers: type::[Stage]Modifier-std::Vec;
 		Reference: type::ReferenceType;
-		Variadic: BOOL;
+		Variadic: src::Position - std::Opt;
 		# |THIS ? INLINE := (Modifiers, Reference, Variadic);
 
 		{}: Reference(:none);
@@ -178,6 +178,8 @@ INCLUDE "symbolconstant.rl"
 				= :a.[Stage]Void(:transform(>>p, ctx));
 			[Stage::Prev+]Null:
 				= :a.[Stage]Null(:transform(>>p, ctx));
+			[Stage::Prev+]Bare:
+				= :a.[Stage]Bare(:transform(>>p, ctx));
 			[Stage::Prev+]SymbolConstantType:
 				= :a.[Stage]SymbolConstantType(:transform(>>p, ctx));
 			[Stage::Prev+]TupleType:
@@ -192,6 +194,24 @@ INCLUDE "symbolconstant.rl"
 				= :a.[Stage]ThisType(:transform(>>p, ctx));
 			}
 		}
+
+		# THIS <> (rhs: THIS#&) S1
+		{
+			SWITCH(s ::= TYPE(THIS) <> TYPE(rhs))
+			{
+			0: = cmp_type_impl(rhs);
+			-1, 1: = s;
+			}
+		}
+		PRIVATE # VIRTUAL cmp_type_impl(rhs: [Stage]TypeOrExpr #&) S1
+		{
+			c: {CHAR#\,CHAR#\};
+			c.(0) := "ast::Type comparison not implemented";
+			c.(1) := TYPE(THIS);
+			THROW c;
+		}
+		PRIVATE # FINAL cmp_typeorexpr_impl(rhs: [Stage]TypeOrExpr #&) S1
+			:= THIS <> >>rhs;
 	}
 
 	[Stage: TYPE] Signature -> [Stage]Type
@@ -226,6 +246,14 @@ INCLUDE "symbolconstant.rl"
 	{
 		:transform{
 			p: [Stage::Prev+]Null #&,
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx);
+	}
+
+	[Stage: TYPE] Bare -> [Stage]Type
+	{
+		:transform{
+			p: [Stage::Prev+]Bare #&,
 			ctx: Stage::Context+ #&
 		} -> (:transform, p, ctx);
 	}
@@ -281,22 +309,23 @@ INCLUDE "symbolconstant.rl"
 			NoDecay := p.NoDecay;
 	}
 
+	ENUM Primitive
+	{
+		bool,
+		char, uchar,
+		int, uint,
+		sm, um,
+
+		s1, u1,
+		s2, u2,
+		s4, u4,
+		s8, u8
+	}
 	[Stage: TYPE] BuiltinType -> [Stage]Type
 	{
-		ENUM Primitive
-		{
-			bool,
-			char, uchar,
-			int, uint,
-			sm, um,
+		Kind: ast::Primitive;
 
-			s1, u1,
-			s2, u2,
-			s4, u4,
-			s8, u8
-		}
-
-		Kind: Primitive;
+		:manual{kind: Primitive}: Kind := kind;
 
 		:transform{
 			p: [Stage::Prev+]BuiltinType #&,

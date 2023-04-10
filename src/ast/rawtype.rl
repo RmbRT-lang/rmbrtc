@@ -10,7 +10,8 @@ INCLUDE 'std/vector'
 ::rlc::ast [Stage:TYPE] Rawtype VIRTUAL ->
 	[Stage]ScopeItem,
 	[Stage]ScopeBase,
-	[Stage]CoreType
+	[Stage]CoreType,
+	[Stage]Instantiable
 {
 	Size: [Stage]Expression-std::Dyn;
 	Alignment: [Stage]Expression-std::DynOpt;
@@ -21,15 +22,15 @@ INCLUDE 'std/vector'
 	:transform{
 		p: [Stage::Prev+]Rawtype #&,
 		ctx: Stage::Context+ #&
-	} -> (:transform, p, ctx), (:childOf, ctx.Parent), ():
+	} -> (:transform, p, ctx), (:childOf, ctx.Parent), (), (:childOf, ctx.ParentInst!):
 		Size := :make(p.Size!, ctx),
 		Alignment := :make_if(p.Alignment, p.Alignment.ok(), ctx),
-		Functions := :transform(p.Functions, ctx.in_parent(&p, &THIS)),
-		Ctors := :transform(p.Ctors, ctx.in_parent(&p, &THIS)),
-		Statics := :transform_virtual(p.Statics, ctx.in_parent(&p, &THIS))
+		Functions := :transform(p.Functions, ctx.in_parent(&p, &THIS).in_path(&THIS)),
+		Ctors := :transform(p.Ctors, ctx.in_parent(&p, &THIS).in_path(&THIS)),
+		Statics := :transform_virtual(p.Statics, ctx.in_parent(&p, &THIS).in_path(&THIS))
 	{
 		FOR(it ::= p.Statics.start())
-			Statics += <<<[Stage]Member>>>(it!.Value!, ctx.in_parent(&p, &THIS));
+			Statics += :make(it!.Value!, ctx.in_parent(&p, &THIS).in_path(&THIS));
 	}
 
 	add_member(member: ast::[Stage]Member - std::Dyn) VOID

@@ -20,14 +20,14 @@ INCLUDE "src/file.rl"
 
 ::rlc ReasonError -> Error
 {
-	Message: CHAR #\;
+	Message: std::str::CV;
 
 	{
 		position: src::Position,
-		message: CHAR#\
+		message: std::str::CV
 	} -> (position):
 		Message := message;
 
 	# FINAL message(o: std::io::OStream &) VOID
-		:= std::io::write(o, Message);
+		:= std::io::write(o, Message!++);
 }

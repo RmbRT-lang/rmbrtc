@@ -102,16 +102,24 @@ INCLUDE "stage.rl"
 				(init.Member, init.Position) := (tok.Content, tok.Position);
 
 				IF(p.consume(:colonEqual))
-					init.Arguments += expression::parse_x(p);
-				ELSE
+				{
+					IF(!p.consume(:noinit))
+						init.Arguments := :a(:vec(expression::parse_x(p)));
+				} ELSE
 				{
 					p.expect(:parentheseOpen);
-					IF(!p.consume(:parentheseClose))
-					{
-						DO()
-							init.Arguments += expression::parse_x(p);
-							WHILE(p.consume(:comma))
+					IF(p.consume(:noinit))
 						p.expect(:parentheseClose);
+					ELSE
+					{
+						init.Arguments := :a();
+						IF(!p.consume(:parentheseClose))
+						{
+							DO()
+								*init.Arguments += expression::parse_x(p);
+								WHILE(p.consume(:comma))
+							p.expect(:parentheseClose);
+						}
 					}
 				}
 				inits.MemberInits += &&init;

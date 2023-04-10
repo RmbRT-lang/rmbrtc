@@ -23,6 +23,7 @@ INCLUDE 'std/optional'
 		Debug: BOOL;
 		IncludePaths: std::Str-std::Vec;
 		Verbose: BOOL;
+		EntryPoints: std::Str - std::Vec;
 
 		(//
 			Temporary option, do not manually access unless to enable.

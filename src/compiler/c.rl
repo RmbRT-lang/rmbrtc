@@ -11,14 +11,19 @@ INCLUDE "../parser/type.rl"
 INCLUDE "../parser/stage.rl"
 INCLUDE "../scoper/stage.rl"
 INCLUDE "../resolver/stage.rl"
+INCLUDE "../instantiator/stage.rl"
+INCLUDE "../instantiator/rootscope.rl"
+INCLUDE "../c/cprinter.rl"
 
 ::rlc::compiler CCompiler -> Compiler
 {
 	Parser: rlc::parser::Config;
 	Scoper: rlc::scoper::Config - std::DynOpt;
 	Resolver: rlc::resolver::Config - std::DynOpt;
+	Instantiator: rlc::instantiator::Config - std::DynOpt;
+	Cli: cli::Console \;
 
-	{cli: ::cli::Console \}: Parser(cli);
+	{cli: ::cli::Console \}: Parser(cli), Cli := cli;
 
 	FINAL compile(
 		files: std::Str - std::Vec,
@@ -44,64 +49,36 @@ INCLUDE "../resolver/stage.rl"
 		Resolver := :a(Scoper!);
 		Resolver!.transform();
 
-		IF(build.Type == :verifySimple)
-			RETURN;
-
-		// Next step: Instantiator stage; use resolver::Symbol.
-
-(//
-		// Resolve all references.
-		resolved: resolver::Cache;
-		FOR(f ::= scoped.start())
-			FOR(group ::= f!->Scope->Items.start())
-				FOR(it ::= group!->Items.start())
-					resolved += it!;
-
-		instances: instantiator::Cache(&resolved);
+		Instantiator := :a(Resolver!, Cli, :a());
+		/// Seed instantiator with items to process.
 		SWITCH(build.Type)
 		{
-		DEFAULT: THROW <std::err::Unimplemented>(<CHAR#\>(build.Type));
 		:verifySimple: RETURN;
 		:executable:
 		{
-			mainFn: scoper::ScopeItem * := NULL;
-			mainName ::= std::str::buf("main");
-			FOR ["main"] (f ::= scoped.start())
-				IF(group ::= f!->Scope->find(mainName))
-					TYPE SWITCH(group->Items[0]!)
-					{
-					scoper::Function:
-						{
-							ASSERT(1 == ##group->Items);
-							IF(mainFn && mainFn != group->Items!.front()!)
-								THROW <scoper::ItemMsgError>(
-									group->Items!.front()!,
-									Registry,
-									"excess ::main function found.");
-							mainFn := group->Items!.front()!;
-						}
-					}
-			IF(!mainFn)
-				THROW "no ::main function found.";
-
-			instances.insert(NULL, resolved.get(mainFn));
+			entry ::= build.EntryPoints.start();
+			Instantiator!.generate_entry_point_by_name(entry ?? entry! : "main");
 		}
 		:library,
 		:sharedLibrary:
 		{
-			FOR(f ::= scoped.start())
-				instances.insert_all_untemplated(f!->Scope, resolved);
+			IF(entry ::= build.EntryPoints.start())
+				FOR(entry) Instantiator!.generate_entry_point_by_name(entry!);
+			ELSE
+				Instantiator!.generate_everything();
 		}
 		:test:
 		{
-			THROW <std::err::Unimplemented>("test build");
+			Instantiator!.generate_tests();
 		}
 		:verifyFull:
 		{
-			THROW <std::err::Unimplemented>("full verification");
+			Instantiator!.generate_everything();
 		}
 		}
-		/)
-		DIE "not implemented";
+
+		IF(!build.Output)
+			RETURN;
+		DIE "outputs not implemented";
 	}
 }

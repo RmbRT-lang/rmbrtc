@@ -220,12 +220,12 @@ INCLUDE 'std/set'
 		p: [Stage::Prev+]ClassMembers #&,
 		ctx: Stage::Context+ #&
 	} -> (:childOf, ctx.Parent):
-		Ctors := :transform(p.Ctors, ctx.in_parent(&p, &THIS)),
-		Statics := :transform_virtual(p.Statics, ctx.in_parent(&p, &THIS)),
 		Fields := :transform(p.Fields, ctx.in_parent(&p, &THIS)),
 		Functions := :transform(p.Functions, ctx.in_parent(&p, &THIS)),
+		Ctors := :transform(p.Ctors, ctx.in_parent(&p, &THIS)),
 		Destructor := :if(p.Destructor,
-			:transform(p.Destructor.ok(), ctx.in_parent(&p, &THIS)));
+			:transform(p.Destructor.ok(), ctx.in_parent(&p, &THIS))),
+		Statics := :transform_virtual(p.Statics, ctx.in_parent(&p, &THIS));
 
 	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
 	{
@@ -286,7 +286,8 @@ INCLUDE 'std/set'
 	[Stage]ScopeItem,
 	[Stage]Templateable,
 	[Stage]ScopeBase,
-	[Stage]CoreType
+	[Stage]CoreType,
+	[Stage]Instantiable
 {
 	Virtual: BOOL;
 	Inheritances: class::[Stage]Inheritance - std::Vec;
@@ -300,15 +301,16 @@ INCLUDE 'std/set'
 		(:transform, p, ctx),
 		(:transform, p, ctx),
 		(:childOf, :a(&THIS.Templates)),
-		()
+		(),
+		(:childOf, ctx.ParentInst!)
 	:
 		Virtual := p.Virtual,
 		Inheritances := :reserve(##p.Inheritances),
-		Members := :transform(p.Members, ctx.in_parent(&p, &THIS))
+		Members := :transform(p.Members, ctx.in_parent(&p, &THIS).in_path(&THIS))
 	{
+		_ctx ::= ctx.in_parent(&p.Templates, &THIS.Templates).in_path(&THIS);
 		FOR(i ::= p.Inheritances.start())
-			Inheritances += :transform(i!,
-				ctx.in_parent(&p.Templates, &THIS.Templates));
+			Inheritances += :transform(i!, _ctx);
 	}
 
 	#? scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *

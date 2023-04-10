@@ -108,7 +108,8 @@ INCLUDE 'std/unicode'
 		p: ast::[parser::Config]File #\
 	) VOID
 	{
-		ctx ::= <Context>(p, &THIS).in_parent(&DummyScope, &out.ScopeItems);
+		ctx ::= <Context>(p, &THIS).in_parent(
+			&DummyScope, &out.ScopeItems).in_path(NULL);
 		FOR(g ::= p->Globals->start())
 			IF(s ::= <<parser::Config-ast::ScopeItem #*>>(*g))
 				out.ScopeItems.insert_or_merge(s->Name, *s, ctx);
@@ -138,6 +139,8 @@ INCLUDE 'std/unicode'
 		Stage := s;
 
 	# visit_scope_item(_, _) VOID INLINE {}
+
+	# visit_expression_bottom_up(_, _) VOID INLINE {}
 
 	# transform_name(
 		p: Prev::Name+ #&

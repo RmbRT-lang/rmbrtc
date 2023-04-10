@@ -1,14 +1,17 @@
+
+::rlc::ast::detail::symbol_constant ENUM Type {
+	identifier,
+	less,
+	greater,
+	lessGreater,
+	exclamationMark,
+	questionMark,
+	lessMinus
+}
+
 ::rlc::ast [Stage:TYPE] SymbolConstant
 {
-	ENUM Type {
-		identifier,
-		less,
-		greater,
-		lessGreater,
-		exclamationMark,
-		questionMark,
-		lessMinus
-	}
+	TYPE Type := detail::symbol_constant::Type;
 
 	:identifier{i: src::String}: NameType(:identifier), Identifier(i);
 	:special{t: Type}: NameType(t) { ASSERT(is_special()); }

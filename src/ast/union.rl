@@ -4,15 +4,16 @@ INCLUDE "member.rl"
 
 ::rlc::ast [Stage:TYPE] Union VIRTUAL ->
 	[Stage]ScopeItem,
-	[Stage]CoreType
+	[Stage]CoreType,
+	[Stage]Instantiable
 {
 	Members: [Stage]Fields;
 
 	:transform{
 		p: [Stage::Prev+]Union #&,
 		ctx: Stage::Context+ #&
-	} -> (:transform, p, ctx), ():
-		Members := :transform(p.Members, ctx);
+	} -> (:transform, p, ctx), (), (:childOf, ctx.ParentInst!):
+		Members := :transform(p.Members, ctx.in_path(&THIS));
 }
 
 ::rlc::ast [Stage:TYPE] GlobalUnion -> [Stage]Global, [Stage]Union {

@@ -69,7 +69,8 @@ INCLUDE "statement.rl"
 /// An anonymous function object.
 ::rlc::ast [Stage:TYPE] Functoid VIRTUAL ->
 	[Stage]Templateable,
-	CodeObject
+	CodeObject,
+	[Stage]Instantiable
 {
 	Signature: [Stage]FnSignature - std::Dyn;
 	Body: [Stage]ExprOrStatement - std::DynOpt;
@@ -78,7 +79,7 @@ INCLUDE "statement.rl"
 	:transform{
 		p: [Stage::Prev+]Functoid #&,
 		ctx: Stage::Context+ #&
-	} -> (:transform, p, ctx), (p):
+	} -> (:transform, p, ctx), (p), ():
 		Signature := :make(p.Signature!, ctx.in_parent(&p.Templates, &THIS.Templates)),
 		Body := :make_if(p.Body, p.Body.ok(), ctx.in_parent(&p.Signature!, &Signature!)),
 		IsInline := p.IsInline;
@@ -124,7 +125,7 @@ INCLUDE "statement.rl"
 }
 
 (// A named function with potential callable variants. /)
-::rlc::ast [Stage:TYPE] Function VIRTUAL -> [Stage]MergeableScopeItem, [Stage]ScopeBase
+::rlc::ast [Stage:TYPE] Function VIRTUAL -> [Stage]MergeableScopeItem
 {
 	Default: [Stage]DefaultVariant-std::Shared;
 
@@ -135,16 +136,15 @@ INCLUDE "statement.rl"
 	:transform {
 		p: [Stage::Prev+]Function #&,
 		ctx: Stage::Context+ #&
-	} -> (:transform, p, ctx), (:childOf, ctx.Parent)
+	} -> (:transform, p, ctx)
 	{
 		IF(p.Default)
-			Default := :a(:transform(p.Default!, ctx.in_parent(&p, &THIS)));
+			Default := :a(:transform(p.Default!, ctx));
 		FOR(var ::= p.SpecialVariants.start())
-			SpecialVariants.insert(var!.Key, :a(:transform(var!.Value!, ctx.in_parent(&p, &THIS))));
+			SpecialVariants.insert(var!.Key, :a(:transform(var!.Value!, ctx)));
 		FOR(var ::= p.Variants.start())
 			Variants.insert(
-				ctx.transform_name(var!.Key),
-				:a(:transform(var!.Value!, ctx.in_parent(&p, &THIS))));
+				ctx.transform_name(var!.Key), :a(:transform(var!.Value!, ctx)));
 	}
 
 	# THIS<>(rhs: THIS #&) S1 := THIS.Name <> rhs.Name;
@@ -158,9 +158,6 @@ INCLUDE "statement.rl"
 		ELSE
 			<[Stage]TemplateDecl &>(Variants.start()->Value->Templates) := &&tpl;
 	}
-
-	PRIVATE #? FINAL scope_item(Stage::Name+ #&) [Stage]ScopeItem #? * := NULL;
-	PRIVATE #? FINAL local(Stage::Name+ #&, LocalPosition) [Stage]ScopeItem #? * := NULL;
 
 	PRIVATE FINAL merge_impl(rhs: [Stage]MergeableScopeItem &&) VOID
 	{

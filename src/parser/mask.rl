@@ -15,8 +15,9 @@ INCLUDE "stage.rl"
 		out.Name := p.expect(:identifier).Content;
 		p.expect(:braceOpen);
 
+		fields: UM;
 		DO(default_visibility: Visibility := Visibility::public)
-			IF(member ::= parser::member::parse_mask_member(p, default_visibility))
+			IF(member ::= parser::member::parse_mask_member(p, default_visibility, fields))
 				out.Members += :!(&&member);
 			ELSE
 				p.fail("expected member");

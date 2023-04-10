@@ -72,7 +72,6 @@ INCLUDE "symbolconstant.rl"
 		|| detail::parse_impl(p, ret, parse_this)
 		|| detail::parse_impl(p, ret, parse_null)
 		|| detail::parse_impl(p, ret, parse_bare)
-		|| detail::parse_impl(p, ret, parse_noinit)
 		|| detail::parse_impl(p, ret, parse_cast)
 		|| detail::parse_impl(p, ret, parse_sizeof)
 		|| detail::parse_impl(p, ret, parse_typeof))
@@ -155,9 +154,6 @@ INCLUDE "symbolconstant.rl"
 
 	parse_bare(p: Parser &, out: ast::[Config]BareExpression &) BOOL
 		:= p.consume(:bare);
-
-	parse_noinit(p: Parser &, out: ast::[Config]NoinitExpression &) BOOL
-		:= p.consume(:noinit);
 
 	parse_cast(p: Parser&, out: ast::[Config]CastExpression &) BOOL
 	{

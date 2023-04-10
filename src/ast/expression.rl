@@ -111,8 +111,6 @@ INCLUDE 'std/vector'
 				= :a.[Stage]NullExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]BareExpression:
 				= :a.[Stage]BareExpression(:transform(>>p!, ctx));
-			[Stage::Prev+]NoinitExpression:
-				= :a.[Stage]NoinitExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]CastExpression:
 				= :a.[Stage]CastExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]SizeofExpression:
@@ -122,6 +120,11 @@ INCLUDE 'std/vector'
 			}
 
 			DIE;
+		}
+
+		PRIVATE # FINAL cmp_typeorexpr_impl(rhs: [Stage]TypeOrExpr#&) S1
+		{
+			DIE "attempted to compare two expressions!";
 		}
 	}
 
@@ -298,15 +301,6 @@ INCLUDE 'std/vector'
 	{
 		:transform{
 			p: [Stage::Prev+]BareExpression #&,
-			ctx: Stage::Context+ #&
-		} -> (:transform, p, ctx);
-	}
-
-	/// `BARE` expression.
-	[Stage: TYPE] NoinitExpression -> [Stage]Expression
-	{
-		:transform{
-			p: [Stage::Prev+]NoinitExpression #&,
 			ctx: Stage::Context+ #&
 		} -> (:transform, p, ctx);
 	}

@@ -34,7 +34,7 @@ INCLUDE 'std/io/streamutil'
 
 		IF(tokenCount)
 		{
-			// TODO: bug prevents copy := operator to be used.
+			//! bug prevents copy := operator to be used.
 			Tokens[0].{tokens[tokenIndex]};
 			TokenContent[0] := file->content(Tokens[0].Content)++;
 		}

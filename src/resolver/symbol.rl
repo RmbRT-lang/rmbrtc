@@ -98,13 +98,13 @@ INCLUDE 'std/io/streamutil'
 		{
 			IF:!(item_as_scope ::= <<ast::[scoper::Config]ScopeBase #*>>(item))
 				IF(<<ast::PotentialScope #*>>(item))
-					= :partially_resolved(item, reference, child.i(), &&child_templates, ctx);
+					= :partially_resolved(item, reference, child(), &&child_templates, ctx);
 				ELSE THROW <NotResolved>(:child(symbolScope, *item, child!,
 					"parent cannot have children"));
 
 
 			IF:!(next_child ::= item_as_scope->scope_item(child!.Name))
-				THROW <NotResolved>(:child(symbolScope, *item, child!, "no such child"));
+				THROW <NotResolved>(:child(item_as_scope, *item, child!, "no such child"));
 
 			symbolScope := item_as_scope;
 			item := next_child;
@@ -175,7 +175,7 @@ INCLUDE 'std/io/streamutil'
 	# OVERRIDE message(
 		o: std::io::OStream &) VOID
 	{
-		std::io::write(o, "Resolving ", Name!++, " in ");
+		std::io::write(o, "No ", Name!++, " in ");
 		
 		IF(Scope->is_root())
 			std::io::write(o, "global scope");
@@ -193,8 +193,7 @@ INCLUDE 'std/io/streamutil'
 				}
 				FOR(parent->Parent; parent := parent->Parent!)
 		}
-		
-		std::io::write(o, " failed");
+
 		IF(Reason)
 			std::io::write(o, ": ", Reason);
 		IF(TemplateArg)

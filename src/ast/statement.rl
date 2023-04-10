@@ -103,6 +103,7 @@ INCLUDE 'std/memory'
 			ctx: Stage::Context+ #&
 		} -> (:transform, p, ctx);
 	}
+
 	[Stage: TYPE] SleepStatement -> [Stage]Statement
 	{
 		Duration: [Stage]Expression - std::Dyn;
@@ -223,7 +224,6 @@ INCLUDE 'std/memory'
 		}
 
 		# is_void() BOOL INLINE := !Expression;
-
 	}
 
 	[Stage: TYPE] TryStatement -> [Stage]Statement

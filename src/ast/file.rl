@@ -7,7 +7,7 @@ INCLUDE "global.rl"
 	/// The file's global scope.
 	Globals: Config::RootScope+ - std::Shared;
 
-	Source: src::File # - std::Shared #;
+	Source: src::File # - std::Shared;
 
 	# name() std::str::CV := Source->Name!;
 
