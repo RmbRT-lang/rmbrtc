@@ -104,7 +104,7 @@ INCLUDE 'std/io/streamutil'
 
 
 			IF:!(next_child ::= item_as_scope->scope_item(child!.Name))
-				THROW <NotResolved>(:child(item_as_scope, *item, child!, "no such child"));
+				THROW <NotResolved>(:child(symbolScope, *item, child!, "no such child"));
 
 			symbolScope := item_as_scope;
 			item := next_child;
@@ -177,7 +177,7 @@ INCLUDE 'std/io/streamutil'
 	{
 		std::io::write(o, "No ", Name!++, " in ");
 		
-		IF(Scope->is_root())
+		IF(Scope->is_root() && !ParentName)
 			std::io::write(o, "global scope");
 		ELSE
 		{
