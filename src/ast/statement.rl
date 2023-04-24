@@ -12,6 +12,8 @@ INCLUDE 'std/memory'
 	{
 		Parent: THIS *;
 
+		{BARE}: Parent := NULL;
+
 		:transform{
 			p: [Stage::Prev+]Statement #&,
 			ctx: Stage::Context+ #&

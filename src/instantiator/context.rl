@@ -68,11 +68,11 @@ INCLUDE "instance.rl"
 {
 	:childOf{
 		parent: Context #\,
-		stmt: ast::[Config]Statement #\
+		stmt: ast::[Config]Statement \
 	} -> (:childOf, parent):
 		Statement := stmt;
 
-	Statement: ast::[Config]Statement #\;
+	Statement: ast::[Config]Statement \;
 }
 
 /// The current expression. May or may not be inside a function (such as in global scope).

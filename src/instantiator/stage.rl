@@ -16,12 +16,15 @@ INCLUDE "symbol.rl"
 	TYPE StringLiteral := Prev::StringLiteral+;
 
 	TYPE ControlLabelName := :nothing;
+	TYPE ControlLabelReference := ast::[THIS]LabelledStatement #\;
 
 	MemberReference
 	{
 		Type: InstanceType -std::Dyn;
 		Member: ast::[Prev]Member #\;
 		Templates: ast::[Config]TemplateArg-std::Vec;
+
+		:field{id: InstanceID #\, index: UM} { DIE "TODO"; }
 	}
 
 	{
