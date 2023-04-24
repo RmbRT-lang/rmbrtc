@@ -112,8 +112,9 @@ INCLUDE "number.rl"
 	}
 }
 
+/// evaluate type and also do overload resolution etc.
 ::rlc::instantiator::expression evaluate_type(
-	expr: ast::[Config]Expression #&
+	expr: ast::[Config]Expression &
 ) ast::[Config]Type - std::Dyn
 {
 	TYPE SWITCH(expr)
@@ -150,6 +151,36 @@ INCLUDE "number.rl"
 
 		= :dup(&&charArray);
 	}
-	//!ast::[Config]OperatorExpression:
+	ast::[Config]OperatorExpression:
+	{
+		op: ast::[Config]OperatorExpression #& := >>expr;
+		op0 ::= evaluate_type(op.Operands[0]);
+
+		IF(op0builtin ::= <<ast::[Config]BuiltinType #*>>(op0))
+		{
+			SWITCH(op.Op)
+			{
+			:logAnd, :logOr, :logNot:
+				= :a.ast::[Config]BuiltinType(:manual(:bool));
+			:neg, :pos, :valueOf:
+				= &&op0;
+			:addAssign, :subAssign, :mulAssign, :divAssign, :modAssign,
+			:bitAndAssign, :bitOrAssign, :bitXorAssign,
+			:shiftLeftAssign, :shiftRightAssign,
+			:rotateLeftAssign, :rotateRightAssign:
+				IF(op0builtin->Kind == :bool
+				|| op0builtin->Modifiers && (
+					op0builtin.Modifiers.end()!.IsArray
+					|| op0builtin.Modifiers.end()!.Indirection != :plain))
+					THROW <rlc::ReasonError>(op0!.Position, "arithmetic assignment to non-arithmetic type");
+			->
+			:assign: {
+				IF(op0!.ReferenceType == :none
+				|| op0!.Modifiers && op0!.Modifiers.end()!.Modifier.Qualifier == )
+					THROW <rlc::ReasonError>(op0!.Position, "assignment to constant");
+			}
+			}
+		}
+	}
 	}
 }
