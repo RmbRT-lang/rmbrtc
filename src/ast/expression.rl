@@ -50,9 +50,12 @@ INCLUDE 'std/value'
 	tuple,
 	variadicExpand,
 	constructor,
+	virtualConstructor,
 	pointerConstructor,
+	virtualPointerConstructor,
 	destructor,
-	pointerDestructor
+	pointerDestructor,
+	copyRtti
 }
 
 ::rlc::ast
@@ -124,6 +127,8 @@ INCLUDE 'std/value'
 				= :a.[Stage]SizeofExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]TypeofExpression:
 				= :a.[Stage]TypeofExpression(:transform(>>p!, ctx));
+			[Stage::Prev+]CopyRttiExpression:
+				= :a.[Stage]CopyRttiExpression(:transform(>>p!, ctx));
 			}
 
 			DIE;
@@ -361,5 +366,19 @@ INCLUDE 'std/value'
 		} -> (:transform, p, ctx):
 			Term := :make(p.Term!, ctx),
 			StaticExp := p.StaticExp;
+	}
+
+	/// `COPY_RTTI` expression.
+	[Stage: TYPE] CopyRttiExpression -> [Stage]Expression
+	{
+		Source: [Stage]Expression - std::Val;
+		Dest: [Stage]Expression - std::Val;
+
+		:transform{
+			p: [Stage::Prev+]CopyRttiExpression #&,
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx):
+			Source := :make(p.Source!, ctx),
+			Dest := :make(p.Dest!, ctx);
 	}
 }

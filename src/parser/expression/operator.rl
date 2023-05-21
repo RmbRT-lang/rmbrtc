@@ -124,10 +124,10 @@ INCLUDE "../symbol.rl"
 		(:tripleDot, :variadicExpand),
 		(:exclamationMark, :valueOf));
 
-	// (tok, opCtor, opTuple, opDtor)
-	STATIC memberAccess: {tok::Type, rlc::Operator, rlc::Operator, rlc::Operator}#[](
-		(:dot, :constructor, :tupleMemberReference, :destructor),
-		(:minusGreater, :pointerConstructor, :tupleMemberPointer, :pointerDestructor));
+	// (tok, opCtor, opVCtor, opTuple, opDtor)
+	STATIC memberAccess: {tok::Type, rlc::Operator, rlc::Operator, rlc::Operator, rlc::Operator}#[](
+		(:dot, :constructor, :virtualConstructor, :tupleMemberReference, :destructor),
+		(:minusGreater, :pointerConstructor, :virtualPointerConstructor, :tupleMemberPointer, :pointerDestructor));
 
 	FOR["outer"](;;)
 	{
@@ -216,7 +216,21 @@ INCLUDE "../symbol.rl"
 		{
 			IF(op ::= p.consume(memberAccess[i].(0)))
 			{
-				IF(tok ::= p.consume(:braceOpen))
+				IF(tok ::= p.consume(:virtual))
+				{
+					p.expect(:braceOpen);
+					lhs := ast::[Config]OperatorExpression::make_unary(
+						memberAccess[i].(2), tok->Position, :!(&&lhs));
+
+					IF:!(cls ::= p.consume(:braceClose))
+					{
+						DO(lhs_op ::= <ast::[Config]OperatorExpression \>(&*lhs))
+							lhs_op->Operands += expression::parse_x(p);
+							WHILE(p.consume(:comma))
+						cls := :a(p.expect(:braceClose));
+					}
+					lhs.mut_ok().Range := lhs->Range.span(cls->Content);
+				} ELSE IF(tok ::= p.consume(:braceOpen))
 				{
 					lhs := ast::[Config]OperatorExpression::make_unary(
 						memberAccess[i].(1), tok->Position, :!(&&lhs));
@@ -234,7 +248,7 @@ INCLUDE "../symbol.rl"
 				{
 					IF(index ::= expression::parse(p))
 						lhs := ast::[Config]OperatorExpression::make_binary(
-							memberAccess[i].(2),
+							memberAccess[i].(3),
 							tok->Position,
 							:!(&&lhs),
 							:!(&&index));
@@ -244,7 +258,7 @@ INCLUDE "../symbol.rl"
 				} ELSE IF(tok ::= p.consume(:tilde))
 				{
 					lhs := ast::[Config]OperatorExpression::make_unary(
-						memberAccess[i].(3), tok->Position, :!(&&lhs));
+						memberAccess[i].(4), tok->Position, :!(&&lhs));
 					lhs.mut_ok().Range := lhs->Range.span(tok->Content);
 				}
 				ELSE

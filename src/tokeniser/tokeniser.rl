@@ -284,6 +284,7 @@ INCLUDE 'std/unicode'
 				("CATCH", :catch),
 				("CHAR", :char),
 				("CONTINUE", :continue),
+				("COPY_RTTI", :copy_rtti),
 				("DEFAULT", :default),
 				("DESTRUCTOR", :destructor),
 				("DIE", :die),

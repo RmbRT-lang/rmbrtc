@@ -21,6 +21,7 @@ INCLUDE "../src/file.rl"
 		catch,
 		char,
 		continue,
+		copy_rtti,
 		default,
 		destructor,
 		die,

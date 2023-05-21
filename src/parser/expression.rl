@@ -75,7 +75,8 @@ INCLUDE "symbolconstant.rl"
 		|| detail::parse_impl(p, ret, parse_bare)
 		|| detail::parse_impl(p, ret, parse_cast)
 		|| detail::parse_impl(p, ret, parse_sizeof)
-		|| detail::parse_impl(p, ret, parse_typeof))
+		|| detail::parse_impl(p, ret, parse_typeof)
+		|| detail::parse_impl(p, ret, parse_copy_rtti))
 		{
 			ret.mut_ok().Range := (start, p.prev_offset() - start);
 			ret.mut_ok().Position := position;
@@ -250,5 +251,20 @@ INCLUDE "symbolconstant.rl"
 		p.expect(:parentheseClose);
 
 		RETURN TRUE;
+	}
+
+	parse_copy_rtti(p: Parser &, out: ast::[Config]CopyRttiExpression&) BOOL
+	{
+		IF(!p.consume(:copy_rtti))
+			= FALSE;
+
+		t: Trace(&p, "COPY_RTTI expression");
+		p.expect(:parentheseOpen);
+		out.Source := parse_x(p);
+		p.expect(:comma);
+		out.Dest := parse_x(p);
+		p.expect(:parentheseClose);
+
+		= TRUE;
 	}
 }
