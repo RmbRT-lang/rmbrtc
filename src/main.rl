@@ -98,7 +98,7 @@ main(
 	compiler: rlc::compiler::CCompiler (&cli::main);
 	TRY
 	{
-		build: rlc::compiler::Build-std::Dyn (BARE);
+		build: rlc::compiler::Build-std::Val (BARE);
 		IF(flag < argc)
 		{
 			str: std::Str := <std::str::CV>(argv[argc-1]);

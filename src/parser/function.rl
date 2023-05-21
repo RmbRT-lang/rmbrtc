@@ -20,7 +20,7 @@ INCLUDE "statement.rl"
 	p: Parser &,
 	allow_multiple_args: BOOL,
 	allow_no_args: BOOL
-) ast::[Config]FnSignature - std::Dyn
+) ast::[Config]FnSignature - std::Val
 {
 	p.expect(:parentheseOpen);
 	arguments ::= help::parse_args(p, allow_multiple_args, allow_no_args);
@@ -30,8 +30,8 @@ INCLUDE "statement.rl"
 
 ::rlc::parser::function::help parse_signature_after_args(
 	p: Parser &,
-	arguments: ast::[Config]TypeOrArgument - std::DynVec&&
-) ast::[Config]FnSignature - std::Dyn
+	arguments: ast::[Config]TypeOrArgument - std::ValVec&&
+) ast::[Config]FnSignature - std::Val
 {
 	isCoroutine ::= p.consume(:at);
 	IF(return ::= type::parse(p))
@@ -54,9 +54,9 @@ Can be called multiple times to append new arguments.
 	p: Parser &,
 	allow_multiple: BOOL,
 	allow_empty: BOOL
-) ast::[Config]TypeOrArgument-std::DynVec
+) ast::[Config]TypeOrArgument-std::ValVec
 {
-	ret: ast::[Config]TypeOrArgument-std::DynVec;
+	ret: ast::[Config]TypeOrArgument-std::ValVec;
 	readAny ::= FALSE;
 	DO()
 		IF(arg ::= parse_arg(p))
@@ -73,12 +73,12 @@ Can be called multiple times to append new arguments.
 
 ::rlc::parser::function::help parse_arg(
 	p: Parser &
-) ast::[Config]TypeOrArgument-std::DynOpt
+) ast::[Config]TypeOrArgument-std::ValOpt
 	:= variable::parse_fn_arg(p);
 
 ::rlc::parser::function::help parse_arg_x(
 	p: Parser &
-) ast::[Config]TypeOrArgument-std::Dyn
+) ast::[Config]TypeOrArgument-std::Val
 {
 	IF:!(arg ::= variable::parse_fn_arg(p))
 		p.fail("expected argument");
@@ -92,13 +92,13 @@ Can be called multiple times to append new arguments.
 {
 	IF(!allow_body)
 	{
-		IF(<<ast::[Config]UnresolvedSig *>>(out.Signature))
+		IF(<<ast::[Config]UnresolvedSig #*>>(out.Signature))
 			p.fail("expected explicit return type for bodyless function");
 		p.expect(:semicolon);
 		RETURN;
 	}
 
-	IF(<<ast::[Config]ResolvedSig *>>(out.Signature))
+	IF(<<ast::[Config]ResolvedSig #*>>(out.Signature))
 		IF(p.consume(:semicolon))
 			RETURN;
 
@@ -106,7 +106,7 @@ Can be called multiple times to append new arguments.
 
 	IF(p.consume(:colonEqual))
 	{
-		IF(!(out.Body := expression::parse(p)))
+		IF!(out.Body := :<>(expression::parse(p)))
 			p.fail("expected expression");
 		p.expect(:semicolon);
 	} ELSE
@@ -152,7 +152,7 @@ Can be called multiple times to append new arguments.
 ::rlc::parser::function::help parse_extern(
 	p: Parser &,
 	linkName: tok::Token - std::Vec - std::Opt
-) ast::[Config]ExternFunction - std::DynOpt
+) ast::[Config]ExternFunction - std::ValOpt
 {
 	IF(!p.match_ahead(:parentheseOpen)) = NULL;
 	IF:!(tok ::= p.consume(:identifier)) = NULL;
@@ -169,9 +169,9 @@ Can be called multiple times to append new arguments.
 
 ::rlc::parser::abstractable parse(
 	p: Parser &
-) ast::[Config]Abstractable - std::DynOpt
+) ast::[Config]Abstractable - std::ValOpt
 {
-	ret: ast::[Config]Abstractable - std::Dyn (BARE);
+	ret: ast::[Config]Abstractable - std::Val (BARE);
 
 	abs ::= parse_abstractness(p);
 
@@ -191,7 +191,7 @@ Can be called multiple times to append new arguments.
 ::rlc::parser::abstractable::detail [T:TYPE] parse_impl(
 	p: Parser &,
 	abs: rlc::Abstractness,
-	out: ast::[Config]Abstractable - std::Dyn &,
+	out: ast::[Config]Abstractable - std::Val &,
 	parse_fn: ((Parser &, T!&) BOOL)) BOOL
 {
 	v: T := BARE;
@@ -265,7 +265,7 @@ Can be called multiple times to append new arguments.
 
 	nothing: :nothing := :nothing;
 
-	args: ast::[Config]TypeOrArgument - std::DynVec;
+	args: ast::[Config]TypeOrArgument - std::ValVec;
 
 	IF(postFix)
 	{

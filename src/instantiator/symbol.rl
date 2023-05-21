@@ -10,7 +10,7 @@
 			function,
 			functoid
 		}
-		//Templates: ast::[Config]TemplateArg - std::DynVec;
+		//Templates: ast::[Config]TemplateArg - std::ValVec;
 	}
 
 	ValueSymbol

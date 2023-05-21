@@ -7,17 +7,27 @@ INCLUDE "type.rl"
 ::rlc::instantiator Class -> Instance, Type
 {
 	/// named and anonymous member variable types.
-	PRIVATE Fields: ast::[Config]Type-std::Dyn-Resolveable-std::Vec-Resolveable;
+	PRIVATE Fields: ast::[Config]Type-std::Val-Resolveable-std::Vec-Resolveable;
 	PRIVATE Destructor: ast::[Config]Destructor-Resolveable;
-	PRIVATE Bases: Class #\ - std::Vec; /// All base classes.
-	PRIVATE Concretisations: Class #\ - std::Vec; /// All instantiated deriving types.
+	PRIVATE Bases: Class #\ - std::VecSet; /// All base classes.
+	PRIVATE TransitiveBases: Class #\ - std::VecSet;
+	PRIVATE Concretisations: Class #\ - std::VecSet; /// All instantiated deriving types.
+	PRIVATE TransitiveConcretisations: Class #\ - std::VecSet;
+
+	{};
+	{&&};
 
 	resolve_bases() VOID {}
+
+	# is_direct_base_of(c: Class #\) BOOL INLINE := Concretisations.find(c);
+	# is_transitive_base_of(c: Class #\) BOOL INLINE := TransitiveConcretisations.find(c);
+	# inherits_directly_from(c: Class #\) BOOL INLINE := Bases.find(c);
+	# inherits_transitively_from(c: Class #\) BOOL INLINE := TransitiveBases.find(c);
 
 	resolve_fields(
 		id: InstanceID #\,
 		ctx: Context #&
-	) ast::[Config]Type-std::Dyn-Resolveable-std::Vec #&
+	) ast::[Config]Type-std::Val-Resolveable-std::Vec #&
 	{
 		IF(Fields.determined())
 			= *Fields;
@@ -35,10 +45,10 @@ INCLUDE "type.rl"
 			res: ?& := Fields![fieldV.Index];
 
 			res.start_resolving(id->desc_pos());
-			t: Type-std::DynOpt;
+			t: ast::[Config]Type-std::Val (BARE);
 			TRY t := type::resolve(fieldV.Type!, _ctx);
-			CATCH(err: std::Error-std::Shared) res.fail_share(&&err);
-			res.resolve(:!(&&t));
+			CATCH(err: std::Error-std::Val) res.fail_share(&&err);
+			res.resolve(&&t);
 		}
 
 		FOR(field ::= fields.AnonVars.start())
@@ -46,10 +56,10 @@ INCLUDE "type.rl"
 			res: ?& := Fields![field!.Index];
 
 			res.start_resolving(id->desc_pos());
-			t: Type-std::DynOpt;
+			t: ast::[Config]Type-std::Val (BARE);
 			TRY t := type::resolve(field!.Type!, _ctx);
-			CATCH(err: std::Error-std::Shared) res.fail_share(&&err);
-			res.resolve(:!(&&t));
+			CATCH(err: std::Error-std::Val) res.fail_share(&&err);
+			res.resolve(&&t);
 		}
 
 		= *Fields;
@@ -76,16 +86,16 @@ INCLUDE "type.rl"
 			dtor.Body.Statements.resize_bare(##*Fields);
 			FOR(field ::= Fields->start().ok())
 			{
-				dtorCall: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
+				dtorCall: ast::[Config]OperatorExpression (BARE);
 				dtorCall!.Op := :destructor;
-				member: ast::[Config]MemberReferenceExpression-std::Dyn := :a(BARE);
-				member!.Object := :a.ast::[Config]ThisExpression(BARE);
-				member!.Member := :field(id, field());
-				member!.IsArrowAccess := FALSE;
-				dtorCall!.Operands += :<>(&&member);
-				dtorStmt: ast::[Config]ExpressionStatement-std::Dyn := :a(BARE);
-				dtorStmt!.Expression := :<>(&&dtorCall);
-				dtor.Body.Statements[:ok(field())] := :<>(&&dtorStmt);
+				member: ast::[Config]MemberReferenceExpression (BARE);
+				member.Object := :a.ast::[Config]ThisExpression(BARE);
+				member.Member := :field(id, field());
+				member.IsArrowAccess := FALSE;
+				dtorCall.Operands += :dup(&&member);
+				dtorStmt: ast::[Config]ExpressionStatement (BARE);
+				dtorStmt.Expression := :dup(&&dtorCall);
+				dtor.Body.Statements[:ok(field())] := :dup(&&dtorStmt);
 			}
 		} ELSE
 		{

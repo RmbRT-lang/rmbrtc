@@ -12,7 +12,10 @@ INCLUDE 'std/memory'
 	{
 		Parent: THIS *;
 
+
 		{BARE}: Parent := NULL;
+
+		:childOf{parent: THIS *}: Parent := parent;
 
 		:transform{
 			p: [Stage::Prev+]Statement #&,
@@ -23,7 +26,7 @@ INCLUDE 'std/memory'
 		<<<
 			p: [Stage::Prev+]Statement #&,
 			ctx: Stage::Context+ #&
-		>>> THIS-std::Dyn
+		>>> THIS-std::Val
 		{
 			TYPE SWITCH(p)
 			{
@@ -76,7 +79,7 @@ INCLUDE 'std/memory'
 
 	[Stage: TYPE] AssertStatement -> [Stage]Statement
 	{
-		Expression: ast::[Stage]Expression - std::Dyn;
+		Expression: ast::[Stage]Expression - std::Val;
 
 		:transform{
 			p: [Stage::Prev+]AssertStatement #&,
@@ -108,7 +111,7 @@ INCLUDE 'std/memory'
 
 	[Stage: TYPE] SleepStatement -> [Stage]Statement
 	{
-		Duration: [Stage]Expression - std::Dyn;
+		Duration: [Stage]Expression - std::Val;
 
 		:transform{
 			p: [Stage::Prev+]SleepStatement #&,
@@ -120,7 +123,7 @@ INCLUDE 'std/memory'
 
 	[Stage: TYPE] BlockStatement -> [Stage]Statement, [Stage]ScopeBase
 	{
-		Statements: [Stage]Statement - std::DynVec;
+		Statements: [Stage]Statement - std::ValVec;
 
 		:transform{
 			p: [Stage::Prev+]BlockStatement #&,
@@ -133,8 +136,8 @@ INCLUDE 'std/memory'
 				Statements += :make(stmt!, c);
 		}
 
-		#? FINAL scope_item(Stage::Name #&) [Stage]ScopeItem #? * := NULL;
-		#? FINAL local(name: Stage::Name #&, pos: LocalPosition) [Stage]ScopeItem #? *
+		# FINAL scope_item(Stage::Name #&) [Stage]ScopeItem #* := NULL;
+		# FINAL local(name: Stage::Name #&, pos: LocalPosition) [Stage]ScopeItem #*
 		{
 			FOR(stmt ::= Statements.end(); --)
 				IF(var ::= <<[Stage]VariableStatement #?*>>(&stmt!))
@@ -162,11 +165,11 @@ INCLUDE 'std/memory'
 		RevealsVariable: BOOL;
 		Negated: BOOL;
 
-		Init: [Stage]VarOrExpr - [Stage]DynOptScoped;
-		Condition: [Stage]VarOrExpr - [Stage]DynScoped;
+		Init: [Stage]VarOrExpr - [Stage]ValOptScoped;
+		Condition: [Stage]VarOrExpr - [Stage]ValScoped;
 
-		Then: [Stage]Statement - std::Dyn;
-		Else: [Stage]Statement - std::DynOpt;
+		Then: [Stage]Statement - std::Val;
+		Else: [Stage]Statement - std::ValOpt;
 
 		:transform{
 			p: [Stage::Prev+]IfStatement #&,
@@ -197,7 +200,7 @@ INCLUDE 'std/memory'
 
 	[Stage: TYPE] ExpressionStatement -> [Stage]Statement
 	{
-		Expression: ast::[Stage]Expression - std::Dyn;
+		Expression: ast::[Stage]Expression - std::Val;
 
 		:transform{
 			p: [Stage::Prev+]ExpressionStatement #&,
@@ -208,13 +211,15 @@ INCLUDE 'std/memory'
 
 	[Stage: TYPE] ReturnStatement -> [Stage]Statement
 	{
-		Expression: ast::[Stage]Expression - std::DynOpt;
+		Expression: ast::[Stage]Expression - std::ValOpt;
 
-		{};
+		:void{parent: [Stage]Statement *} -> (:childOf, parent);
 
 		:exp{
-			e: ast::[Stage]Expression - std::Dyn
-		}:	Expression(&&e);
+			parent: [Stage]Statement *,
+			e: ast::[Stage]Expression - std::Val
+		} -> (:childOf, parent):
+			Expression(&&e);
 
 		:transform{
 			p: [Stage::Prev+]ReturnStatement #&,
@@ -230,9 +235,9 @@ INCLUDE 'std/memory'
 
 	[Stage: TYPE] TryStatement -> [Stage]Statement
 	{
-		Body: [Stage]Statement - std::Dyn;
+		Body: [Stage]Statement - std::Val;
 		Catches: [Stage]CatchStatement - std::Vec;
-		Finally: [Stage]Statement - std::DynOpt;
+		Finally: [Stage]Statement - std::ValOpt;
 
 		:transform{
 			p: [Stage::Prev+]TryStatement #&,
@@ -260,8 +265,8 @@ INCLUDE 'std/memory'
 		}
 
 		ExceptionType: Type;
-		Exception: [Stage]TypeOrCatchVariable - [Stage]DynOptScoped;
-		Body: [Stage]Statement - std::Dyn;
+		Exception: [Stage]TypeOrCatchVariable - [Stage]ValOptScoped;
+		Body: [Stage]Statement - std::Val;
 
 		:transform{
 			p: [Stage::Prev+]CatchStatement #&,
@@ -282,7 +287,7 @@ INCLUDE 'std/memory'
 		}
 
 		ValueType: Type;
-		Value: [Stage]Expression-std::DynOpt;
+		Value: [Stage]Expression-std::ValOpt;
 
 		:transform{
 			p: [Stage::Prev+]ThrowStatement #&,
@@ -308,10 +313,10 @@ INCLUDE 'std/memory'
 		[Stage]LabelledStatement
 	{
 		Type: LoopType;
-		Initial: [Stage]VarOrExpr - ast::[Stage]DynOptScoped;
-		Condition: [Stage]VarOrExpr - ast::[Stage]DynOptScoped;
-		Body: [Stage]Statement-std::Dyn;
-		PostLoop: [Stage]Expression-std::DynOpt;
+		Initial: [Stage]VarOrExpr - ast::[Stage]ValOptScoped;
+		Condition: [Stage]VarOrExpr - ast::[Stage]ValOptScoped;
+		Body: [Stage]Statement-std::Val;
+		PostLoop: [Stage]Expression-std::ValOpt;
 
 		# is_post_condition() BOOL := Type == :postCondition;
 
@@ -333,8 +338,8 @@ INCLUDE 'std/memory'
 		[Stage]LabelledStatement
 	{
 		Strict: BOOL;
-		Initial: [Stage]VarOrExpr - ast::[Stage]DynOptScoped;
-		Value: [Stage]VarOrExpr - ast::[Stage]DynScoped;
+		Initial: [Stage]VarOrExpr - ast::[Stage]ValOptScoped;
+		Value: [Stage]VarOrExpr - ast::[Stage]ValScoped;
 		Cases: [Stage]CaseStatement - std::Vec;
 
 		:transform{
@@ -354,8 +359,8 @@ INCLUDE 'std/memory'
 
 	[Stage: TYPE] CaseStatement
 	{
-		Values: [Stage]Expression - std::DynVec;
-		Body: [Stage]Statement-std::Dyn;
+		Values: [Stage]Expression - std::ValVec;
+		Body: [Stage]Statement-std::Val;
 
 		:transform{
 			p: [Stage::Prev+]CaseStatement #&,
@@ -375,8 +380,8 @@ INCLUDE 'std/memory'
 	{
 		Static: BOOL;
 		Strict: BOOL;
-		Initial: [Stage]VarOrExpr - ast::[Stage]DynOptScoped;
-		Value: [Stage]VarOrExpr - ast::[Stage]DynScoped;
+		Initial: [Stage]VarOrExpr - ast::[Stage]ValOptScoped;
+		Value: [Stage]VarOrExpr - ast::[Stage]ValScoped;
 		Cases: [Stage]TypeCaseStatement - std::Vec;
 		Label: [Stage]ControlLabel-std::Opt;
 
@@ -399,8 +404,8 @@ INCLUDE 'std/memory'
 
 	[Stage: TYPE] TypeCaseStatement
 	{
-		Types: [Stage]Type - std::DynVec;
-		Body: [Stage]Statement-std::Dyn;
+		Types: [Stage]Type - std::ValVec;
+		Body: [Stage]Statement-std::Val;
 
 		:transform{
 			p: [Stage::Prev+]TypeCaseStatement #&,

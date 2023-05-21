@@ -19,7 +19,7 @@ INCLUDE 'std/vector'
 				variadic ::= p.consume(:tripleDot);
 				p.expect(:colon);
 
-				arg: Config-ast::TemplateArgDecl-std::Dyn (BARE);
+				arg: Config-ast::TemplateArgDecl-std::Val (BARE);
 				IF(p.consume(:type))
 					arg := :a.Config-ast::TypeTemplateArgDecl(BARE);
 				ELSE IF(p.consume(:number))
@@ -33,8 +33,8 @@ INCLUDE 'std/vector'
 				ELSE
 					p.fail("expected 'TYPE', 'NUMBER', or type");
 
-				arg->Name := name;
-				arg->Variadic := variadic;
+				arg.mut_ok().Name := name;
+				arg.mut_ok().Variadic := variadic;
 
 				out.Arguments += &&arg;
 			} WHILE(p.consume(:semicolon))

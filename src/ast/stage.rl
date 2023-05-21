@@ -109,8 +109,8 @@ __
 				name ::= <Stage::Context+&>(THIS).transform_name(var!.Key);
 				IF(prev ::= this.Variants.find(name))
 					THROW <VariantMergeError>(this, prev!, var!.Value!);
-				new: [Stage]Variant-std::Dyn := :transform(var!.Value!, _ctx);
-				ASSERT(this.Variants.insert(new->Name, :share(&&new)));
+				new: [Stage]Variant-std::Val := :transform(var!.Value!, _ctx);
+				ASSERT(this.Variants.insert(new->Name, &&new));
 			}
 		}
 		}

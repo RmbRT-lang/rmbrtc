@@ -13,8 +13,8 @@ INCLUDE 'std/vector'
 	[Stage]CoreType,
 	[Stage]Instantiable
 {
-	Size: [Stage]Expression-std::Dyn;
-	Alignment: [Stage]Expression-std::DynOpt;
+	Size: [Stage]Expression-std::Val;
+	Alignment: [Stage]Expression-std::ValOpt;
 	Functions: [Stage]MemberFunctions;
 	Ctors: [Stage]Constructors;
 	Statics: [Stage]MemberScope;
@@ -33,7 +33,7 @@ INCLUDE 'std/vector'
 			Statics += :make(it!.Value!, ctx.in_parent(&p, &THIS).in_path(&THIS));
 	}
 
-	add_member(member: ast::[Stage]Member - std::Dyn) VOID
+	add_member(member: ast::[Stage]Member - std::Val) VOID
 	{
 		IF(member->Attribute == :static)
 			Statics.insert(&&member);
@@ -47,14 +47,14 @@ INCLUDE 'std/vector'
 	}
 
 
-	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
+	# FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #*
 	{
 		IF(item ::= Statics.item(name))
 			= item;
 		= NULL;
 	}
 
-	#? FINAL local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #? *
+	# FINAL local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #*
 	{
 		IF(item ::= Functions.item(name))
 			= item;

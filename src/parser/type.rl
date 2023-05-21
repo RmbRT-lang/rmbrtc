@@ -101,7 +101,7 @@ INCLUDE "symbolconstant.rl"
 
 	::detail [T:TYPE] parse_impl(
 		p: Parser &,
-		ret: ast::[Config]Type - std::DynOpt &,
+		ret: ast::[Config]Type - std::ValOpt &,
 		parse_fn: ((Parser &, T! &) BOOL)) BOOL
 	{
 		v: T (BARE);
@@ -124,9 +124,9 @@ INCLUDE "symbolconstant.rl"
 	}
 
 	parse(
-		p: Parser &) Type - std::DynOpt
+		p: Parser &) Type - std::ValOpt
 	{
-		ret: Type-std::DynOpt;
+		ret: Type-std::ValOpt;
 		IF(detail::parse_impl(p, ret, parse_typeof)
 		|| detail::parse_impl(p, ret, parse_tuple)
 		|| detail::parse_impl(p, ret, parse_signature)
@@ -140,7 +140,7 @@ INCLUDE "symbolconstant.rl"
 		= NULL;
 	}
 
-	parse_x(p: Parser &) Type - std::Dyn
+	parse_x(p: Parser &) Type - std::Val
 	{
 		IF:!(t ::= parse(p))
 			p.fail("expected type");

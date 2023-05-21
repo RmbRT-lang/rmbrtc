@@ -7,6 +7,7 @@ INCLUDE "typeorexpression.rl"
 INCLUDE "statement.rl"
 
 INCLUDE 'std/vector'
+INCLUDE 'std/value'
 
 ::rlc ENUM Operator
 {
@@ -44,7 +45,7 @@ INCLUDE 'std/vector'
 	shiftLeftAssign, shiftRightAssign, rotateLeftAssign, rotateRightAssign,
 	negAssign,
 
-	autoDynamicCast,
+	concretise,
 
 	tuple,
 	variadicExpand,
@@ -73,7 +74,13 @@ INCLUDE 'std/vector'
 		/// Number of variables this expression declares.
 		# VIRTUAL variables() LocalCount := 0;
 
-		:transform{
+		:at {
+			x: THIS #&
+		} -> (x), (), (), ():
+			LocalPos := x.LocalPos,
+			Range := x.Range;
+
+		:transform {
 			p: [Stage::Prev+]Expression #&,
 			ctx: Stage::Context+ #&
 		} -> (p), (), (), ():
@@ -83,7 +90,7 @@ INCLUDE 'std/vector'
 		<<<
 			p: [Stage::Prev+]Expression #&,
 			ctx: Stage::Context+ #&
-		>>> [Stage]Expression-std::Dyn
+		>>> THIS-std::Val
 		{
 			TYPE SWITCH(p)
 			{
@@ -131,7 +138,7 @@ INCLUDE 'std/vector'
 	/// A statement evaluating into a value.
 	[Stage: TYPE] StatementExpression -> [Stage]Expression
 	{
-		Statement: ast::[Stage]Statement - std::Dyn;
+		Statement: ast::[Stage]Statement - std::Val;
 
 		:transform{
 			p: [Stage::Prev+]StatementExpression #&,
@@ -144,7 +151,6 @@ INCLUDE 'std/vector'
 	[Stage: TYPE] ReferenceExpression -> [Stage]Expression
 	{
 		Symbol: Stage::Symbol;
-
 		:transform{
 			p: [Stage::Prev+]ReferenceExpression #&,
 			ctx: Stage::Context+ #&
@@ -155,7 +161,7 @@ INCLUDE 'std/vector'
 	/// A reference to an object's member variable, function, or constant.
 	[Stage: TYPE] MemberReferenceExpression -> [Stage]Expression
 	{
-		Object: [Stage]Expression - std::Dyn;
+		Object: [Stage]Expression - std::Val;
 		Member: Stage::MemberReference;
 		IsArrowAccess: BOOL;
 
@@ -231,7 +237,7 @@ INCLUDE 'std/vector'
 	(// Expression containing a user-overloadable operator. /)
 	[Stage: TYPE] OperatorExpression -> [Stage]Expression
 	{
-		Operands: [Stage]Expression - std::DynVec;
+		Operands: [Stage]Expression - std::ValVec;
 		Op: rlc::Operator;
 
 		:transform{
@@ -248,32 +254,34 @@ INCLUDE 'std/vector'
 		STATIC make_unary(
 			op: rlc::Operator,
 			opPosition: src::Position,
-			lhs: [Stage]Expression-std::Dyn
-		) [Stage]Expression - std::Dyn
+			lhs: [Stage]Expression-std::Val
+		) [Stage]Expression - std::Val
 		{
-			ret: OperatorExpression-std::Dyn := :a(BARE);
-			ret->LocalPos := lhs->LocalPos;
-			ret->Op := op;
-			ret->Position := opPosition;
-			ret->Range := lhs->Range;
-			ret->Operands += &&lhs;
+			ret: OperatorExpression-std::Val := :a(BARE);
+			r ::= ret.mut_ptr_ok();
+			r->LocalPos := lhs->LocalPos;
+			r->Op := op;
+			r->Position := opPosition;
+			r->Range := lhs->Range;
+			r->Operands += &&lhs;
 			= :<>(&&ret);
 		}
 
 		STATIC make_binary(
 			op: rlc::Operator,
 			opPosition: src::Position,
-			lhs: [Stage]Expression - std::Dyn,
-			rhs: [Stage]Expression - std::Dyn
-		) [Stage]Expression - std::Dyn
+			lhs: [Stage]Expression - std::Val,
+			rhs: [Stage]Expression - std::Val
+		) [Stage]Expression - std::Val
 		{
-			ret: OperatorExpression-std::Dyn := :a(BARE);
-			ret->LocalPos := lhs->LocalPos;
-			ret->Op := op;
-			ret->Position := opPosition;
-			ret->Range := lhs->Range.span(rhs->Range);
-			ret->Operands += &&lhs;
-			ret->Operands += &&rhs;
+			ret: OperatorExpression-std::Val := :a(BARE);
+			r ::= ret.mut_ptr_ok();
+			r->LocalPos := lhs->LocalPos;
+			r->Op := op;
+			r->Position := opPosition;
+			r->Range := lhs->Range.span(rhs->Range);
+			r->Operands += &&lhs;
+			r->Operands += &&rhs;
 			= :<>(&&ret);
 		}
 	}
@@ -311,8 +319,8 @@ INCLUDE 'std/vector'
 		ENUM Kind { static, dynamic, mask }
 
 		Method: Kind;
-		Type: ast::[Stage]Type-std::Dyn;
-		Values: [Stage]Expression - std::DynVec;
+		Type: ast::[Stage]Type-std::Val;
+		Values: [Stage]Expression - std::ValVec;
 
 		:transform{
 			p: [Stage::Prev+]CastExpression #&,
@@ -330,7 +338,7 @@ INCLUDE 'std/vector'
 	/// `SIZEOF` expression.
 	[Stage: TYPE] SizeofExpression -> [Stage]Expression
 	{
-		Term: [Stage]TypeOrExpr - std::Dyn;
+		Term: [Stage]TypeOrExpr - std::Val;
 		Variadic: BOOL;
 
 		:transform{
@@ -344,7 +352,7 @@ INCLUDE 'std/vector'
 	/// `TYPE`, `TYPE STATIC`, `TYPE TYPE` expressions.
 	[Stage: TYPE] TypeofExpression -> [Stage]Expression
 	{
-		Term: [Stage]TypeOrExpr - std::Dyn;
+		Term: [Stage]TypeOrExpr - std::Val;
 		StaticExp: BOOL; // Only affects expressions.
 
 		:transform{

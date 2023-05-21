@@ -3,17 +3,17 @@ INCLUDE "../symbol.rl"
 
 ::rlc::parser::expression::op
 {
-	parse(p: Parser&) ast::[Config]Expression-std::DynOpt INLINE
+	parse(p: Parser&) ast::[Config]Expression-std::ValOpt INLINE
 		:= parse_binary(p, detail::precedenceGroups);
 
 	parse_binary_rhs(
 		p: Parser&,
-		lhs: ast::[Config]Expression-std::Dyn,
+		lhs: ast::[Config]Expression-std::Val,
 		level: UINT
-	) ast::[Config]Expression-std::DynOpt
+	) ast::[Config]Expression-std::ValOpt
 	{
 		IF(level == 0)
-			RETURN &&lhs;
+			= &&lhs;
 
 		group ::= &detail::k_groups[level-1];
 		FOR(i ::= 0; i < group->Size; i++)
@@ -21,12 +21,13 @@ INCLUDE "../symbol.rl"
 			IF(tok ::= p.consume(group->Table[i].(0)))
 			{
 				op ::= group->Table[i].(1);
-				ret: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
-				ret->LocalPos := p.locals();
-				ret->Op := op;
+				ret: ast::[Config]OperatorExpression-std::Val := :a(BARE);
+				r ::= ret.mut_ptr_ok();
+				r->LocalPos := p.locals();
+				r->Op := op;
 				range ::= lhs->Range;
-				ret->Operands += &&lhs;
-				ret->Position := tok->Position;
+				r->Operands += &&lhs;
+				r->Position := tok->Position;
 
 				IF(group->LeftAssoc)
 				{
@@ -34,8 +35,8 @@ INCLUDE "../symbol.rl"
 					// (a + b) + c
 					IF:!(rhs ::= parse_binary(p, level-1))
 						p.fail("expected expression");
-					ret->Range := range.span(rhs->Range);
-					ret->Operands += :!(&&rhs);
+					r->Range := range.span(rhs->Range);
+					r->Operands += :!(&&rhs);
 					= parse_binary_rhs(p, :<>(&&ret), level);
 				} ELSE
 				{
@@ -44,9 +45,9 @@ INCLUDE "../symbol.rl"
 					IF:!(rhs ::= parse_binary(p, level))
 						p.fail("expected expression");
 
-					ret->Range := range.span(rhs->Range);
-					ret->Operands += :!(&&rhs);
-					= &&ret;
+					r->Range := range.span(rhs->Range);
+					r->Operands += :!(&&rhs);
+					= :cast_val(&&ret);
 				}
 			}
 		}
@@ -57,7 +58,7 @@ INCLUDE "../symbol.rl"
 	parse_binary(
 		p: Parser&,
 		level: UINT
-	) ast::[Config]Expression-std::DynOpt
+	) ast::[Config]Expression-std::ValOpt
 	{
 		IF:!(lhs ::= level
 				?? parse_binary(p, level-1)
@@ -73,34 +74,36 @@ INCLUDE "../symbol.rl"
 			IF:!(else ::= expression::parse(p))
 				p.fail("expected expression");
 
-			ret: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
-			ret->LocalPos := p.locals();
-			ret->Range := lhs->Range.span(else->Range);
-			ret->Position := op.Position;
-			ret->Op := :conditional;
-			ret->Operands += :!(&&lhs);
-			ret->Operands += :!(&&then);
-			ret->Operands += :!(&&else);
-			= &&ret;
+			ret: ast::[Config]OperatorExpression-std::Val := :a(BARE);
+			r ::= ret.mut_ptr_ok();
+			r->LocalPos := p.locals();
+			r->Range := lhs->Range.span(else->Range);
+			r->Position := op.Position;
+			r->Op := :conditional;
+			r->Operands += :!(&&lhs);
+			r->Operands += :!(&&then);
+			r->Operands += :!(&&else);
+			= :cast_val(&&ret);
 		} ELSE
 			= parse_binary_rhs(p, :!(&&lhs), level);
 	}
 
-	parse_prefix(p: Parser&) ast::[Config]Expression-std::DynOpt
+	parse_prefix(p: Parser&) ast::[Config]Expression-std::ValOpt
 	{
 		FOR(i ::= 0; i < ##detail::k_prefix_ops; i++)
 		{
 			IF(tok ::= p.consume(detail::k_prefix_ops[i].(0)))
 			{
-				xp: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
-				xp->LocalPos := p.locals();
-				xp->Op := detail::k_prefix_ops[i].(1);
+				xp: ast::[Config]OperatorExpression-std::Val := :a(BARE);
+				x ::= xp.mut_ptr_ok();
+				x->LocalPos := p.locals();
+				x->Op := detail::k_prefix_ops[i].(1);
 				IF:!(rhs ::= parse_prefix(p))
 					p.fail("expected expression");
-				xp->Operands += :!(&&rhs);
-				xp->Range := tok->Content.span(xp->Operands!.back()->Range);
-				xp->Position := tok->Position;
-				= &&xp;
+				x->Operands += :!(&&rhs);
+				x->Range := tok->Content.span(x->Operands!.back()->Range);
+				x->Position := tok->Position;
+				= :cast_val(&&xp);
 			}
 		}
 
@@ -110,7 +113,7 @@ INCLUDE "../symbol.rl"
 
 ::rlc::parser::expression::op parse_postfix(
 	p: Parser&
-) ast::[Config]Expression - std::DynOpt
+) ast::[Config]Expression - std::ValOpt
 {
 	IF:!(lhs ::= parse_atom(p))
 		= NULL;
@@ -136,26 +139,27 @@ INCLUDE "../symbol.rl"
 					postfix[i].(1),
 					tok->Position,
 					:!(&&lhs));
-				lhs->Range := lhs->Range.span(tok->Content);
+				lhs.mut_ok().Range := lhs->Range.span(tok->Content);
 				CONTINUE["outer"];
 			}
 		}
 
 		IF(open ::= p.consume(:bracketOpen))
 		{
-			sub: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
-			sub->LocalPos := p.locals();
-			sub->Op := :subscript;
-			sub->Position := open->Position;
-			sub->Operands += :!(&&lhs);
+			sub: ast::[Config]OperatorExpression-std::Val := :a(BARE);
+			s ::= sub.mut_ptr_ok();
+			s->LocalPos := p.locals();
+			s->Op := :subscript;
+			s->Position := open->Position;
+			s->Operands += :!(&&lhs);
 
 			DO()
-				sub->Operands += expression::parse_x(p);
+				s->Operands += expression::parse_x(p);
 				WHILE(p.consume(:comma))
 			cls ::= p.expect(:bracketClose);
 
-			sub->Range := sub->Operands!.front()->Range.span(cls.Content);
-			lhs := &&sub;
+			s->Range := s->Operands!.front()->Range.span(cls.Content);
+			lhs := :<>(&&sub);
 
 			CONTINUE["outer"];
 		}
@@ -164,32 +168,34 @@ INCLUDE "../symbol.rl"
 		{
 			isReflect ::= p.consume(:asterisk);
 			p.expect(:parentheseOpen);
-			visit: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
-			visit->LocalPos := p.locals();
-			visit->Op := isReflect ?? Operator::reflectVisit : Operator::visit;
-			visit->Position := op->Position;
-			visit->Operands += :!(&&lhs);
+			visit: ast::[Config]OperatorExpression-std::Val := :a(BARE);
+			v ::= visit.mut_ptr_ok();
+			v->LocalPos := p.locals();
+			v->Op := isReflect ?? Operator::reflectVisit : Operator::visit;
+			v->Position := op->Position;
+			v->Operands += :!(&&lhs);
 
 			cls: tok::Token-std::Opt;
 			DO(comma ::= FALSE)
 			{
 				IF(comma)
 					p.expect(:comma);
-				visit->Operands += expression::parse_x(p);
+				v->Operands += expression::parse_x(p);
 			} FOR(!(cls := p.consume(:parentheseClose)); comma := TRUE)
 
-			visit->Range := visit->Operands!.front()->Range.span(cls->Content);
-			lhs := &&visit;
+			v->Range := v->Operands!.front()->Range.span(cls->Content);
+			lhs := :cast_val(&&visit);
 			CONTINUE["outer"];
 		}
 
 		IF(tok ::= p.consume(:parentheseOpen))
 		{
-			call: ast::[Config]OperatorExpression-std::Dyn := :a(BARE);
-			call->LocalPos := p.locals();
-			call->Op := :call;
-			call->Operands += :!(&&lhs);
-			call->Position := tok->Position;
+			call: ast::[Config]OperatorExpression-std::Val := :a(BARE);
+			c ::= call.mut_ptr_ok();
+			c->LocalPos := p.locals();
+			c->Op := :call;
+			c->Operands += :!(&&lhs);
+			c->Position := tok->Position;
 
 			cls: rlc::tok::Token - std::Opt;
 			FOR(comma ::= FALSE;
@@ -198,11 +204,11 @@ INCLUDE "../symbol.rl"
 			{
 				IF(comma)
 					p.expect(:comma);
-				call->Operands += expression::parse_x(p);
+				c->Operands += expression::parse_x(p);
 			}
 
-			call->Range := call->Operands!.front()->Range.span(cls->Content);
-			lhs := &&call;
+			c->Range := c->Operands!.front()->Range.span(cls->Content);
+			lhs := :cast_val(&&call);
 			CONTINUE["outer"];
 		}
 
@@ -222,7 +228,7 @@ INCLUDE "../symbol.rl"
 							WHILE(p.consume(:comma))
 						cls := :a(p.expect(:braceClose));
 					}
-					lhs->Range := lhs->Range.span(cls->Content);
+					lhs.mut_ok().Range := lhs->Range.span(cls->Content);
 				}
 				ELSE IF(tok ::= p.consume(:parentheseOpen))
 				{
@@ -234,27 +240,28 @@ INCLUDE "../symbol.rl"
 							:!(&&index));
 					ELSE p.fail("expected expression");
 					cls ::= p.expect(:parentheseClose);
-					lhs->Range := lhs->Range.span(cls.Content);
+					lhs.mut_ok().Range := lhs->Range.span(cls.Content);
 				} ELSE IF(tok ::= p.consume(:tilde))
 				{
 					lhs := ast::[Config]OperatorExpression::make_unary(
 						memberAccess[i].(3), tok->Position, :!(&&lhs));
-					lhs->Range := lhs->Range.span(tok->Content);
+					lhs.mut_ok().Range := lhs->Range.span(tok->Content);
 				}
 				ELSE
 				{
-					exp: ast::[Config]MemberReferenceExpression-std::Dyn := :a(BARE);
-					exp->LocalPos := p.locals();
-					exp->Object := :!(&&lhs);
-					exp->IsArrowAccess := (i != 0);
-					exp->Position := op->Position;
+					exp: ast::[Config]MemberReferenceExpression-std::Val := :a(BARE);
+					e ::= exp.mut_ptr_ok();
+					e->LocalPos := p.locals();
+					e->Object := :!(&&lhs);
+					e->IsArrowAccess := (i != 0);
+					e->Position := op->Position;
 
-					IF(!symbol::parse_child(p, exp->Member))
+					IF(!symbol::parse_child(p, e->Member))
 						p.fail("expected member name");
 
-					exp->Range := exp->Object->Range.span(exp->Member.Name);
+					e->Range := e->Object->Range.span(e->Member.Name);
 
-					lhs := &&exp;
+					lhs := :cast_val(&&exp);
 				}
 				CONTINUE["outer"];
 			}

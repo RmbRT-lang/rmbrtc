@@ -6,10 +6,10 @@ INCLUDE "symbolconstant.rl"
 
 ::rlc::parser::expression
 {
-	parse(p: Parser &) ast::[Config]Expression-std::DynOpt INLINE
+	parse(p: Parser &) ast::[Config]Expression-std::ValOpt INLINE
 		:= op::parse(p);
 
-	parse_x(p: Parser &) ast::[Config]Expression-std::Dyn
+	parse_x(p: Parser &) ast::[Config]Expression-std::Val
 	{
 		IF:!(x ::= parse(p))
 			p.fail("expected expression");
@@ -19,7 +19,7 @@ INCLUDE "symbolconstant.rl"
 	/// Parses a non-operator expression.
 	parse_atom(
 		p: Parser &
-	) ast::[Config]Expression-std::DynOpt
+	) ast::[Config]Expression-std::ValOpt
 	{
 		// The start of the expression.
 		position ::= p.position();
@@ -31,21 +31,22 @@ INCLUDE "symbolconstant.rl"
 			IF:!(exp ::= expression::parse(p))
 				p.fail("expected expression");
 
-			tuple: ast::[Config]OperatorExpression-std::DynOpt;
+			tuple: ast::[Config]OperatorExpression-std::ValOpt;
 			WHILE(p.consume(:comma))
 			{
 				IF(!tuple)
 				{
 					tuple := :a(BARE);
-					tuple->LocalPos := p.locals();
-					tuple->Position := position;
-					tuple->Op := :tuple;
-					tuple->Operands += :!(&&exp);
+					t ::= tuple.mut_ptr_ok();
+					t->LocalPos := p.locals();
+					t->Position := position;
+					t->Op := :tuple;
+					t->Operands += :!(&&exp);
 				}
 
 				IF!(exp := expression::parse(p))
 					p.fail("expected expression");
-				tuple->Operands += :!(&&exp);
+				tuple.mut_ok().Operands += :!(&&exp);
 			}
 
 			end ::= p.expect(:parentheseClose).Content;
@@ -55,14 +56,14 @@ INCLUDE "symbolconstant.rl"
 			/)
 			IF(tuple)
 			{
-				tuple->Range := start.span(end);
+				tuple.mut_ok().Range := start.span(end);
 				= &&tuple;
 			}
 			= &&exp;
 		}
 
 		start ::= p.offset();
-		ret: ast::[Config]Expression - std::Dyn (BARE);
+		ret: ast::[Config]Expression - std::Val (BARE);
 		IF(detail::parse_impl(p, ret, parse_reference)
 		|| detail::parse_impl(p, ret, parse_symbol_constant)
 		|| detail::parse_impl(p, ret, parse_number)
@@ -76,8 +77,8 @@ INCLUDE "symbolconstant.rl"
 		|| detail::parse_impl(p, ret, parse_sizeof)
 		|| detail::parse_impl(p, ret, parse_typeof))
 		{
-			ret->Range := (start, p.prev_offset() - start);
-			ret->Position := position;
+			ret.mut_ok().Range := (start, p.prev_offset() - start);
+			ret.mut_ok().Position := position;
 			= &&ret;
 		}
 
@@ -86,7 +87,7 @@ INCLUDE "symbolconstant.rl"
 
 	::detail [T:TYPE] parse_impl(
 		p: Parser &,
-		ret: ast::[Config]Expression - std::Dyn &,
+		ret: ast::[Config]Expression - std::Val &,
 		parse_fn: ((Parser&, T! &) BOOL)
 	) BOOL
 	{
@@ -230,7 +231,7 @@ INCLUDE "symbolconstant.rl"
 		t: Trace(&p, "type expression");
 
 		expectType ::= FALSE;
-		IF(!(out.StaticExp := p.consume(:static)))
+		IF!(out.StaticExp := p.consume(:static))
 			expectType := p.consume(:type);
 
 		p.expect(:parentheseOpen);

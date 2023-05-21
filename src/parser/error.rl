@@ -3,7 +3,7 @@ INCLUDE 'std/string'
 INCLUDE 'std/io/format'
 INCLUDE 'std/io/streamutil'
 
-::rlc::parser Error -> std::Error
+::rlc::parser Error VIRTUAL -> std::Error
 {
 	File: std::Str;
 	Line: UINT;

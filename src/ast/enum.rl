@@ -19,7 +19,7 @@ INCLUDE 'std/vector'
 			Value := e.Value;
 	}
 
-	Constants: std::[Constant]DynVecSet;
+	Constants: std::[Constant]ValVecSet;
 
 	:transform{
 		e: [Stage::Prev+]Enum #&,
@@ -32,16 +32,16 @@ INCLUDE 'std/vector'
 			Constants += :transform(c!, ctx);
 	}
 
-	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
+	# FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #*
 	{
 		c: Constant (BARE);
 		c.Name := name;
 		IF(found ::= Constants.find(&c))
-			= &found!;
+			= found->ptr();
 		= NULL;
 	}
 
-	#? FINAL local(Stage::Name #&, LocalPosition) [Stage]ScopeItem #? * := NULL;
+	# FINAL local(Stage::Name #&, LocalPosition) [Stage]ScopeItem #* := NULL;
 }
 
 ::rlc::ast [Stage: TYPE] GlobalEnum -> [Stage]Global, [Stage]Enum

@@ -3,7 +3,7 @@
 	<<<
 		p: [Stage::Prev+]VarOrExpr #&,
 		ctx: Stage::Context+ #&
-	>>> THIS-std::Dyn
+	>>> THIS-std::Val
 	{
 		TYPE SWITCH(p)
 		{

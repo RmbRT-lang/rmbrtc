@@ -10,7 +10,7 @@ INCLUDE "symbolconstant.rl"
 		<<<
 			p: [Stage::Prev+]TypeOrArgument #&,
 			ctx: Stage::Context+ #&
-		>>> THIS-std::Dyn
+		>>> THIS-std::Val
 		{
 			TYPE SWITCH(p)
 			{
@@ -28,7 +28,7 @@ INCLUDE "symbolconstant.rl"
 		<<<
 			p: [Stage::Prev+]TypeOrCatchVariable #&,
 			ctx: Stage::Context+ #&
-		>>> THIS-std::Dyn
+		>>> THIS-std::Val
 		{
 			TYPE SWITCH(p)
 			{
@@ -46,7 +46,7 @@ INCLUDE "symbolconstant.rl"
 		<<<
 			p: [Stage::Prev+]MaybeAutoType #&,
 			ctx: Stage::Context+ #&
-		>>> THIS-std::Dyn
+		>>> THIS-std::Val
 		{
 			TYPE SWITCH(p)
 			{
@@ -95,6 +95,9 @@ INCLUDE "symbolconstant.rl"
 			{c: Constness, v: BOOL}:
 				Const := c,
 				Volatile := v;
+
+			# THIS <> (rhs: THIS #&) S1
+				:= (Const, Volatile) <> (rhs.Const, rhs.Volatile);
 		}
 
 
@@ -117,7 +120,7 @@ INCLUDE "symbolconstant.rl"
 		Indirection: type::Indirection;
 		Qualifier: type::Qualifier;
 		IsArray: BOOL;
-		ArraySize: [Stage]Expression - std::DynVec;
+		ArraySize: [Stage]Expression - std::ValVec;
 
 		{}: Indirection(:plain), IsArray(FALSE);
 		:const{}: Indirection(:plain), Qualifier(:const, FALSE), IsArray(FALSE);
@@ -168,7 +171,7 @@ INCLUDE "symbolconstant.rl"
 		<<<
 			p: [Stage::Prev+]Type #&,
 			ctx: Stage::Context+ #&
-		>>> THIS-std::Dyn
+		>>> THIS-std::Val
 		{
 			TYPE SWITCH(p)
 			{
@@ -216,8 +219,8 @@ INCLUDE "symbolconstant.rl"
 
 	[Stage: TYPE] Signature -> [Stage]Type
 	{
-		Args: [Stage]Type - std::DynVec;
-		Ret: [Stage]Type-std::Dyn;
+		Args: [Stage]Type - std::ValVec;
+		Ret: [Stage]Type-std::Val;
 		IsCoroutine: BOOL;
 		# |THIS ? INLINE := (Args, Ret, IsCoroutine);
 
@@ -261,7 +264,6 @@ INCLUDE "symbolconstant.rl"
 	[Stage: TYPE] SymbolConstantType -> [Stage]Type
 	{
 		Name: [Stage]SymbolConstant;
-
 		:transform{
 			p: [Stage::Prev+]SymbolConstantType #&,
 			ctx: Stage::Context+ #&
@@ -271,7 +273,7 @@ INCLUDE "symbolconstant.rl"
 
 	[Stage: TYPE] TupleType -> [Stage]Type
 	{
-		Types: [Stage]Type - std::DynVec;
+		Types: [Stage]Type - std::ValVec;
 
 		:transform{
 			p: [Stage::Prev+]TupleType #&,
@@ -286,7 +288,7 @@ INCLUDE "symbolconstant.rl"
 
 	[Stage: TYPE] TypeOfExpression -> [Stage]Type
 	{
-		Expression: ast::[Stage]Expression - std::Dyn;
+		Expression: ast::[Stage]Expression - std::Val;
 
 		:transform{
 			p: [Stage::Prev+]TypeOfExpression #&,
@@ -300,7 +302,6 @@ INCLUDE "symbolconstant.rl"
 		Name: Stage::Symbol;
 		NoDecay: BOOL;
 		# |THIS ? INLINE := (Name, NoDecay);
-
 		:transform{
 			p: [Stage::Prev+]TypeName #&,
 			ctx: Stage::Context+ #&
@@ -324,7 +325,6 @@ INCLUDE "symbolconstant.rl"
 	[Stage: TYPE] BuiltinType -> [Stage]Type
 	{
 		Kind: ast::Primitive;
-
 		:manual{kind: Primitive}: Kind := kind;
 
 		:transform{

@@ -29,10 +29,10 @@ INCLUDE 'std/set'
 
 ::rlc::ast [Stage: TYPE] MemberFunctions
 {
-	Functions: ast::[Stage]MemberFunction-std::DynVecSet;
-	Converter: ast::[Stage]Converter-std::DynOpt;
-	Operators: ast::[Stage]Operator-std::DynVecSet;
-	Factory: ast::[Stage]Factory-std::DynOpt;
+	Functions: ast::[Stage]MemberFunction-std::ValVecSet;
+	Converter: ast::[Stage]Converter-std::ValOpt;
+	Operators: ast::[Stage]Operator-std::ValVecSet;
+	Factory: ast::[Stage]Factory-std::ValOpt;
 
 	{};
 
@@ -51,9 +51,9 @@ INCLUDE 'std/set'
 			Operators += :transform(o!, ctx);
 	}
 
-	THIS += (fn: [Stage]Abstractable-std::Dyn) VOID
+	THIS += (fn: [Stage]Abstractable-std::Val) VOID
 	{
-		pos ::= <<CodeObject \>>(fn)->Position;
+		pos ::= <<CodeObject #\>>(fn)->Position;
 		TYPE SWITCH(fn!)
 		{
 		ast::[Stage]Converter:
@@ -62,9 +62,9 @@ INCLUDE 'std/set'
 			ELSE THROW <rlc::ReasonError>(pos, "multiple converters");
 		ast::[Stage]MemberFunction:
 		{
-			fn_: [Stage]MemberFunction-std::Dyn := :<>(&&fn);
+			fn_: [Stage]MemberFunction-std::Val := :<>(&&fn);
 			IF(existing ::= Functions.find(fn_))
-				existing!.merge(&&fn_!);
+				existing->mut().merge(&&fn_.mut());
 			ELSE ASSERT(Functions += &&fn_);
 		}
 		ast::[Stage]Operator:
@@ -73,13 +73,13 @@ INCLUDE 'std/set'
 		}
 	}
 
-	set_factory(f: ast::[Stage]Factory-std::Dyn) VOID
+	set_factory(f: ast::[Stage]Factory-std::Val) VOID
 	{
 		IF(!Factory)
 			Factory := &&f;
 		ELSE
 		{
-			pos ::= <<CodeObject \>>(f)->Position;
+			pos ::= <<CodeObject #\>>(f)->Position;
 			THROW <rlc::ReasonError>(pos, "duplicate factory");
 		}
 	}
@@ -115,7 +115,7 @@ INCLUDE 'std/set'
 			AnonVars += :transform(v!, ctx);
 	}
 
-	THIS += (v: [Stage]MaybeAnonMemberVar-std::Dyn) VOID
+	THIS += (v: [Stage]MaybeAnonMemberVar-std::Val) VOID
 	{
 		TYPE SWITCH(v!)
 		{
@@ -132,15 +132,15 @@ INCLUDE 'std/set'
 ::rlc::ast [Stage: TYPE] Constructors
 {
 	/// The auto-generated structural (member-wise) constructor.
-	StructuralCtor: [Stage]StructuralConstructor-std::DynOpt;
-	DefaultCtor: [Stage]DefaultConstructor-std::DynOpt;
-	CopyCtor: [Stage]CopyConstructor-std::DynOpt;
-	MoveCtor: [Stage]MoveConstructor-std::DynOpt;
-	NullCtor: [Stage]NullConstructor-std::DynOpt;
-	BareCtor: [Stage]BareConstructor-std::DynOpt;
+	StructuralCtor: [Stage]StructuralConstructor-std::ValOpt;
+	DefaultCtor: [Stage]DefaultConstructor-std::ValOpt;
+	CopyCtor: [Stage]CopyConstructor-std::ValOpt;
+	MoveCtor: [Stage]MoveConstructor-std::ValOpt;
+	NullCtor: [Stage]NullConstructor-std::ValOpt;
+	BareCtor: [Stage]BareConstructor-std::ValOpt;
 	/// Custom unnamed constructor. If there is a structural ctor, they must differ in their argument count.
-	ImplicitCtor: [Stage]CustomConstructor-std::DynOpt;
-	CustomCtors: [Stage]CustomConstructor-std::DynVecSet;
+	ImplicitCtor: [Stage]CustomConstructor-std::ValOpt;
+	CustomCtors: [Stage]CustomConstructor-std::ValVecSet;
 
 
 	:transform{
@@ -167,7 +167,7 @@ INCLUDE 'std/set'
 			CustomCtors += :transform(ctor!, ctx);
 	}
 
-	THIS += (ctor: [Stage]Constructor-std::Dyn) BOOL
+	THIS += (ctor: [Stage]Constructor-std::Val) BOOL
 	{
 		pos ::= ctor->Position;
 		TYPE SWITCH(ctor!)
@@ -207,7 +207,7 @@ INCLUDE 'std/set'
 	Fields: ast::[Stage]Fields;
 	Functions: [Stage]MemberFunctions;
 	Ctors: ast::[Stage]Constructors;
-	Destructor: ast::[Stage]Destructor-std::DynOpt;
+	Destructor: ast::[Stage]Destructor-std::ValOpt;
 	Statics: [Stage]MemberScope;
 
 	:childOf{
@@ -227,14 +227,14 @@ INCLUDE 'std/set'
 			:transform(p.Destructor.ok(), ctx.in_parent(&p, &THIS))),
 		Statics := :transform_virtual(p.Statics, ctx.in_parent(&p, &THIS));
 
-	#? FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #? *
+	# FINAL scope_item(name: Stage::Name #&) [Stage]ScopeItem #*
 	{
 		IF(item ::= Statics.scope_item(name))
 			= item;
 		= NULL;
 	}
 
-	#? FINAL local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #? *
+	# FINAL local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #*
 	{
 		IF(item ::= Fields.item(name))
 			= item;
@@ -245,9 +245,9 @@ INCLUDE 'std/set'
 		= NULL;
 	}
 
-	THIS += (member: [Stage]Member - std::Dyn) VOID
+	THIS += (member: [Stage]Member - std::Val) VOID
 	{
-		IF(named ::= <<[Stage]ScopeItem *>>(member))
+		IF(named ::= <<[Stage]ScopeItem #*>>(member))
 			IF(exists ::= local(named->Name, 0))
 				THROW <MergeError>(exists, named);
 
@@ -261,7 +261,7 @@ INCLUDE 'std/set'
 		{
 			IF(Destructor)
 				THROW <ReasonError>(
-					<<ast::[Stage]Destructor \>>(member)->Position,
+					<<ast::[Stage]Destructor #\>>(member)->Position,
 					"duplicate destructor");
 			Destructor := :<>(&&member);
 		}

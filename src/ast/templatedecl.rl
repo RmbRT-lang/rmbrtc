@@ -7,7 +7,7 @@ INCLUDE "scope.rl"
 
 	[Stage:TYPE] TemplateDecl
 	{
-		Arguments: Stage-TemplateArgDecl-std::DynVec;
+		Arguments: Stage-TemplateArgDecl-std::ValVec;
 
 		:transform{
 			p: [Stage::Prev+]TemplateDecl #&,
@@ -37,7 +37,7 @@ INCLUDE "scope.rl"
 		<<<
 			p: [Stage::Prev+]TemplateArgDecl #&,
 			ctx: Stage::Context+ #&
-		>>> THIS-std::Dyn
+		>>> THIS-std::Val
 		{
 			TYPE SWITCH(p)
 			{
@@ -63,7 +63,7 @@ INCLUDE "scope.rl"
 
 	[Stage:TYPE] ValueTemplateArgDecl -> [Stage]TemplateArgDecl
 	{
-		Type: Stage-ast::Type - std::Dyn;
+		Type: Stage-ast::Type - std::Val;
 		# FINAL type() TemplateDeclArgType := :value;
 
 		:transform{

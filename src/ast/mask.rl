@@ -15,7 +15,7 @@ INCLUDE 'std/memory'
 	[Stage]CoreType,
 	[Stage]Instantiable
 {
-	Members: [Stage]Member - std::DynVec;
+	Members: [Stage]Member - std::ValVec;
 
 	:transform{
 		p: [Stage::Prev+]Mask #&,

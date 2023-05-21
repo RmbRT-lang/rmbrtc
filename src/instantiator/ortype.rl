@@ -3,9 +3,10 @@
 PRIVATE:
 	/// Type -> Index.
 	TypesMap: U2 - std::[ast::[Config]Type#-std::Ref]Map;
-	Types: ast::[Config]Type-std::DynVec; /// The actual types of the or-type, unsorted.
+	Types: ast::[Config]Type-std::ValVec; /// The actual types of the or-type, unsorted.
 
 PUBLIC:
+
 	# index(t: ast::[Config]Type #&) U2 - std::Opt
 	{
 		IF(f ::= TypesMap.find(&t))
@@ -13,18 +14,20 @@ PUBLIC:
 		= NULL;
 	}
 
-	THIS += (t: ast::[Config]Type-std::Dyn) VOID
+	THIS += (t: ast::[Config]Type-std::Val) VOID
 	{
-		IF(or ::= <<OrType *>>(t))
-			FOR(candidate ::= or->Types.start())
+		IF(or ::= <<OrType #*>>(t))
+		{
+			mut_or ::= <<OrType \>>(t.mut_ptr());
+			FOR(candidate ::= mut_or->Types.start())
 				insert_1(&&*candidate);
-		ELSE
+		} ELSE
 			insert_1(&&t);
 	}
 
 	#? start() ? := Types.start();
 
-	PRIVATE insert_1(t: ast::[Config]Type-std::Dyn) VOID
+	PRIVATE insert_1(t: ast::[Config]Type-std::Val) VOID
 	{
 		entry_and_loc ::= TypesMap.find_loc(&t!);
 		IF(entry_and_loc.(0))

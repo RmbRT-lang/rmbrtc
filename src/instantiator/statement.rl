@@ -6,31 +6,31 @@ INCLUDE "context.rl"
 ::rlc::instantiator::statement evaluate_inner(
 	p: ast::[resolver::Config]Statement #&,
 	ctx: Context #&
-) ast::[Config]Statement - std::Dyn
+) ast::[Config]Statement - std::Val
 {
 	TYPE SWITCH(p)
 	{
 	//! [Config::Prev]AssertStatement:
 	ast::[Config::Prev]DieStatement:
 	{
-		stmt: ast::[Config]DieStatement-std::Dyn := :a(BARE);
+		stmt: ast::[Config]DieStatement-std::Val := :a(BARE);
 		pp: ast::[Config::Prev]DieStatement #& := >>p;
 		IF(pp.Message)
 		{
-			stmt!.Message := :a(BARE);
-			stmt!.Message!.String := pp.Message!.String;
+			stmt.mut_ok().Message := :a(BARE);
+			stmt.mut_ok().Message!.String := pp.Message!.String;
 		}
-		= :<>(stmt);
+		= :<>(&&stmt);
 	}
 	ast::[Config::Prev]YieldStatement: = :a.ast::[Config]YieldStatement (BARE);
 	//! [Config::Prev]SleepStatement:
 	ast::[Config::Prev]BlockStatement:
 	{
 		pp: ast::[Config::Prev]BlockStatement #& := >>p;
-		s: ast::[Config]BlockStatement - std::Dyn := :a(BARE);
-		_ctx: StatementContext := :childOf(&ctx, &s!);
+		s: ast::[Config]BlockStatement - std::Val := :a(BARE);
+		_ctx: StatementContext := :childOf(&ctx, s.mut_ptr_ok());
 		FOR(stmt ::= pp.Statements.start())
-			s!.Statements += evaluate(stmt!, _ctx);
+			s.mut_ok().Statements += evaluate(stmt!, _ctx);
 		= :<>(&&s);
 	}
 	//! ast::[Config::Prev]IfStatement:
@@ -45,21 +45,21 @@ INCLUDE "context.rl"
 	ast::[Config::Prev]BreakStatement:
 	{
 		breakDist ::= <<ast::[Config::Prev]BreakStatement#&>>(p).Label!;
-		stmt: ast::[Config]BreakStatement-std::Dyn := :a(BARE);
+		stmt: ast::[Config]BreakStatement-std::Val := :a(BARE);
 		parentStmt ::= ctx.[StatementContext]nearest()->Statement;
 		WHILE(--breakDist)
 			parentStmt := parentStmt->Parent;
-		stmt->Label := :a(<<ast::[Config]LabelledStatement \>>(parentStmt));
+		stmt.mut_ok().Label := :a(<<ast::[Config]LabelledStatement \>>(parentStmt));
 		= :<>(&&stmt);
 	}
 	ast::[Config::Prev]ContinueStatement:
 	{
 		contDist ::= <<ast::[Config::Prev]BreakStatement#&>>(p).Label!;
-		stmt: ast::[Config]ContinueStatement-std::Dyn := :a(BARE);
+		stmt: ast::[Config]ContinueStatement-std::Val := :a(BARE);
 		parentStmt ::= ctx.[StatementContext]nearest()->Statement;
 		WHILE(--contDist)
 			parentStmt := parentStmt->Parent;
-		stmt->Label := :a(<<ast::[Config]LabelledStatement \>>(parentStmt));
+		stmt.mut_ok().Label := :a(<<ast::[Config]LabelledStatement \>>(parentStmt));
 		= :<>(&&stmt);
 	}
 	}
@@ -68,9 +68,9 @@ INCLUDE "context.rl"
 ::rlc::instantiator::statement evaluate(
 	p: ast::[resolver::Config]Statement #&,
 	ctx: Context #&
-) ast::[Config]Statement - std::Dyn {
+) ast::[Config]Statement - std::Val {
 	x ::= evaluate_inner(p, ctx);
 	IF(stmtCtx ::= ctx.[StatementContext]nearest())
-		x!.Parent := stmtCtx->Statement;
+		x.mut_ok().Parent := stmtCtx->Statement;
 	= &&x;
 }

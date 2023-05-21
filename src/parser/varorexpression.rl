@@ -8,7 +8,7 @@ INCLUDE 'std/dyn'
 
 ::rlc::parser::var_or_exp parse_opt(
 	p: Parser &
-) ast::[Config]VarOrExpr-std::DynOpt
+) ast::[Config]VarOrExpr-std::ValOpt
 {
 	IF(variable::help::is_named_variable_start(p, TRUE))
 	{
@@ -19,7 +19,7 @@ INCLUDE 'std/dyn'
 	= expression::parse(p);
 }
 
-::rlc::parser::var_or_exp parse(p: Parser &) ast::[Config]VarOrExpr-std::Dyn
+::rlc::parser::var_or_exp parse(p: Parser &) ast::[Config]VarOrExpr-std::Val
 {
 	IF:!(ret ::= parse_opt(p))
 		p.fail("expected variable or expression");

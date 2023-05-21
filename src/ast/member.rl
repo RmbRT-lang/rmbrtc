@@ -31,7 +31,7 @@ INCLUDE "scopeitem.rl"
 	<<<
 		m: [Stage::Prev+]Member #&,
 		ctx: Stage::Context+ #&
-	>>> THIS - std::Dyn
+	>>> THIS - std::Val
 	{
 		TYPE SWITCH(m)
 		{

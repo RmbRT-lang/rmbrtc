@@ -38,7 +38,7 @@ INCLUDE 'std/io/streamutil'
 	(// The inner-most resolvable part of the symbol (previous stage). /)
 	PrevItem: ast::[scoper::Config]ScopeItem #\;
 	/// Lazily initialised: this stage's scope item this symbol points to. Needs dynamic alloc because it's a receiver and we might move.
-	Item: ast::[Config]ScopeItem * - std::Dyn;
+	Item: ast::[Config]ScopeItem * - std::Val;
 	(// Templates of `Item`. /)
 	ItemTemplates: ast::[Config]TemplateArg - std::Vec;
 
@@ -122,7 +122,7 @@ INCLUDE 'std/io/streamutil'
 		AncestorTemplates := &&templates,
 		PrevItem := tip
 	{
-		ctx.Root->register_symbol_writeback(tip, &Item!);
+		ctx.Root->register_symbol_writeback(tip, Item.mut_ptr());
 	}
 
 	:partially_resolved{
@@ -139,7 +139,7 @@ INCLUDE 'std/io/streamutil'
 	{
 		AncestorTemplates.resize(resolved_children-1);
 
-		ctx.Root->register_symbol_writeback(tip, &Item!);
+		ctx.Root->register_symbol_writeback(tip, Item.mut_ptr());
 	}
 }
 
@@ -185,9 +185,9 @@ INCLUDE 'std/io/streamutil'
 			IF(ParentName)
 				std::io::write(o, delim, ParentName!++);
 			DO(parent ::= Scope)
-				IF(item ::= <<ast::[scoper::Config]ScopeItem # *>>(parent))
+				IF(item ::= <<ast::[scoper::Config]ScopeItem #*>>(parent))
 				{
-					IF(<<ast::[scoper::Config]Function # *>>(item))
+					IF(<<ast::[scoper::Config]Function #*>>(item))
 						std::io::write(o, "()");
 					BREAK;
 				}

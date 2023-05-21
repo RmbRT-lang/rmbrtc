@@ -2,17 +2,17 @@ INCLUDE "context.rl"
 INCLUDE "ortype.rl"
 
 /// Binding of instantiated argument types to name-resolved arguments.
-::rlc::instantiator TYPE ArgTypes := ast::[Config]Type-std::Dyn -
+::rlc::instantiator TYPE ArgTypes := ast::[Config]Type-std::Val -
 		std::[ast::[resolver::Config]TypeOrArgument #\]Map;
 
 /// The return type of a function, as it is being generated.
 ::rlc::instantiator GeneratingReturnType
 {
-	:parse{type: ast::[Config]MaybeAutoType -std::Dyn &&}:
+	:parse{type: ast::[Config]MaybeAutoType -std::Val &&}:
 		Auto (NOINIT),
 		RetType (NOINIT)
 	{
-		IF(auto ::= <<ast::type::[Config]Auto *>>(type))
+		IF(auto ::= <<ast::type::[Config]Auto *>>(type.mut_ptr()))
 		{
 			Auto.{:a(&&*auto)};
 			RetType.{:a.OrType()};
@@ -29,7 +29,7 @@ INCLUDE "ortype.rl"
 	/// The modifier to add to the return values in an auto-returning function.
 	Auto: ast::type::[Config]Auto -std::Opt;
 	/// The actual return type. Depending on is_auto(), it needs to be constructed during the function's generation.
-	RetType: ast::[Config]Type-std::Dyn;
+	RetType: ast::[Config]Type-std::Val;
 }
 
 /// The function we're currently in, if any.
@@ -41,7 +41,7 @@ INCLUDE "ortype.rl"
 		p: Context #\,
 		fn: InstanceID #\,
 		args: ArgTypes &&,
-		ret: ast::[Config]MaybeAutoType -std::Dyn
+		ret: ast::[Config]MaybeAutoType -std::Val
 	} -> (:childOf, p):
 		ConstThis := FALSE,
 		Function := fn,
@@ -70,9 +70,9 @@ INCLUDE "ortype.rl"
 {
 	/// First, go through the function and evaluate its types and statements, determine its return type, then print its declaration and definition.
 	fn ::= <<ast::[resolver::Config]Functoid #\>>(instance->Descriptor);
-	retType: ast::[Config]MaybeAutoType -std::DynOpt;
+	retType: ast::[Config]MaybeAutoType -std::ValOpt;
 
-	argTypes: ast::[Config]Type - std::[ast::[resolver::Config]TypeOrArgument #\]DynMap := :reserve(##fn->Signature!.Args);
+	argTypes: ast::[Config]Type - std::[ast::[resolver::Config]TypeOrArgument #\]ValMap := :reserve(##fn->Signature!.Args);
 	FOR(arg ::= fn->Signature!.Args.start())
 		TYPE SWITCH(arg!)
 		{
@@ -94,7 +94,7 @@ INCLUDE "ortype.rl"
 	ast::[resolver::Config]ResolvedSig:
 	{
 		sig ::= <<ast::[resolver::Config]ResolvedSig #\>>(fn->Signature);
-		retType := type::resolve(sig->Return!, ctx);
+		retType := :<>(type::resolve(sig->Return!, ctx));
 	}
 	}
 

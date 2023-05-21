@@ -77,5 +77,5 @@ INCLUDE 'std/optional'
 		) VOID;
 	}
 
-	::detail EXTERN getenv(CHAR #*) CHAR # *;
+	::detail EXTERN getenv(CHAR #*) CHAR #*;
 }

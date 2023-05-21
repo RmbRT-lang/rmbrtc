@@ -27,23 +27,23 @@ INCLUDE 'std/vector'
 	/)
 	[Stage:TYPE] InitialisedVariable VIRTUAL -> [Stage]Variable
 	{
-		Type: [Stage]MaybeAutoType -std::Dyn;
-		InitValues: Stage-Expression -std::DynVec -std::Opt;
+		Type: [Stage]MaybeAutoType -std::Val;
+		InitValues: Stage-Expression -std::ValVec -std::Opt;
 
 		# is_noinit() BOOL INLINE := !InitValues;
 
 		{
 			name: Stage::Name,
 			pos: src::Position #&,
-			type: [Stage]MaybeAutoType - std::Dyn,
-			initValues: [Stage]Expression -std::DynVec-std::Opt
+			type: [Stage]MaybeAutoType - std::Val,
+			initValues: [Stage]Expression -std::ValVec-std::Opt
 		} ->
 			(&&name, pos):
 			Type(&&type),
 			InitValues(&&initValues)
 		{
-			// Make sure that an auto variable has a single-value initialiser.
-			ASSERT(!<<Stage-ast::type::Auto *>>(Type) || InitValues && ##InitValues! == 1);
+			/// Make sure that an auto variable has a single-value initialiser.
+			ASSERT(!<<Stage-ast::type::Auto #*>>(Type) || InitValues && ##InitValues! == 1);
 		}
 
 		:transform{
@@ -67,12 +67,12 @@ INCLUDE 'std/vector'
 	/)
 	[Stage:TYPE] UninitialisedVariable VIRTUAL -> [Stage]Variable
 	{
-		Type: ast::[Stage]Type - std::Dyn;
+		Type: ast::[Stage]Type - std::Val;
 
 		{
 			name: Stage::Name,
 			position: src::Position #&,
-			type: ast::[Stage]Type-std::Dyn
+			type: ast::[Stage]Type-std::Val
 		} ->
 			(&&name, position):
 			Type(&&type);
@@ -90,8 +90,8 @@ INCLUDE 'std/vector'
 		{
 			name: Stage::Name,
 			position: src::Position #&,
-			type: [Stage]MaybeAutoType - std::Dyn,
-			initValues: [Stage]Expression - std::DynVec - std::Opt
+			type: [Stage]MaybeAutoType - std::Val,
+			initValues: [Stage]Expression - std::ValVec - std::Opt
 		} -> (), (&&name, position, &&type, &&initValues);
 
 		:transform{
@@ -108,7 +108,7 @@ INCLUDE 'std/vector'
 		{
 			name: Stage::Name,
 			position: src::Position #&,
-			type: [Stage]Type - std::Dyn,
+			type: [Stage]Type - std::Val,
 			linkName: Stage::StringLiteral+ - std::Opt
 		} -> (), (&&name, position, &&type), (&&linkName);
 
@@ -123,7 +123,7 @@ INCLUDE 'std/vector'
 		<<<
 			p: [Stage::Prev+]MaybeAnonMemberVar #&,
 			ctx: Stage::Context+ #&
-		>>> THIS-std::Dyn
+		>>> THIS-std::Val
 		{
 			TYPE SWITCH(p)
 			{
@@ -160,7 +160,7 @@ INCLUDE 'std/vector'
 	[Stage:TYPE] AnonMemberVariable -> [Stage]MaybeAnonMemberVar
 	{
 		Index: UM;
-		Type: ast::[Stage]Type - std::Dyn;
+		Type: ast::[Stage]Type - std::Val;
 
 		:transform{
 			p: [Stage::Prev+]AnonMemberVariable #&,
@@ -176,8 +176,8 @@ INCLUDE 'std/vector'
 	{
 		{
 			name: Stage::Name,
-			type: [Stage]Type-std::Dyn,
-			inits: [Stage]Expression - std::DynVec
+			type: [Stage]Type-std::Val,
+			inits: [Stage]Expression - std::ValVec
 		}-> (), (&&name, &&type, &&inits);
 
 		:transform{
@@ -204,7 +204,7 @@ INCLUDE 'std/vector'
 		<<<
 			g: [Stage::Prev+]Local #&,
 			ctx: Stage::Context+ #&
-		>>> THIS - std::Dyn
+		>>> THIS - std::Val
 		{
 			TYPE SWITCH(g)
 			{
@@ -227,7 +227,7 @@ INCLUDE 'std/vector'
 		{
 			name: Stage::Name,
 			pos: src::Position #&,
-			type: [Stage]Type-std::Dyn
+			type: [Stage]Type-std::Val
 		} -> (:arg), (&&name, pos, &&type), ();
 
 		:transform{
@@ -246,8 +246,8 @@ INCLUDE 'std/vector'
 			name: Stage::Name,
 			codePos: src::Position #&,
 			position: LocalPosition,
-			type: [Stage]MaybeAutoType-std::Dyn,
-			initValues: [Stage]Expression-std::DynVec-std::Opt
+			type: [Stage]MaybeAutoType-std::Val,
+			initValues: [Stage]Expression-std::ValVec-std::Opt
 		} -> (position), (&&name, codePos, &&type, &&initValues), ();
 
 		:transform{
@@ -266,7 +266,7 @@ INCLUDE 'std/vector'
 			name: Stage::Name,
 			codePos: src::Position #&,
 			position: LocalPosition,
-			type: [Stage]Type-std::Dyn
+			type: [Stage]Type-std::Val
 		} -> (position), (&&name, codePos, &&type), ();
 
 		:transform{

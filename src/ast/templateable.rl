@@ -9,9 +9,9 @@
 			ctx: Stage::Context+ #&
 		} -> (:childOf, ctx.Parent), (:transform, p, ctx);
 
-		#? FINAL scope_item(Stage::Name #&) [Stage]ScopeItem #? * := NULL;
+		# FINAL scope_item(Stage::Name #&) [Stage]ScopeItem #* := NULL;
 
-		#? FINAL local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #?*
+		# FINAL local(name: Stage::Name #&, LocalPosition) [Stage]ScopeItem #*
 		{
 			FOR(arg ::= THIS.Arguments.start().ok())
 				IF(arg!.Name == name)

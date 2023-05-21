@@ -9,9 +9,9 @@ INCLUDE "class.rl"
 	Cache
 	{
 
-		TemplateArgumentCache: SharedTplArg-std::VecSet;
-		TemplateArgumentSetCache: SharedTplArgSet-std::VecSet;
-		IDs: InstanceID-std::Dyn-std::VecSet; /// Instance ID pool with fixed addresses.
+		TemplateArgumentCache: ValTplArg-std::VecSet;
+		TemplateArgumentSetCache: ValTplArgSet-std::VecSet;
+		IDs: InstanceID-std::Val-std::VecSet; /// Instance ID pool with fixed addresses.
 		Classes: Class-std::[InstanceID #\]DynMap;
 
 		Enums: ast::[resolver::Config]GlobalEnum #\ -std::VecSet;

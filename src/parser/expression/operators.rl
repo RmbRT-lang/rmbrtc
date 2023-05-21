@@ -176,7 +176,7 @@
 				(:lessMinus, :await, TRUE),
 				(:doubleHash, :count, TRUE),
 				(:tripleAmp, :baseAddr, FALSE),
-				(:doubleGreater, :autoDynamicCast, FALSE),
+				(:doubleGreater, :concretise, FALSE),
 				(:pipe, :structure, TRUE));
 	}
 }

@@ -13,7 +13,7 @@ INCLUDE "statement.rl"
 	<<<
 		p: [Stage::Prev+]FnSignature #&,
 		ctx: Stage::Context+ #&
-	>>> THIS-std::Dyn
+	>>> THIS-std::Val
 	{
 		TYPE SWITCH(p)
 		{
@@ -26,7 +26,7 @@ INCLUDE "statement.rl"
 	}
 
 	{
-		arguments: [Stage]TypeOrArgument - std::DynVec &&,
+		arguments: [Stage]TypeOrArgument - std::ValVec &&,
 		isCoroutine: BOOL
 	} -> (&&arguments):
 		IsCoroutine := isCoroutine;
@@ -51,12 +51,12 @@ INCLUDE "statement.rl"
 
 ::rlc::ast [Stage:TYPE] ResolvedSig -> [Stage]FnSignature
 {
-	Return: [Stage]Type-std::Dyn;
+	Return: [Stage]Type-std::Val;
 
 	{
-		args: [Stage]TypeOrArgument-std::DynVec&&,
+		args: [Stage]TypeOrArgument-std::ValVec&&,
 		isCoroutine: BOOL,
-		return: [Stage]Type-std::Dyn
+		return: [Stage]Type-std::Val
 	} -> (&&args, isCoroutine): Return := &&return;
 
 	:transform{
@@ -72,8 +72,8 @@ INCLUDE "statement.rl"
 	CodeObject,
 	[Stage]Instantiable
 {
-	Signature: [Stage]FnSignature - std::Dyn;
-	Body: [Stage]ExprOrStatement - std::DynOpt;
+	Signature: [Stage]FnSignature - std::Val;
+	Body: [Stage]ExprOrStatement - std::ValOpt;
 	IsInline: BOOL;
 
 	:transform{
@@ -81,10 +81,10 @@ INCLUDE "statement.rl"
 		ctx: Stage::Context+ #&
 	} -> (:transform, p, ctx), (p), ():
 		Signature := :make(p.Signature!, ctx.in_parent(&p.Templates, &THIS.Templates)),
-		Body := :make_if(p.Body, p.Body.ok(), ctx.in_parent(&p.Signature!, &Signature!)),
+		Body := :make_if(p.Body, p.Body.ok(), ctx.in_parent(&p.Signature!, Signature.mut_ptr_ok())),
 		IsInline := p.IsInline;
 
-	STATIC short_hand_body(e: [Stage]Expression-std::Dyn) [Stage]Statement-std::Dyn
+	STATIC short_hand_body(e: [Stage]Expression-std::Val) [Stage]Statement-std::Val
 		:= :a.[Stage]ReturnStatement(:exp(&&e));
 }
 
@@ -127,11 +127,11 @@ INCLUDE "statement.rl"
 (// A named function with potential callable variants. /)
 ::rlc::ast [Stage:TYPE] Function VIRTUAL -> [Stage]MergeableScopeItem
 {
-	Default: [Stage]DefaultVariant-std::Shared;
+	Default: [Stage]DefaultVariant-std::ValOpt;
 
-	SpecialVariants: std::[function::SpecialVariant; ast::[Stage]SpecialVariant-std::Shared]Map;
+	SpecialVariants: std::[function::SpecialVariant; ast::[Stage]SpecialVariant-std::Val]Map;
 	(// The function's variant implementations. /)
-	Variants: std::[Stage-Name; [Stage]Variant-std::Shared]Map;
+	Variants: std::[Stage-Name; [Stage]Variant-std::Val]Map;
 
 	:transform {
 		p: [Stage::Prev+]Function #&,
@@ -266,7 +266,7 @@ INCLUDE "statement.rl"
 	<<<
 		p: [Stage::Prev+]Abstractable #&,
 		ctx: Stage::Context+ #&
-	>>> THIS - std::Dyn
+	>>> THIS - std::Val
 	{
 		TYPE SWITCH(p)
 		{

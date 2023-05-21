@@ -2,7 +2,7 @@ INCLUDE "../src/file.rl"
 INCLUDE 'std/error'
 INCLUDE 'std/string'
 
-::rlc::tok Error -> std::Error
+::rlc::tok Error VIRTUAL -> std::Error
 {
 	File: std::Str;
 	Line: UINT;

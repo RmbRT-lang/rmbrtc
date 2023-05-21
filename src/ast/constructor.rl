@@ -18,7 +18,7 @@ INCLUDE 'std/memory'
 		<<<
 			p: [Stage::Prev+]Constructor::Initialisers #&,
 			ctx: Stage::Context+ #&
-		>>> THIS - std::Dyn
+		>>> THIS - std::Val
 		{
 			TYPE SWITCH(p)
 			{
@@ -32,7 +32,7 @@ INCLUDE 'std/memory'
 
 	BaseInit -> CodeObject
 	{
-		Arguments: [Stage]Expression - std::DynVec;
+		Arguments: [Stage]Expression - std::ValVec;
 
 		:transform{
 			p: [Stage::Prev+]Constructor::BaseInit+ #&,
@@ -48,7 +48,7 @@ INCLUDE 'std/memory'
 	MemberInit -> CodeObject
 	{
 		Member: Stage::MemberVariableReference;
-		Arguments: [Stage]Expression - std::DynVec-std::Opt;
+		Arguments: [Stage]Expression - std::ValVec-std::Opt;
 
 		# is_noinit() BOOL INLINE := !Arguments;
 
@@ -88,7 +88,7 @@ INCLUDE 'std/memory'
 
 	CtorAlias -> Initialisers
 	{
-		Arguments: [Stage]Expression - std::DynVec;
+		Arguments: [Stage]Expression - std::ValVec;
 
 		:transform{
 			p: [Stage::Prev+]Constructor::CtorAlias+ #&,
@@ -102,8 +102,8 @@ INCLUDE 'std/memory'
 	}
 
 	Args: [Stage]ArgScope;
-	Inits: Initialisers - std::DynOpt;
-	Body: [Stage]BlockStatement - std::DynOpt;
+	Inits: Initialisers - std::ValOpt;
+	Body: [Stage]BlockStatement - std::ValOpt;
 	Inline: BOOL;
 
 	:transform{
@@ -126,7 +126,7 @@ INCLUDE 'std/memory'
 	<<<
 		p: [Stage::Prev+]Constructor #&,
 		ctx: Stage::Context+ #&
-	>>> THIS - std::Dyn
+	>>> THIS - std::Val
 	{
 		TYPE SWITCH(p)
 		{

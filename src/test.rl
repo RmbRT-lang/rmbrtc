@@ -7,7 +7,7 @@ INCLUDE "ast/namespace.rl"
 		outer.Parent := NULL;
 		outer.Name := "outer";
 		outer.Entries.Parent := &outer;
-		inner: ast::[resolver::Config]Namespace -std::Dyn := :a(BARE);
+		inner: ast::[resolver::Config]Namespace -std::Val := :a(BARE);
 		pInner ::= &inner!;
 		inner!.Parent := &outer.Entries;
 		inner!.Name := "inner";

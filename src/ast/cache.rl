@@ -4,15 +4,15 @@
 /)
 ::rlc::ast [Stage: TYPE; T: TYPE]Cache
 {
-	References: std::[T::Prev+ #\; T - std::Shared]Map;
+	References: std::[T::Prev+ #\; T - std::Val]Map;
 
-	THIS[p: T::Prev+ #\, ctx: Stage::Context+] T - std::Shared
+	THIS[p: T::Prev+ #\, ctx: Stage::Context+] T - std::Val
 	{
 		IF(entry ::= References.find(p))
 			= *entry;
 		ELSE
 		{
-			new: T-std::Shared := :make(*p, ctx);
+			new: T-std::Val := :make(*p, ctx);
 			References.insert(p, new);
 			= &&new;
 		}

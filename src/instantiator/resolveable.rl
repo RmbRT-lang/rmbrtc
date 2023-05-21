@@ -5,7 +5,7 @@ INCLUDE 'std/nodestruct'
 	ENUM StateE { undetermined, resolving, failed, resolved }
 	UNION ValueU {
 		Resolved: T;
-		Error: std::Error - std::Shared;
+		Error: std::Error - std::Val;
 	}
 	State: StateE;
 	Value: ValueU;
@@ -62,7 +62,7 @@ INCLUDE 'std/nodestruct'
 		THROW Value.Error;
 	}
 
-	fail_share(err: std::Error-std::Shared) VOID
+	fail_share(err: std::Error-std::Val) VOID
 	{
 		ASSERT(State == :resolving);
 		Value.Error.{&&err};

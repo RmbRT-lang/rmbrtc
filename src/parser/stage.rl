@@ -17,7 +17,7 @@ INCLUDE "global.rl"
 
 		Registry: ast::[Config]FileRegistry;
 		Cli: ::cli::Console \;
-		SourceFiles: src::File - std::Shared - std::Vec;
+		SourceFiles: src::File - std::SharedVec;
 
 		{cli: ::cli::Console \}: Registry(&THIS), Cli := cli;
 
@@ -35,7 +35,7 @@ INCLUDE "global.rl"
 		TYPE MemberVariableReference := src::String;
 
 		TYPE Includes := Include - std::Vec;
-		TYPE RootScope := Config-ast::Global - std::DynVec;
+		TYPE RootScope := Config-ast::Global - std::ValVec;
 
 		transform_includes(
 			out: Includes&,
@@ -69,7 +69,7 @@ INCLUDE "global.rl"
 		{
 			s: src::File#-std::Shared := :<>( SourceFiles += :a(file) );
 			p: Parser(&&s, Cli);
-			= :a(:transform(&p, THIS));
+			= :transform(&p, THIS);
 		}
 	}
 }

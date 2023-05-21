@@ -4,7 +4,7 @@ INCLUDE "variable.rl"
 INCLUDE "function.rl"
 INCLUDE "stage.rl"
 
-::rlc::parser::extern parse(p: Parser &) ast::[Config]Global - std::DynOpt
+::rlc::parser::extern parse(p: Parser &) ast::[Config]Global - std::ValOpt
 {
 	IF(!p.consume(:extern))
 		= NULL;

@@ -9,11 +9,11 @@ INCLUDE "cache.rl"
 	PRIVATE Scoper: scoper::Config;
 	PRIVATE Cli: cli::Console \;
 
-	{prev: resolver::Config::RootScope \, cli: ::cli::Console \}:
+	{prev: resolver::Config::RootScope #\, cli: ::cli::Console \}:
 		Prev := prev,
-		DummySrc := :a(:fromString(
+		DummySrc := :fromString(
 			<std::str::CV>("<instantiator arguments>"),
-			<std::str::CV>(""))),
+			<std::str::CV>("")),
 		Scoper := BARE,
 		Cli := cli;
 

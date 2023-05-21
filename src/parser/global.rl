@@ -9,14 +9,14 @@ INCLUDE "namespace.rl"
 
 ::rlc::parser::global
 {
-	parse(p: Parser &) ast::[Config]Global - std::DynOpt
+	parse(p: Parser &) ast::[Config]Global - std::ValOpt
 	{
 		templates: ast::[Config]TemplateDecl (BARE);
 		parse_template_decl(p, templates);
 
 		pos ::= p.position();
 
-		ret: ast::[Config]Global - std::DynOpt (BARE);
+		ret: ast::[Config]Global - std::ValOpt (BARE);
 		IF(parse_global_impl(p, ret, namespace::parse)
 		|| parse_global_impl(p, ret, typedef::parse_global)
 		|| parse_global_impl(p, ret, function::parse_global)
@@ -28,14 +28,14 @@ INCLUDE "namespace.rl"
 		|| (ret := extern::parse(p))
 		|| parse_global_impl(p, ret, test::parse))
 		{
-			IF(t ::= <<ast::[Config]Templateable *>>(ret))
+			IF(t ::= <<ast::[Config]Templateable *>>(ret.mut_ptr_ok()))
 				<ast::[Config]TemplateDecl &>(t->Templates) := &&templates;
-			ELSE IF(fn ::= <<ast::[Config]Function *>>(ret))
+			ELSE IF(fn ::= <<ast::[Config]Function *>>(ret.mut_ptr_ok()))
 				fn->set_templates_after_parsing(&&templates);
 			ELSE IF(templates.exists())
 				p.fail("preceding item must not have templates");
 
-			IF(s ::= <<ast::[Config]ScopeItem *>>(ret))
+			IF(s ::= <<ast::[Config]ScopeItem *>>(ret.mut_ptr_ok()))
 				s->Position := pos;
 		}
 
@@ -44,7 +44,7 @@ INCLUDE "namespace.rl"
 
 	[T: TYPE] parse_global_impl(
 		p: Parser &,
-		ret: ast::[Config]Global - std::DynOpt &,
+		ret: ast::[Config]Global - std::ValOpt &,
 		parse_fn: ((Parser &, T! &) BOOL)
 	) BOOL
 	{

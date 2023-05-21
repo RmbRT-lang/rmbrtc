@@ -18,7 +18,7 @@
 	
 	:typed_identifier{
 		i: src::String,
-		type: ast::[Stage]Type-std::Dyn
+		type: ast::[Stage]Type-std::Val
 	}:
 		NameType(:identifier),
 		Identifier(i),
@@ -26,7 +26,7 @@
 
 	:typed_special{
 		t: Type,
-		type: ast::[Stage]Type-std::Dyn
+		type: ast::[Stage]Type-std::Val
 	}:
 		NameType(t),
 		TypeAnnotation := &&type
@@ -42,7 +42,7 @@
 
 	NameType: Type;
 	Identifier: Stage::Name;
-	TypeAnnotation: ast::[Stage]Type - std::DynOpt;
+	TypeAnnotation: ast::[Stage]Type - std::ValOpt;
 
 	# has_name() BOOL := NameType == :identifier;
 	# is_special() BOOL := NameType != :identifier;

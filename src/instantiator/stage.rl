@@ -20,7 +20,7 @@ INCLUDE "symbol.rl"
 
 	MemberReference
 	{
-		Type: InstanceType -std::Dyn;
+		Type: InstanceType -std::Val;
 		Member: ast::[Prev]Member #\;
 		Templates: ast::[Config]TemplateArg-std::Vec;
 
@@ -30,7 +30,7 @@ INCLUDE "symbol.rl"
 	{
 		config: resolver::Config &,
 		cli: ::cli::Console \,
-		generator: instantiator::Generator -std::Dyn
+		generator: instantiator::Generator -std::Shared
 	}:
 		Roots := :reserve(##config.Processed),
 		Cli := cli,
@@ -42,7 +42,7 @@ INCLUDE "symbol.rl"
 
 	Roots: RootScope -std::Vec;
 	Cli: cli::Console \;
-	Generator: instantiator::Generator-std::Dyn;
+	Generator: instantiator::Generator-std::Shared;
 
 	generate_entry_point_by_name(name: std::str::CV #&) VOID
 	{
@@ -178,6 +178,6 @@ INCLUDE "symbol.rl"
 }
 
 ::rlc::instantiator {
-	TYPE SharedTplArg := ast::[Config]TemplateArg-std::Shared;
-	TYPE SharedTplArgSet := SharedTplArg-std::Vec-std::Shared;
+	TYPE ValTplArg := ast::[Config]TemplateArg-std::Val;
+	TYPE ValTplArgSet := ValTplArg-std::Vec-std::Val;
 }

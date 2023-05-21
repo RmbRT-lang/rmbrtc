@@ -6,15 +6,15 @@ INCLUDE "stage.rl"
 
 ::rlc::parser::variable
 {
-	parse_global(p: Parser&) ast::[Config]GlobalVariable - std::DynOpt
+	parse_global(p: Parser&) ast::[Config]GlobalVariable - std::ValOpt
 	{
 		t: Trace(&p, "global variable");
 		IF:!(nt ::= help::parse_initialised_name_and_type(p))
 			= NULL;
 
-		inits: ast::[Config]Expression - std::DynVec - std::Opt;
+		inits: ast::[Config]Expression - std::ValVec - std::Opt;
 
-		IF(<<ast::type::[Config]Auto *>>(nt->Type))
+		IF(<<ast::type::[Config]Auto #*>>(nt->Type))
 			inits := :a(:vec(
 				help::parse_auto_init(p, nt->ExpectShortHandInit)));
 		ELSE
@@ -42,7 +42,7 @@ INCLUDE "stage.rl"
 		p: Parser&,
 		static: BOOL,
 		member_var_index: UM *
-	) ast::[Config]MaybeAnonMemberVar - std::DynOpt
+	) ast::[Config]MaybeAnonMemberVar - std::ValOpt
 	{
 		_: Trace(&p, "member variable");
 
@@ -50,9 +50,9 @@ INCLUDE "stage.rl"
 		{
 			IF(nt ::= help::parse_initialised_name_and_type(p))
 			{
-				inits: ast::[Config]Expression - std::DynVec - std::Opt;
+				inits: ast::[Config]Expression - std::ValVec - std::Opt;
 
-				IF(<<ast::type::[Config]Auto *>>(nt->Type))
+				IF(<<ast::type::[Config]Auto #*>>(nt->Type))
 					inits := :a(:vec(
 						help::parse_auto_init(p, nt->ExpectShortHandInit)));
 				ELSE
@@ -95,7 +95,7 @@ INCLUDE "stage.rl"
 		}
 	}
 
-	parse_catch(p: Parser &) ast::[Config]TypeOrCatchVariable - std::DynOpt
+	parse_catch(p: Parser &) ast::[Config]TypeOrCatchVariable - std::ValOpt
 	{
 		_: Trace(&p, "catch variable");
 
@@ -110,23 +110,23 @@ INCLUDE "stage.rl"
 		{	// Anonymous catch variable.
 			IF:!(t ::= type::parse(p))
 				p.fail("expected type");
-			= :<>(&&t);
+			= &&t;
 		}
 		= NULL;
 	}
 
 	parse_local(
 		p: Parser &,
-		expect_semicolon: BOOL) ast::[Config]LocalVariable - std::DynOpt
+		expect_semicolon: BOOL) ast::[Config]LocalVariable - std::ValOpt
 	{
 		IF:!(nt ::= help::parse_initialised_name_and_type(p))
 			= NULL;
 
 		_: Trace(&p, "local variable");
 
-		inits: ast::[Config]Expression - std::DynVec-std::Opt;
+		inits: ast::[Config]Expression - std::ValVec-std::Opt;
 
-		IF(<<ast::type::[Config]Auto *>>(nt->Type))
+		IF(<<ast::type::[Config]Auto #*>>(nt->Type))
 			inits := :a(:vec(
 				help::parse_auto_init(p, nt->ExpectShortHandInit)));
 		ELSE
@@ -145,7 +145,7 @@ INCLUDE "stage.rl"
 
 	parse_fn_arg(
 		p: Parser&
-	) ast::[Config]TypeOrArgument-std::DynOpt
+	) ast::[Config]TypeOrArgument-std::ValOpt
 	{
 		IF:!(nt ::= help::parse_variable_opt_name_and_type(p))
 			= NULL;
@@ -154,7 +154,7 @@ INCLUDE "stage.rl"
 			= :a.ast::[Config]Argument(
 				nt->Name->Content, nt->Name->Position, &&nt->Type);
 		ELSE
-			= &&nt->Type;
+			= :cast_val(&&nt->Type);
 	}
 
 	::help needed_without_name: tok::Type#[](
@@ -208,7 +208,7 @@ INCLUDE "stage.rl"
 	::help UninitialisedNameAndType
 	{
 		Name: tok::Token;
-		Type: ast::[Config]Type - std::Dyn;
+		Type: ast::[Config]Type - std::Val;
 
 		{...};
 	}
@@ -230,7 +230,7 @@ INCLUDE "stage.rl"
 	::help NameAndInitType
 	{
 		Name: tok::Token;
-		Type: ast::[Config]MaybeAutoType - std::Dyn;
+		Type: ast::[Config]MaybeAutoType - std::Val;
 		ExpectShortHandInit: BOOL;
 
 		{...};
@@ -279,7 +279,7 @@ INCLUDE "stage.rl"
 	::help OptNameAndType
 	{
 		Name: tok::Token - std::Opt;
-		Type: ast::[Config]Type - std::Dyn;
+		Type: ast::[Config]Type - std::Val;
 
 		{...}; // Suppress {}.
 	}
@@ -300,7 +300,7 @@ INCLUDE "stage.rl"
 		= NULL;
 	}
 
-	::help parse_auto_init(p: Parser &, shortHand: BOOL) ast::[Config]Expression-std::Dyn
+	::help parse_auto_init(p: Parser &, shortHand: BOOL) ast::[Config]Expression-std::Val
 	{
 		IF(shortHand) p.expect(:doubleColonEqual);
 		ELSE p.expect(:colonEqual);
@@ -312,9 +312,9 @@ INCLUDE "stage.rl"
 
 	::help parse_initialisers(
 		p: Parser &
-	) ast::[Config]Expression - std::DynVec - std::Opt
+	) ast::[Config]Expression - std::ValVec - std::Opt
 	{
-		inits: ast::[Config]Expression - std::DynVec - std::Opt;
+		inits: ast::[Config]Expression - std::ValVec - std::Opt;
 		IF(p.consume(:colonEqual))
 		{
 			IF(!p.consume(:noinit))

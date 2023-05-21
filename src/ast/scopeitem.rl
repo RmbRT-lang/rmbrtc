@@ -25,7 +25,7 @@ INCLUDE "../error.rl"
 	<<<
 		i: [Stage::Prev+]ScopeItem #&,
 		ctx: Stage::Context+ #&
-	>>> ScopeItem - std::Dyn
+	>>> ScopeItem - std::Val
 	{
 		IF(g ::= <<[Stage::Prev+]Global #*>>(&i))
 			= :<>(<<<[Stage]Global>>>(*g, ctx));
@@ -73,7 +73,7 @@ INCLUDE "../error.rl"
 	<<<
 		p: [Stage::Prev+]MergeableScopeItem #&,
 		ctx: Stage::Context+ #&
-	>>> THIS - std::Dyn
+	>>> THIS - std::Val
 	{
 		TYPE SWITCH(p)
 		{

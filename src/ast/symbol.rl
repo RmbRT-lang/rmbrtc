@@ -6,7 +6,7 @@ INCLUDE 'std/vector'
 
 ::rlc::ast
 {
-	[Stage: TYPE] TYPE TemplateArg := [Stage]TypeOrExpr - std::DynVec;
+	[Stage: TYPE] TYPE TemplateArg := [Stage]TypeOrExpr - std::ValVec;
 	[Stage: TYPE] transform_template_args(
 		prev: [Stage::Prev+]TemplateArg# - std::Buffer,
 		ctx: Stage::Context+ #&

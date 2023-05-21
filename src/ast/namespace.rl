@@ -9,7 +9,7 @@ INCLUDE 'std/set'
 	[Stage]ScopeBase
 {
 	Entries: [Stage]GlobalScope;
-	Tests: [Stage]Test -std::DynVec;
+	Tests: [Stage]Test -std::ValVec;
 
 	:childOf{parent: [Stage]ScopeBase \}: Entries := :childOf(parent);
 
@@ -41,7 +41,7 @@ INCLUDE 'std/set'
 
 		FOR[insert](rhs_entry ::= ns.Entries.start())
 		{
-			IF:!(rhs_entry_si ::= <<[Stage]ScopeItem *>>(rhs_entry!.Value))
+			IF:!(rhs_entry_si ::= <<[Stage]ScopeItem #*>>(rhs_entry!.Value))
 			{
 				Entries.insert(&&rhs_entry!.Value);
 				CONTINUE;
@@ -49,13 +49,13 @@ INCLUDE 'std/set'
 
 			FOR[collisions](entry ::= Entries.start())
 			{
-				IF:!(entry_si ::= <<[Stage]ScopeItem *>>(entry!.Value))
+				IF:!(entry_si ::= <<[Stage]ScopeItem #*>>(entry!.Value))
 					CONTINUE;
 
 				IF(entry_si!->Name == rhs_entry_si!->Name)
 				{
-					merge_entry ::= <<[Stage]MergeableScopeItem *>>(&entry!.Value!);
-					merge_rhs ::= <<[Stage]MergeableScopeItem *>>(&rhs_entry!.Value!);
+					merge_entry ::= <<[Stage]MergeableScopeItem *>>(entry!.Value.mut_ptr());
+					merge_rhs ::= <<[Stage]MergeableScopeItem *>>(rhs_entry!.Value.mut_ptr());
 
 					IF(!merge_entry || !merge_rhs)
 						THROW <MergeError>(entry_si, rhs_entry_si);
@@ -81,13 +81,13 @@ INCLUDE 'std/set'
 		{
 			IF:!(rhs_entry_si ::= <<[Stage]ScopeItem #*>>(rhs_entry))
 				CONTINUE;
-			IF:!(lhs_entry ::= THIS.Entries[rhs_entry!.Key])
+			IF:!(lhs_entry ::= THIS.Entries.Elements.find(rhs_entry!.Key))
 				CONTINUE;
 
 			IF:!(lhs_entry_si ::= <<[Stage]ScopeItem #*>>(lhs_entry))
 				CONTINUE;
 
-			IF:!(merge_lhs ::= <<[Stage]MergeableScopeItem *>>(lhs_entry))
+			IF:!(merge_lhs ::= <<[Stage]MergeableScopeItem *>>(lhs_entry->mut_ptr()))
 				THROW <MergeError>(lhs_entry_si, rhs_entry_si);
 			IF:!(merge_rhs ::= <<[Stage]MergeableScopeItem #*>>(&rhs_entry!.Value!))
 				THROW <MergeError>(lhs_entry_si, rhs_entry_si);

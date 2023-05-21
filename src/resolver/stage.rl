@@ -5,7 +5,7 @@ INCLUDE "../ast/stage.rl"
 ::rlc::resolver Config
 {
 	ScopedRegistry: ast::[scoper::Config]FileRegistry #\;
-	Processed: std::[scoper::Config::RootScope #\, detail::RootScope-std::Dyn]Map;
+	Processed: std::[scoper::Config::RootScope #\, detail::RootScope-std::Val]Map;
 
 	TYPE Context := resolver::Context;
 	TYPE Symbol := resolver::Symbol;
@@ -35,9 +35,9 @@ INCLUDE "../ast/stage.rl"
 		FOR(scoped ::= ScopedRegistry->start())
 			IF(!Processed.find(&scoped!.Globals!))
 			{
-				processed: RootScope - std::Dyn;
-				transform_root_scope(scoped!.Globals!, processed!);
-				processed->post_process(TRUE);
+				processed: RootScope - std::Val;
+				transform_root_scope(scoped!.Globals!, processed.mut_ok());
+				processed.mut_ok().post_process(TRUE);
 				Processed.insert(&scoped!.Globals!, &&processed);
 			}
 	}
@@ -67,7 +67,7 @@ INCLUDE "../ast/stage.rl"
 	Symbols: SymbolResolver - std::[ast::[scoper::Config]ScopeItem #\]Map;
 
 	ScopeItems: ast::[Config]GlobalScope;
-	Tests: ast::[Config]Test - std::DynVec;
+	Tests: ast::[Config]Test - std::ValVec;
 
 	register_symbol_writeback(
 		prev: ast::[scoper::Config]ScopeItem #\,

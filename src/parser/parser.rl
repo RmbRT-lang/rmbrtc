@@ -9,12 +9,13 @@ INCLUDE 'std/tags'
 		std::NoCopy;
 		std::NoMove;
 
+		{&&};
 		{
 			file: src::File # - std::Shared,
 			cli: ::cli::Console \
 		}:
-			Source(file),
-			Tokeniser(file),
+			Source := &&file,
+			Tokeniser(Source),
 			Ctx(NULL),
 			Buffer(NOINIT),
 			BufferSize(0),
@@ -179,7 +180,7 @@ INCLUDE 'std/tags'
 					P->Locals := NULL;
 			}
 		}
-		// This function starts tracking local variables 
+		/// This function starts tracking local variables 
 		track_locals() LocalTracker
 		{
 			IF(!Locals)
@@ -195,7 +196,7 @@ INCLUDE 'std/tags'
 		LineIndent: UINT; /// Last read token's line's first token's column.
 		Locals: ast::LocalPosition -std::Opt;
 		Tokeniser: tok::Tokeniser;
-		Buffer: tok::Token[2]; // Lookahead buffer.
+		Buffer: tok::Token[2]; /// Lookahead buffer.
 		BufferIndex: UINT;
 		BufferSize: UINT;
 		Progress: UINT;

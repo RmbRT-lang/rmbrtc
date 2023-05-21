@@ -3,7 +3,7 @@ INCLUDE "instance.rl"
 /// Context visiting the AST during the instantiation of the program.
 ::rlc::instantiator Context VIRTUAL
 {
-	Parent: THIS # *;
+	Parent: THIS #*;
 	Cache: instantiator::Cache \;
 	Generator: instantiator::Generator *;
 

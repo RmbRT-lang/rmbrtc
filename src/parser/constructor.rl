@@ -2,7 +2,7 @@ INCLUDE "parser.rl"
 INCLUDE "../ast/constructor.rl"
 INCLUDE "stage.rl"
 
-::rlc::parser parse_constructor(p: Parser&) ast::[Config]Constructor - std::DynOpt
+::rlc::parser parse_constructor(p: Parser&) ast::[Config]Constructor - std::ValOpt
 {
 	t: Trace(&p, "constructor");
 
@@ -16,7 +16,7 @@ INCLUDE "stage.rl"
 		position := tok->Position;
 	ELSE = NULL;
 
-	out: ast::[Config]Constructor - std::Dyn (BARE);
+	out: ast::[Config]Constructor - std::Val (BARE);
 	IF(!symbol && p.consume(:braceClose))
 		out := :a.ast::[Config]DefaultConstructor(BARE);
 	ELSE IF(!symbol && p.consume_seq(:tripleDot, :braceClose))
@@ -55,13 +55,13 @@ INCLUDE "stage.rl"
 		p.expect(:braceClose);
 	}
 
-	out->Position := position;
-	out->Inline := p.consume(:inline);
+	out.mut_ok().Position := position;
+	out.mut_ok().Inline := p.consume(:inline);
 
 	IF(p.consume(:parentheseOpen))
 	{
 		alias ::= std::heap::[ast::[Config]Constructor::CtorAlias]new(BARE);
-		out->Inits := :gc(alias);
+		out.mut_ok().Inits := :gc(alias);
 		IF(!p.match(:parentheseClose))
 			DO()
 				alias->Arguments += expression::parse_x(p);
@@ -70,7 +70,7 @@ INCLUDE "stage.rl"
 	} ELSE IF(p.consume(:colonEqual))
 	{
 		alias ::= std::heap::[ast::[Config]Constructor::CtorAlias]new(BARE);
-		out->Inits := :gc(alias);
+		out.mut_ok().Inits := :gc(alias);
 		alias->Arguments += expression::parse_x(p);
 	} ELSE
 	{
@@ -127,7 +127,7 @@ INCLUDE "stage.rl"
 		}
 
 		IF(dup_init)
-			out->Inits := :dup(&&inits);
+			out.mut_ok().Inits := :dup(&&inits);
 	}
 
 	IF(!p.consume(:semicolon))
@@ -135,7 +135,7 @@ INCLUDE "stage.rl"
 		body: ast::[Config]BlockStatement (BARE);
 		IF(!statement::parse_block(p, body))
 			p.fail("expected constructor body");
-		out->Body := :dup(&&body);
+		out.mut_ok().Body := :dup(&&body);
 	}
 
 	= &&out;

@@ -13,7 +13,7 @@ INCLUDE "scope.rl"
 		[Stage]Instantiable,
 		PotentialScope
 	{
-		Type: ast::[Stage]Type-std::Dyn;
+		Type: ast::[Stage]Type-std::Val;
 
 		:transform{
 			p: [Stage::Prev+]Typedef #&,

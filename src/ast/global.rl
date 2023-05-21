@@ -4,7 +4,7 @@
 	<<<
 		g: [Stage::Prev+]Global #&,
 		ctx: Stage::Context+ #&
-	>>> THIS - std::Dyn
+	>>> THIS - std::Val
 	{
 		TYPE SWITCH(g)
 		{

@@ -6,7 +6,7 @@
 	{
 		PRIVATE ErrData {
 			At: InstanceID #\;
-			PrevErr: THIS-std::Shared;
+			PrevErr: THIS-std::SharedOpt;
 			Message: CHAR #*;
 		}
 
@@ -29,7 +29,7 @@
 			std::io::write(o,
 				:stream(<<ast::CodeObject #\>>(desc)->Position), ": error during instantiation: ");
 			IF(Data!.PrevErr)
-				std::io::write(o, "\n", :stream(<GenerationError>(Data!.PrevErr)));
+				std::io::write(o, "\n", :stream(<GenerationError>(:!(Data!.PrevErr))));
 			ELSE
 				std::io::write(o, Data!.Message);
 		}
@@ -41,7 +41,7 @@
 	{
 		Parent: InstanceID #*; /// The parent instance, we inherit templates from it.
 		Descriptor: ast::[resolver::Config]Instantiable #\;
-		Templates: SharedTplArgSet; /// Deduplicate template arguments.
+		Templates: ValTplArgSet; /// Deduplicate template arguments.
 
 		:default_key{
 			parent: InstanceID #*,
