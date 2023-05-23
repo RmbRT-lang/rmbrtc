@@ -129,6 +129,8 @@ INCLUDE 'std/value'
 				= :a.[Stage]TypeofExpression(:transform(>>p!, ctx));
 			[Stage::Prev+]CopyRttiExpression:
 				= :a.[Stage]CopyRttiExpression(:transform(>>p!, ctx));
+			[Stage::Prev+]BaseExpression:
+				= :a.[Stage]BaseExpression(:transform(>>p!, ctx));
 			}
 
 			DIE;
@@ -380,5 +382,22 @@ INCLUDE 'std/value'
 		} -> (:transform, p, ctx):
 			Source := :make(p.Source!, ctx),
 			Dest := :make(p.Dest!, ctx);
+	}
+
+	[Stage: TYPE] BaseExpression -> [Stage]Expression
+	{
+		Index: Stage::Number+ - std::Opt;
+		Name: Stage::Symbol+ - std::Opt;
+
+		:transform{
+			p: [Stage::Prev+]BaseExpression #&,
+			ctx: Stage::Context+ #&
+		} -> (:transform, p, ctx)
+		{
+			IF(p.Index)
+				Index := :a(ctx.transform_number(p.Index!));
+			ELSE
+				Name := :a(ctx.transform_symbol(p.Name!, 0));
+		}
 	}
 }

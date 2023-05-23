@@ -76,7 +76,8 @@ INCLUDE "symbolconstant.rl"
 		|| detail::parse_impl(p, ret, parse_cast)
 		|| detail::parse_impl(p, ret, parse_sizeof)
 		|| detail::parse_impl(p, ret, parse_typeof)
-		|| detail::parse_impl(p, ret, parse_copy_rtti))
+		|| detail::parse_impl(p, ret, parse_copy_rtti)
+		|| detail::parse_impl(p, ret, parse_base))
 		{
 			ret.mut_ok().Range := (start, p.prev_offset() - start);
 			ret.mut_ok().Position := position;
@@ -263,6 +264,26 @@ INCLUDE "symbolconstant.rl"
 		out.Source := parse_x(p);
 		p.expect(:comma);
 		out.Dest := parse_x(p);
+		p.expect(:parentheseClose);
+
+		= TRUE;
+	}
+
+	parse_base(p: Parser &, out: ast::[Config]BaseExpression&) BOOL
+	{
+		IF(!p.consume(:greater))
+			= FALSE;
+		t: Trace(&p, "base expression");
+
+		p.expect(:parentheseOpen);
+		IF(tok ::= p.consume(:numberLiteral))
+			out.Index := :a(tok!);
+		ELSE
+		{
+			out.Name := :a(BARE);
+			IF(!symbol::parse(p, out.Name!))
+				p.fail("expected base class index or  name");
+		}
 		p.expect(:parentheseClose);
 
 		= TRUE;
