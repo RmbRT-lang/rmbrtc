@@ -83,7 +83,7 @@ INCLUDE "symbol.rl"
 		FOR(root ::= Roots.start())
 			FOR(global ::= root!.Prev->ScopeItems.start())
 				IF(inst ::= <<ast::[resolver::Config]Instantiable #*>>(&global!.Value!))
-					generate_everything_instantiable_impl(root!.Cache, inst, NULL);
+					generate_everything_instantiable_impl(root!.Cache, inst);
 				ELSE
 					generate_everything_global_impl(root!.Cache, &global!.Value!);
 	}
@@ -96,10 +96,10 @@ INCLUDE "symbol.rl"
 			IF(tpl->has_templates())
 				RETURN;
 
-		IF(s ::= <<ast::[resolver::Config]ScopeItem #*>>(item))
+		(/IF(s ::= <<ast::[resolver::Config]ScopeItem #*>>(item))
 		{
 			std::io::write(&std::io::out, :stream(<<ast::CodeObject #&>>(*item).Position), " ", s->Name!++, :ch('\n'));
-		}
+		}/)
 
 		TYPE SWITCH(item)
 		{
@@ -109,7 +109,7 @@ INCLUDE "symbol.rl"
 			FOR(global ::= ns->Entries.start())
 			{
 				IF(inst ::= <<ast::[resolver::Config]Instantiable #*>>(&global!.Value!))
-					generate_everything_instantiable_impl(cache, inst, NULL);
+					generate_everything_instantiable_impl(cache, inst);
 				ELSE
 					generate_everything_global_impl(cache, &global!.Value!);
 			}
@@ -119,35 +119,34 @@ INCLUDE "symbol.rl"
 		{
 			fn ::= <<ast::[resolver::Config]GlobalFunction #\>>(item);
 			IF(fn->Default)
-				generate_everything_instantiable_impl(cache, &fn->Default!, NULL);
+				generate_everything_instantiable_impl(cache, &fn->Default!);
 			FOR(var ::= fn->SpecialVariants.start())
-				generate_everything_instantiable_impl(cache, &var!.Value!, NULL);
+				generate_everything_instantiable_impl(cache, &var!.Value!);
 			FOR(var ::= fn->Variants.start())
-				generate_everything_instantiable_impl(cache, &var!.Value!, NULL);
+				generate_everything_instantiable_impl(cache, &var!.Value!);
 		}
 		ast::[resolver::Config]GlobalVariable: cache.GlobalVars += >>item;
 		ast::[resolver::Config]ExternFunction: cache.ExternFns += >>item;
 		ast::[resolver::Config]ExternVariable: cache.ExternVars += >>item;
 		ast::[resolver::Config]GlobalTypedef:
-			generate_everything_instantiable_impl(cache, >>item, NULL);
+			generate_everything_instantiable_impl(cache, >>item);
 		}
 	}
 
 	PRIVATE generate_everything_instantiable_impl(
 		cache: Cache &,
-		item: ast::[resolver::Config]Instantiable #\,
-		parent: Instance *
+		item: ast::[resolver::Config]Instantiable #\
 	) VOID {
 		IF(tpl ::= <<ast::[resolver::Config]Templateable #*>>(item))
 			IF(tpl->has_templates())
 				RETURN;
 
-		IF(s ::= <<ast::[resolver::Config]ScopeItem #*>>(item))
+		(/IF(s ::= <<ast::[resolver::Config]ScopeItem #*>>(item))
 		{
 			std::io::write(&std::io::out, :stream(<<ast::CodeObject #&>>(*item).Position), " ", s->Name!++, :ch('\n'));
-		}
+		}/)
 
-		//item_i ::= cache.generate_default(Generator!, parent, item);
+		item_i ::= cache.generate_default(Generator!, NULL, item);
 	}
 
 	generate_tests() VOID

@@ -1,5 +1,12 @@
 ::rlc::instantiator Generator
 {
-	generate(_) VOID {}
+	generate(inst: Instance \) VOID
+	{
+	}
+
+	generate_class(inst: Class \) VOID
+	{
+	}
+
 	generate_functoid(_, _) VOID {}
 }

@@ -110,3 +110,8 @@ INCLUDE "ortype.rl"
 
 	DIE "store the generated function";
 }
+
+::rlc::instantiator Functoid -> Instance
+{
+	{};
+}

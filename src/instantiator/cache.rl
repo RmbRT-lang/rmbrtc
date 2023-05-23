@@ -1,18 +1,21 @@
 INCLUDE "instance.rl"
 INCLUDE "stage.rl"
+INCLUDE "typedef.rl"
+INCLUDE "mask.rl"
 
 INCLUDE "class.rl"
 
 ::rlc::instantiator
 {
-
 	Cache
 	{
-
 		TemplateArgumentCache: ValTplArg-std::VecSet;
 		TemplateArgumentSetCache: ValTplArgSet-std::VecSet;
-		IDs: InstanceID-std::Val-std::VecSet; /// Instance ID pool with fixed addresses.
+		IDs: InstanceID-std::Dyn-std::VecSet; /// Instance ID pool with fixed addresses.
 		Classes: Class-std::[InstanceID #\]DynMap;
+		Functoids: Functoid-std::[InstanceID #\]DynMap;
+		Typedefs: Typedef-std::[InstanceID #\]DynMap;
+		Masks: Mask-std::[InstanceID #\]DynMap;
 
 		Enums: ast::[resolver::Config]GlobalEnum #\ -std::VecSet;
 		GlobalVars: ast::[resolver::Config]GlobalVariable #\ -std::VecSet;
@@ -30,10 +33,17 @@ INCLUDE "class.rl"
 			templates: ast::[Config]TemplateArg-std::Vec&&
 		) Instance \ INLINE
 		{
+			id ::= IDs.ensure(:key(parent, desc, &&templates)).ptr();
 			TYPE SWITCH(desc)
 			{
 			ast::[resolver::Config]Class:
-				= Classes.ensure(IDs.ensure(:key(parent, desc, &&templates)).ptr()).ptr();
+				= Classes.ensure(id).ptr();
+			ast::[resolver::Config]Functoid:
+				= Functoids.ensure(id).ptr();
+			ast::[resolver::Config]Typedef:
+				= Typedefs.ensure(id).ptr();
+			ast::[resolver::Config]Mask:
+				= Masks.ensure(id).ptr();
 			}
 		}
 

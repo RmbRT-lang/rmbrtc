@@ -35,7 +35,11 @@
 		}
 	}
 
-	Instance VIRTUAL { }
+	Instance VIRTUAL {
+		ID: InstanceID #\;
+
+		{id: InstanceID #\}: ID := id;
+	}
 
 	InstanceID
 	{

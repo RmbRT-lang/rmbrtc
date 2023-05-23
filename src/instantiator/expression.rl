@@ -447,7 +447,6 @@ ENUM CastMode {
 	}
 	Constructor:
 	{
-
 	}
 	}
 
