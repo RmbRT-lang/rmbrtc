@@ -1,3 +1,6 @@
+INCLUDE "../../tokeniser/token.rl"
+INCLUDE "../parser.rl"
+
 ::rlc::parser::expression
 {
 	consume_overloadable_binary_operator(p: Parser &, op: rlc::Operator &) BOOL
@@ -27,7 +30,7 @@
 
 	consume_overloadable_postfix_operator(p: Parser &, op: rlc::Operator &) BOOL
 	{
-		STATIC k_postfix_ops: {tok::Type, rlc::Operator}#[](
+		STATIC k_postfix_ops: {tok::Type, rlc::Operator}#[?](
 			(:doublePlus, :postIncrement),
 			(:doubleMinus, :postDecrement),
 			(:exclamationMark, :valueOf));
@@ -68,36 +71,36 @@
 			LeftAssoc: BOOL;
 		}
 
-		k_bind: {tok::Type, rlc::Operator, BOOL}#[](
+		k_bind: {tok::Type, rlc::Operator, BOOL}#[?](
 			// bind operators.
 			(:dotAsterisk, :bindReference, FALSE),
 			(:minusGreaterAsterisk, :bindPointer, FALSE));
 
-		k_mul: {tok::Type, rlc::Operator, BOOL}#[](
+		k_mul: {tok::Type, rlc::Operator, BOOL}#[?](
 			// multiplicative operators.
 			(:percent, :mod, TRUE),
 			(:forwardSlash, :div, TRUE),
 			(:asterisk, :mul, TRUE));
 
-		k_add: {tok::Type, rlc::Operator, BOOL}#[](
-			// additive operators.
-			(:minus, :sub, TRUE),
-			(:plus, :add, TRUE));
-
-		k_shift: {tok::Type, rlc::Operator, BOOL}#[](
+		k_shift: {tok::Type, rlc::Operator, BOOL}#[?](
 			// bit shift operators.
 			(:doubleLess, :shiftLeft, TRUE),
 			(:doubleGreater, :shiftRight, TRUE),
 			(:tripleLess, :rotateLeft, TRUE),
 			(:tripleGreater, :rotateRight, TRUE));
 
-		k_bit: {tok::Type, rlc::Operator, BOOL}#[](
+		k_add: {tok::Type, rlc::Operator, BOOL}#[?](
+			// additive operators.
+			(:minus, :sub, TRUE),
+			(:plus, :add, TRUE));
+
+		k_bit: {tok::Type, rlc::Operator, BOOL}#[?](
 			// bit arithmetic operators.
 			(:amp, :bitAnd, TRUE),
 			(:circumflex, :bitXor, TRUE),
 			(:pipe, :bitOr, TRUE));
 
-		k_cmp: {tok::Type, rlc::Operator, BOOL}#[](
+		k_cmp: {tok::Type, rlc::Operator, BOOL}#[?](
 			// numeric comparisons.
 			(:less, :less, TRUE),
 			(:lessEqual, :lessEquals, TRUE),
@@ -107,12 +110,12 @@
 			(:exclamationMarkEqual, :notEquals, TRUE),
 			(:lessGreater, :cmp, TRUE));
 
-		k_log_and: {tok::Type, rlc::Operator, BOOL}#[](
+		k_log_and: {tok::Type, rlc::Operator, BOOL}#[?](
 			// boolean arithmetic.
 			(:doubleAmp, :logAnd, TRUE),
 			(:doubleAmp, :logAnd, TRUE));
 
-		k_log_or: {tok::Type, rlc::Operator, BOOL}#[](
+		k_log_or: {tok::Type, rlc::Operator, BOOL}#[?](
 			(:doublePipe, :logOr, TRUE),
 			(:doublePipe, :logOr, TRUE));
 
@@ -125,7 +128,7 @@
 		k_nat_or: {tok::Type, rlc::Operator, BOOL}# :=
 			(:or, :natOr, FALSE);
 
-		k_assign: {tok::Type, rlc::Operator, BOOL}#[](
+		k_assign: {tok::Type, rlc::Operator, BOOL}#[?](
 			// assignments.
 			(:colonEqual, :assign, TRUE),
 			(:plusEqual, :addAssign, TRUE),
@@ -143,11 +146,11 @@
 			(:tripleLessEqual, :rotateLeftAssign, TRUE),
 			(:tripleGreaterEqual, :rotateRightAssign, TRUE));
 
-		k_groups: BinOpDesc#[](
+		k_groups: BinOpDesc#[?](
 			(k_bind, TRUE),
 			(k_mul, TRUE),
-			(k_add, TRUE),
 			(k_shift, TRUE),
+			(k_add, TRUE),
 			(k_bit, TRUE),
 			(k_cmp, TRUE),
 			(k_log_and, TRUE),
@@ -158,7 +161,7 @@
 		precedenceGroups: UM# := ##k_groups;
 
 		// (tok, op, user-overloadable)
-		k_prefix_ops: {tok::Type, rlc::Operator, BOOL}#[](
+		k_prefix_ops: {tok::Type, rlc::Operator, BOOL}#[?](
 				(:at, :async, FALSE),
 				(:doubleAt, :fullAsync, FALSE),
 				(:circumflex, :fork, FALSE),
@@ -178,5 +181,37 @@
 				(:tripleAmp, :baseAddr, FALSE),
 				(:doubleGreater, :concretise, FALSE),
 				(:pipe, :structure, TRUE));
+	}
+
+	ENUM OpLutType { none, overloadable, fixed }
+	k_prefix_op_lut: {OpLutType, Operator}[TABLE TokenType] (NOINIT);
+
+	ENUM PostfixSyntax { oneToken, call, subscript, memberAccess, visit }
+	k_postfix_op_lut: {OpLutType, Operator, PostfixSyntax}[TABLE TokenType] (NOINIT);
+
+
+	::detail k_postfix_ops: {tok::TokenType, Operator, PostfixSyntax, BOOL}#[?](
+		:doublePlus(:postIncrement, :oneToken, TRUE),
+		:doubleMinus(:postDecrement, :oneToken, TRUE),
+		:exclamationMark(:valueOf, :oneToken, TRUE),
+		:tripleDot(:variadicExpand, :oneToken, FALSE),
+		:dot(>###Operator, :memberAccess, FALSE),
+		:minusGreater(>###Operator, :memberAccess, FALSE),
+		:visit(>###Operator, :visit, FALSE),
+		:parentheseOpen(:call, :call, TRUE),
+		:bracketOpen(>###Operator, :subscript, TRUE)
+	);
+
+	init_luts() VOID {
+		FOR(k_prefix_op_lut) IT.(0) := :none;
+		FOR(k_prefix_ops)
+			k_prefix_op_lut[IT.(0)] := (IT.(2) ?? :overloadable : :fixed, IT.(1));
+
+		FOR(k_postfix_op_lut) IT.(0) := :none;
+		FOR(k_postfix_ops)
+			k_postfix_op_lut[IT.(0)] := (
+				IT.(3) ?? :overloadable : :fixed,
+				IT.(1),
+				IT.(2));
 	}
 }

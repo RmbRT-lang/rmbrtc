@@ -1,48 +1,58 @@
-INCLUDE "compiler/c.rl"
+(/INCLUDE "compiler/c.rl"
 INCLUDE "cli/cli.rl"
 INCLUDE "error.rl"
 INCLUDE 'std/io/file'
 INCLUDE 'std/set'
 INCLUDE 'std/map'
+/)
+
+INCLUDE 'os/file'
+INCLUDE 'std/str'
+
+INCLUDE "compiler/compiler.rl"
+INCLUDE "tokeniser/tokeniser.rl"
 
 ::app
 {
-	version: CHAR#[] := "pre-alpha";
-	repo: CHAR#[] := "https://github.com/RmbRT-lang/rmbrtc";
+	version: CHAR#[#] := "pre-alpha";
+	repo: CHAR#[#] := "https://github.com/RmbRT-lang/rmbrtc";
 }
 
-main(
-	argc: INT,
-	argv: CHAR **) INT
-{
-	out ::= <<<std::io::OStream>>>(&std::io::out);
-	cli::main := :configure_from_env(&out);
+EXTERN puts(CHAR #*) INT;
 
-	IF(argc < 2)
+main(args: CHAR[#][#]) INT
+{
+	os::term::init();
+
+	IF(##args == 1)
 	{
-		cli::main.error(
-			:w(argv[0]), ": expected arguments.\n"
-		).info("run ", :e(argv[0]), :e(" help"), " for help.\n");
-		RETURN 1;
-	} ELSE IF(argc == 2)
+		os::term::PrintLine_v(:style(:normal, :red),
+			"expected arguments\n",
+			:style(:normal, :cyan), "run ", :style(:bold, :same), args[0], " help",
+			:style(:normal, :same), " for help.");
+		= 1;
+	}
+
+	IF(##args == 2)
 	{
-		STATIC cli: {std::str::CV, ((CHAR#\) VOID) *}#[](
-			("help", &app::cmd::help),
+		STATIC cli: {CHAR#[#], ((CHAR#[#]) VOID) *}#[?](
+			("help",    &app::cmd::help),
 			("version", &app::cmd::version),
 			("license", &app::cmd::license)
 		);
 		FOR(i ::= 0; i < ##cli; i++)
-			IF(cli[i].(0) == argv[1])
+			IF(std::str::eq(cli[i].(0), args[1]))
 			{
-				cli[i].(1)(argv[0]);
+				cli[i].(1)(args[0]);
 				= 0;
 			}
 	}
 
-	type: std::str::CV := argv[1];
+	type ::= args[1];
+
 	buildType ::= rlc::compiler::BuildType::executable;
 
-	flags: {rlc::compiler::BuildType, CHAR#\}#[](
+	flags: {rlc::compiler::BuildType, CHAR#[#]}#[?](
 		(:executable, "exe"),
 		(:library, "lib"),
 		(:sharedLibrary, "shared"),
@@ -56,7 +66,7 @@ main(
 	flag ::= 1;
 
 	FOR(i ::= 0; i < ##flags; i++)
-		IF(type == flags[i].(1))
+		IF(std::str::eq(type, flags[i].(1)))
 		{
 			buildType := flags[i].(0);
 			++flag;
@@ -64,98 +74,140 @@ main(
 		}
 
 	files: std::Str-std::Vec;
-	FOR(;flag < argc; flag++)
-		IF(<std::str::CV>(argv[flag]) == ":")
+	FOR(;flag < ##args; flag++)
+		IF(std::str::eq(args[flag], ":"))
 		{
 			++flag;
-			IF(argc == flag)
+			IF(##args == flag)
 			{
-				cli::main.error(
-					:w(argv[0]), ": exected argument after ':'.\n"
-				).info("run ", :e(argv[0]), :e(" help"), " for help.\n");
+				os::term::Print_v(
+					:style(:dim, :red), args[0],
+					:style(:normal, :same), ": exected argument after ':'.\n",
+					:style(:normal, :cyan), "run ", :style(:bold, :same), args[0], " help", :style(:normal, :same), " for help.\n");
 				= 1;
-			} ELSE IF(argc > flag+1)
+			} ELSE IF(##args > flag+1)
 			{
-				cli::main.error(
-					:w(argv[0]), ": expected only one argument after ':'.\n"
-				).info("run ", :e(argv[0]), :e(" help"), " for help.\n");
+				os::term::Print_v(
+					:style(:dim, :red), args[0], :style(:normal, :same),
+						": expected only one argument after ':'.\n",
+					:style(:normal, :cyan), "run ", :style(:bold, :same), args[0], " help", :style(:normal, :same), " for help.\n");
 				= 1;
 			}
 			BREAK;
 		} ELSE
 		{
-			files += argv[flag];
+			files += args[flag];
 		}
 
 	IF(!files)
 	{
-		cli::main.error(
-			:w(argv[0]), ": no input files provided.\n"
-		).info("run ", :e(argv[0]), :e(" help"), " for help.\n");
+		os::term::Print_v(
+			:style(:dim, :red), args[0], :style(:normal, :same), ": no input files provided.\n",
+			:style(:normal, :cyan), "run ", :style(:bold, :same), args[0], " help", :style(:normal, :same), " for help.\n");
 		= 1;
 	}
 
-	compiler: rlc::compiler::CCompiler (&cli::main);
+
+	start $::= NOW;
+	totalSz: U4 := 0;
+	FOR(files!)
+	{
+		IF:!(f ::= os::fs::ReadFile(>IT!, NULL))
+		{
+			os::term::PrintLine_v(:style(:normal, :red),
+				"could not open ", IT!);
+			= 1;
+		}
+
+		os::term::PrintLine_v(:style(:dim, :cyan),
+			IT!, ": ", std::io::format::dec(f!.Size), " bytes");
+		totalSz += f!.Size;
+	}
+	end $::= NOW;
+	os::term::PrintLine_v(:style(:dim, :cyan),
+		"Total: ", std::io::format::dec(totalSz), " bytes"
+		" in ", std::io::format::dec((end - start) / 1000000), ".",
+		std::io::format::dec_x(((end - start) % 1000000), 6), "ms\n",
+		"start: ", std::io::format::dec(start), "\nend:   ", std::io::format::dec(end));
+
+
+	rlc::tok::Tokeniser::init();
+
+	//compiler: rlc::compiler::CCompiler (&cli::main);
 	TRY
 	{
-		build: rlc::compiler::Build-std::Val (BARE);
-		IF(flag < argc)
+		build: rlc::compiler::Build (BARE);
+		IF(flag < ##args)
 		{
-			str: std::Str := <std::str::CV>(argv[argc-1]);
-			build := :a(:withOutput(&&str, buildType));
+			str: std::Str := >args[##args-1];
+			build := :withOutput(&&str, buildType);
 		}
 		ELSE
-			build := :a(buildType);
-		//build->LegacyScoping := TRUE;
+			build := buildType;
+		build.LegacyScoping := TRUE;
 
-		compiler.compile(&&files, &&build!);
+		FOR(files!)
+		{
+			IF:!(file ::= os::fs::ReadFile(>IT!, NULL))
+				os::term::PrintLine_v(:style(:normal, :red), "Failed to open ", IT!);
+
+			content ::= <CHAR *>(file->Data)[FOR file->Size];
+			tokeniser: rlc::tok::Tokeniser(0, content);
+
+			token: rlc::tok::Token (BARE);
+			WHILE(tokeniser.parse_next(&token))
+			{
+				os::term::PrintLine_v(
+					std::str::c(<CHAR#\>(token.Type)[]),
+					" ",
+					content[FROM token.Content.Start FOR token.Content.Length]);
+			}
+		}
 
 		= 0;
-	} CATCH(e: std::Error &)
-		cli::main.error(:stream(e), "\n");
-	CATCH(e: std::Error *)
-		cli::main.error(:stream(*e), "\n");
+	}
 	CATCH(e: CHAR #*) // "location: err"
-		cli::main.error(e, "\n");
+		os::term::PrintLine_v(:style(:normal, :red), std::str::c(e[]));
 	CATCH(e: {CHAR#\, CHAR#\})
-		cli::main.error(e.(0), " (", e.(1), ")\n");
+		os::term::PrintLine_v(:style(:normal, :red), std::str::c(e.(0)[]), " (", std::str::c(e.(1)[]), ")");
 	FINALLY{}
 
 	= 0;
 }
 
-::app::cmd help(exe: CHAR#\) VOID
+::app::cmd help(exe: CHAR#[#]) VOID
 {
-	cli::main(
+	os::term::Print_v(
 "Usage:\n"
-"\t", :e(exe), " [help|license|version]\n"
-"\t", :e(exe), " [<mode>] <source>... [: <output>]\n"
+"\t", :style(:bold, :same), exe, :style(:normal, :same), " [help|license|version]\n"
+"\t", :style(:bold, :same), exe, :style(:normal, :same), " [<mode>] <source>... [: <output>]\n"
 "\n"
 "modes: exe|lib|shared|test|syntax|dry|quick-dry\n"
-"\t", :e("exe"), ":       build an executable.\n"
-"\t", :e("lib"), ":       build static library.\n"
-"\t", :e("shared"), ":    build a shared library (DLL).\n"
-"\t", :e("test"), ":      compile all tests into an executable.\n"
-"\t", :e("syntax"), ":    only perform syntax checks.\n"
-"\t", :e("dry"), ":       dry compilation without an output.\n"
-"\t", :e("quick-dry"), ": check symbols, do not process templates or type system.\n"
+"\t", :style(:bold, :same), "exe", :style(:normal, :same), ":       build an executable.\n"
+"\t", :style(:bold, :same), "lib", :style(:normal, :same), ":       build static library.\n"
+"\t", :style(:bold, :same), "shared", :style(:normal, :same), ":    build a shared library (DLL).\n"
+"\t", :style(:bold, :same), "test", :style(:normal, :same), ":      compile all tests into an executable.\n"
+"\t", :style(:bold, :same), "syntax", :style(:normal, :same), ":    only perform syntax checks.\n"
+"\t", :style(:bold, :same), "dry", :style(:normal, :same), ":       dry compilation without an output.\n"
+"\t", :style(:bold, :same), "quick-dry", :style(:normal, :same), ": check symbols, do not process templates or type system.\n"
 "output:\n"
 "\t" "for modes producing an output file, specifies the output. The default\n"
-"\t" "output name is ", :w("rl-out"), " in the current working directory.\n"
+"\t" "output name is ", :style(:dim, :same), "rl-out", :style(:normal, :same), " in the current working directory.\n"
 	);
 }
 
-::app::cmd version(exe: CHAR#\) VOID
+::app::cmd version(exe: CHAR#[#]) VOID
 {
-	cli::main(
-		:e(exe), " - RmbRT language compiler (", :w(app::version), ")\n"
-		"<", :w(app::repo), ">\n");
+	os::term::Print_v(
+		:style(:bold, :same), exe, :style(:normal, :same), " - RmbRT language compiler (",
+		:style(:dim, :same), app::version, :style(:normal, :same), ")\n"
+		"<", :style(:dim, :same), app::repo, :style(:normal, :same), ">\n");
 }
 
-::app::cmd license(exe: CHAR#\) VOID
+::app::cmd license(exe: CHAR#[#]) VOID
 {
 	version(exe);
-	cli::main(
+	os::term::Print(
 "\n"
 "This program is free software: you can redistribute it and/or modify\n"
 "it under the terms of the GNU Affero General Public License as published by\n"

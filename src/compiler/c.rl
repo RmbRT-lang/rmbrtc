@@ -17,14 +17,6 @@ INCLUDE "../c/cprinter.rl"
 
 ::rlc::compiler CCompiler -> Compiler
 {
-	Parser: rlc::parser::Config;
-	Scoper: rlc::scoper::Config - std::DynOpt;
-	Resolver: rlc::resolver::Config - std::DynOpt;
-	Instantiator: rlc::instantiator::Config - std::DynOpt;
-	Cli: cli::Console \;
-
-	{cli: ::cli::Console \}: Parser(cli), Cli := cli;
-
 	FINAL compile(
 		files: std::Str - std::Vec,
 		build: Build

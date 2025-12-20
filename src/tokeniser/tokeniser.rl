@@ -1,7 +1,7 @@
 INCLUDE "token.rl"
 INCLUDE "error.rl"
-
-INCLUDE 'std/unicode'
+INCLUDE "keywords.rl"
+INCLUDE "specials.rl"
 
 ::rlc::tok
 {
@@ -9,46 +9,124 @@ INCLUDE 'std/unicode'
 	Tokeniser
 	{
 		{
-			file: src::File #\
+			file: src::File,
+			contents: CHAR#[#]
 		}:
-			File(file),
-			Read(0),
-			Start(0),
-			Position(1, 1, :a(file));
+			File := file,
+			Contents := contents,
+			Read := 0,
+			Start := 0;
 
-		# eof() BOOL := Read == ##File->Contents;
-		# position() src::Position #& := Position;
+		# eof() BOOL := Read >= ##Contents;
+
+		ENUM Case {
+			eof,
+			string_quote, // Strings must have same order as token types
+			string_apostrophe,
+			string_backtick,
+			zero,
+			nonzero,
+			identifier,
+			uppercase,
+			special,
+			space,
+			parentheseOpen, // for (/ comments
+			forwardSlash, // for // comments.
+			other,
+			string_forward_tick // other + 1
+		}
+		STATIC token_lut: @(CACHELINE) Tokeniser::Case[256] (NOINIT);
+
+		STATIC init() VOID
+		{
+			Tokeniser::init_token_lut();
+			Tokeniser::init_hex_digits();
+			tok::init_keyword_lut();
+			tok::init_specials_lut();
+		}
+
+		STATIC init_token_lut() VOID
+		{
+			FOR(token_lut)
+			{
+				c: CHAR := IOTA;
+				IF(is_digit(c)) IT := :nonzero;
+				ELSE IF(is_idfc(c)) IT := (c >= 'A' && c <= 'Z')
+					?? Case::uppercase
+					: Case::identifier;
+				ELSE IT := :other;
+			}
+
+			FOR(specials_list_strings) // specials.rl
+				token_lut[IT[0]] := :special;
+			token_lut['"'] := :string_quote;
+			token_lut['\''] := :string_apostrophe;
+			token_lut['`'] := :string_backtick;
+			token_lut['('] := :parentheseOpen;
+			token_lut['/'] := :forwardSlash;
+			token_lut[' '] := :space;
+			token_lut['\t'] := :space;
+			token_lut['\n'] := :space;
+			token_lut['\r'] := :space;
+			token_lut['0'] := :zero;
+			token_lut[0] := :eof;
+		}
 
 		parse_next(out: Token \) BOOL
 		{
-			FOR(skipws(); comment(); skipws()){;}
-
 			out->Content.Start := Start := Read;
-			out->Position := Position;
-			IF(identifier(out)
-			|| number_literal(out)
-			|| string(out)
-			|| special(out))
+			//out->Position := Position;
+			DIE "parsing token";
+			FOR(;;)
 			{
-				out->Content.Length := Read - out->Content.Start;
-				RETURN TRUE;
+				next ::= look();
+				Read++;
+				Column++;
+
+				SWITCH!(case ::= token_lut[next])
+				{
+				:space: { space(next); CONTINUE; }
+				:zero: on_zero(out);
+				:nonzero: number_literal(out, next);
+				:string_apostrophe, :string_quote, :string_backtick:
+				{
+					out->Type := <tok::Type>(
+						<U1>(case) + (
+							<U1>(tok::Type::stringApostrophe) -
+							<U1>(Case::string_apostrophe)));
+					string(out, next);
+				}
+				:special: special(out, next);
+				:uppercase: keyword(out);
+				:identifier: identifier(out);
+				:parentheseOpen: on_parenthese_open(out);
+				:forwardSlash: on_slash(out);
+				:string_forward_tick: forward_tick_string(out);
+				:other:
+				{
+					IF(eat2("´"))
+						forward_tick_string(out);
+					ELSE
+						error();
+				}
+				:eof: { = FALSE; }
+				}
+
+				= TRUE;
 			}
-
-			IF(!eof())
-				error();
-
-			RETURN FALSE;
 		}
 
 	PROTECTED:
-		File: src::File #\; // The source file.
+		Contents: CHAR #[#];
 		Read: src::Index; // The current reading position in the file.
+		File: src::File; // The source file.
 		Start: src::Index; // Start of the current token.
-		Position: src::Position;
+		Line: U4;
+		Column: U4;
 
 		STATIC is_idfc(c: CHAR) BOOL :=
-			(c >='a' && c<='z')
-			|| (c >='A' && c <= 'Z')
+			(c >='a' && c <= 'z')
+			|| (c >= 'A' && c <= 'Z')
 			|| (c == '_');
 		STATIC is_digit(c: CHAR) BOOL :=
 			(c >= '0' && c <= '9');
@@ -56,372 +134,345 @@ INCLUDE 'std/unicode'
 			is_digit(c)
 			|| is_idfc(c);
 
-		# tok_str() std::[CHAR#]Buffer
-			:= File->content(
-				src::String(
-					Start,
-					Read - Start));
+		# tok_str() CHAR#[#] -- := Contents[FROM Start TO Read]; 
+
+		# here() WHERE --
+			:= <WHERE>(src::fileNames[File], Line, Column);
 
 		PUBLIC # look() CHAR := look(0);
-		# look(ahead: UINT) CHAR
+		# look(ahead: UINT) CHAR -- := Contents[Read+ahead];
+
+		# look2() U2 -- := *<U2 #*>(<UM>(Contents[]) + Read);
+		# look4() U4 -- := *<U4 #*>(<UM>(Contents[]) + Read);
+		# char2(v: CHAR[2] #&) U2 -- := *<U2 #*>(<UM>(&v));
+
+		getc() CHAR --
 		{
-			IF(Read+ahead >= ##File->Contents)
-				RETURN 0;
-			RETURN File->Contents[Read+ahead];
+			c ::= Contents[Read++];
+			col ::= Column;
+			col++;
+			nl ::= c == '\n';
+			col := nl ?? 1 : col;
+			Line += nl;
+			= c;
 		}
-		getc() CHAR
+
+		advance_nows() VOID --
 		{
-			IF(Read == ##File->Contents)
-				RETURN 0;
-			c ::= File->Contents[Read++];
-			IF(c == '\n')
+			Read++;
+			Column++;
+		}
+
+		advance_nows_by(amount: U4) VOID --
+		{
+			Read += amount;
+			Column += amount;
+		}
+
+		space(last: CHAR) VOID --
+		{
+			space_mask: U8# :=
+				<U8>(1) << <U1>(' ')  |
+				<U8>(1) << <U1>('\t') |
+				<U8>(1) << <U1>('\r') |
+				<U8>(1) << <U1>('\n');
+
+			read ::= Read;
+			chars ::= Contents[][FROM read];
+			newlines ::= 0;
+			last_newline ::= Read - Column;
+			is_space: BOOL (NOINIT);
+			DO(c ::= last)
 			{
-				Position.Column := 1;
-				Position.Line++;
-			} ELSE
-				Position.Column++;
-			RETURN c;
+				next ::= chars[0];
+				is_space := (space_mask >> c) & (c < 64);
+				chars += is_space;
+				read += is_space;
+				last_newline := (c == '\n') ?? read : last_newline;
+				newlines += (c == '\n');
+				c := next;
+			} WHILE(is_space)
+
+			Read := read;
+			Column := read - last_newline;
+			Line += newlines;
 		}
 
-		skipws() VOID
-		{
-			c: CHAR;
-			WHILE(c := look())
-				SWITCH(c)
-				{
-				' ', '\t', '\r', '\n':
-					getc();
-				DEFAULT:
-					RETURN;
-				}
+		eat2(v: CHAR[2] #&) BOOL -- {
+			IF(look2() == char2(v))
+			{
+				Read += 2;
+				Column += 2;
+				= TRUE;
+			}
+			= FALSE;
 		}
 
-		eatString(str: std::str::CV#&) BOOL {
-			FOR(i ::= 0; i < ##str; i++)
-				IF(look(i) != str[:ok(i)])
-					RETURN FALSE;
+		eatString(str: CHAR#[#]) BOOL {
+			FOR(str)
+				IF(look(IOTA) != IT)
+					= FALSE;
 			Read += ##str;
-			Position.Column += ##str;
-			RETURN TRUE;
+			Column += ##str;
+			= TRUE;
 		}
 
 		# error() VOID
 		{
-			line ::= Position.Line;
-			column ::= Position.Column;
-
 			IF(eof())
-				THROW <UnexpectedEOF>(
-					File,
-					line,
-					column);
+				err::unexpected_eof(here());
 			ELSE
 			{
 				ch ::= look();
 				IF(std::code::utf8::is_follow(ch))
-					THROW <InvalidCharSeq>(File, line, column);
+					err::invalid_char_seq(here());
 
 				len ::= std::code::utf8::size(ch);
-				left ::= ##File->Contents - Read;
+				left ::= ##Contents - Read;
 				IF(len > left)
-					THROW <InvalidCharSeq>(File, line, column);
+					err::invalid_char_seq(here());
 
 				buf: CHAR[4] (NOINIT);
 				FOR(i ::= 0; i < len; i++)
 					buf[i] := look(i);
 
-				THROW <UnexpectedChar>(
-					File,
-					line,
-					column,
-					std::code::utf8::point(buf!));
+				err::unexpected_char(here(), std::code::utf8::point(buf[]));
 			}
 		}
 
-		comment() BOOL
+		on_slash(out: Token \) VOID --
 		{
-			IF(eatString("//"))
+			IF(look() == '/')
 			{
-				FOR(c ::= getc(); c && c != '\n'; c := getc()) {;}
-				RETURN TRUE;
-			} ELSE IF(eatString("(/"))
+				i ::= 1;
+				WHILE(look(i) != '\n') { i++; }
+				Read += i;
+				getc();
+			} ELSE
+				special(out, '/');
+		}
+		on_parenthese_open(out: Token \) VOID --
+		{
+			IF(look() == '/')
 			{
 				FOR(nest ::= 1; nest;)
 				{
-					IF(eatString("(/"))
-						++nest;
-					IF(eatString("/)"))
-						--nest;
-					ELSE IF(!getc())
-						error();
+					next2 ::= look2();
+					next1 ::= <U1>(next2);
+					enter ::= next2 == char2("(/");
+					leave ::= next2 == char2("/)");
+
+					nest += enter - leave;
+					Read += 1 + (enter | leave);
+					col ::= Column;
+					col += 1 + (enter | leave);
+					col := (look() == '\n') ?? 1 : col;
+					Column := col;
+					Line += next1 == '\n';
 				}
-				RETURN TRUE;
-			}
-			RETURN FALSE;
+				IF(eof()) error();
+			} ELSE
+				special(out, '(');
 		}
 
-		special(out: Token \) BOOL
+		special(out: Token \, char: CHAR) VOID --
 		{
-			STATIC specials: {CHAR#\, Type}#[](
-				("+=", :plusEqual),
-				("++", :doublePlus),
-				("+", :plus),
-
-				("-=", :minusEqual),
-				("-:", :minusColon),
-				("--", :doubleMinus),
-				("->*", :minusGreaterAsterisk),
-				("->", :minusGreater),
-				("-", :minus),
-
-				("*=", :asteriskEqual),
-				("*", :asterisk),
-
-				("\\", :backslash),
-
-				("/=", :forwardSlashEqual),
-				("/", :forwardSlash),
-
-				("%=", :percentEqual),
-				("%", :percent),
-
-				("!=", :exclamationMarkEqual),
-				("!:", :exclamationMarkColon),
-				("!", :exclamationMark),
-
-				("^=", :circumflexEqual),
-				("^", :circumflex),
-
-				("~:", :tildeColon),
-				("~", :tilde),
-
-				("&&&", :tripleAmp),
-				("&&=", :doubleAmpEqual),
-				("&&", :doubleAmp),
-				("&=", :ampEqual),
-				("&", :amp),
-
-				("AND", :and),
-				("OR", :or),
-
-				("||=", :doublePipeEqual),
-				("||", :doublePipe),
-				("|=", :pipeEqual),
-				("|", :pipe),
-
-				("?""?", :doubleQuestionMark),
-				("?", :questionMark),
-
-				("::=", :doubleColonEqual),
-				(":=", :colonEqual),
-				("::", :doubleColon),
-				(":", :colon),
-				("@@", :doubleAt),
-				("@", :at),
-				("...", :tripleDot),
-				("..!", :doubleDotExclamationMark),
-				("..?", :doubleDotQuestionMark),
-				(".*", :dotAsterisk),
-				(".", :dot),
-				(",", :comma),
-				(";", :semicolon),
-				("==", :doubleEqual),
-				("=>", :equalGreater),
-				("=", :equal),
-
-				("[", :bracketOpen),
-				("]", :bracketClose),
-				("{", :braceOpen),
-				("}", :braceClose),
-				("(", :parentheseOpen),
-				(")", :parentheseClose),
-
-				("<<<=", :tripleLessEqual),
-				("<<<", :tripleLess),
-				("<<=", :doubleLessEqual),
-				("<<", :doubleLess),
-				("<=", :lessEqual),
-				("<>", :lessGreater),
-				("<-", :lessMinus),
-				("<", :less),
-
-				(">>>=", :tripleGreaterEqual),
-				(">>>", :tripleGreater),
-				(">>=", :doubleGreaterEqual),
-				(">>", :doubleGreater),
-				(">=", :greaterEqual),
-				(">", :greater),
-
-				("$", :dollar),
-				("##", :doubleHash),
-				("#", :hash)
-			);
-
-			FOR(i ::= 0; i < ##specials; i++)
-				IF(eatString(specials[i].(0)))
+			FOR(specials_lut[<U1>(char)])
+				IF(look4() & IT.(1) == IT.(0))
 				{
-					out->Type := specials[i].(1);
-					RETURN TRUE;
+					out->Type := IT.(2);
+					out->Payload.Enum := IT.(3);
+					RETURN;
 				}
 
-			RETURN FALSE;
+			error();
 		}
 
-		identifier(out: Token \) BOOL
+		keyword(out: Token \) VOID --
 		{
-			IF(!is_idfc(look()))
-				RETURN FALSE;
-			++Read;
-			++Position.Column;
-			WHILE(is_alnum(look())) (++Read, ++Position.Column);
-
-			STATIC keywords: {std::str::CV, Type}#[](
-				("ABSTRACT", :abstract),
-				("ASSERT", :assert),
-				("BARE", :bare),
-				("BOOL", :bool),
-				("BREAK", :break),
-				("CATCH", :catch),
-				("CHAR", :char),
-				("CONTINUE", :continue),
-				("COPY_RTTI", :copy_rtti),
-				("DEFAULT", :default),
-				("DESTRUCTOR", :destructor),
-				("DIE", :die),
-				("DO", :do),
-				("ELSE", :else),
-				("ENUM", :enum),
-				("EXTERN", :extern),
-				("FALSE", :false),
-				("FINAL", :final),
-				("FINALLY", :finally),
-				("FOR", :for),
-				("IF", :if),
-				("INCLUDE", :include),
-				("INLINE", :inline),
-				("INT", :int),
-				("MASK", :mask),
-				("NOINIT", :noinit),
-				("NULL", :null),
-				("NUMBER", :number),
-				("OVERRIDE", :override),
-				("PRIVATE", :private),
-				("PROTECTED", :protected),
-				("PUBLIC", :public),
-				("RETURN", :return),
-				("S1", :s1),
-				("S2", :s2),
-				("S4", :s4),
-				("S8", :s8),
-				("SIZEOF", :sizeof),
-				("SM", :sm),
-				("STATIC", :static),
-				("SWITCH", :switch),
-				("TEST", :test),
-				("THIS", :this),
-				("THROW", :throw),
-				("TRUE", :true),
-				("TRY", :try),
-				("TYPE", :type),
-				("U1", :u1),
-				("U2", :u2),
-				("U4", :u4),
-				("U8", :u8),
-				("UCHAR", :uchar),
-				("UINT", :uint),
-				("UM", :um),
-				("UNION", :union),
-				("VIRTUAL", :virtual),
-				("VISIT", :visit),
-				("VOID", :void),
-				("WHILE", :while)
-			);
-
-			ASSERT(##keywords[0].(0) != 0);
-			str ::= tok_str();
-			ASSERT(##str != 0);
-			FOR(i: UM := 0; i < ##keywords; i++)
-				IF(keywords[i].(0) == str++)
-				{
-					out->Type := keywords[i].(1);
-					RETURN TRUE;
-				}
-			out->Type := :identifier;
-			RETURN TRUE;
-		}
-
-		number_literal(out: Token \) BOOL
-		{
-			IF(eatString("0x")
-			|| eatString("0X"))
+			uppercase ::= TRUE;
+			FOR(c ::= look(); is_alnum(c); c := look())
 			{
-				out->Type := :numberLiteral;
+				// all non-lowercase identifier characters are before the lowercase characters.
+				uppercase &= c < 'a';
+				advance_nows();
+			}
+
+			IF(uppercase)
+			{
+				kw ::= tok::lookup_keyword(tok_str());
+				out->Type := kw.(0);
+				out->Payload.Enum := kw.(1);
+			}
+			ELSE
+				out->Type := :identifier;
+		}
+
+		identifier(out: Token \) VOID --
+		{
+			WHILE(is_alnum(look())) advance_nows();
+			out->Type := :identifier;
+		}
+
+		STATIC hex_digit: @(CACHELINE) U1[256] (NOINIT);
+		STATIC init_hex_digits() VOID
+		{
+			hex_digit.{255};
+			FOR("0123456789")
+				hex_digit[IT] := IOTA;
+			FOR("ABCDEF")
+				hex_digit[IT] := IOTA + 10;
+			FOR("abcdef")
+				hex_digit[IT] := IOTA + 10;
+		}
+
+		on_zero(out: Token \) VOID --
+		{
+			out->Type := :numberLiteral;
+			c ::= getc();
+			classify ::= token_lut[c];
+			SWITCH(c)
+			{
+			'x', 'X':
+			{
+				payload: U8 := 0;
+				c ::= hex_digit[<U1>(look())];
 				FOR(i ::= 0;; i++)
 				{
-					c ::= look();
-					IF(c >= '0' && c <= '9'
-					|| c >= 'a' && c <= 'f'
-					|| c >= 'A' && c <= 'F')
-						getc();
-					ELSE IF(!i)
-						error();
-					ELSE
-						RETURN TRUE;
+					nextc ::= hex_digit[<U1>(look(i+1))];
+					IF(~c)
+					{
+						payload <<= 4;
+						payload |= c;
+						c := nextc;
+
+					} ELSE {
+						IF(!i)
+							err::msg(here(), "expected digits");
+						BREAK;
+					}
 				}
 			}
-
-			IF(!is_digit(look()))
-				RETURN FALSE;
-			++Read;
-			WHILE(is_digit(look()))
-				++Read;
-
-			IF(look() == '.')
+			'r', 'R':
 			{
-				++Read;
-				WHILE(is_digit(look()))
-					++Read;
-				out->Type := :floatLiteral;
-			} ELSE {
-				out->Type := :numberLiteral;
+				number: U8 := 0;
+				i ::= 0;
+				FOR(;; i++)
+				{	// little endian bytes, big-endian nibbles, 1/2/4/8 bytes.
+					hn ::= hex_digit[look(0)];
+					ln ::= hex_digit[look(1)];
+
+					b ::= (hn << 4) | ln;
+					IF!(~hn) BREAK;
+					IF!(~ln) tok::err::msg(here(), "odd number of digits");
+
+					Read += 2; 
+					Column += 2;
+
+					number |= <U8>(b) << (8*i);
+
+					advance_nows_by(2);
+				}
+
+				IF(!i || i > 8)
+					tok::err::msg(here(), "raw hex literal exceeds register size");
+
+				STATIC types: tok::Type[8](
+					:raw_literal_1,
+					:raw_literal_2,
+					BARE, // we might add those later for RISA.
+					:raw_literal_4,
+					BARE, // we might add those later for RISA.
+					BARE, // ?
+					BARE, // ?
+					:raw_literal_8
+				);
+				out->Type := types[i-1];
+				out->Payload.Number := number;
+
+				IF(POPCNT i != 1)
+					tok::err::msg(here(), "raw hex literal must have 1/2/4/8 bytes size");
 			}
-			RETURN TRUE;
+			'b', 'B':
+			{
+				payload: U8 := 0;
+				look();
+				FOR(i ::= 0;; i++)
+				{
+					nextc ::= look(1);
+					digit: U1 := c - '0';
+					IF(digit <= 1)
+					{
+						advance_nows();
+						payload <<= 1;
+						payload |= digit;
+						c := nextc;
+					} ELSE {
+						IF(!i)
+							err::msg(here(), "expected digits");
+						BREAK;
+					}
+				}
+				advance_nows();
+			}
+			'1', '2', '3', '4', '5', '6', '7', '8', '9':
+			{
+				num: U8 := look(0) - '0';
+				advance_nows();
+				FOR(c ::= look(0); is_digit(c); c := getc())
+				{
+					num := (num << 3) | (c - '0');
+					advance_nows();
+				}
+			}
+			DEFAULT:
+			{
+				forbidden_follow: U4# :=
+					<U4>(1) << <U1>(Case::zero) |
+					<U4>(1) << <U1>(Case::identifier) |
+					<U4>(1) << <U1>(Case::uppercase);
+
+				IF(<U4>(1) << <U1>(classify) & forbidden_follow)
+					err::msg(here(), "invalid follow-up character after 0.");
+			}
+			}
 		}
 
-		string(out: Token \) BOOL
+		number_literal(out: Token \, last: CHAR) VOID --
 		{
-			IF(eatString("´"))
+			number: U8 := last - '0';
+			last := look();
+			WHILE(is_digit(last))
 			{
-				out->Type := :stringTick;
-				WHILE(!eatString("´"))
-				{
-					IF:!(c ::= getc())
+				number := 10 * number + last - '0';
+				last := look(1);
+				advance_nows();
+			}
+			out->Type := :numberLiteral;
+			out->Payload.Number := number;
+		}
+
+		forward_tick_string(out: Token \) VOID --
+		{
+			out->Type := :stringTick;
+			WHILE(!eat2("´"))
+			{
+				IF:!(c ::= getc())
+					error();
+				IF(c == '\\')
+					IF(!getc())
 						error();
-					IF(c == '\\')
-						IF(!getc())
-							error();
-				}
-				RETURN TRUE;
 			}
+		}
 
-			delim #::= look();
-			SWITCH(delim)
-			{
-			DEFAULT:
-				RETURN FALSE;
-			'\'': out->Type := :stringApostrophe;
-			'"': out->Type := :stringQuote;
-			'`': out->Type := :stringBacktick;
-			}
-
-			++Read;
-			FOR(c: CHAR; (c := getc()) != delim;)
+		string(out: Token \, delim: CHAR) VOID --
+		{
+			FOR(c ::= getc(); c != delim; c := getc())
 			{
 				IF(!c) error();
 				IF(c == '\\')
 					IF(!getc()) error();
 			}
-			RETURN TRUE;
 		}
 	}
 }

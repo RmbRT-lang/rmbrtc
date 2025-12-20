@@ -1,90 +1,60 @@
 INCLUDE "../src/file.rl"
-INCLUDE 'std/error'
-INCLUDE 'std/string'
+INCLUDE 'os/terminal'
+INCLUDE 'os/runtime'
+INCLUDE 'std/str'
+INCLUDE 'std/unicode'
 
-::rlc::tok Error VIRTUAL -> std::Error
+::rlc::tok::err unexpected_char(w: WHERE, c: U4) VOID
 {
-	File: std::Str;
-	Line: UINT;
-	Column: UINT;
+	char_enc: CHAR[4] (NOINIT);
+	char: CHAR#[#] (NOINIT);
 
+	SWITCH(c)
 	{
-		File: src::File #\,
-		Line: UINT,
-		Column: UINT}:
-		File(File->Name),
-		Line(Line),
-		Column(Column);
-
-	# OVERRIDE stream(
-		o: std::io::OStream &) VOID
+	'\t': char := "\\t";
+	'\n': char := "\\n";
+	DEFAULT:
 	{
-		std::io::write(o, File!++, ":", :dec(Line), ":", :dec(Column), ": ");
-
-		reason(o);
-		std::io::write(o, ".");
+		len ::= std::code::utf8::encode(c, char_enc[]);
+		char := char_enc[FOR len];
+	}
 	}
 
-	# ABSTRACT reason(
-		std::io::OStream &) VOID;
+	os::term::PrintLine_v(:style(:normal, :red),
+		std::str::c(w.(0)[]), ":",
+		std::io::format::dec(w.(1)), ":",
+		std::io::format::dec(w.(2)), ": error: "
+		"unexpected character '", char, "'");
+	os::terminate_error();
 }
 
-::rlc::tok UnexpectedChar -> Error
+::rlc::tok::err unexpected_eof(w: WHERE) VOID
 {
-	Char: U4;
-	{
-		File: src::File #\,
-		Line: UINT,
-		Column: UINT,
-		Char: U4
-	} -> (File, Line, Column)
-	:	Char(Char);
-
-	# OVERRIDE reason(
-		o: std::io::OStream &) VOID
-	{
-		std::io::write(o, "unexpected character '");
-		SWITCH(Char)
-		{
-		'\t': std::io::write(o, "\\t");
-		'\n': std::io::write(o, "\\n");
-		DEFAULT:
-			{
-				u8: CHAR[4] (NOINIT);
-				len ::= std::code::utf8::encode(Char, u8!);
-				std::io::write(o, :buf(u8!, len));
-			}
-		}
-		std::io::write(o, "'");
-	}
+	os::term::PrintLine_v(:style(:normal, :red),
+		std::str::c(w.(0)[]), ":",
+		std::io::format::dec(w.(1)), ":",
+		std::io::format::dec(w.(2)), ": error: "
+		"unexpected end of file");
+	os::terminate_error();
 }
 
-::rlc::tok UnexpectedEOF -> Error
+::rlc::tok::err invalid_char_seq(w: WHERE) VOID
 {
-	{
-		file: src::File #\,
-		line: UINT,
-		column: UINT
-	} -> (file, line, column);
-
-	# OVERRIDE reason(
-		o: std::io::OStream &) VOID
-	{
-		std::io::write(o, "unexpected end of file");
-	}
+	os::term::PrintLine_v(:style(:normal, :red),
+		std::str::c(w.(0)[]), ":",
+		std::io::format::dec(w.(1)), ":",
+		std::io::format::dec(w.(2)), ": error: "
+		"invalid character sequence");
+	os::terminate_error();
 }
 
-::rlc::tok InvalidCharSeq -> Error
-{
-	{
-		file: src::File #\,
-		line: UINT,
-		column: UINT
-	} -> (file, line, column);
 
-	# OVERRIDE reason(
-		o: std::io::OStream &) VOID
-	{
-		std::io::write(o, "invalid character sequence");
-	}
+::rlc::tok::err msg(w: WHERE, msg: CHAR#[#]) VOID
+{
+	os::term::PrintLine_v(:style(:normal, :red),
+		std::str::c(w.(0)[]), ":",
+		std::io::format::dec(w.(1)), ":",
+		std::io::format::dec(w.(2)), ": error: ",
+		msg);
+	os::terminate_error();
 }

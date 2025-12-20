@@ -1,159 +1,62 @@
 INCLUDE "../tokeniser/tokeniser.rl"
-INCLUDE "error.rl"
-INCLUDE 'std/tags'
 
 ::rlc::parser
 {
+	UNION Peek2 {
+		Pair: {TokenType, TokenType};
+		Word: U4;
+	}
+
 	Parser
 	{
-		std::NoCopy;
-		std::NoMove;
+		TokenTypes: TokenType [];
+		Tokens: TokenData[];
 
-		{&&};
+		consume(t: TokenType) TokenData * --
 		{
-			file: src::File # - std::Shared,
-			cli: ::cli::Console \
-		}:
-			Source := &&file,
-			Tokeniser(Source),
-			Ctx(NULL),
-			Buffer(NOINIT),
-			BufferSize(0),
-			BufferIndex(0),
-			Progress(0),
-			Cli := cli
-		{
-			FOR(i ::= 0; i < ##Buffer; i++) Buffer[i].{BARE};
-			IF(!Tokeniser.parse_next(&Buffer[0]))
-				RETURN;
-			LastLine := Buffer[0].Position.Line;
-			LineIndent := Buffer[0].Position.Column;
-			IF(Tokeniser.parse_next(&Buffer[1]))
-				BufferSize := 2;
-			ELSE
-				BufferSize := 1;
-		}
-
-		fail(reason: CHAR#\) VOID
-		{
-			pos ::= (BufferSize)
-				?? Buffer[BufferIndex].Position
-				: Tokeniser.position();
-			
-			THROW <ReasonError>(
-				Source,
-				pos.Line,
-				pos.Column,
-				Buffer!,
-				BufferIndex,
-				BufferSize,
-				THIS,
-				reason);
-		}
-
-		consume(type: tok::Type) tok::Token - std::Opt
-		{
-			IF(match(type))
-				= :a(&&eat_token()!);
-			= NULL;
-		}
-
-		expect(type: tok::Type) tok::Token
-		{
-			IF(tok ::= consume(type))
-				= &&*tok;
-			pos ::= (BufferSize)
-				?? Buffer[BufferIndex].Position
-				: Tokeniser.position();
-
-			THROW <ExpectedToken>(
-				Source, pos.Line, pos.Column,
-				Buffer!, BufferIndex, BufferSize,
-				THIS,
-				type);
-		}
-
-		match_seq(tok1: tok::Type, tok2: tok::Type) BOOL
-		{
-			IF(BufferSize < 2) = FALSE;
-			= Buffer[BufferIndex].Type == tok1
-				&& Buffer[BufferIndex^1].Type == tok2;
-		}
-
-		consume_seq(tok1: tok::Type, tok2: tok::Type) BOOL
-		{
-			IF:(ret ::= match_seq(tok1, tok2))
-			{
-				eat_token();
-				eat_token();
-			}
+			match ::= TokenTypes[0] == t;
+			ret ::= TokenTypes;
+			ret := match ?? ret : NULL;
+			Tokens += match;
+			TokenTypes += match;
 			= ret;
 		}
 
-		match(type: tok::Type) BOOL
+		consume_2(t1: TokenType, t2: TokenType) TokenData[] --
 		{
-			IF(!BufferSize)
-				RETURN FALSE;
+			match := peek_2() == pair(t1, t2);
 
-			RETURN Buffer[BufferIndex].Type == type;
+			ret ::= TokenTypes;
+			ret := match ?? ret : NULL;
+
+			Tokens += 2*match;
+			TokenTypes += 2*match;
+
+			= ret;
 		}
 
-		match_ahead(type: tok::Type) BOOL
-		{
-			IF(BufferSize != 2)
-				RETURN FALSE;
+		STATIC pair(t1: TokenType, t2: TokenType) U4 --
+			:= <U4>(t1) + <U4>(t2) << 8 * SIZEOF(TokenType);
 
-			RETURN Buffer[BufferIndex^1].Type == type;
+		# peek_2() U4 --
+		{
+			IF#(SIZEOF(TokenType) == 1)
+				= *<U2*>(&TokenTypes[0]);
+			ELSE
+				= *<U4*>(&TokenTypes[0]);
 		}
 
-		eat_token() tok::Token - std::Opt
-		{
-			IF(!BufferSize)
-				RETURN NULL;
+		# peek() TokenType -- := TokenTypes[0];
 
-			PrevOffset := :a(Buffer[BufferIndex].Content.end());
-
-			out ::= Buffer[BufferIndex];
-
-			IF(!Tokeniser.parse_next(&Buffer[BufferIndex]))
-				--BufferSize;
-
-			IF(out.Position.Line != LastLine)
-			{
-				LineIndent := out.Position.Column;
-				LastLine := out.Position.Line;
-			}
-
-			BufferIndex := BufferIndex ^ 1;
-			++Progress;
-
-			= :a(&&out);
-		}
-
-		# eof() BOOL := BufferSize == 0;
+		next() VOID { Tokens++; TokenTypes++; }
 
 		# context() CHAR #\
 			:= Ctx
 				?? Ctx->Name
 				: "global scope";
 
-		# progress() UINT INLINE := Progress;
-
-		# position() src::Position := BufferSize
-			?? Buffer[BufferIndex].Position
-			: Tokeniser.position();
-
-		# offset() UM := BufferSize
-			?? Buffer[BufferIndex].Content.Start
-			: ##Source->Contents;
-		# prev_offset() UM := PrevOffset!;
-
-		# indent() UINT INLINE := LineIndent;
-
 		Ctx: Trace *;
-		Name: std::Str;
-		Source: src::File # - std::Shared #;
-		
+
 		locals() ast::LocalPosition
 		{
 			IF(!Locals)
@@ -192,9 +95,9 @@ INCLUDE 'std/tags'
 		}
 		Cli: ::cli::Console \;
 	PRIVATE:
-		LastLine: UINT; /// Last read line number.
-		LineIndent: UINT; /// Last read token's line's first token's column.
 		Locals: ast::LocalPosition -std::Opt;
+		Locals: Identifier[#];
+
 		Tokeniser: tok::Tokeniser;
 		Buffer: tok::Token[2]; /// Lookahead buffer.
 		BufferIndex: UINT;

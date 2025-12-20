@@ -1,289 +1,233 @@
 INCLUDE "operators.rl"
-INCLUDE "../symbol.rl"
 
 ::rlc::parser::expression::op
 {
-	parse(p: Parser&) ast::[Config]Expression-std::ValOpt INLINE
-		:= parse_binary(p, detail::precedenceGroups);
+	parse(p: Parser&) Expression-std::Opt INLINE
+	{
+		lhs ::= parse_binary(p, detail::precedenceGroups -1);
+		IF(p.consume(:doubleQuestionMark))
+		{
+			then ::= expression::parse_x(p);
+			p.expect(:colon);
+			else ::= expression::parse_x(p);
+			args: Expression[3](lhs, then, else);
+
+			lhs := p.Code.operator_expression(:conditional, peek_pos, args[#], lhs, else);
+		}
+		= lhs;
+	}
 
 	parse_binary_rhs(
 		p: Parser&,
-		lhs: ast::[Config]Expression-std::Val,
+		lhs: Expression,
 		level: UINT
-	) ast::[Config]Expression-std::ValOpt
+	) Expression-std::Opt
 	{
 		IF(level == 0)
-			= &&lhs;
+			= lhs;
 
-		group ::= &detail::k_groups[level-1];
-		FOR(i ::= 0; i < group->Size; i++)
+		DO()
 		{
-			IF(tok ::= p.consume(group->Table[i].(0)))
-			{
-				op ::= group->Table[i].(1);
-				ret: ast::[Config]OperatorExpression-std::Val := :a(BARE);
-				r ::= ret.mut_ptr_ok();
-				r->LocalPos := p.locals();
-				r->Op := op;
-				range ::= lhs->Range;
-				r->Operands += &&lhs;
-				r->Position := tok->Position;
+			op ::= k_binary_op_lut[p.peek()];
+			peek_pos ::= p.peek_data();
+			IF(op.(0) == :none || op.(1) != level-1)
+				= lhs;
 
-				IF(group->LeftAssoc)
-				{
-					// a + b + c
-					// (a + b) + c
-					IF:!(rhs ::= parse_binary(p, level-1))
-						p.fail("expected expression");
-					r->Range := range.span(rhs->Range);
-					r->Operands += :!(&&rhs);
-					= parse_binary_rhs(p, :<>(&&ret), level);
-				} ELSE
-				{
-					// a := b := c
-					// a := (b := c)
-					IF:!(rhs ::= parse_binary(p, level))
-						p.fail("expected expression");
+			p.next();
 
-					r->Range := range.span(rhs->Range);
-					r->Operands += :!(&&rhs);
-					= :cast_val(&&ret);
-				}
-			}
-		}
+			IF:!(rhs ::= parse_binary(p, level - group->LeftAssoc))
+				p.fail("expected expression");
 
-		= &&lhs;
+			args: Expression[2](lhs, rhs);
+			lhs := p.Code.operator_expression(op.(2), peek_pos, args[#], lhs, rhs);
+		} WHILE(op->LeftAssoc)
+
+		= lhs;
 	}
 
 	parse_binary(
 		p: Parser&,
 		level: UINT
-	) ast::[Config]Expression-std::ValOpt
+	) Expression-std::Opt
 	{
-		IF:!(lhs ::= level
-				?? parse_binary(p, level-1)
-				: parse_prefix(p))
+		IF:!(lhs ::= level ?? parse_binary(p, level-1) : parse_prefix(p))
 			= NULL;
 
-		IF(level == detail::precedenceGroups
-		&& p.consume(:doubleQuestionMark))
-		{
-			IF:!(then ::= expression::parse(p))
-				p.fail("expected expression");
-			op ::= p.expect(:colon);
-			IF:!(else ::= expression::parse(p))
-				p.fail("expected expression");
-
-			ret: ast::[Config]OperatorExpression-std::Val := :a(BARE);
-			r ::= ret.mut_ptr_ok();
-			r->LocalPos := p.locals();
-			r->Range := lhs->Range.span(else->Range);
-			r->Position := op.Position;
-			r->Op := :conditional;
-			r->Operands += :!(&&lhs);
-			r->Operands += :!(&&then);
-			r->Operands += :!(&&else);
-			= :cast_val(&&ret);
-		} ELSE
-			= parse_binary_rhs(p, :!(&&lhs), level);
+		= parse_binary_rhs(p, lhs!, level);
 	}
 
-	parse_prefix(p: Parser&) ast::[Config]Expression-std::ValOpt
+	parse_prefix(p: Parser&) Expression-std::Opt
 	{
-		FOR(i ::= 0; i < ##detail::k_prefix_ops; i++)
-		{
-			IF(tok ::= p.consume(detail::k_prefix_ops[i].(0)))
-			{
-				xp: ast::[Config]OperatorExpression-std::Val := :a(BARE);
-				x ::= xp.mut_ptr_ok();
-				x->LocalPos := p.locals();
-				x->Op := detail::k_prefix_ops[i].(1);
-				IF:!(rhs ::= parse_prefix(p))
-					p.fail("expected expression");
-				x->Operands += :!(&&rhs);
-				x->Range := tok->Content.span(x->Operands!.back()->Range);
-				x->Position := tok->Position;
-				= :cast_val(&&xp);
-			}
-		}
+		peek ::= p.peek();
+		pos ::= p.peek_data();
 
-		= parse_postfix(p);
+		op ::= k_prefix_op_lut[peek];
+
+		IF(op.(0) == :none)
+			= parse_postfix(p);
+
+		p.next();
+
+		IF:!(rhs ::= parse_prefix(p))
+			p.fail("expected expression");
+
+		= p.Code.operator_expression_1(op.(1), pos, lhs, lhs, pos);
 	}
 }
 
 ::rlc::parser::expression::op parse_postfix(
 	p: Parser&
-) ast::[Config]Expression - std::ValOpt
+) ast::[Config]Expression - std::Opt
 {
 	IF:!(lhs ::= parse_atom(p))
 		= NULL;
 
-	STATIC postfix: {tok::Type, rlc::Operator}#[](
-		(:doublePlus, :postIncrement),
-		(:doubleMinus, :postDecrement),
-		(:tripleDot, :variadicExpand),
-		(:exclamationMark, :valueOf));
-
-	// (tok, opCtor, opVCtor, opTuple, opDtor)
-	STATIC memberAccess: {tok::Type, rlc::Operator, rlc::Operator, rlc::Operator, rlc::Operator}#[](
-		(:dot, :constructor, :virtualConstructor, :tupleMemberReference, :destructor),
-		(:minusGreater, :pointerConstructor, :virtualPointerConstructor, :tupleMemberPointer, :pointerDestructor));
+	// (tok, opCtor, opVCtor, opTuple, opDtor, opMember)
+	STATIC memberAccess: {tok::Type, Operator, Operator, Operator, Operator, Operator}#[?](
+		(:dot, :constructor, :virtualConstructor, :tupleMemberReference, :destructor, :memberAccess),
+		(:minusGreater, :pointerConstructor, :virtualPointerConstructor, :tupleMemberPointer, :pointerDestructor, :pointerMemberAccess));
 
 	FOR["outer"](;;)
 	{
-		FOR(i ::= 0; i < ##postfix; i++)
+		peek ::= p.peek();
+		op ::= k_postfix_op_lut[peek];
+
+		IF(op.(0) == :none)
+			BREAK;
+
+		args: Expression-std::[std::temp::Local]VecT;
+		defer: std::temp::Local::Scope;
+		SWITCH!(op.(0))
 		{
-			IF(tok ::= p.consume(postfix[i].(0)))
+		:memberAccess: {
+			i ::= peek == :minusGreater;
+			peek_pos ::= p.peek_data();
+			p.next();
+
+			IF(tok ::= p.consume(:virtual))
 			{
-				lhs := ast::[Config]OperatorExpression::make_unary(
-					postfix[i].(1),
+				p.expect(:braceOpen);
+				IF:!(close ::= p.consume(:braceClose))
+				{
+					x.reserve(16);
+					DO()
+						args += expression::parse_x(p);
+						WHILE(p.consume(:comma))
+					close := :a(p.expect(:braceClose));
+				}
+
+				lhs := p.Code.operator_expression(
+					memberAccess[i].(2),
 					tok->Position,
-					:!(&&lhs));
-				lhs.mut_ok().Range := lhs->Range.span(tok->Content);
-				CONTINUE["outer"];
+					args!,
+					lhs, close);
+			} ELSE IF(tok ::= p.consume(:braceOpen))
+			{
+				IF:!(close ::= p.consume(:braceClose))
+				{
+					x.reserve(16);
+					DO()
+						args += expression::parse_x(p);
+						WHILE(p.consume(:comma))
+					close := :a(p.expect(:braceClose));
+				}
+
+				lhs := p.Code.operator_expression(
+					memberAccess[i].(1),
+					tok->Position,
+					args!,
+					lhs, close);
+			}
+			ELSE IF(tok ::= p.consume(:parentheseOpen))
+			{
+				index ::= expression::parse_x(p);
+				lhs := ast::[Config]OperatorExpression::make_binary(
+					memberAccess[i].(3),
+					tok->Position,
+					:!(&&lhs),
+					:!(&&index));
+				close ::= p.expect(:parentheseClose);
+				lhs := p.Code.operator_expression(
+					memberAccess[i].(1),
+					tok->Position,
+					args!,
+					lhs, close);
+			} ELSE IF(tok ::= p.consume(:tilde))
+			{
+				lhs := p.Code.operator_expression_1(
+					memberAccess[i].(4), tok->Position, lhs, lhs, tok);
+			}
+			ELSE
+			{
+				IF:!(member ::= symbol::parse_child(p))
+					p.fail("expected member name");
+
+				args: Expression[2](lhs, member);
+
+				lhs := p.Code.operator_expression(
+					memberAccess[i].(5), peek_pos, args[#], lhs, member);
 			}
 		}
-
-		IF(open ::= p.consume(:bracketOpen))
-		{
-			sub: ast::[Config]OperatorExpression-std::Val := :a(BARE);
-			s ::= sub.mut_ptr_ok();
-			s->LocalPos := p.locals();
-			s->Op := :subscript;
-			s->Position := open->Position;
-			s->Operands += :!(&&lhs);
-
-			DO()
-				s->Operands += expression::parse_x(p);
+		:oneToken: {
+			p.next();
+			lhs := p.Code.operator_expression_1(op.(1), peek_pos, lhs, lhs, peek_pos);
+		}
+		:call: {
+			p.next();
+			IF:!(close ::= p.consume(:parentheseClose))
+			{
+				args.reserve(8);
+				args += expression::parse_x(p);
+				WHILE(!(close := p.consume(:parentheseClose)))
+				{
+					p.expect(:comma);
+					args += expression::parse_x(p);
+				}
+			}
+			lhs := p.Code.operator_expression_lhs_multi(
+				:call, peek_pos, lhs, args[#], lhs, close);
+		}
+		:subscript: {
+			p.next();
+			IF(p.consume(:hash))
+			{
+				close := p.expect(:parentheseClose);
+				lhs := p.Code.operator_expression_1(:sizedSlice, peek_pos, lhs, lhs, close);
+			} ELSE IF(close ::= p.consume(:bracketClose))
+			{
+				lhs := p.Code.operator_expression_1(:unsizedSlice, peek_pos, lhs, lhs, close);
+			} ELSE
+			{
+				args.reserve(4);
+				args += expression::parse_x(p);
 				WHILE(p.consume(:comma))
-			cls ::= p.expect(:bracketClose);
-
-			s->Range := s->Operands!.front()->Range.span(cls.Content);
-			lhs := :<>(&&sub);
-
-			CONTINUE["outer"];
+					args += expression::parse_x(p);
+				close ::= p.expect(:bracketClose);
+				lhs := p.Code.operator_expression_lhs_multi(
+					:subscript, peek_pos, lhs, args[#], lhs, close);
+			}
 		}
+		:visit: {
+			p.next();
 
-		IF(op ::= p.consume(:visit))
-		{
-			isReflect ::= p.consume(:asterisk);
+			type: Operator := p.consume(:asterisk) ?? :reflectVisit : :visit;
 			p.expect(:parentheseOpen);
-			visit: ast::[Config]OperatorExpression-std::Val := :a(BARE);
-			v ::= visit.mut_ptr_ok();
-			v->LocalPos := p.locals();
-			v->Op := isReflect ?? Operator::reflectVisit : Operator::visit;
-			v->Position := op->Position;
-			v->Operands += :!(&&lhs);
-
-			cls: tok::Token-std::Opt;
-			DO(comma ::= FALSE)
+			IF:!(close ::= p.consume(:parentheseClose))
 			{
-				IF(comma)
+				args.reserve(8);
+				args += expression::parse_x(p);
+				WHILE(!(close := p.consume(:parentheseClose)))
+				{
 					p.expect(:comma);
-				v->Operands += expression::parse_x(p);
-			} FOR(!(cls := p.consume(:parentheseClose)); comma := TRUE)
-
-			v->Range := v->Operands!.front()->Range.span(cls->Content);
-			lhs := :cast_val(&&visit);
-			CONTINUE["outer"];
-		}
-
-		IF(tok ::= p.consume(:parentheseOpen))
-		{
-			call: ast::[Config]OperatorExpression-std::Val := :a(BARE);
-			c ::= call.mut_ptr_ok();
-			c->LocalPos := p.locals();
-			c->Op := :call;
-			c->Operands += :!(&&lhs);
-			c->Position := tok->Position;
-
-			cls: rlc::tok::Token - std::Opt;
-			FOR(comma ::= FALSE;
-				!(cls := p.consume(:parentheseClose));
-				comma := TRUE)
-			{
-				IF(comma)
-					p.expect(:comma);
-				c->Operands += expression::parse_x(p);
+					args += expression::parse_x(p);
+				}
 			}
-
-			c->Range := c->Operands!.front()->Range.span(cls->Content);
-			lhs := :cast_val(&&call);
-			CONTINUE["outer"];
+			lhs := p.Code.operator_expression_lhs_multi(
+				:call, peek_pos, lhs, args[#], lhs, close);
 		}
-
-		FOR(i ::= 0; i < ##memberAccess; i++)
-		{
-			IF(op ::= p.consume(memberAccess[i].(0)))
-			{
-				IF(tok ::= p.consume(:virtual))
-				{
-					p.expect(:braceOpen);
-					lhs := ast::[Config]OperatorExpression::make_unary(
-						memberAccess[i].(2), tok->Position, :!(&&lhs));
-
-					IF:!(cls ::= p.consume(:braceClose))
-					{
-						DO(lhs_op ::= <ast::[Config]OperatorExpression \>(&*lhs))
-							lhs_op->Operands += expression::parse_x(p);
-							WHILE(p.consume(:comma))
-						cls := :a(p.expect(:braceClose));
-					}
-					lhs.mut_ok().Range := lhs->Range.span(cls->Content);
-				} ELSE IF(tok ::= p.consume(:braceOpen))
-				{
-					lhs := ast::[Config]OperatorExpression::make_unary(
-						memberAccess[i].(1), tok->Position, :!(&&lhs));
-
-					IF:!(cls ::= p.consume(:braceClose))
-					{
-						DO(lhs_op ::= <ast::[Config]OperatorExpression \>(&*lhs))
-							lhs_op->Operands += expression::parse_x(p);
-							WHILE(p.consume(:comma))
-						cls := :a(p.expect(:braceClose));
-					}
-					lhs.mut_ok().Range := lhs->Range.span(cls->Content);
-				}
-				ELSE IF(tok ::= p.consume(:parentheseOpen))
-				{
-					IF(index ::= expression::parse(p))
-						lhs := ast::[Config]OperatorExpression::make_binary(
-							memberAccess[i].(3),
-							tok->Position,
-							:!(&&lhs),
-							:!(&&index));
-					ELSE p.fail("expected expression");
-					cls ::= p.expect(:parentheseClose);
-					lhs.mut_ok().Range := lhs->Range.span(cls.Content);
-				} ELSE IF(tok ::= p.consume(:tilde))
-				{
-					lhs := ast::[Config]OperatorExpression::make_unary(
-						memberAccess[i].(4), tok->Position, :!(&&lhs));
-					lhs.mut_ok().Range := lhs->Range.span(tok->Content);
-				}
-				ELSE
-				{
-					exp: ast::[Config]MemberReferenceExpression-std::Val := :a(BARE);
-					e ::= exp.mut_ptr_ok();
-					e->LocalPos := p.locals();
-					e->Object := :!(&&lhs);
-					e->IsArrowAccess := (i != 0);
-					e->Position := op->Position;
-
-					IF(!symbol::parse_child(p, e->Member))
-						p.fail("expected member name");
-
-					e->Range := e->Object->Range.span(e->Member.Name);
-
-					lhs := :cast_val(&&exp);
-				}
-				CONTINUE["outer"];
-			}
+		:none: DIE "already covered by if";
 		}
-
-		BREAK;
 	}
 
-	lhs->Range;
-	= &&lhs;
+	= lhs;
 }
