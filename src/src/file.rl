@@ -18,6 +18,17 @@ INCLUDE 'std/io/format'
 
 		# file() U2 -- := Pos >> 21; // 11bit, up to 2048 code files per project.
 		# byte() Index -- := Pos & (1 << 21 -1); // 21 bit, up to 2MiB code files (~32K LOC).
+
+		# at() WHERE {
+			last_nl: U4;
+			line: U4 := 1;
+			FOR(fileContents[file()]![FOR byte()])
+			{
+				line += IT == '\n';
+				last_nl := IT == '\n' ?? IOTA : last_nl;
+			}
+			= <WHERE>(fileNames[file()]![], line, byte() - last_nl);
+		}
 	}
 
 	Span {
@@ -101,7 +112,10 @@ INCLUDE 'std/io/format'
 	{
 		file ::= ##fileNameHashes;
 		fileNameHashes += h;
+
 		mem ::= FileNames::instance.alloc_raw_region(##path, CACHELINE);
+		std::mem::cpy(mem, &path[0], ##path);
+
 		fileNames += <CHAR#\>(mem)[FOR ##path];
 		fileContents += source;
 		= file;

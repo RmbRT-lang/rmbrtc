@@ -3,7 +3,7 @@ INCLUDE "../tokeniser/tokeniser.rl"
 ::rlc::parser
 {
 	UNION Peek2 {
-		Pair: {TokenType, TokenType};
+		Pair: {TAGGED TokenType, TAGGED TokenType};
 		Word: U4;
 	}
 

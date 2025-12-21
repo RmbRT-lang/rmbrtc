@@ -17,8 +17,64 @@ INCLUDE "tokeniser/tokeniser.rl"
 	version: CHAR#[#] := "pre-alpha";
 	repo: CHAR#[#] := "https://github.com/RmbRT-lang/rmbrtc";
 }
-
+EXTERN exit(INT) VOID;
 EXTERN puts(CHAR #*) INT;
+
+::term [Args...] error(at: WHERE, args: Args! &&...) VOID
+{
+	IF!(at)
+		os::term::PrintLine_v(
+			:style(:bold, :red), "error: ",
+			:style(:normal, :same), <Args!&&>(args)...);
+	ELSE IF(at.(1))
+		os::term::PrintLine_v(
+			:style(:normal, :default), std::str::c(at.(0)[]), ":", std::io::format::dec(at.(1)), ":", std::io::format::dec(at.(2)), ": ",
+			:style(:bold, :red), "error: ",
+			:style(:normal, :same), <Args!&&>(args)...);
+	ELSE
+		os::term::PrintLine_v(
+			:style(:normal, :default), std::str::c(at.(0)[]), ": ",
+			:style(:bold, :red), "error: ",
+			:style(:normal, :same), <Args!&&>(args)...);
+	exit(1);
+}
+
+::term [Args...] warning(at: WHERE, args: Args! &&...) VOID
+{
+	IF!(at)
+		os::term::PrintLine_v(
+			:style(:bold, :yellow), "warning: ",
+			:style(:normal, :same), <Args!&&>(args)...);
+	ELSE IF(at.(1))
+		os::term::PrintLine_v(
+			:style(:normal, :default), std::str::c(at.(0)[]), ":", std::io::format::dec(at.(1)), ":", std::io::format::dec(at.(2)), ": ",
+			:style(:bold, :yellow), "error: ",
+			:style(:normal, :same), <Args!&&>(args)...);
+	ELSE
+		os::term::PrintLine_v(
+			:style(:normal, :default), std::str::c(at.(0)[]), ": ",
+			:style(:bold, :yellow), "error: ",
+			:style(:normal, :same), <Args!&&>(args)...);
+}
+
+
+::term [Args...] info(at: WHERE, args: Args! &&...) VOID
+{
+	IF!(at)
+		os::term::PrintLine_v(
+			:style(:bold, :cyan), "info: ",
+			:style(:normal, :same), <Args!&&>(args)...);
+	ELSE IF(at.(1))
+		os::term::PrintLine_v(
+			:style(:normal, :default), std::str::c(at.(0)[]), ":", std::io::format::dec(at.(1)), ":", std::io::format::dec(at.(2)), ": ",
+			:style(:bold, :cyan), "info: ",
+			:style(:normal, :same), <Args!&&>(args)...);
+	ELSE
+		os::term::PrintLine_v(
+			:style(:normal, :default), std::str::c(at.(0)[]), ": ",
+			:style(:bold, :cyan), "info: ",
+			:style(:normal, :same), <Args!&&>(args)...);
+}
 
 main(args: CHAR[#][#]) INT
 {
@@ -107,30 +163,6 @@ main(args: CHAR[#][#]) INT
 		= 1;
 	}
 
-
-	start $::= NOW;
-	totalSz: U4 := 0;
-	FOR(files!)
-	{
-		IF:!(f ::= os::fs::ReadFile(>IT!, NULL))
-		{
-			os::term::PrintLine_v(:style(:normal, :red),
-				"could not open ", IT!);
-			= 1;
-		}
-
-		os::term::PrintLine_v(:style(:dim, :cyan),
-			IT!, ": ", std::io::format::dec(f!.Size), " bytes");
-		totalSz += f!.Size;
-	}
-	end $::= NOW;
-	os::term::PrintLine_v(:style(:dim, :cyan),
-		"Total: ", std::io::format::dec(totalSz), " bytes"
-		" in ", std::io::format::dec((end - start) / 1000000), ".",
-		std::io::format::dec_x(((end - start) % 1000000), 6), "ms\n",
-		"start: ", std::io::format::dec(start), "\nend:   ", std::io::format::dec(end));
-
-
 	rlc::tok::Tokeniser::init();
 
 	//compiler: rlc::compiler::CCompiler (&cli::main);
@@ -146,30 +178,61 @@ main(args: CHAR[#][#]) INT
 			build := buildType;
 		build.LegacyScoping := TRUE;
 
-		FOR(files!)
+		FOR[read_files](files!)
 		{
 			IF:!(file ::= os::fs::ReadFile(>IT!, NULL))
-				os::term::PrintLine_v(:style(:normal, :red), "Failed to open ", IT!);
+			{
+				term::error(<WHERE>(IT![]), "Failed to open file: ", std::str::c(<CHAR #*>(file.(0))[]));
+				= 1;
+			}
 
 			content ::= <CHAR *>(file->Data)[FOR file->Size];
+			IF(file->Size > 1<<21)
+			{
+				term::error(<WHERE>(IT![]), "File exceeds 2MiB size limit: ", std::io::format::dec(file->Size));
+				= 1;
+			} ELSE IF(file->Size > 3<<19)
+			{
+				term::warning(<WHERE>(IT![]), "File is getting close to the 2MiB size limit: ", std::io::format::dec(file->Size));
+			}
+
+			ASSERT(rlc::src::add_file_with_source(IT!, content));
+
 			tokeniser: rlc::tok::Tokeniser(0, content);
 
 			token: rlc::tok::Token (BARE);
-			WHILE(tokeniser.parse_next(&token))
+
+			IF(!tokeniser.parse_next(&token))
+				CONTINUE [read_files];
+
+			includes: rlc::tok::Token - std::Vec := :reserve(1024);
+
+			WHILE(token.Type == :AuxKeyword && token.Payload.Type.AuxKeyword == :include)
 			{
-				os::term::PrintLine_v(
-					std::str::c(<CHAR#\>(token.Type)[]),
-					" ",
-					content[FROM token.Content.Start FOR token.Content.Length]);
+				path: rlc::tok::Token (BARE);
+				IF(!tokeniser.parse_next(&path))
+					term::error(tokeniser.at(), "expected path after INCLUDE.");
+
+				IF(path.Type != :StringApostrophe && path.Type != :StringQuote)
+					term::error(path.at(), "unexpected token after include", std::str::c(<CHAR #*>(path.Type)[]));
+
+				includes += path;
+
+				term::info(token.at(), "Including ", path.contents());
+
+				IF!(tokeniser.parse_next(&token))
+					CONTINUE [read_files];
 			}
+
+			WHILE(tokeniser.parse_next(&token)) {;}
 		}
 
 		= 0;
 	}
 	CATCH(e: CHAR #*) // "location: err"
-		os::term::PrintLine_v(:style(:normal, :red), std::str::c(e[]));
+		term::error(NULL, std::str::c(e[]));
 	CATCH(e: {CHAR#\, CHAR#\})
-		os::term::PrintLine_v(:style(:normal, :red), std::str::c(e.(0)[]), " (", std::str::c(e.(1)[]), ")");
+		term::error(NULL, std::str::c(e.(0)[]), " (", std::str::c(e.(1)[]), ")");
 	FINALLY{}
 
 	= 0;

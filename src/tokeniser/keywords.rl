@@ -13,13 +13,13 @@
 		IntrinsicOp: tok::IntrinsicOperatorKeyword;
 	}
 
-	keyword_u_to_token_type: tok::Type[TABLE ENUM KeywordU](
-		:Decl (:declarationKeyword),
-		:BuiltinType (:builtinType),
-		:FlowControl (:flowControlKeyword),
-		:Aux (:auxKeyword),
-		:BinaryOperator (:binaryOperator),
-		:IntrinsicOp (:intrinsicOperatorKeyword)
+	keyword_u_to_token_type: ENUM tok::Type[TABLE ENUM KeywordU](
+		:Decl (:Declaration),
+		:BuiltinType (:BuiltinType),
+		:FlowControl (:FlowControl),
+		:Aux (:AuxKeyword),
+		:BinaryOperator (:BinaryOp),
+		:IntrinsicOp (:IntrinsicOp)
 	);
 
 	keywords: TAGGED tok::KeywordU#[?](
@@ -86,13 +86,15 @@
 		:FlowControl(:while)
 	);
 
-	keyword_storage: {KeywordStorage, tok::Type, U2}[##keywords] (NOINIT);
-	keyword_lut: {KeywordStorage, tok::Type, U2}[#][26] (NOINIT);
+	keyword_storage: {KeywordStorage, ENUM tok::Type, U2}[##keywords] (NOINIT);
+	keyword_lut: {KeywordStorage, ENUM tok::Type, U2}[#][26] (NOINIT);
 
 	NameOfEnum {
 		Name: CHAR#[];
 		[T] THIS(enum: T! #&) VOID -- { Name := <CHAR#*>(enum)[]; }
 	}
+
+	to_upper(x: CHAR) CHAR -- := (x >= 'a' && x <= 'z') ?? x - ('a' - 'A') : x;
 
 	// keywords are the uppercase text version of their symbolic names.
 	init_keyword_lut() VOID {
@@ -103,13 +105,17 @@
 		FOR(keywords)
 		{
 			name ::= <NameOfEnum>() VISIT>>(IT).Name;
-			first ::= name[0];
+			first ::= to_upper(name[0]);
 			len ::= std::str::len(name);
 			ASSERT(len <= SIZEOF(KeywordStorage));
 			ASSERT(first >= letter);
 
 			IF(first != letter)
 			{
+				ASSERT(letter >= 'A');
+				ASSERT(letter <= 'Z');
+				ASSERT(first > letter);
+				ASSERT(first <= 'Z');
 				keyword_lut[letter - 'A'] := keyword_storage[FROM start_idx UNTIL IOTA];
 				start_idx := IOTA;
 				letter := first;
@@ -122,30 +128,27 @@
 
 			FOR(len)
 			{
-				c ::= name[IOTA];
-				IF(c >= 'a' && c <= 'z')
-					c += 'A'-'a';
+				c ::= to_upper(name[IOTA]);
 				storage->(0).Chars[IOTA] := c;
 			}
 		}
 
-		keyword_lut[letter] := keyword_storage[FROM start_idx];
+		keyword_lut[letter - 'A'] := keyword_storage[FROM start_idx];
 	}
 
-	lookup_keyword(text: CHAR#[#]) {tok::Type, U2} -- {
+	lookup_keyword(text: CHAR#[#]) {ENUM tok::Type, U2} -- {
 		ASSERT(##text);
 		IF(##text > SIZEOF(KeywordStorage))
-			= (:identifier, 0);
-		
+			= (:Identifier, 0);
 
 		kw: KeywordStorage := :Words(>0,>0);
 		FOR(text) kw.Chars[IOTA] := IT;
 		a ::= kw.Words[0];
 		b ::= kw.Words[1];
 
-		type: tok::Type := :identifier;
+		type: ENUM tok::Type := :Identifier;
 		payload: U2;
-		FOR(keyword_lut[text[0]])
+		FOR(keyword_lut[text[0] - 'A'])
 		{
 			match: BOOL := (a == IT.(0).Words[0]) & (b == IT.(0).Words[1]);
 			type := match ?? IT.(1) : type;

@@ -2,35 +2,6 @@ INCLUDE "../src/file.rl"
 
 ::rlc::tok
 {
-	// We want to reduce the number of entries in this enum and outsource them into smaller, contextually related token enums, so that we get smaller lookup tables.
-	// And especially tokens that often behave interchangeably should be grouped into the same group. That way, we can group them together better in one generic behaviour descriptor.
-	// If we can keep this down to 15 or 16 entries, does this give us significant benefits anywhere? I guess we could then use a 256 buffer to look up two tokens at once? But it would only really work in aligned pairs or something, so that's not that useful. Or maybe we could look up more tokens than that at once using just a shift and a mask, without multiplying and multiple reads. But then again, what use are 3 or 4 tokens? We only know what we really want when we write the parser, and potentially when we write the IR, and the codegen.
-	ENUM Type
-	{
-		identifier,
-		numberLiteral,
-		floatLiteral,
-		raw_literal_1,
-		raw_literal_2,
-		raw_literal_4,
-		raw_literal_8,
-		stringQuote, // String order needs to match Tokeniser::Case.
-		stringApostrophe,
-		stringBacktick,
-		stringTick,
-		auxKeyword,
-		flowControlKeyword, // flow control keywords
-		builtinType, // primitive type name 
-		intrinsicOperatorKeyword, // non-syntax keywords / intrinsics
-		declarationKeyword,
-		assignmentOperator, // Non-identifier keywords.
-		binaryOperator,
-		prefixOperator,
-		prefixOrPostfixOperator,
-		prefixOrBinaryOperator,
-		postfixOperator,
-		punctuation // other keywords
-	}
 
 	ENUM AuxKeyword
 	{
@@ -213,31 +184,58 @@ INCLUDE "../src/file.rl"
 	}
 	TokenStringPayload { Start: U4; Length: U4; }
 
-	UNION TokenPayload {
+	// We want to reduce the number of entries in this enum and outsource them into smaller, contextually related token enums, so that we get smaller lookup tables.
+	// And especially tokens that often behave interchangeably should be grouped into the same group. That way, we can group them together better in one generic behaviour descriptor.
+	// If we can keep this down to 15 or 16 entries, does this give us significant benefits anywhere? I guess we could then use a 256 buffer to look up two tokens at once? But it would only really work in aligned pairs or something, so that's not that useful. Or maybe we could look up more tokens than that at once using just a shift and a mask, without multiplying and multiple reads. But then again, what use are 3 or 4 tokens? We only know what we really want when we write the parser, and potentially when we write the IR, and the codegen.
+
+	UNION Type {
+		// We can squash multiple cases here into one bucket value.
+		Identifier;
+		Number;
+		StringQuote; // String order needs to match Tokeniser::Case.
+		StringApostrophe;
+		StringBacktick;
+		StringTick;
+		RawLiteral_1;
+		RawLiteral_2;
+		RawLiteral_4;
+		RawLiteral_8;
+		AuxKeyword: tok::AuxKeyword; Enum: U2; // U2 because we might end up with lots of intrinsics.
+		FlowControl: FlowControlKeyword;
+		BuiltinType: tok::BuiltinType;
+		IntrinsicOp: IntrinsicOperatorKeyword;
+		Declaration: DeclarationKeyword;
+		AssignmentOp: AssignmentOperator;
+		BinaryOp: BinaryOperator;
+		PrefixOp: PrefixOperator;
+		PrefixOrPostfixOp: PrefixOrPostfixOperator;
+		PrefixOrBinaryOp: PrefixOrBinaryOperator;
+		PostfixOp: PostfixOperator;
+		Punctuation: tok::Punctuation;
+	}
+	UNION Payload {
+		Type: tok::Type;
 		Identifier: U2;
 		Number: U8;
 		String: TokenStringPayload;
-
-		// keywords or special symbol tokens:
-		Enum: U2; // U2 because we might end up with lots of intrinsics.
-		FlowControl: FlowControlKeyword;
-		BuiltinType: tok::BuiltinType;
-		PrefixOp: PrefixOperator;
-		PostfixOp: PostfixOperator;
-		PrefixOrPostfixOp: PrefixOrPostfixOperator;
-		PrefixOrBinaryOp: PrefixOrBinaryOperator;
-		BinaryOp: BinaryOperator;
-		IntrinsicOp: IntrinsicOperatorKeyword;
-		AssignmentOp: AssignmentOperator;
-		DeclarationKw: DeclarationKeyword;
 	}
 
 	Token
 	{
-		Type: tok::Type;
+		Type: ENUM tok::Type;
 		Content: src::Span;
 		Position: src::Position;
-		Payload: TokenPayload;
+		Payload: tok::Payload;
+
+		# at() WHERE -- := Position.at();
+		# contents() CHAR#[#] := Content.contents(Position.file());
+
+		# type() TAGGED tok::Type -- {
+			ret: TAGGED tok::Type (NOINIT);
+			ret.(0) := Type;
+			ret.(1) := Payload.Type;
+			= ret;
+		}
 
 		{...};
 	}
