@@ -25,4 +25,4 @@ echo compiling...
 RL_LINK_LIBRARIES=$RLOS_O
 RL_LINK_LIBRARIES=$RL_LINK_LIBRARIES
 echo RL_LINK_LIBRARIES="$RL_LINK_LIBRARIES" rmbrtbc --run src/main.rl $RLOS_RL
-RL_LINK_LIBRARIES="$RL_LINK_LIBRARIES" rmbrtbc src/main.rl $RLOS_RL
+RL_LINK_LIBRARIES="$RL_LINK_LIBRARIES" rmbrtbc src/main.rl $RLOS_RL && ./a.out src/main.rl $RLOS_RL : out

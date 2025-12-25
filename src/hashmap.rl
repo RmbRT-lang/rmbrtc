@@ -2,6 +2,8 @@
 INCLUDE 'std/memory'
 INCLUDE "mempool.rl"
 INCLUDE 'std/vector'
+
+// NOTE: We can later on use VPGATHERDD, maybe, for massive amounts of lookups, although page faults and cache misses might make this unusable. But the current design lends itself well towards vectorisation.
 ::rlc::hashmap
 {
 	// Big global hashmap with 1Mi buckets (20 bit selector), and 8-way associative cache without indirection.
@@ -21,6 +23,8 @@ INCLUDE 'std/vector'
 ::rlc::hashmap OverflowItem { Fingerprint: U4; Item: U4; } // For overflow.
 
 // TODO: support for item inlining.
+	// TODO: ^ check whether already implemented or what was meant.
+
 
 
 // Keep parallelism at number of parallel cache misses per core, or less. Prior outstanding cache misses might cause friction otherwise.

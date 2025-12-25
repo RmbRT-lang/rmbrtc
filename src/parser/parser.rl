@@ -1,75 +1,88 @@
 INCLUDE "../tokeniser/tokeniser.rl"
-
+::rlc::ast TYPE LocalPosition := U2;
 ::rlc::parser
 {
-	UNION Peek2 {
-		Pair: {TAGGED TokenType, TAGGED TokenType};
-		Word: U4;
-	}
-
 	Parser
 	{
-		TokenTypes: TokenType [];
-		Tokens: TokenData[];
+		Type: ENUM tok::Type[];
+		SType: tok::Type[];
+		Token: U4;
+		Payloads: tok::Payload[];
+		Positions: src::Index[];
+		File: src::File;
 
-		consume(t: TokenType) TokenData * --
+		# match_p(i: U1, type: ENUM tok::Type) BOOL --
+			:= Type[i] == type;
+		# match_s(i: U1, type: TAGGED tok::Type) BOOL --
+			:= Type[i]      == type.(0)
+			&& SType[i].EOF == type.(1).EOF;
+
+		consume_p(type: ENUM tok::Type) tok::Type * --
 		{
-			match ::= TokenTypes[0] == t;
-			ret ::= TokenTypes;
+			match ::= match_p(0, type);
+			ret ::= SType;
 			ret := match ?? ret : NULL;
-			Tokens += match;
-			TokenTypes += match;
+			Type += match;
+			SType += match;
+			Token += match;
 			= ret;
 		}
 
-		consume_2(t1: TokenType, t2: TokenType) TokenData[] --
+		consume_s(type: TAGGED tok::Type) tok::Payload * --
 		{
-			match := peek_2() == pair(t1, t2);
-
-			ret ::= TokenTypes;
+			match ::= match_s(0, type);
+			ret ::= &Payloads[Token];
 			ret := match ?? ret : NULL;
-
-			Tokens += 2*match;
-			TokenTypes += 2*match;
-
+			Type += match;
+			SType += match;
+			Token += match;
 			= ret;
 		}
 
-		STATIC pair(t1: TokenType, t2: TokenType) U4 --
-			:= <U4>(t1) + <U4>(t2) << 8 * SIZEOF(TokenType);
+		next() VOID --  { Type++;    SType++;    Token++;    } 
+		next2() VOID -- { Type += 2; SType += 2; Token += 2; }
 
-		# peek_2() U4 --
-		{
-			IF#(SIZEOF(TokenType) == 1)
-				= *<U2*>(&TokenTypes[0]);
-			ELSE
-				= *<U4*>(&TokenTypes[0]);
-		}
+		# match_pp(t1: ENUM tok::Type, t2: ENUM tok::Type) BOOL --
+			:= match_p(0, t1) && match_p(1, t2);
 
-		# peek() TokenType -- := TokenTypes[0];
+		# match_ps(t1: ENUM tok::Type, t2: TAGGED tok::Type) BOOL --
+			:= match_p(0, t1) && match_s(1, t2);
 
-		next() VOID { Tokens++; TokenTypes++; }
+		# match_sp(t1: TAGGED tok::Type, t2: ENUM tok::Type) BOOL --
+			:= match_s(0, t1) && match_p(1, t2);
 
-		# context() CHAR #\
+		# match_ss(t1: TAGGED tok::Type, t2: TAGGED tok::Type) BOOL --
+			:= match_s(0, t1) && match_s(1, t2);
+
+		# peek_p() ENUM tok::Type -- := Type[0];
+
+		# context() CHAR #[]
 			:= Ctx
-				?? Ctx->Name
-				: "global scope";
+				?? Ctx->Name[]
+				: "global scope"[];
 
 		Ctx: Trace *;
 
-		locals() ast::LocalPosition
+		# locals() ast::LocalPosition --
 		{
-			IF(!Locals)
+			IF(!LocalCount)
 				= 0;
-			= Locals!;
+			= LocalCount;
 		}
 
 		add_local() ast::LocalPosition
 		{
-			IF(!Locals)
+			IF(!LocalCount)
 				fail("registering local: Local tracking not configured");
-			= ++Locals!;
+			= ++LocalCount!;
 		}
+
+		[A...]
+		fail(a: A!&&...) VOID --
+			{ term::error(at(0).at(), "parse failure: ", <A!&&>(a)...); }
+
+		# at(offset: S1) src::Position --
+			:= <src::Position>(File, Positions[Token+offset]);
 
 		LocalTracker
 		{
@@ -80,30 +93,23 @@ INCLUDE "../tokeniser/tokeniser.rl"
 			DESTRUCTOR
 			{
 				IF(P)
-					P->Locals := NULL;
+					P->LocalCount := NULL;
 			}
 		}
 		/// This function starts tracking local variables 
 		track_locals() LocalTracker
 		{
-			IF(!Locals)
+			IF(!LocalCount)
 			{
-				Locals := :a(0);
+				LocalCount := :a(0);
 				= &THIS;
 			}
 			= NULL;
 		}
-		Cli: ::cli::Console \;
-	PRIVATE:
-		Locals: ast::LocalPosition -std::Opt;
-		Locals: Identifier[#];
 
-		Tokeniser: tok::Tokeniser;
-		Buffer: tok::Token[2]; /// Lookahead buffer.
-		BufferIndex: UINT;
-		BufferSize: UINT;
-		Progress: UINT;
-		PrevOffset: UINT-std::Opt;
+	PRIVATE:
+		LocalCount: ast::LocalPosition -std::Opt;
+		LocalNames: Identifier[#];
 	}
 
 	Trace

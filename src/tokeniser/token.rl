@@ -188,54 +188,86 @@ INCLUDE "../src/file.rl"
 	// And especially tokens that often behave interchangeably should be grouped into the same group. That way, we can group them together better in one generic behaviour descriptor.
 	// If we can keep this down to 15 or 16 entries, does this give us significant benefits anywhere? I guess we could then use a 256 buffer to look up two tokens at once? But it would only really work in aligned pairs or something, so that's not that useful. Or maybe we could look up more tokens than that at once using just a shift and a mask, without multiplying and multiple reads. But then again, what use are 3 or 4 tokens? We only know what we really want when we write the parser, and potentially when we write the IR, and the codegen.
 
-	UNION Type {
-		// We can squash multiple cases here into one bucket value.
-		Identifier;
-		Number;
-		StringQuote; // String order needs to match Tokeniser::Case.
-		StringApostrophe;
-		StringBacktick;
-		StringTick;
-		RawLiteral_1;
-		RawLiteral_2;
-		RawLiteral_4;
-		RawLiteral_8;
-		AuxKeyword: tok::AuxKeyword; Enum: U2; // U2 because we might end up with lots of intrinsics.
-		FlowControl: FlowControlKeyword;
-		BuiltinType: tok::BuiltinType;
-		IntrinsicOp: IntrinsicOperatorKeyword;
-		Declaration: DeclarationKeyword;
-		AssignmentOp: AssignmentOperator;
-		BinaryOp: BinaryOperator;
-		PrefixOp: PrefixOperator;
-		PrefixOrPostfixOp: PrefixOrPostfixOperator;
-		PrefixOrBinaryOp: PrefixOrBinaryOperator;
-		PostfixOp: PostfixOperator;
-		Punctuation: tok::Punctuation;
+	ENUM StringType {
+		StringQuote, // Keep order in sync with [Tokeniser::Case].
+		StringApostrophe,
+		StringBacktick,
+		StringTick
 	}
+
+	ENUM NumberType {
+		HexNumber,
+		DecNumber,
+		BinNumber,
+		OctNumber,
+		RawLiteral_1,
+		RawLiteral_2,
+		RawLiteral_4,
+		RawLiteral_8
+	}
+
+	Number {
+		Type: NumberType;
+		Length: U1;
+
+		{...};
+	}
+
+	// Keep this at or below 16 variants, so that we can store two token types in one byte, for doubled cache efficiency.
+	UNION Type {
+	*	EOF: U2; // Simplifies parser. Also pads the structure size.
+	?	Identifier: U2;
+	?	Number: tok::Number;
+	?	String: StringType;
+	?	AuxKeyword: tok::AuxKeyword;
+	?	FlowControl: FlowControlKeyword;
+	?	BuiltinType: tok::BuiltinType;
+	?	IntrinsicOp: IntrinsicOperatorKeyword;
+	?	Declaration: DeclarationKeyword;
+	?	AssignmentOp: AssignmentOperator;
+	?	BinaryOp: BinaryOperator;
+	?	PrefixOp: PrefixOperator;
+	?	PrefixOrPostfixOp: PrefixOrPostfixOperator;
+	?	PrefixOrBinaryOp: PrefixOrBinaryOperator;
+	?	PostfixOp: PostfixOperator;
+	?	Punctuation: tok::Punctuation;
+	}
+	has_secondary_type_f: U2 # :=
+		(0 << <U1>(<ENUM Type>(:Identifier))) |
+		(0 << <U1>(<ENUM Type>(:Number))) |
+		(1 << <U1>(<ENUM Type>(:String))) |
+		(1 << <U1>(<ENUM Type>(:AuxKeyword))) |
+		(1 << <U1>(<ENUM Type>(:FlowControl))) |
+		(1 << <U1>(<ENUM Type>(:BuiltinType))) |
+		(1 << <U1>(<ENUM Type>(:IntrinsicOp))) |
+		(1 << <U1>(<ENUM Type>(:Declaration))) |
+		(1 << <U1>(<ENUM Type>(:AssignmentOp))) |
+		(1 << <U1>(<ENUM Type>(:BinaryOp))) |
+		(1 << <U1>(<ENUM Type>(:PrefixOp))) |
+		(1 << <U1>(<ENUM Type>(:PrefixOrPostfixOp))) |
+		(1 << <U1>(<ENUM Type>(:PrefixOrBinaryOp))) |
+		(1 << <U1>(<ENUM Type>(:PostfixOp))) |
+		(1 << <U1>(<ENUM Type>(:Punctuation)));
+	has_secondary_type(tok: ENUM Type) BOOL --
+		:= has_secondary_type_f & (1 << <U1>(tok));
+	secondary_type(type: ENUM Type, secondary: Type) U2 --
+		:= (MASK has_secondary_type(type)) & secondary.EOF;
+
 	UNION Payload {
-		Type: tok::Type;
-		Identifier: U2;
 		Number: U8;
 		String: TokenStringPayload;
 	}
 
 	Token
 	{
-		Type: ENUM tok::Type;
-		Content: src::Span;
+		Type: TAGGED tok::Type;
+		Length: src::Size;
 		Position: src::Position;
 		Payload: tok::Payload;
 
 		# at() WHERE -- := Position.at();
-		# contents() CHAR#[#] := Content.contents(Position.file());
-
-		# type() TAGGED tok::Type -- {
-			ret: TAGGED tok::Type (NOINIT);
-			ret.(0) := Type;
-			ret.(1) := Payload.Type;
-			= ret;
-		}
+		# contents() CHAR#[#] :=
+			<src::Span>(Position.byte(), Length).contents(Position.file());
 
 		{...};
 	}

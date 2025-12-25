@@ -18,6 +18,7 @@ INCLUDE "specials.rl"
 			Start := 0;
 
 		# eof() BOOL := Read >= ##Contents;
+		# past_eof() BOOL := Read > ##Contents;
 
 		ENUM Case {
 			eof,
@@ -76,8 +77,8 @@ INCLUDE "specials.rl"
 		{
 			FOR(;;)
 			{
-				out->Content.Start := Start := Read;
-				out->Position.Pos := <U4>(File) << 21 | Read;
+				Start := Read;
+				out->Position.Pos := (<U4>(File) << 21) | Start;
 				next ::= look4();
 				Read++;
 
@@ -88,10 +89,10 @@ INCLUDE "specials.rl"
 				:nonzero: number_literal(out, next);
 				:string_apostrophe, :string_quote, :string_backtick:
 				{
-					out->Type := <ENUM tok::Type>(
+					out->Type := :String(
 						<U1>(case) + <S1>(
-							<U1>(<ENUM tok::Type>(:StringQuote)) -
-							<U1>(Case::string_quote)));
+							<U1>(tok::StringType::StringQuote)) -
+							<U1>(Case::string_quote));
 					string(out, next);
 				}
 				:special: special(out, next);
@@ -110,7 +111,8 @@ INCLUDE "specials.rl"
 				:eof: { = FALSE; }
 				}
 
-				out->Content.Length := Read - Start;
+				out->Length := Read - Start;
+
 				= TRUE;
 			}
 		}
@@ -260,7 +262,7 @@ INCLUDE "specials.rl"
 					nest += enter - leave;
 					Read += 1 + (enter | leave);
 				}
-				IF(eof()) error();
+				IF(past_eof()) error();
 
 				= FALSE;
 			} ELSE
@@ -273,8 +275,8 @@ INCLUDE "specials.rl"
 			FOR(specials_lut[<U1>(next4)])
 				IF(next4 & IT.(1) == IT.(0))
 				{
-					out->Type := IT.(2);
-					out->Payload.Type.Enum := IT.(3);
+					out->Type.(0) := IT.(2);
+					out->Type.(1).EOF := IT.(3);
 					Read += (POPCNT(IT.(1)) >> 3) -1;
 					RETURN;
 				}
@@ -296,8 +298,8 @@ INCLUDE "specials.rl"
 			IF(uppercase)
 			{
 				kw ::= tok::lookup_keyword(tok_str());
-				out->Type := kw.(0);
-				out->Payload.Type.Enum := kw.(1);
+				out->Type.(0) := kw.(0);
+				out->Type.(1).EOF := kw.(1);
 			}
 			ELSE
 				out->Type := :Identifier;
@@ -323,7 +325,7 @@ INCLUDE "specials.rl"
 
 		on_zero(out: Token \) VOID --
 		{
-			out->Type := :Number;
+			out->Type.(0) := :Number;
 			c ::= getc();
 			classify ::= token_lut[c];
 			SWITCH(c)
@@ -332,10 +334,11 @@ INCLUDE "specials.rl"
 			{
 				payload: U8 := 0;
 				c ::= hex_digit[<U1>(look())];
-				FOR(i ::= 0;; i++)
+				i ::= 0;
+				FOR(;; i++)
 				{
 					nextc ::= hex_digit[<U1>(look(i+1))];
-					IF(~c)
+					IF(<U1>(~c))
 					{
 						payload <<= 4;
 						payload |= c;
@@ -347,6 +350,7 @@ INCLUDE "specials.rl"
 						BREAK;
 					}
 				}
+				Read += i;
 			}
 			'r', 'R':
 			{
@@ -358,8 +362,8 @@ INCLUDE "specials.rl"
 					ln ::= hex_digit[look(1)];
 
 					b ::= (hn << 4) | ln;
-					IF!(~hn) BREAK;
-					IF!(~ln) tok::err::msg(at(), "odd number of digits");
+					IF!(<U1>(~hn)) BREAK;
+					IF!(<U1>(~ln)) tok::err::msg(at(), "odd number of digits");
 
 					Read += 2; 
 
@@ -371,7 +375,7 @@ INCLUDE "specials.rl"
 				IF(!i || i > 8)
 					tok::err::msg(at(), "raw hex literal exceeds register size");
 
-				STATIC types: ENUM tok::Type[8](
+				STATIC types: tok::NumberType[8](
 					:RawLiteral_1,
 					:RawLiteral_2,
 					BARE, // we might add those later for RISA.
@@ -381,7 +385,7 @@ INCLUDE "specials.rl"
 					BARE, // ?
 					:RawLiteral_8
 				);
-				out->Type := types[i-1];
+				out->Type := :Number(types[i-1], i);
 				out->Payload.Number := number;
 
 				IF(POPCNT i != 1)
@@ -427,7 +431,7 @@ INCLUDE "specials.rl"
 					<U4>(1) << <U1>(Case::uppercase);
 
 				IF(<U4>(1) << <U1>(classify) & forbidden_follow)
-					err::msg(at(), "invalid follow-up character after 0.");
+					term::error(at(), "invalid follow-up character after 0: '", (&c)[FOR 1], "'");
 			}
 			}
 		}
@@ -442,13 +446,13 @@ INCLUDE "specials.rl"
 				last := look(1);
 				advance_nows();
 			}
-			out->Type := :Number;
+			out->Type := :Number(:DecNumber, Read - Start);
 			out->Payload.Number := number;
 		}
 
 		forward_tick_string(out: Token \) VOID --
 		{
-			out->Type := :StringTick;
+			out->Type := :String(:StringTick);
 			WHILE(!eat2("´"))
 			{
 				IF:!(c ::= getc())
@@ -468,5 +472,12 @@ INCLUDE "specials.rl"
 					IF(!getc()) error();
 			}
 		}
+	}
+
+	FileTokens {
+		Types: ENUM tok::Type-std::Vec;
+		STypes: tok::Type-std::Vec;
+		Payloads: tok::Payload-std::Vec;
+		Positions: src::Index-std::Vec;
 	}
 }

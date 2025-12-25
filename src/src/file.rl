@@ -19,9 +19,13 @@ INCLUDE 'std/io/format'
 		# file() U2 -- := Pos >> 21; // 11bit, up to 2048 code files per project.
 		# byte() Index -- := Pos & (1 << 21 -1); // 21 bit, up to 2MiB code files (~32K LOC).
 
+		{} --;
+		{file: U2, byte: Index} --: Pos := (file << 21) | (byte & (1 << 21 -1));
+
 		# at() WHERE {
 			last_nl: U4;
 			line: U4 := 1;
+
 			FOR(fileContents[file()]![FOR byte()])
 			{
 				line += IT == '\n';
@@ -48,13 +52,42 @@ INCLUDE 'std/io/format'
 		# end() Index := Start + Length;
 	}
 
+
+
+	// CAUTION: keep capacity in sync with file limit, so that we do not get any reallocations, as this gets modified in a different thread.
+
 	// Names for our files.
-	FileNames -> std::temp::[FileNames]SingletonAlloc;
-	fileNames: CHAR#[#]-std::Vec := :reserve(1024);
-	fileNameHashes: U8-std::Vec := :reserve(1024);
+	fileNamesAlloc: std::temp::Alloc := :custom(1 << 20, 1 << 20);
+	fileNames: CHAR#[#]-std::Vec := :reserve(2048);
+	fileNameHashes: U8-std::Vec := :reserve(2048);
 
 	// Source code.
-	fileContents: CHAR[#]-std::Vec;
+	fileContents: CHAR[#]-std::Vec := :reserve(2048);
+	fileContentsAlloc: std::temp::Alloc := :custom(16 << 20, 2 << 20);
+
+	IncludeContext {
+		From: WHERE;
+		File: CHAR#[#];
+		{...};
+	}
+	alloc_file_contents(size: U8, ctx: VOID *) VOID * {
+		dec ::= std::io::format::dec(size);
+		_ctx: IncludeContext * := >ctx;
+		at: WHERE := _ctx ?? _ctx->From : HERE;
+		file: CHAR#[#] := _ctx ?? _ctx->File : "file"[#];
+		IF(size > 1<<21)
+		{
+			term::error(at, "size of ", file, " exceeds 2MiB bounds (", dec, ")");
+		}  ELSE IF(size > 3<<19)
+		{
+			term::warning(at, file, " is getting close to the 2MiB size limit: ", dec);
+		}
+
+		mem ::= src::fileContentsAlloc.alloc_raw(size+32, PAGE);
+
+		std::mem::cpy(<U1 *>(mem) + size, "\000\000\000\n\"'´`\n\n\n/)/)/)/)/)/)/)/)/)/)/)/)/)/)/)"[], 32);
+		= mem;
+	}
 
 	has_file(path: CHAR#[#]) src::File-std::Opt --
 		:= has_file_h(std::hash_str(path), path);
@@ -110,14 +143,16 @@ INCLUDE 'std/io/format'
 	// The source will be owned by the compiler. The name will be copied.
 	add_file_with_source_ok(h: U8, path: CHAR#[#], source: CHAR[#]) src::File
 	{
-		file ::= ##fileNameHashes;
-		fileNameHashes += h;
+		file ::= ##src::fileNameHashes;
+		src::fileNameHashes += h;
 
-		mem ::= FileNames::instance.alloc_raw_region(##path, CACHELINE);
+		mem ::= src::fileNamesAlloc.alloc_raw(##path+1, CACHELINE);
+		<U1 *>(mem)[##path] := 0;
+
 		std::mem::cpy(mem, &path[0], ##path);
 
-		fileNames += <CHAR#\>(mem)[FOR ##path];
-		fileContents += source;
+		src::fileNames += <CHAR#\>(mem)[FOR ##path];
+		src::fileContents += source;
 		= file;
 	}
 }
