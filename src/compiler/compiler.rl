@@ -213,6 +213,8 @@ INCLUDE "includes.rl"
 			STATIC loading_thread ::= ^loader_pipe.worker_thread();
 		}
 
+		fileNames: std::temp::Alloc := :custom(1<<16, 1 << 12);
+
 		/// Parse all code first.
 		WHILE(processed ::= loader_pipe.get_some())
 		{
@@ -247,7 +249,7 @@ INCLUDE "includes.rl"
 							IT.Type.(1).String == :StringQuote
 							?? include::IncludeType::relative
 							: include::IncludeType::global,
-							basefile.Directory, parse_string(IT), IT.at());
+							basefile.Directory, parse_string(IT, fileNames), IT.at());
 					}
 				}
 
@@ -267,7 +269,7 @@ INCLUDE "includes.rl"
 		}
 	}
 
-	parse_string(str: tok::Token #&) CHAR#[#]
+	parse_string(str: tok::Token #&, alloc: std::temp::Alloc &) CHAR#[#]
 	{
 		ASSERT(str.Type.(0) == :String);
 		contents ::= str.contents();
@@ -279,7 +281,8 @@ INCLUDE "includes.rl"
 			term::error(HERE, "unhandled string type: ", std::str::enum(t));
 		}
 
-		buffer ::= std::heap::alloc.[CHAR]alloc_array(##contents);
+		buffer ::= <CHAR *>(alloc.alloc_raw_unaligned(##contents))[];
+
 		o ::= 0;
 		FOR(i ::= 0; i < ##contents; i++)
 		{
