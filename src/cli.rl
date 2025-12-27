@@ -1,4 +1,4 @@
-EXTERN exit(INT) VOID;
+EXTERN _Exit(INT) VOID;
 
 ::term [Args...] error(at: WHERE, args: Args! &&...) VOID
 {
@@ -16,7 +16,7 @@ EXTERN exit(INT) VOID;
 			:style(:normal, :default), std::str::c(at.(0)[]), ": ",
 			:style(:bold, :red), "error: ",
 			:style(:normal, :same), <Args!&&>(args)...);
-	exit(1);
+	_Exit(1);
 }
 
 ::term [Args...] warning(at: WHERE, args: Args! &&...) VOID

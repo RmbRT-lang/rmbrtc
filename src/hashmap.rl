@@ -25,13 +25,11 @@ INCLUDE 'std/vector'
 // TODO: support for item inlining.
 	// TODO: ^ check whether already implemented or what was meant.
 
-
-
 // Keep parallelism at number of parallel cache misses per core, or less. Prior outstanding cache misses might cause friction otherwise.
 // Look up and/or insert.
 ::rlc::hashmap [#kN] multi_dedup(
 	hashes: U8[kN] #&,
-	preimages: U1[#][kN]#&,
+	preimages: U1#[#][kN]#&,
 	ids: U4[kN] &) VOID
 {
 	buckets: HashBucket * [kN] (NOINIT);
@@ -71,9 +69,14 @@ INCLUDE 'std/vector'
 				item ::= bucket->Items[IOTA];
 				mem ::= <U2 *>(get_memory(item));
 				len ::= *mem;
-				obj ::= <U1 *>(&mem[1])[FOR len];
 
-				IF(std::mem::eq(preimage, obj))
+				preimage_8 ::= <U8 *>(&preimage[0])[FOR len >> 3];
+				obj_8 ::= <U8 *>(&mem[1])[FOR len>>3];
+				preimage_rest ::= preimage[FROM len &~ 7];
+				obj_rest ::= <U1 *>(&mem[1])[FROM len &~ 7 UNTIL len];
+
+				IF(std::mem::eq(preimage_8, obj_8)
+				&& std::mem::eq(preimage_rest, obj_rest))
 				{
 					ids[workload] := item;
 					not_found ^= 1 << workload;
@@ -86,7 +89,7 @@ INCLUDE 'std/vector'
 			FOR(IT->Items)
 				IF(IT == 0)
 				{
-					id ::=  mempool::insert_for_hashtable(preimage);
+					id ::= mempool::insert_for_hashtable(preimage);
 
 					not_found ^= 1 << workload;
 					ids[workload] := id;
@@ -173,9 +176,15 @@ INCLUDE 'std/vector'
 				item ::= bucket->Items[IOTA];
 				mem ::= <U2 *>(get_memory(item));
 				len ::= *mem;
-				obj ::= <U1 *>(&mem[1])[FOR len];
 
-				IF(std::mem::eq(preimage, obj))
+				preimage_8 ::= <U8 *>(&preimage[0])[FOR len >> 3];
+				obj_8 ::= <U8 *>(&mem[1])[FOR len>>3];
+				preimage_rest ::= preimage[FROM len &~ 7];
+				obj_rest ::= <U1 *>(&mem[1])[FROM len &~ 7 UNTIL len];
+
+				// We could have a variant that does not need to check for equality when looking up, if we know that it must exist already, and if we reserve one bit in the hash to indicate hash uniqueness. However, I am not sure whether such a situation exists, because if we know it exists, and we have its hash, then we should also already know its location.
+				IF(std::mem::eq(preimage_8, obj_8)
+				&& std::mem::eq(preimage_rest, obj_rest))
 				{
 					ids[workload] := item;
 					not_found ^= 1 << workload;

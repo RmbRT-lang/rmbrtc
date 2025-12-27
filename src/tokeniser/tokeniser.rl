@@ -89,10 +89,11 @@ INCLUDE "specials.rl"
 				:nonzero: number_literal(out, next);
 				:string_apostrophe, :string_quote, :string_backtick:
 				{
-					out->Type := :String(
-						<U1>(case) + <S1>(
-							<U1>(tok::StringType::StringQuote)) -
-							<U1>(Case::string_quote));
+					out->Type := :String;
+					out->SType.String := >
+						<U1>(<U1>(case) + <S1>(
+							<U1>(tok::StringType::StringQuote) -
+							<U1>(Case::string_quote)));
 					string(out, next);
 				}
 				:special: special(out, next);
@@ -275,8 +276,8 @@ INCLUDE "specials.rl"
 			FOR(specials_lut[<U1>(next4)])
 				IF(next4 & IT.(1) == IT.(0))
 				{
-					out->Type.(0) := IT.(2);
-					out->Type.(1).EOF := IT.(3);
+					out->Type := IT.(2);
+					out->SType.EOF := IT.(3);
 					Read += (POPCNT(IT.(1)) >> 3) -1;
 					RETURN;
 				}
@@ -298,8 +299,8 @@ INCLUDE "specials.rl"
 			IF(uppercase)
 			{
 				kw ::= tok::lookup_keyword(tok_str());
-				out->Type.(0) := kw.(0);
-				out->Type.(1).EOF := kw.(1);
+				out->Type := kw.(0);
+				out->SType.EOF := kw.(1);
 			}
 			ELSE
 				out->Type := :Identifier;
@@ -325,7 +326,7 @@ INCLUDE "specials.rl"
 
 		on_zero(out: Token \) VOID --
 		{
-			out->Type.(0) := :Number;
+			out->Type := :Number;
 			c ::= getc();
 			classify ::= token_lut[c];
 			SWITCH(c)
@@ -385,7 +386,8 @@ INCLUDE "specials.rl"
 					BARE, // ?
 					:RawLiteral_8
 				);
-				out->Type := :Number(types[i-1], i);
+				out->Type := :Number;
+				out->SType.Number := (types[i-1], i);
 				out->Payload.Number := number;
 
 				IF(POPCNT i != 1)
@@ -446,13 +448,15 @@ INCLUDE "specials.rl"
 				last := look(1);
 				advance_nows();
 			}
-			out->Type := :Number(:DecNumber, Read - Start);
+			out->Type := :Number;
+			out->SType.Number := (:DecNumber, Read - Start);
 			out->Payload.Number := number;
 		}
 
 		forward_tick_string(out: Token \) VOID --
 		{
-			out->Type := :String(:StringTick);
+			out->Type := :String;
+			out->SType.String := :StringTick;
 			WHILE(!eat2("´"))
 			{
 				IF:!(c ::= getc())
@@ -479,5 +483,34 @@ INCLUDE "specials.rl"
 		STypes: tok::Type-std::Vec;
 		Payloads: tok::Payload-std::Vec;
 		Positions: src::Index-std::Vec;
+
+		reserve(count: U4) VOID
+		{
+			Types.reserve(count);
+			STypes.reserve(count);
+			Payloads.reserve(count);
+			Positions.reserve(count);
+		}
+
+		clear_reuse() VOID
+		{
+			Types.clear_reuse();
+			STypes.clear_reuse();
+			Payloads.clear_reuse();
+			Positions.clear_reuse();
+		}
+
+		THIS += (token: tok::Token #&) VOID --
+		{
+			std::vec::pushback(
+				(Types,     token.Type),
+				(STypes,    token.SType),
+				(Payloads,  token.Payload),
+				(Positions, token.Position.byte()));
+			(/Types += token.Type;
+			STypes += token.SType;
+			Payloads += token.Payload;
+			Positions += token.Position.byte();/)
+		}
 	}
 }

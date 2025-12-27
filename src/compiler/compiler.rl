@@ -4,6 +4,8 @@ INCLUDE 'std/optional'
 
 INCLUDE "srcloader.rl"
 INCLUDE "includes.rl"
+INCLUDE "codetoker.rl"
+INCLUDE "codeparser.rl"
 
 ::rlc::compiler
 {
@@ -87,16 +89,23 @@ INCLUDE "includes.rl"
 	{
 		(/ Compiler architecture:
 
-		compile() thread     |    loader thread    |  parser thread
+		disk -------> tokeniser pool -----> parser (pool?) -----------> scope resolver
+		      files                  tokens                scope, IR0
+
+		The disk is one bottleneck, so we have only one loader thread. Tokenising is way slower than loading, so we have multiple tokenisers. Parsing is faster than tokenising.
+
+		compile() thread     |    loader thread    |  tokeniser pool   |   parser
 		       --- [X] invocation files --->
 		       <-- [X] load source files ---
 		       --- [X] parsed includes ---->
+		       --- [/] source files (bodies) ----------------->
 		       <-- [X] more source files ---
+		       --- [/] source files (bodies) ----------------->
 		                 ...
 
-		       -------------------- [/] token streams ------->
+		                                                  -- [/] token streams -->
 		                           ...
-		       <--- [ ] scope trees + IR0 -----------------------
+		       <--- [ ] scope trees + IR0 --------------------------------------
 
 		       [ ] merge scopes
 		       [ ] resolve IR0 to IR1 from the scopes
@@ -109,6 +118,10 @@ INCLUDE "includes.rl"
 		IR2: templates instantiated, full typechecking
 		codegen: machine code (or RASM), which no longer contains types.
 		codegen2?: final machine code.
+
+		Multi-tokeniser: since the tokeniser has very ver states, but is very branchy, we could multiply the state machine to produce a dual tokeniser which switches on two states at once, and can thus eliminate branches and amortise latencies. The problem is just with unequal token lengths: if we do not switch state whenever a token is done, we stall one execution. If we do switch, then we are no longer getting any benefits. So in practice, we would not gain 2x performance, but we would definitely get more than 1x. The best case is if multiple tokens have the same type, so that we can have optimised routines for that. Or, we can squash multiple states and use some kind of regex-like system that lets us parse identifiers and numbers and specials and whitespaces in a generic manner simultaneously in one code path. However, fitting more than two such token streams into one execution would be quite hard due to register pressure. It could work with SIMD, though, albeit that would ideally require data interleaving. Or we try to use SIMD as data streams, then we could operate on more bytes per stream at once. But that would also make it a bit tedious.
+
+		We could theoretically make it so that we have one SIMD register per token stream, as well as a state enum and some regex mask register. Then we can switch once per 16 bytes, and just do one single tokenising step. Then, we take the new state and switch again. Since most tokens are <16 bytes, that should help us progress N tokens per switch, and we can amortise loading times that way, too. However, this might need some bulk char classification first. But that is not going to be our worst bottleneck anyway.
 		/)
 
 		(//
@@ -121,7 +134,40 @@ INCLUDE "includes.rl"
 		{
 			start_time ::= NOW;
 
-			load_files(files!, build);
+			tok_in: {tok::Tokeniser, tok::Token}[4] (BARE);
+			tok_out: tok::FileTokens[4] (BARE);
+			tokeniser: CodeTokeniser[4];
+			tok_pipes: [CodeTokeniser]Pipeline[4] (NOINIT);
+				FOR(tok_pipes)
+				{
+					IT.{
+						(&tok_in[IOTA])[FOR 1],
+						(&tok_out[IOTA])[FOR 1],
+						&tokeniser[IOTA]
+					};
+					IF!(build.SINGLE_THREADED)
+					{
+						IT.Threaded := TRUE;
+						IF(IOTA == 0)
+							{ STATIC tok_workers_0 ::= ^tok_pipes[0].worker_thread(); }
+						IF(IOTA == 1)
+							{ STATIC tok_workers_1 ::= ^tok_pipes[1].worker_thread(); }
+						IF(IOTA == 2)
+							{ STATIC tok_workers_3 ::= ^tok_pipes[2].worker_thread(); }
+						IF(IOTA == 3)
+							{ STATIC tok_workers_2 ::= ^tok_pipes[3].worker_thread(); }
+					}
+				}
+
+			parser: CodeParser;
+			parser_out: CodeParser::Output[4] (BARE);
+			parser_pipe: [CodeParser]Pipeline(tok_out, parser_out, &parser);
+				IF!(build.SINGLE_THREADED)
+				{
+					parser_pipe.Threaded := TRUE;
+					STATIC parser_worker ::= ^parser_pipe.worker_thread();
+				}
+			load_files(files!, build, tok_pipes, parser_pipe);
 
 			IF(build.Type == :checkSyntax)
 				RETURN;
@@ -184,21 +230,19 @@ INCLUDE "includes.rl"
 
 			IF(!build.Output)
 				RETURN;
-			DIE "outputs not implemented";
+			//DIE "outputs not implemented";
 		}
 	}
 
-	load_files(files: std::Str#[#], build: Build #&) VOID
+	load_files(
+		files: std::Str#[#],
+		build: Build #&,
+		tokeniser_pipes: [CodeTokeniser]Pipeline[#],
+		parser_pipe: [CodeParser]Pipeline &) VOID
 	{
 		includes: rlc::tok::Token - std::Vec := :reserve(2048);
 
-		fileTokens: rlc::tok::FileTokens;
-			fileTokens.Types.reserve(32*1024*16);
-			fileTokens.STypes.reserve(32*1024*16);
-			fileTokens.Payloads.reserve(32*1024*16);
-			fileTokens.Positions.reserve(32*1024*16);
-
-
+		// Capacity: twice the max number of jobs that can be issued before polling.
 		queue: include::Include- std::Vec := :bare(2048);
 		outputs: TAGGED SrcLoader::Result -std::Vec := :bare(2048);
 
@@ -215,25 +259,24 @@ INCLUDE "includes.rl"
 
 		fileNames: std::temp::Alloc := :custom(1<<16, 1 << 12);
 
+		reset: std::temp::Locals::Scope;
+
+		tokeniser_round ::= 0;
 		/// Parse all code first.
 		WHILE(processed ::= loader_pipe.get_some())
 		{
+
 			FOR(processed)
 			{
 				IF:!(result ::= IT)
 					CONTINUE;
-
 				includes.clear_reuse();
-				fileTokens.Types.clear_reuse();
-				fileTokens.STypes.clear_reuse();
-				fileTokens.Payloads.clear_reuse();
 
 				f ::= result!.File;
 				contents ::= result!.Content;
 
 				// Parse includes.
 				tokeniser: rlc::tok::Tokeniser(f, contents);
-
 				first_token ::= compiler::parse_includes(includes, tokeniser);
 
 				basefile: os::fs::FilePath := result!.Name;
@@ -244,36 +287,59 @@ INCLUDE "includes.rl"
 					// Queue all includes for the loader.
 					FOR(includes!)
 					{
-						ASSERT(IT.Type.(0) == :String);
+						ASSERT(IT.Type == :String);
 						loader_pipe.issue(
-							IT.Type.(1).String == :StringQuote
+							IT.SType.String == :StringQuote
 							?? include::IncludeType::relative
 							: include::IncludeType::global,
 							basefile.Directory, parse_string(IT, fileNames), IT.at());
 					}
+					loader_pipe.flush();
 				}
-
+				// Issue the rest of the file to a tokeniser thread.
 				IF!(first_token)
 					CONTINUE;
 
-				// Continue tokenising the files.
-				DO(token ::= *first_token)
-				{
-					std::vec::pushback(
-						(fileTokens.Types,     token.Type.(0)),
-						(fileTokens.STypes,    token.Type.(1)),
-						(fileTokens.Payloads,  token.Payload),
-						(fileTokens.Positions, token.Position.byte()));
-				} WHILE(tokeniser.parse_next(&token))
+				IF(parser_pipe.full())
+					parser_pipe.get_some();
+
+				i ::= tokeniser_round++ % ##tokeniser_pipes;
+				IF(tokeniser_pipes[i].full())
+					parser_pipe.issue_flush(&&tokeniser_pipes[i].get_some()[0]);
+					//tokeniser_pipes[i].get_some();
+				tokeniser_pipes[i].issue_flush(tokeniser, *first_token);
 			}
 		}
+
+		term::info(NULL, "----------------------");
+
+		loader_pipe.quit();
+		loader_pipe.wait_quit(HERE);
+
+		FOR(tokeniser_pipes)
+		{
+			WHILE(more ::= IT.get_some())
+				FOR(more)
+				{
+					IF(parser_pipe.full())
+						parser_pipe.get_some();
+					parser_pipe.issue_flush(IT);
+				}
+
+			IT.quit();
+			IT.wait_quit(HERE);
+		}
+
+		WHILE(parser_pipe.get_some()) { ; }
+		parser_pipe.quit();
+		parser_pipe.wait_quit(HERE);
 	}
 
 	parse_string(str: tok::Token #&, alloc: std::temp::Alloc &) CHAR#[#]
 	{
-		ASSERT(str.Type.(0) == :String);
+		ASSERT(str.Type == :String);
 		contents ::= str.contents();
-		SWITCH(t ::= str.Type.(1).String)
+		SWITCH(t ::= str.SType.String)
 		{
 		:StringQuote, :StringApostrophe:
 			contents := contents[FROM 1 UNTIL ##contents-1];
@@ -341,16 +407,16 @@ INCLUDE "includes.rl"
 		IF!(tokeniser.parse_next(&token))
 			= NULL;
 
-		WHILE(token.Type.(0) == :AuxKeyword
-			&& token.Type.(1).AuxKeyword == :include)
+		WHILE(token.Type == :AuxKeyword
+			&& token.SType.AuxKeyword == :include)
 		{
 			path: rlc::tok::Token (BARE);
 			IF(!tokeniser.parse_next(&path))
 				term::error(tokeniser.at(), "expected path after INCLUDE.");
 
-			IF(path.Type.(0) != :String)
-				term::error(path.at(), "unexpected token after include", std::str::c(<CHAR #*>(path.Type.(0))[]));
-			IF(path.Type.(1).String != :StringApostrophe && path.Type.(1).String != :StringQuote)
+			IF(path.Type != :String)
+				term::error(path.at(), "unexpected token after include ", std::str::c(<CHAR #*>(path.Type)[]));
+			IF(path.SType.String != :StringApostrophe && path.SType.String != :StringQuote)
 				term::error(path.at(), "invalid string type for includes");
 
 			added: ?& := (includes += path);

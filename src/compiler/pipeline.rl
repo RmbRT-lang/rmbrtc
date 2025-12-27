@@ -31,7 +31,10 @@
 
 		Issued := 0,
 		Processed := 0,
-		Quit := FALSE;
+		Quit := FALSE
+	{
+		ASSERT(##Inputs == ##Outputs);
+	}
 
 	DESTRUCTOR { Quit := :>(TRUE); }
 
@@ -55,16 +58,32 @@
 				Processed := :>(processed);
 			}
 		}
+		Quit := :>(FALSE);
 	}
 
 	[Args...]issue(input: Args!&&...) VOID --
 	{
+		ASSERT(LocalIssued - Consumed < ##Inputs);
+
 		Inputs[LocalIssued++ % ##Inputs].{<Args!&&>(input)...};
 	}
 
 	quit() VOID -- { Quit := :>(TRUE); }
+	wait_quit(at: WHERE) VOID --
+	{
+		IF!(Threaded) RETURN;
 
-	// Sends pending work to the worker. This also gets called automatically.
+		start ::= NOW;
+		attempt ::= 0;
+		WHILE(Quit(:<))
+		{
+			IF!(attempt++ & 255)
+				IF((NOW) - start > 1000000000)
+					term::error(at, "Thread is stuck!");
+		}
+	}
+
+	/// Sends pending work to the worker. This also gets called automatically.
 	flush() VOID -- {
 		Issued := :>(LocalIssued);
 		oldFlushed ::= LocalFlushed;
@@ -81,7 +100,14 @@
 		}
 	}
 
-	# pending() BOOL -- := LocalIssued != SeenProcessed;
+	[Args...]issue_flush(input: Args!&&...) VOID --
+	{
+		THIS.[Args!...]issue(<Args!&&>(input)...);
+		flush();
+	}
+
+	# full() BOOL := LocalIssued - Consumed == ##Inputs;
+	# pending() U4 -- := LocalIssued - SeenProcessed;
 
 	get_some() Job::Output+[#]
 	{

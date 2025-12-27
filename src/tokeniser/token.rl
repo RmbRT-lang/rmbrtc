@@ -260,7 +260,8 @@ INCLUDE "../src/file.rl"
 
 	Token
 	{
-		Type: TAGGED tok::Type;
+		Type: ENUM tok::Type;
+		SType: tok::Type;
 		Length: src::Size;
 		Position: src::Position;
 		Payload: tok::Payload;
@@ -270,5 +271,7 @@ INCLUDE "../src/file.rl"
 			<src::Span>(Position.byte(), Length).contents(Position.file());
 
 		{...};
+
+		:EOF{}: Type(:EOF) {}
 	}
 }
