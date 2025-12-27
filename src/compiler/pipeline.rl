@@ -31,7 +31,7 @@
 
 		Issued := 0,
 		Processed := 0,
-		Quit := FALSE
+		Quit := TRUE
 	{
 		ASSERT(##Inputs == ##Outputs);
 	}
@@ -41,6 +41,7 @@
 	worker_thread() VOID
 	{
 		processed ::= Processed(:?);
+		Quit := :>(FALSE);
 
 		WHILE(!Quit(:<))
 		{
@@ -59,6 +60,19 @@
 			}
 		}
 		Quit := :>(FALSE);
+	}
+
+	wait_launched() VOID --
+	{
+		WHILE(Quit(:<)) { ; }
+	}
+
+	launch_worker() VOID^
+	{
+		Threaded := TRUE;
+		thread ::= ^worker_thread();
+		wait_launched();
+		= thread;
 	}
 
 	[Args...]issue(input: Args!&&...) VOID --

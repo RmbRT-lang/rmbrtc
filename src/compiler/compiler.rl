@@ -147,15 +147,8 @@ INCLUDE "codeparser.rl"
 					};
 					IF!(build.SINGLE_THREADED)
 					{
-						IT.Threaded := TRUE;
-						IF(IOTA == 0)
-							{ STATIC tok_workers_0 ::= ^tok_pipes[0].worker_thread(); }
-						IF(IOTA == 1)
-							{ STATIC tok_workers_1 ::= ^tok_pipes[1].worker_thread(); }
-						IF(IOTA == 2)
-							{ STATIC tok_workers_3 ::= ^tok_pipes[2].worker_thread(); }
-						IF(IOTA == 3)
-							{ STATIC tok_workers_2 ::= ^tok_pipes[3].worker_thread(); }
+						STATIC tok_workers: VOID^[4] (NOINIT);
+						tok_workers[IOTA].{ IT.launch_worker() };
 					}
 				}
 
@@ -163,10 +156,7 @@ INCLUDE "codeparser.rl"
 			parser_out: CodeParser::Output[4] (BARE);
 			parser_pipe: [CodeParser]Pipeline(tok_out, parser_out, &parser);
 				IF!(build.SINGLE_THREADED)
-				{
-					parser_pipe.Threaded := TRUE;
-					STATIC parser_worker ::= ^parser_pipe.worker_thread();
-				}
+				{ STATIC parser_worker ::= parser_pipe.launch_worker(); }
 			load_files(files!, build, tok_pipes, parser_pipe);
 
 			IF(build.Type == :checkSyntax)
@@ -252,10 +242,7 @@ INCLUDE "codeparser.rl"
 		FOR(files) loader_pipe.issue(:relative(build.BasePath, IT!, NULL));
 
 		IF!(build.SINGLE_THREADED)
-		{
-			loader_pipe.Threaded := TRUE;
-			STATIC loading_thread ::= ^loader_pipe.worker_thread();
-		}
+			{ STATIC loading_thread ::= loader_pipe.launch_worker(); }
 
 		fileNames: std::temp::Alloc := :custom(1<<16, 1 << 12);
 
