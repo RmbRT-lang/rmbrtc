@@ -50,6 +50,8 @@
 		ScopeAndTypeMembers: ScopeAndTypeMember -[THIS]DynArray;
 		NonFieldValueMembers: NonFieldValueMembers -[THIS]DynArray;
 		Size: TAGGED ir::Operand;
+		Alignment: TAGGED ir::Operand;
+		Stride: TAGGED ir::Operand;
 
 		# bases() Base#[#] -- := Bases(&THIS);
 		# field_names() Identifier#[#] -- := FieldNames(&THIS);
@@ -78,9 +80,9 @@
 	virtual ::= p.consume(:virtual);
 
 
-	inheritance: Class::Inheritance-std::[std::temp::Locals]TVec;
-	fields: Class::Field-std::[std::temp::Locals]Vec;
-	other_members: NonFieldMember -std::[std::temp::Locals]Vec;
+	inheritance: Class::Inheritance-std::[std::temp::Locals]VecT;
+	fields: Class::Field-std::[std::temp::Locals]VecT;
+	other_members: NonFieldMember -std::[std::temp::Locals]VecT;
 
 	IF(p.consume(:minusGreater))
 	{

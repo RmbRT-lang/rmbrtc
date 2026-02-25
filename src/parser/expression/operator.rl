@@ -2,17 +2,17 @@ INCLUDE "operators.rl"
 
 ::rlc::parser::expression::op
 {
-	parse(p: Parser&) Expression-std::Opt INLINE
+	parse(p: Parser&, ir: Ir0 \) Expression-std::Opt INLINE
 	{
-		lhs ::= parse_binary(p, detail::precedenceGroups -1);
-		IF(p.consume(:doubleQuestionMark))
+		lhs ::= parse_binary(p, detail::precedenceGroups -1, ir0);
+		IF(loc ::= p.pos_consume_s(:Punctuation(:doubleQuestionMark)))
 		{
+			_ctx: Trace(&p, "conditional operator");
 			then ::= expression::parse_x(p);
-			p.expect(:colon);
+			p.expect_s(:Punctuation(:colon));
 			else ::= expression::parse_x(p);
-			args: Expression[3](lhs, then, else);
 
-			lhs := p.Code.operator_expression(:conditional, peek_pos, args[#], lhs, else);
+			ir.operation(:conditional, *loc, :final(then), :final(else));
 		}
 		= lhs;
 	}

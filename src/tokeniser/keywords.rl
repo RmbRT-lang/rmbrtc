@@ -39,6 +39,7 @@
 		:FlowControl(:do),
 		:FlowControl(:else),
 		:Decl(:enum),
+		:Decl(:export),
 		:Decl(:extern),
 		:Aux(:false),
 		:Decl(:final),
@@ -88,11 +89,6 @@
 
 	keyword_storage: {KeywordStorage, ENUM tok::Type, U2}[##keywords] (NOINIT);
 	keyword_lut: {KeywordStorage, ENUM tok::Type, U2}[#][26] (NOINIT);
-
-	NameOfEnum {
-		Name: CHAR#[];
-		[T] THIS(enum: T! #&) VOID -- { Name := <CHAR#*>(enum)[]; }
-	}
 
 	to_upper(x: CHAR) CHAR -- := (x >= 'a' && x <= 'z') ?? x - ('a' - 'A') : x;
 

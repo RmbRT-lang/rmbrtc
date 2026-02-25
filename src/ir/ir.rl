@@ -2,6 +2,8 @@
 ::rlc::ir
 {
 	ENUM Operation {
+		nop,
+
 		add,
 		sub,
 		mul,
@@ -20,6 +22,7 @@
 		member_call_static,
 		member_call_ptr,
 		subscript,
+		conditional,
 
 		lookup_field,
 		lookup_namespace_relative,
@@ -135,8 +138,8 @@
 			ArgsStart: @(SIMD) U4[N];
 		}
 
-		Operations: Operation[#][N];
-		Operands: TAGGED Operand[#][N];
-		Reorder: Link[#][N]; // Changes the order of instructions or eliminates them.
+		Operations: @(SIMD) Operation[#][N];
+		Operands: @(SIMD) TAGGED Operand[#][N];
+		Reorder: @(SIMD) Link[#][N]; // Changes the order of instructions or eliminates them.
 	}
 }

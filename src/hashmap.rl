@@ -24,21 +24,20 @@ INCLUDE 'std/vector'
 
 // TODO: support for item inlining.
 	// TODO: ^ check whether already implemented or what was meant.
+		// ^: Probably meant that we can directly store the item in the hash table if it is short enough.
 
 // Keep parallelism at number of parallel cache misses per core, or less. Prior outstanding cache misses might cause friction otherwise.
 // Look up and/or insert.
 ::rlc::hashmap [#kN] multi_dedup(
-	hashes: U8[kN] #&,
-	preimages: U1#[#][kN]#&,
-	ids: U4[kN] &) VOID
+	hashes: U8[] #&,
+	preimages: U1#[#][]#&,
+	ids: U4[] &) VOID
 {
 	buckets: HashBucket * [kN] (NOINIT);
 
 	// Calculate and prefetch all bucket addresses.
 	|||{buckets} IT := &hashmap::buckets[hashes[IOTA] % ##hashmap::buckets];
 	FOR(buckets) PREFETCH_READ IT;
-
-	candidates: U2 *[CACHELINE/8][kN];
 
 	not_found ::= 1<<kN -1;
 
@@ -55,6 +54,8 @@ INCLUDE 'std/vector'
 				PREFETCH_READ get_memory(bucket->Items[IOTA]);
 	}
 
+	hash_matches: U4[kN];
+
 	// Try to find the elements within the buckets, or insert if not found.
 	FOR[find](buckets)
 	{
@@ -63,29 +64,42 @@ INCLUDE 'std/vector'
 		hash ::= <U4>(hashes[IOTA] / ##hashmap::buckets);
 		preimage ::= preimages[IOTA];
 
+		// Matching hashes in the bucket.
+		hash_matches: U4 := 0;
+		hash_match_count: U1 := 0;
+
 		FOR(IT->Fingerprints)
-			IF(IT == hash)
+		{
+			match ::= IT == hash;
+			hash_match_count += match;
+			hash_matches |= match << IOTA;
+		}
+
+		WHILE(hash_matches[IOTA])
+		{
+			idx ::= FIRST1POS hash_matches;
+			hash_matches ^= 1<<idx;
+
+			item ::= bucket->Items[idx];
+			mem ::= <U2 *>(get_memory(item));
+			len ::= *mem;
+
+			preimage_8 ::= <U8 *>(&preimage[0])[FOR len >> 3];
+			obj_8 ::= <U8 *>(&mem[1])[FOR len>>3];
+			preimage_rest ::= preimage[FROM len &~ 7];
+			obj_rest ::= <U1 *>(&mem[1])[FROM len &~ 7 UNTIL len];
+
+			IF(std::mem::eq(preimage_8, obj_8)
+			&& std::mem::eq(preimage_rest, obj_rest))
 			{
-				item ::= bucket->Items[IOTA];
-				mem ::= <U2 *>(get_memory(item));
-				len ::= *mem;
-
-				preimage_8 ::= <U8 *>(&preimage[0])[FOR len >> 3];
-				obj_8 ::= <U8 *>(&mem[1])[FOR len>>3];
-				preimage_rest ::= preimage[FROM len &~ 7];
-				obj_rest ::= <U1 *>(&mem[1])[FROM len &~ 7 UNTIL len];
-
-				IF(std::mem::eq(preimage_8, obj_8)
-				&& std::mem::eq(preimage_rest, obj_rest))
-				{
-					ids[workload] := item;
-					not_found ^= 1 << workload;
-					CONTINUE [find];
-				}
+				ids[workload] := item;
+				not_found ^= 1 << workload;
+				CONTINUE [find];
 			}
+		}
 
 		// If bucket not full, and we did not find the element, insert it.
-		IF(!IT->full() && not_found & 1 << workload)
+		IF(!IT->full())
 			FOR(IT->Items)
 				IF(IT == 0)
 				{
@@ -110,14 +124,14 @@ INCLUDE 'std/vector'
 		// TODO IMPROVE PERFORMANCE: prefetch the buckets? We don't really care because this should rarely happen.
 		extended_bucket ::= &hashmap::overflow[hashes[workload] % ##hashmap::overflow];
 
-		FOR(*extended_bucket) {
+		FOR((*extended_bucket)!) {
 			IF(IT.Fingerprint == hash)
 			{
-				mem ::= <U2 *>(get_memory(IT.Item));
+				mem ::= <U2 *>(mempool::get_memory(IT.Item));
 				len ::= mem[-1];
-				obj ::= <U1 *>(mem)[FOR len];
+				obj ::= <U1 #*>(mem)[FOR len];
 
-				IF(std::mem::eq(preimage, obj))
+				IF(len == ##preimage && std::mem::eq(preimage[], obj[], len))
 				{
 					ids[workload] := IT.Item;
 
@@ -144,8 +158,6 @@ INCLUDE 'std/vector'
 	// Calculate and prefetch all bucket addresses.
 	|||{buckets} IT := &hashmap::buckets[hashes[IOTA] % ##hashmap::buckets];
 	FOR(buckets) PREFETCH_READ IT;
-
-	candidates: U2 *[CACHELINE/8][kN];
 
 	not_found: U8 := 1<<kN -1;
 
@@ -191,10 +203,6 @@ INCLUDE 'std/vector'
 					CONTINUE [find];
 				}
 			}
-
-		// If bucket not full, and we did not find the element, insert it.
-		IF(!IT->full() && not_found & 1 << workload)
-		not_found ^= <U8>(!IT->full()) << workload;
 	}
 
 	// If any elements have neither been found nor could be inserted in the buckets, look in the overflow buckets.

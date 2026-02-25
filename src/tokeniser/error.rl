@@ -49,12 +49,12 @@ INCLUDE 'std/unicode'
 }
 
 
-::rlc::tok::err msg(w: WHERE, msg: CHAR#[#]) VOID
+::rlc::tok::err [Msg...]msg(w: WHERE, msg: Msg!&&...) VOID
 {
 	os::term::PrintLine_v(:style(:normal, :red),
 		std::str::c(w.(0)[]), ":",
 		std::io::format::dec(w.(1)), ":",
 		std::io::format::dec(w.(2)), ": error: ",
-		msg);
+		<Msg!&&>(msg)...);
 	os::terminate_error();
 }

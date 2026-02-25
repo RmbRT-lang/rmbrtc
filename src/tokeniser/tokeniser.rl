@@ -5,7 +5,40 @@ INCLUDE "specials.rl"
 
 ::rlc::tok
 {
-	(// Lazy tokeniser. /)
+	TokenHot {
+		Type: ENUM tok::Type;
+		SType: tok::Type;
+	}
+
+	FileTokens {
+		Hots: TokenHot-std::Vec;
+		Payloads: tok::Payload-std::Vec;
+		Positions: src::Index -std::Vec;
+
+		reserve(count: U4) VOID
+		{
+			Hots.reserve(count);
+			Payloads.reserve(count);
+			Positions.reserve(count);
+		}
+
+		clear_reuse() VOID
+		{
+			Hots.clear_reuse();
+			Payloads.clear_reuse();
+			Positions.clear_reuse();
+		}
+
+		THIS += (token: tok::Token #&) VOID --
+		{
+			std::vec::pushback(
+				(Hots,      (token.Type, token.SType)),
+				(Payloads,  token.Payload),
+				(Positions, token.Position.byte()));
+		}
+	}
+
+
 	Tokeniser
 	{
 		{
@@ -327,12 +360,13 @@ INCLUDE "specials.rl"
 		on_zero(out: Token \) VOID --
 		{
 			out->Type := :Number;
-			c ::= getc();
+			c ::= look();
 			classify ::= token_lut[c];
 			SWITCH(c)
 			{
 			'x', 'X':
 			{
+				advance_nows();
 				payload: U8 := 0;
 				c ::= hex_digit[<U1>(look())];
 				i ::= 0;
@@ -355,6 +389,7 @@ INCLUDE "specials.rl"
 			}
 			'r', 'R':
 			{
+				advance_nows();
 				number: U8 := 0;
 				i ::= 0;
 				FOR(;; i++)
@@ -374,7 +409,7 @@ INCLUDE "specials.rl"
 				}
 
 				IF(!i || i > 8)
-					tok::err::msg(at(), "raw hex literal exceeds register size");
+					tok::err::msg(at(), "raw hex literal exceeds register size: ", std::io::format::dec(i), " bytes > 8");
 
 				STATIC types: tok::NumberType[8](
 					:RawLiteral_1,
@@ -395,6 +430,7 @@ INCLUDE "specials.rl"
 			}
 			'b', 'B':
 			{
+				advance_nows();
 				payload: U8 := 0;
 				look();
 				FOR(i ::= 0;; i++)
@@ -475,42 +511,6 @@ INCLUDE "specials.rl"
 				IF(c == '\\')
 					IF(!getc()) error();
 			}
-		}
-	}
-
-	FileTokens {
-		Types: ENUM tok::Type-std::Vec;
-		STypes: tok::Type-std::Vec;
-		Payloads: tok::Payload-std::Vec;
-		Positions: src::Index-std::Vec;
-
-		reserve(count: U4) VOID
-		{
-			Types.reserve(count);
-			STypes.reserve(count);
-			Payloads.reserve(count);
-			Positions.reserve(count);
-		}
-
-		clear_reuse() VOID
-		{
-			Types.clear_reuse();
-			STypes.clear_reuse();
-			Payloads.clear_reuse();
-			Positions.clear_reuse();
-		}
-
-		THIS += (token: tok::Token #&) VOID --
-		{
-			std::vec::pushback(
-				(Types,     token.Type),
-				(STypes,    token.SType),
-				(Payloads,  token.Payload),
-				(Positions, token.Position.byte()));
-			(/Types += token.Type;
-			STypes += token.SType;
-			Payloads += token.Payload;
-			Positions += token.Position.byte();/)
 		}
 	}
 }

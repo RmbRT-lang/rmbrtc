@@ -58,12 +58,19 @@ INCLUDE 'std/io/format'
 
 	// Names for our files.
 	fileNamesAlloc: std::temp::Alloc := :custom(1 << 20, 1 << 20);
-	fileNames: CHAR#[#]-std::Vec := :reserve(2048);
-	fileNameHashes: U8-std::Vec := :reserve(2048);
+	fileNames: CHAR#[#]-std::Vec;
+	fileNameHashes: U8-std::Vec;
 
 	// Source code.
-	fileContents: CHAR[#]-std::Vec := :reserve(2048);
+	fileContents: CHAR[#]-std::Vec;
 	fileContentsAlloc: std::temp::Alloc := :custom(16 << 20, 2 << 20);
+
+	::init file_rl() VOID
+	{
+		fileNames.reserve(2048);
+		fileNameHashes.reserve(2048);
+		fileContents.reserve(2048);
+	}
 
 	IncludeContext {
 		From: WHERE;
@@ -85,7 +92,10 @@ INCLUDE 'std/io/format'
 
 		mem ::= src::fileContentsAlloc.alloc_raw(size+32, PAGE);
 
-		std::mem::cpy(<U1 *>(mem) + size, "\000\000\000\n\"'´`\n\n\n/)/)/)/)/)/)/)/)/)/)/)/)/)/)/)"[], 32);
+		std::mem::cpy(
+			<U1 *>(mem) + size,
+			"\000\000\000\n\"'´`\n\n\n/)/)/)/)/)/)/)/)/)/)/)/)/)/)/)"[],
+			32);
 		= mem;
 	}
 
@@ -148,6 +158,7 @@ INCLUDE 'std/io/format'
 
 		mem ::= src::fileNamesAlloc.alloc_raw(##path+1, CACHELINE);
 		<U1 *>(mem)[##path] := 0;
+
 
 		std::mem::cpy(mem, &path[0], ##path);
 

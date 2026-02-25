@@ -50,6 +50,7 @@ INCLUDE "../src/file.rl"
 		destructor,
 		enum,
 		extern,
+		export,
 		final,
 		mask,
 		override,
@@ -216,7 +217,7 @@ INCLUDE "../src/file.rl"
 	// Keep this at or below 16 variants, so that we can store two token types in one byte, for doubled cache efficiency.
 	UNION Type {
 	*	EOF: U2; // Simplifies parser. Also pads the structure size.
-	?	Identifier: U2;
+	?	Identifier: U2; // File-local ID
 	?	Number: tok::Number;
 	?	String: StringType;
 	?	AuxKeyword: tok::AuxKeyword;
@@ -253,8 +254,35 @@ INCLUDE "../src/file.rl"
 	secondary_type(type: ENUM Type, secondary: Type) U2 --
 		:= (MASK has_secondary_type(type)) & secondary.EOF;
 
+	NameOfEnum {
+		Name: CHAR#[];
+		[T] THIS(enum: T! #&) VOID -- {
+			TYPE SWITCH STATIC(enum)
+			{
+			U2: Name := "Not an enum";
+			tok::Number: "Number";
+			DEFAULT: Name := <CHAR#*>(enum)[];
+			}
+		}
+	}
+	name(type: TAGGED Type #&) CHAR#[#]
+	{
+		SWITCH(type.(0))
+		{
+		:EOF: = "EOF";
+		:Identifier: = "Identifier";
+		DEFAULT: = std::str::c(<NameOfEnum>() VISIT>>(type).Name);
+		}
+	}
+
+	IdPayload {
+		Global: U2; // Global version of the identifier, not set by tokeniser.
+		// Maybe also export identifier? This will be a bit annoying to do before parsing. Has to be done during parsing, probably. Although we can also make it so that any identifier that is after a "." or "->" or ":" becomes one. Although that is also not quite correct. For :symbols, we'd have to do a separate pass, but for "." and "->", it should be correct. Although it doesn't factor in "::", either. Which for enums would be bad. We have to know whether the identifier we are looking up is a global one or local one. So we have to know whether left of :: is a namespace or not.
+	}
+
 	UNION Payload {
 		Number: U8;
+		Identifier: IdPayload;
 		String: TokenStringPayload;
 	}
 

@@ -14,10 +14,18 @@ INCLUDE "hashmap.rl"
 	repo: CHAR#[#] := "https://github.com/RmbRT-lang/rmbrtc";
 }
 
+::rlc init() VOID
+{
+	mempool::init();
+	rlc::ident::init();
+	src::init::file_rl();
+}
+
 main(args: CHAR[#][#]) INT
 {
 	os::term::init();
 
+	rlc::init();
 	IF(##args == 1)
 	{
 		os::term::PrintLine_v(:style(:normal, :red),
@@ -123,8 +131,8 @@ main(args: CHAR[#][#]) INT
 	}
 	CATCH(e: {WHERE, CHAR#[#]})
 		term::error(e.(0), e.(1));
-	//CATCH(e: CHAR #*) // "location: err"
-	//	term::error(NULL, std::str::c(e[]));
+	CATCH(e: CHAR #*) // "location: err"
+		term::error(NULL, std::str::c(e[]));
 	CATCH(e: {CHAR#\, CHAR#\})
 		term::error(NULL, std::str::c(e.(0)[]), " (", std::str::c(e.(1)[]), ")");
 	FINALLY{}

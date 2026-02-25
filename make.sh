@@ -25,4 +25,11 @@ echo compiling...
 RL_LINK_LIBRARIES=$RLOS_O
 RL_LINK_LIBRARIES=$RL_LINK_LIBRARIES
 echo RL_LINK_LIBRARIES="$RL_LINK_LIBRARIES" rmbrtbc --run src/main.rl $RLOS_RL
-RL_LINK_LIBRARIES="$RL_LINK_LIBRARIES" rmbrtbc src/main.rl $RLOS_RL && ./a.out src/main.rl $RLOS_RL : out
+
+PWD_SAVE=`realpath $PWD`
+mkdir -p /tmp/.rlc-exe/$PWD_SAVE
+if [ ! -L a.out ]; then
+	ln -s /tmp/.rlc-exe/$PWD_SAVE/a.out a.out
+fi
+cd /tmp/.rlc-exe/$PWD_SAVE
+RL_LINK_LIBRARIES="$RL_LINK_LIBRARIES" rmbrtbc $PWD_SAVE/src/main.rl $RLOS_RL && cd $PWD_SAVE && RLC_ST=0 ./a.out src/main.rl $RLOS_RL : out

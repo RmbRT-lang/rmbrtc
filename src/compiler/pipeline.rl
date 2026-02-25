@@ -1,116 +1,170 @@
 ::rlc::compiler [Job] Pipeline
 {
 	// shared constant state.
-	State: Job *;
+	ConstantR {
+		State: Job *;
 
-	Inputs: Job::Input+[#];
-	Outputs: Job::Output+[#];
+		Inputs: Job::Input+[#];
+		Outputs: Job::Output+[#];
+	}
 
 	// caller-local bookkeeping data.
-	LocalIssued: @(CACHELINE) U4;
-	LocalFlushed: U4;
-	SeenProcessed: U4;
-	Consumed: U4;
-	Threaded: BOOL;
+	MasterLocalR {
+		Issued: @(CACHELINE) U4;
+		Flushed: U4;
+		SeenProcessed: U4;
+		Consumed: U4;
+		Threaded: BOOL;
+	}
 
-	// caller writes, worker reads.
-	Issued: @(CACHELINE) U4.;
-	// caller reads, worker writes.
-	Processed: @(CACHELINE) U4.;
-	// caller writes, worker reads.
-	Quit: @(CACHELINE) BOOL.;
+	MasterR {
+		// caller writes, worker reads.
+		Issued: @(CACHELINE) U4.;
+	}
+
+
+	SlaveR {
+		// caller reads, worker writes.
+		Processed: @(CACHELINE) U4.;
+	}
+	SlaveLocalR {
+		Waiting: U8;
+		Processing: U8;
+	}
+
+	SharedR {
+		// caller writes, worker reads.
+		Quit: @(CACHELINE) BOOL.;
+		{}: Quit := TRUE;
+	}
+	Constant: ConstantR #;
+	MasterLocal: MasterLocalR;
+	Master: MasterR;
+	Slave: SlaveR;
+	SlaveLocal: SlaveLocalR;
+	Shared: SharedR;
 
 	{#&} (BARE) { DIE; }
 	{&&} (BARE) { DIE; }
 
 	{inputs: Job::Input+[#], outputs: Job::Output+[#], state: Job *}:
-		State := state,
-
-		Inputs := inputs,
-		Outputs := outputs,
-
-		Issued := 0,
-		Processed := 0,
-		Quit := TRUE
+		Constant (state, inputs, outputs)
 	{
-		ASSERT(##Inputs == ##Outputs);
+		ASSERT(##Constant.Inputs == ##Constant.Outputs);
 	}
 
-	DESTRUCTOR { Quit := :>(TRUE); }
+	DESTRUCTOR { Shared.Quit := :>(TRUE); }
 
-	worker_thread() VOID
+	PRIVATE worker_thread() VOID
 	{
-		processed ::= Processed(:?);
-		Quit := :>(FALSE);
+		Master: MasterR # & := THIS.Master;
+		Constant: ConstantR #& := THIS.Constant;
+		Slave: SlaveR & := THIS.Slave;
+		Shared: SharedR & := THIS.Shared;
 
-		WHILE(!Quit(:<))
+		processed ::= Slave.Processed(:<);
+		Shared.Quit := :>(FALSE);
+
+			start_waiting ::= CPU_COUNTER;
+
+		WHILE(!Shared.Quit(:<))
 		{
-			issued ::= Issued(:<);
+			issued ::= Master.Issued(:<);
 			IF(issued == processed)
 				CONTINUE;
 
+				start_processing ::= CPU_COUNTER;
+				end_waiting ::= start_processing;
+				SlaveLocal.Waiting += end_waiting - start_waiting;
+
 			WHILE(processed != issued)
 			{
-				State->handle_job(
-					Inputs[processed % ##Inputs],
-					&Outputs[processed % ##Outputs]);
+				Constant.State->handle_job(
+					Constant.Inputs[processed % ##Constant.Inputs],
+					&Constant.Outputs[processed % ##Constant.Outputs]);
 				++processed;
 
-				Processed := :>(processed);
+				Slave.Processed := :>(processed);
 			}
+
+				start_waiting := CPU_COUNTER;
+				end_processing ::= start_waiting;
+				SlaveLocal.Processing += end_processing - start_processing;
 		}
-		Quit := :>(FALSE);
+		Shared.Quit := :>(FALSE);
 	}
 
 	wait_launched() VOID --
 	{
-		WHILE(Quit(:<)) { ; }
+		tries: U4 := 0;
+		start ::= NOW;
+		WHILE(Shared.Quit(:<))
+		{ IF!(tries++ & 255) { IF((NOW)-start > 100000000) DIE; } }
 	}
 
 	launch_worker() VOID^
 	{
-		Threaded := TRUE;
-		thread ::= ^worker_thread();
+		MasterLocal.Threaded := TRUE;
+		thread: VOID^(^worker_thread());
 		wait_launched();
-		= thread;
+		= &&thread;
+	}
+
+	next_input() Job::Input \
+	{ // AS MASTER
+		ASSERT(MasterLocal.Issued - MasterLocal.Consumed < ##Constant.Inputs);
+
+		= &Constant.Inputs[MasterLocal.Issued % ##Constant.Inputs];
 	}
 
 	[Args...]issue(input: Args!&&...) VOID --
-	{
-		ASSERT(LocalIssued - Consumed < ##Inputs);
+	{ // AS MASTER
+		ASSERT(MasterLocal.Issued - MasterLocal.Consumed < ##Constant.Inputs);
 
-		Inputs[LocalIssued++ % ##Inputs].{<Args!&&>(input)...};
+		Constant.Inputs[MasterLocal.Issued++ % ##Constant.Inputs].{<Args!&&>(input)...};
 	}
 
-	quit() VOID -- { Quit := :>(TRUE); }
-	wait_quit(at: WHERE) VOID --
+	issue_prepared() VOID --
 	{
-		IF!(Threaded) RETURN;
+		ASSERT(MasterLocal.Issued - MasterLocal.Consumed < ##Constant.Inputs);
+		MasterLocal.Issued++;
+	}
+
+	issue_flush_prepared() VOID --
+	{
+		issue_prepared();
+		flush();
+	}
+
+	quit() VOID -- { Shared.Quit := :>(TRUE); } // AS MASTER
+	wait_quit(at: WHERE) VOID --
+	{ // AS MASTER
+		IF!(MasterLocal.Threaded) RETURN;
 
 		start ::= NOW;
 		attempt ::= 0;
-		WHILE(Quit(:<))
+		WHILE(Shared.Quit(:<))
 		{
 			IF!(attempt++ & 255)
-				IF((NOW) - start > 1000000000)
-					term::error(at, "Thread is stuck!");
+				IF((NOW) - start > 100000000)
+					term::error(at, Job::name(), " thread is stuck!");
 		}
 	}
 
 	/// Sends pending work to the worker. This also gets called automatically.
-	flush() VOID -- {
-		Issued := :>(LocalIssued);
-		oldFlushed ::= LocalFlushed;
-		LocalFlushed := LocalIssued;
+	flush() VOID -- { // AS MASTER
+		Master.Issued := :!(MasterLocal.Issued);
+		oldFlushed # ::= MasterLocal.Flushed;
+		MasterLocal.Flushed := MasterLocal.Issued;
 
-		IF!(Threaded)
-		{
-			end ::= LocalFlushed;
+		IF!(MasterLocal.Threaded)
+		{ // AS SLAVE
+			end ::= MasterLocal.Flushed;
 			FOR(i ::= oldFlushed; i < end; i++)
-				State->handle_job(
-					Inputs[i % ##Inputs],
-					&Outputs[i % ##Outputs]);
-			Processed := :>(end);
+				Constant.State->handle_job(
+					Constant.Inputs[i % ##Constant.Inputs],
+					&Constant.Outputs[i % ##Constant.Outputs]);
+			Slave.Processed := :!(end);
 		}
 	}
 
@@ -120,33 +174,69 @@
 		flush();
 	}
 
-	# full() BOOL := LocalIssued - Consumed == ##Inputs;
-	# pending() U4 -- := LocalIssued - SeenProcessed;
+	# full() BOOL := MasterLocal.Issued - MasterLocal.Consumed == ##Constant.Inputs;
+	# pending() U4 -- := MasterLocal.Issued - MasterLocal.SeenProcessed;
 
-	get_some() Job::Output+[#]
-	{
+	get_some(at: WHERE) Job::Output+[#]
+	{ // AS MASTER
 		IF(!pending())
 			= NULL;
 
-		WHILE(Consumed == SeenProcessed)
+			{
+		start ::= NOW;
+		attempt: U4 := 0;
+		WHILE(MasterLocal.Consumed == MasterLocal.SeenProcessed)
 		{
-			IF(LocalFlushed == SeenProcessed)
+			IF(MasterLocal.Flushed != MasterLocal.Issued)
 				flush();
 
-			SeenProcessed := Processed( :< );
+			IF!(attempt++ & 255)
+			{
+				IF((NOW) - start > 250000000)
+				{
+					term::error(at,
+						Job::name(),
+						" THREAD FROZE / DIED. C:", std::io::format::dec(MasterLocal.Consumed),
+						" I:", std::io::format::dec(MasterLocal.Issued),
+							"/", std::io::format::dec(Master.Issued(:<)),
+							"/", std::io::format::dec(MasterLocal.Flushed),
+						" P:", std::io::format::dec(MasterLocal.SeenProcessed),
+							"/", std::io::format::dec(Slave.Processed(:<)),
+						" Q: ", Shared.Quit(:<) ?? "TRUE"[#] : "FALSE"[#]);
+				}
+			}
+			MasterLocal.SeenProcessed := Slave.Processed( :< );
 		}
+			}
 
-		start ::= Consumed % ##Outputs;
-		end ::= SeenProcessed % ##Outputs;
+		start ::= MasterLocal.Consumed % ##Constant.Outputs;
+		end ::= MasterLocal.SeenProcessed % ##Constant.Outputs;
+
+		ret: Job::Output+[#];
 		IF(end > start)
-		{
-			Consumed := SeenProcessed;
-			= Outputs[FROM start UNTIL end];
-		} ELSE
-		{
-			pre_wrap ::= Outputs[FROM start];
-			Consumed += ##pre_wrap;
-			= pre_wrap;
-		}
+			ret := Constant.Outputs[FROM start UNTIL end];
+		ELSE
+			ret := Constant.Outputs[FROM start];
+		MasterLocal.Consumed += ##ret;
+		= ret;
 	}
+}
+
+::rlc::compiler [Job; #Cap] PipelineSetup -> [Job]Pipeline
+{
+PRIVATE:
+	Worker:                Job;
+	Inputs:   @(CACHELINE) Job::Input+[Cap];
+	Outputs:  @(CACHELINE) Job::Output+[Cap];
+	Thread: VOID^;
+PUBLIC:
+	{} -> (Inputs, Outputs, &Worker): Inputs(BARE), Outputs(BARE);
+
+	launch_worker() VOID {
+		worker ::= ->([Job]Pipeline).launch_worker();
+		Thread :=: worker;
+		->([Job]Pipeline).wait_launched();
+	}
+
+	PRIVATE {#&} { DIE; }
 }

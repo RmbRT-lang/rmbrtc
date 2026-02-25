@@ -1,11 +1,13 @@
 INCLUDE 'std/string'
 INCLUDE 'std/vector'
 INCLUDE 'std/optional'
+INCLUDE 'std/sync/race'
 
 INCLUDE "srcloader.rl"
 INCLUDE "includes.rl"
 INCLUDE "codetoker.rl"
 INCLUDE "codeparser.rl"
+INCLUDE "iddedupler.rl"
 
 ::rlc::compiler
 {
@@ -92,18 +94,26 @@ INCLUDE "codeparser.rl"
 		disk -------> tokeniser pool -----> parser (pool?) -----------> scope resolver
 		      files                  tokens                scope, IR0
 
-		The disk is one bottleneck, so we have only one loader thread. Tokenising is way slower than loading, so we have multiple tokenisers. Parsing is faster than tokenising.
+		The disk is one bottleneck, so we have only one loader thread. Tokenising is way slower than loading, so we have multiple tokenisers. Parsing is faster than tokenising, so we only need one parser, probably. We can have other threads that process the parser's output.
+
+			If possible, we want to avoid having contention in a task that fundamentally only needs one thread. If possible, we want to split tasks into two threads of tighter, homogeneous loops, especially since we are limited by a single source loader thread, so data ingress is also a bottleneck.
+
+		          ---> tokenise --
+		         /                \                          IR
+		load ---<----> tokenise --->--> preparse  ---->    parse
+		         \                /    scope-assemble   local-resolve
+		          ---> tokenise --                     full scope tree
 
 		compile() thread     |    loader thread    |  tokeniser pool   |   parser
 		       --- [X] invocation files --->
 		       <-- [X] load source files ---
 		       --- [X] parsed includes ---->
-		       --- [/] source files (bodies) ----------------->
+		       --- [X] source files (bodies) ----------------->
 		       <-- [X] more source files ---
-		       --- [/] source files (bodies) ----------------->
+		       --- [X] source files (bodies) ----------------->
 		                 ...
 
-		                                                  -- [/] token streams -->
+		                                                  -- [X] token streams -->
 		                           ...
 		       <--- [ ] scope trees + IR0 --------------------------------------
 
@@ -119,9 +129,9 @@ INCLUDE "codeparser.rl"
 		codegen: machine code (or RASM), which no longer contains types.
 		codegen2?: final machine code.
 
-		Multi-tokeniser: since the tokeniser has very ver states, but is very branchy, we could multiply the state machine to produce a dual tokeniser which switches on two states at once, and can thus eliminate branches and amortise latencies. The problem is just with unequal token lengths: if we do not switch state whenever a token is done, we stall one execution. If we do switch, then we are no longer getting any benefits. So in practice, we would not gain 2x performance, but we would definitely get more than 1x. The best case is if multiple tokens have the same type, so that we can have optimised routines for that. Or, we can squash multiple states and use some kind of regex-like system that lets us parse identifiers and numbers and specials and whitespaces in a generic manner simultaneously in one code path. However, fitting more than two such token streams into one execution would be quite hard due to register pressure. It could work with SIMD, though, albeit that would ideally require data interleaving. Or we try to use SIMD as data streams, then we could operate on more bytes per stream at once. But that would also make it a bit tedious.
+		Multi-tokeniser: useless, since we don't get files from disk that quickly anyway.
 
-		We could theoretically make it so that we have one SIMD register per token stream, as well as a state enum and some regex mask register. Then we can switch once per 16 bytes, and just do one single tokenising step. Then, we take the new state and switch again. Since most tokens are <16 bytes, that should help us progress N tokens per switch, and we can amortise loading times that way, too. However, this might need some bulk char classification first. But that is not going to be our worst bottleneck anyway.
+		Multi-parser: same thing. We do not get many files
 		/)
 
 		(//
@@ -134,30 +144,24 @@ INCLUDE "codeparser.rl"
 		{
 			start_time ::= NOW;
 
-			tok_in: {tok::Tokeniser, tok::Token}[4] (BARE);
-			tok_out: tok::FileTokens[4] (BARE);
-			tokeniser: CodeTokeniser[4];
-			tok_pipes: [CodeTokeniser]Pipeline[4] (NOINIT);
-				FOR(tok_pipes)
-				{
-					IT.{
-						(&tok_in[IOTA])[FOR 1],
-						(&tok_out[IOTA])[FOR 1],
-						&tokeniser[IOTA]
-					};
-					IF!(build.SINGLE_THREADED)
-					{
-						STATIC tok_workers: VOID^[4] (NOINIT);
-						tok_workers[IOTA].{ IT.launch_worker() };
-					}
-				}
+			STATIC tok_pipes: [CodeTokeniser; #4]PipelineSetup[1];
+				IF!(build.SINGLE_THREADED) FOR(tok_pipes) IT.launch_worker();
+			STATIC tok_pipes_p: [CodeTokeniser]Pipeline *[##tok_pipes] (NOINIT);
+			FOR(tok_pipes_p) IT := &tok_pipes[IOTA];
 
-			parser: CodeParser;
-			parser_out: CodeParser::Output[4] (BARE);
-			parser_pipe: [CodeParser]Pipeline(tok_out, parser_out, &parser);
-				IF!(build.SINGLE_THREADED)
-				{ STATIC parser_worker ::= parser_pipe.launch_worker(); }
-			load_files(files!, build, tok_pipes, parser_pipe);
+			STATIC iddedup_pipe: [IdDeDupler; #2]PipelineSetup;
+				IF!(build.SINGLE_THREADED) iddedup_pipe.launch_worker();
+
+			STATIC parser_pipes: [CodeParser; #2]PipelineSetup[1];
+				IF!(build.SINGLE_THREADED) FOR(parser_pipes) IT.launch_worker();
+			STATIC parser_pipes_p: [CodeParser]Pipeline *[##parser_pipes] (NOINIT);
+			FOR(parser_pipes_p) IT := &parser_pipes[IOTA];
+
+			load_files(files!, build, tok_pipes_p, iddedup_pipe, parser_pipes_p);
+
+			FOR(tok_pipes) IT.wait_quit(HERE);
+			FOR(parser_pipes) IT.wait_quit(HERE);
+			iddedup_pipe.wait_quit(HERE);
 
 			IF(build.Type == :checkSyntax)
 				RETURN;
@@ -168,7 +172,7 @@ INCLUDE "codeparser.rl"
 					size += ##IT;
 				end_time ::= NOW;
 
-				term::info(NULL, "loaded ", std::io::format::dec(##src::fileNames), " files (", std::io::format::dec(size), " bytes in ", std::io::format::dec((end_time - start_time) / 1000000), ".", std::io::format::dec_x((end_time - start_time) % 1000000 / 1000, 3), "ms).");
+				term::info(NULL, "loaded ", std::io::format::dec(##src::fileNames), " files (", std::io::format::dec(size), " bytes in ", std::io::format::dec((end_time - start_time) / 1000000), ".", std::io::format::dec_x((end_time - start_time) % 1000000 / 1000, 3), "ms). Total identifiers: ", std::io::format::dec(##ident::strings));
 			}
 
 			(/ TODO:
@@ -176,7 +180,8 @@ INCLUDE "codeparser.rl"
 				- [X] resolve include paths.
 				- [X] tokenise included files.
 				- [X] debug tempalloc.
-				- [/] write scope tree (status check)
+				- [X] pre-parse & dedup identifiers
+				- [X] assemble scope tree
 				- [/] write parser
 				- [ ] write AST merger? Actually just let the parser write into the global AST (rather: scope tree) directly.
 				- [ ] resolver
@@ -224,11 +229,59 @@ INCLUDE "codeparser.rl"
 		}
 	}
 
+	pass_along_toker_to_dedupler(
+		out: CodeTokeniser::Output &,
+		pipe: [IdDeDupler]Pipeline &) VOID
+	{
+		next_input ::= pipe.next_input();
+		// Make sure the buffers can be reused.
+			// IT.Tokens :=: &&next_input->Tokens;
+		{
+			old ::= &&next_input->Tokens;
+			next_input->Tokens.{&&out.Tokens};
+			out.Tokens.{&&old};
+		}
+		{
+			old ::= &&next_input->Identifiers;
+			next_input->Identifiers := &&out.Identifiers;
+			out.Identifiers := &&old;
+		}
+		{
+			old ::= &&next_input->IdHashes;
+			next_input->IdHashes := &&out.IdHashes;
+			out.IdHashes := &&old;
+		}
+
+		next_input->File := out.File;
+		pipe.issue_flush_prepared();
+	}
+
+	pass_along_dedupler_to_preparser(
+		out: IdDeDupler::Output &,
+		pipe: [CodeParser]Pipeline &) VOID
+	{
+		next_input ::= pipe.next_input();
+
+		next_input->File := out.File;
+		next_input->LocalIds := out.LocalIds;
+
+			// IT.Tokens :=: &&next_input->Tokens;
+		(/{
+			old ::= &&next_input->Tokens;
+			next_input->Tokens.{&&out.Tokens};
+			out.Tokens.{&&old};
+		}/)
+			next_input->Tokens := &&out.Tokens;
+
+		pipe.issue_flush_prepared();
+	}
+
 	load_files(
 		files: std::Str#[#],
 		build: Build #&,
-		tokeniser_pipes: [CodeTokeniser]Pipeline[#],
-		parser_pipe: [CodeParser]Pipeline &) VOID
+		tokeniser_pipes: [CodeTokeniser]Pipeline \[#],
+		iddedup_pipe: [IdDeDupler]Pipeline &,
+		parser_pipes: [CodeParser]Pipeline \[#]) VOID
 	{
 		includes: rlc::tok::Token - std::Vec := :reserve(2048);
 
@@ -239,20 +292,20 @@ INCLUDE "codeparser.rl"
 		loader: SrcLoader (build.BasePath, >build.IncludePaths!);
 		loader_pipe: [SrcLoader]Pipeline(queue!, outputs!, &loader);
 
-		FOR(files) loader_pipe.issue(:relative(build.BasePath, IT!, NULL));
+		FOR(files) loader_pipe.issue_flush(:relative(build.BasePath, IT!, NULL));
 
-		IF!(build.SINGLE_THREADED)
-			{ STATIC loading_thread ::= loader_pipe.launch_worker(); }
+		loading_thread: VOID^ (NOINIT);
+			IF!(build.SINGLE_THREADED) loading_thread.{ loader_pipe.launch_worker() };
 
 		fileNames: std::temp::Alloc := :custom(1<<16, 1 << 12);
 
 		reset: std::temp::Locals::Scope;
 
 		tokeniser_round ::= 0;
+		parser_round ::= 0;
 		/// Parse all code first.
-		WHILE(processed ::= loader_pipe.get_some())
+		WHILE(processed ::= loader_pipe.get_some(HERE))
 		{
-
 			FOR(processed)
 			{
 				IF:!(result ::= IT)
@@ -275,7 +328,7 @@ INCLUDE "codeparser.rl"
 					FOR(includes!)
 					{
 						ASSERT(IT.Type == :String);
-						loader_pipe.issue(
+						loader_pipe.issue_flush(
 							IT.SType.String == :StringQuote
 							?? include::IncludeType::relative
 							: include::IncludeType::global,
@@ -287,39 +340,77 @@ INCLUDE "codeparser.rl"
 				IF!(first_token)
 					CONTINUE;
 
-				IF(parser_pipe.full())
-					parser_pipe.get_some();
+				IF(parser_pipes[parser_round % ##parser_pipes]->full())
+					parser_pipes[parser_round % ##parser_pipes]->get_some(HERE);
 
 				i ::= tokeniser_round++ % ##tokeniser_pipes;
-				IF(tokeniser_pipes[i].full())
-					parser_pipe.issue_flush(&&tokeniser_pipes[i].get_some()[0]);
+				IF(tokeniser_pipes[i]->full())
+				{
+					tokenised ::= tokeniser_pipes[i]->get_some(HERE);
+					ASSERT(tokenised);
+					FOR(tokenised)
+					{
+						IF(iddedup_pipe.full())
+							FOR(iddedup_pipe.get_some(HERE))
+							{
+								IF(parser_pipes[parser_round % ##parser_pipes]->full())
+									parser_pipes[parser_round % ##parser_pipes]->get_some(HERE);
+								pass_along_dedupler_to_preparser(IT, *parser_pipes[parser_round++ % ##parser_pipes]);
+							}
+
+						pass_along_toker_to_dedupler(IT, iddedup_pipe);
+					}
+				}
 					//tokeniser_pipes[i].get_some();
-				tokeniser_pipes[i].issue_flush(tokeniser, *first_token);
+				tokeniser_pipes[i]->issue_flush(&&tokeniser, *first_token, f);
 			}
 		}
 
-		term::info(NULL, "----------------------");
-
 		loader_pipe.quit();
 		loader_pipe.wait_quit(HERE);
+		IF!(loading_thread[100000000])
+			term::error(HERE, "Died");
+		loading_thread();
 
 		FOR(tokeniser_pipes)
 		{
-			WHILE(more ::= IT.get_some())
-				FOR(more)
+			WHILE(tokenised ::= IT->get_some(HERE))
+				FOR(tokenised)
 				{
-					IF(parser_pipe.full())
-						parser_pipe.get_some();
-					parser_pipe.issue_flush(IT);
+					//BUG: ST: the queued jobs for the tokeniser do not get flushed.
+					IF(iddedup_pipe.full())
+						FOR(iddedup_pipe.get_some(HERE))
+						{
+							IF(parser_pipes[parser_round % ##parser_pipes]->full())
+								parser_pipes[parser_round % ##parser_pipes]->get_some(HERE);
+							pass_along_dedupler_to_preparser(IT, *parser_pipes[parser_round++ % ##parser_pipes]);
+						}
+
+					pass_along_toker_to_dedupler(IT, iddedup_pipe);
 				}
 
-			IT.quit();
-			IT.wait_quit(HERE);
+			IT->quit();
+			IT->wait_quit(HERE);
 		}
 
-		WHILE(parser_pipe.get_some()) { ; }
-		parser_pipe.quit();
-		parser_pipe.wait_quit(HERE);
+		WHILE(output ::= iddedup_pipe.get_some(HERE)) {
+			FOR(output)
+			{
+				IF(parser_pipes[parser_round % ##parser_pipes]->full())
+					parser_pipes[parser_round % ##parser_pipes]->get_some(HERE);
+				pass_along_dedupler_to_preparser(IT, *parser_pipes[parser_round++ % ##parser_pipes]);
+			}
+		}
+		iddedup_pipe.quit();
+
+		FOR(parser_pipes)
+		{
+			WHILE(IT->get_some(HERE)) { ; }
+			IT->quit();
+		}
+
+		iddedup_pipe.wait_quit(HERE);
+		FOR(parser_pipes) IT->wait_quit(HERE);
 	}
 
 	parse_string(str: tok::Token #&, alloc: std::temp::Alloc &) CHAR#[#]
@@ -334,7 +425,7 @@ INCLUDE "codeparser.rl"
 			term::error(HERE, "unhandled string type: ", std::str::enum(t));
 		}
 
-		buffer ::= <CHAR *>(alloc.alloc_raw_unaligned(##contents))[];
+		buffer ::= <CHAR *>(std::heap::alloc.alloc_raw_region(##contents, 16))[];
 
 		o ::= 0;
 		FOR(i ::= 0; i < ##contents; i++)

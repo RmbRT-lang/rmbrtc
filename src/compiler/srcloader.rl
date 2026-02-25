@@ -25,6 +25,8 @@ INCLUDE "pipeline.rl"
 	STATIC file_buffer: CHAR[512] (NOINIT);
 	STATIC resolve_buffer: CHAR[512] (NOINIT);
 
+	STATIC name() CHAR#[#] -- := "source code loader";
+
 	handle_job(inc: include::Include #&, out: TAGGED Result *) VOID
 	{
 		SWITCH!(inc.Type)
