@@ -48,7 +48,7 @@
 
 		("!=", :BinaryOp(:exclamationMarkEqual)),
 		("!:", :PrefixOp(:exclamationMarkColon)),
-		("!", :PrefixOp(:exclamationMark)),
+		("!", :PrefixOrPostfixOp(:exclamationMark)),
 
 		("^=", :AssignmentOp(:circumflexEqual)),
 		("^", :BinaryOp(:circumflex)),
@@ -71,7 +71,7 @@
 		("?", :PostfixOp(:questionMark)),
 
 		("::=", :Punctuation(:doubleColonEqual)),
-		(":=", :AssignmentOp(:colonEqual)),
+		(":=", :Punctuation(:colonEqual)),
 		("::", :Punctuation(:doubleColon)),
 		(":", :Punctuation(:colon)),
 

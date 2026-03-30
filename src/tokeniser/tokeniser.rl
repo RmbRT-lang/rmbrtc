@@ -10,10 +10,15 @@ INCLUDE "specials.rl"
 		SType: tok::Type;
 	}
 
+	Position {
+		Pos: src::Position;
+		Length: src::Size;
+	}
+
 	FileTokens {
 		Hots: TokenHot-std::Vec;
 		Payloads: tok::Payload-std::Vec;
-		Positions: src::Index -std::Vec;
+		Positions: Position -std::Vec;
 
 		reserve(count: U4) VOID
 		{
@@ -31,14 +36,56 @@ INCLUDE "specials.rl"
 
 		THIS += (token: tok::Token #&) VOID --
 		{
-			std::vec::pushback(
+			IF(capacity() == ##THIS) reserve(capacity() * 2);
+			std::vec::pushback_ok(
 				(Hots,      (token.Type, token.SType)),
 				(Payloads,  token.Payload),
-				(Positions, token.Position.byte()));
+				(Positions, (token.Position, token.Length)));
+		}
+
+		# ## THIS U4 -- := ##Hots;
+
+		# capacity() U4 -- := Hots.Capacity;
+
+		# view() FileTokenView {
+			ret: FileTokenView (NOINIT);
+
+			ret.TokenCount := ##THIS;
+			ret.Hots := Hots![];
+			ret.Payloads := Payloads![];
+			ret.Positions := Positions![];
+
+			= ret;
 		}
 	}
 
+	FileTokenView {
+		TokenCount: U4;
+		Hots: TokenHot[];
+		Payloads: tok::Payload[];
+		Positions: Position[];
 
+		THIS += (token: tok::Token #&) VOID --
+		{
+			Hots     [TokenCount].Type   := token.Type;
+			Hots     [TokenCount].SType  .{ token.SType };
+			Payloads [TokenCount]        .{ token.Payload };
+			Positions[TokenCount].Pos    := token.Position;
+			Positions[TokenCount].Length := token.Length;
+			TokenCount++;
+		}
+
+		# ## THIS U4 -- := TokenCount;
+	}
+
+
+	// Currently, we have around 32 cycles per byte in the tokeniser. In single-thread mode, we are around 10%-20% faster, so memory migration between pipeline stages is a bit of a slowdown.
+	// We probably cannot avoid the branch miss per token, but since lots of tokens have more than one character, this should only account for maybe ~4 cycles per character, if the average token length is >=4 (including whitespaces and identifier length). What we could also do is to try to make one pre-pass that tries to detect all token boundaries first (start&end of identifiers, start&end of numbers, whitespace spans, etc.), and then group all token spans by their starting character or classification. Afterwards, we can properly parse all tokens separately (for example properly parse :specials, etc.). If we have a branchless way to identify a token span, with maybe exceptions for strings and comments, we should be able to remove the switch structure altogether. A post-pass can then parse all numbers, identifiers, keywords, etc. We should be able to achieve that in just a few cycles per byte, and maybe even organise tokens by their length, so that all identifiers of the same length can be parsed together, and all keywords of the same length, and also all numbers of the same length. We could also try parsing multiple parts of the same file at once, although that would cause problems with strings. But we should at least be able to get twice as fast, maybe more. It might require some advanced techniques in a preprocessing step.
+	// Basic idea: look at first character, get a classification for it, and also a mask of characters that are allowed to follow. Then consume characters until a non-follow character is met. Unfortunately, we have to treat / and ( and ', ", `, ´ as special cases. Especially for (, that is a bit unfortunate, since it is so frequently used, but maybe a special workaround for that can be found that makes it less impactful. Additionally, we need to be careful about how to deal with sequences of specials, since they can expand to multiple tokens. Maybe we can resolve those first, and it might give us a chance to not have to do too much shuffling of other tokens. And spaces result in no tokens at all, so that is another pain. But at least we would be able to split the file into sequences of spaces, identifiers, numbers, specials, etc. with relatively few cycles per byte.
+	// However, since the phase 1 is currently operating at around 4M lines of code per second, and we probably won't hit 1M lines per second overall compilation speed even without factoring in the phase 1, this could at most give us only small amounts of overall compiler performance improvement. Currently, at most, it could make the phase 1 faster by 2x, before other parts of the phase 1 pipeline would also become a bottleneck. So we could go from ~25% to ~12.5% of our 1M budget, at most. And then we would start to be limited by the source loader. Still, it's something worth trying out.
+	// Another thing we could try out is to put all phase-1 tasks into one sequential operation and then duplicate that on multiple cores. However, global ID deduplication is inherently single-threaded, so probably the only thing we could do is combine all prior steps, and all later steps, so (loader, tokeniser, iddedup1) -> iddedup2 -> preparser or something. This way, there would not need to be as many memory migrations between cores, which could scale better. But then we still need around 5 cores at least in order to fully exhaust the SSD's speed. Or we might need something like an uring...
+	// Another thing that would help with memory contention would be to have the main thread also execute work instead of busy looping.
+	// The simpler workaround for now is to just have two tokeniser threads running, although that makes all other tasks slower, too.
 	Tokeniser
 	{
 		{
@@ -64,10 +111,10 @@ INCLUDE "specials.rl"
 			uppercase,
 			special,
 			space,
+			newline,
 			parentheseOpen, // for (/ comments
 			forwardSlash, // for // comments.
-			other,
-			string_forward_tick // other + 1
+			other
 		}
 		STATIC token_lut: @(CACHELINE) Tokeniser::Case[256] (NOINIT);
 
@@ -99,53 +146,62 @@ INCLUDE "specials.rl"
 			token_lut['('] := :parentheseOpen;
 			token_lut['/'] := :forwardSlash;
 			token_lut[' '] := :space;
-			token_lut['\t'] := :space;
-			token_lut['\n'] := :space;
-			token_lut['\r'] := :space;
+			token_lut['\t'] := :newline;
+			token_lut['\n'] := :newline;
+			token_lut['\r'] := :newline;
 			token_lut['0'] := :zero;
 			token_lut[0] := :eof;
 		}
 
-		parse_next(out: Token \) BOOL
+		parse_next(out: FileTokenView \) BOOL
 		{
 			FOR(;;)
 			{
 				Start := Read;
-				out->Position.Pos := (<U4>(File) << 21) | Start;
 				next ::= look4();
 				Read++;
-
-				SWITCH!(case ::= token_lut[<U1>(next)])
+				case ::= token_lut![<U1>(next)];
+				SWITCH!(case)
 				{
-				:space: { space(next); CONTINUE; }
+				:newline: { space_multi(); CONTINUE; }
+				:space: { space_multi(); CONTINUE; }
 				:zero: on_zero(out);
 				:nonzero: number_literal(out, next);
 				:string_apostrophe, :string_quote, :string_backtick:
 				{
-					out->Type := :String;
-					out->SType.String := >
-						<U1>(<U1>(case) + <S1>(
-							<U1>(tok::StringType::StringQuote) -
-							<U1>(Case::string_quote)));
-					string(out, next);
+					string(next);
+					out->Hots[##*out] := <TokenHot>(:String, :String(>
+							<U1>(<U1>(case) + <S1>(
+								<U1>(tok::StringType::StringQuote) -
+								<U1>(Case::string_quote)))
+						));
+					out->Payloads[##*out].{ :String(Start, Read - Start) };
 				}
-				:special: special(out, next);
-				:uppercase: keyword(out, next);
-				:identifier: identifier(out);
-				:parentheseOpen: IF!(on_parenthese_open(out)) CONTINUE;
-				:forwardSlash: IF!(on_slash(out)) CONTINUE;
-				:string_forward_tick: forward_tick_string(out);
+				:special: { special(out, next); }
+				:uppercase: { keyword(out, next); }
+				:identifier: { identifier(out); }
+				:parentheseOpen:
+					{ IF!(on_parenthese_open(out)) CONTINUE; }
+				:forwardSlash: { IF!(on_slash(out)) CONTINUE; }
 				:other:
 				{
 					IF(eat2("´"))
+					{
 						forward_tick_string(out);
+						out->Payloads[##*out].{ :String(Start, Read - Start) };
+					}
 					ELSE
+					{
+						Read := Start;
 						error();
+					}
 				}
 				:eof: { = FALSE; }
 				}
 
-				out->Length := Read - Start;
+				out->Positions[##*out].Pos := (File, Start);
+				out->Positions[##*out].Length := Read - Start;
+				out->TokenCount += 1;
 
 				= TRUE;
 			}
@@ -156,12 +212,13 @@ INCLUDE "specials.rl"
 		Read: src::Index; // The current reading position in the file.
 		File: src::File; // The source file.
 		Start: src::Index; // Start of the current token.
+		Lines: U4;
 
 		STATIC is_idfc(c: CHAR) BOOL :=
 			(c >='a' && c <= 'z')
 			|| (c >= 'A' && c <= 'Z')
 			|| (c == '_');
-		STATIC is_digit(c: CHAR) BOOL :=
+		STATIC is_digit(c: CHAR) BOOL -- :=
 			(c >= '0' && c <= '9');
 		STATIC is_alnum(c: CHAR) BOOL :=
 			is_digit(c)
@@ -172,7 +229,7 @@ INCLUDE "specials.rl"
 		PUBLIC # at() WHERE --
 			:= <WHERE>(src::fileNames[File], line(), column());
 
-		#line() U4 {
+		# line() U4 {
 			line: U4 := 1;
 			FOR(Contents[FOR Read])
 				line += (IT == '\n');
@@ -182,7 +239,7 @@ INCLUDE "specials.rl"
 			last_newline: U4 := 0;
 			FOR(Contents[FOR Read])
 				last_newline := (IT == '\n') ?? IOTA : last_newline;
-			= Read - last_newline + 1;
+			= Read - last_newline;
 		}
 
 		PUBLIC # look() CHAR := look(0);
@@ -190,6 +247,7 @@ INCLUDE "specials.rl"
 
 		# look2() U2 -- := *<U2 #*>(<UM>(<CHAR #*>(Contents[])) + Read);
 		# look4() U4 -- := *<U4 #*>(<UM>(<CHAR #*>(Contents[])) + Read);
+		# look8() U8 -- := *<U8 #*>(<UM>(<CHAR #*>(Contents[])) + Read);
 		# char2(v: CHAR[2] #&) U2 -- := *<U2 #*>(<UM>(&v));
 
 		getc() CHAR -- := Contents[Read++];
@@ -204,7 +262,24 @@ INCLUDE "specials.rl"
 			Read += amount;
 		}
 
-		space(last: CHAR) VOID --
+		space() VOID --
+		{
+			space_mask: U8# :=
+				<U8>(1) << <U1>(' ')  |
+				<U8>(1) << <U1>('\t') |
+				<U8>(1) << <U1>('\r') |
+				<U8>(1) << <U1>('\n');
+
+			read ::= Read;
+			chars # ::= Contents[];
+			is_space: BOOL (NOINIT);
+			c ::= chars[read];
+			WHILE((space_mask >> c) & (c < 64))
+				c := chars[++read];
+			Read := read;
+		}
+
+		space_multi() VOID --
 		{
 			space_mask: U8# :=
 				<U8>(1) << <U1>(' ')  |
@@ -214,9 +289,8 @@ INCLUDE "specials.rl"
 
 			read ::= Read;
 			chars ::= Contents[][FROM read];
-			last := chars[0];
 			is_space: BOOL (NOINIT);
-			DO(c ::= last)
+			DO(c ::= chars[0])
 			{
 				next ::= chars[1];
 				is_space := (space_mask >> c) & (c < 64);
@@ -268,20 +342,19 @@ INCLUDE "specials.rl"
 			}
 		}
 
-		on_slash(out: Token \) BOOL --
+		on_slash(out: FileTokenView \) BOOL --
 		{
 			IF(look() == '/')
 			{
 				i ::= 1;
-				WHILE(look(i) != '\n') { i++; }
+				WHILE(look(i++) != '\n') { ; }
 				Read += i;
-				getc();
 				= FALSE;
 			} ELSE
 				special(out, '/');
 			= TRUE;
 		}
-		on_parenthese_open(out: Token \) BOOL --
+		on_parenthese_open(out: FileTokenView \) BOOL --
 		{
 			IF(look() == '/')
 			{
@@ -304,13 +377,12 @@ INCLUDE "specials.rl"
 			= TRUE;
 		}
 
-		special(out: Token \, next4: U4) VOID --
+		special(out: FileTokenView \, next4: U4) VOID --
 		{
 			FOR(specials_lut[<U1>(next4)])
 				IF(next4 & IT.(1) == IT.(0))
 				{
-					out->Type := IT.(2);
-					out->SType.EOF := IT.(3);
+					out->Hots[##*out] := <TokenHot>(IT.(2), :EOF(IT.(3)));
 					Read += (POPCNT(IT.(1)) >> 3) -1;
 					RETURN;
 				}
@@ -319,7 +391,7 @@ INCLUDE "specials.rl"
 			error();
 		}
 
-		keyword(out: Token \, first: CHAR) VOID --
+		keyword(out: FileTokenView \, first: CHAR) VOID --
 		{
 			uppercase ::= TRUE;
 			FOR(c ::= look(); is_alnum(c); c := look())
@@ -332,17 +404,33 @@ INCLUDE "specials.rl"
 			IF(uppercase)
 			{
 				kw ::= tok::lookup_keyword(tok_str());
-				out->Type := kw.(0);
-				out->SType.EOF := kw.(1);
+				out->Hots[##*out] := <TokenHot>(kw.(0), :EOF(kw.(1)));
 			}
 			ELSE
-				out->Type := :Identifier;
+				out->Hots[##*out] := <TokenHot>(:Identifier, :EOF(0));
 		}
 
-		identifier(out: Token \) VOID --
+		identifier(out: FileTokenView \) VOID --
 		{
-			WHILE(is_alnum(look())) advance_nows();
-			out->Type := :Identifier;
+			allowed_mask: U4# := Case::FLAGS(:zero, :nonzero, :identifier, :uppercase);
+
+			cl8: U4 (NOINIT);
+			DO()
+			{
+				c8 ::= look8();
+				cl0 ::=   1 &   ((1*allowed_mask) >> <U1>(token_lut![<U1>(c8)]));
+				cl1 ::=   2 &   ((2*allowed_mask) >> <U1>(token_lut![<U1>(c8>>8)]));
+				cl2 ::=   4 &   ((4*allowed_mask) >> <U1>(token_lut![<U1>(c8>>16)]));
+				cl3 ::=   8 &   ((8*allowed_mask) >> <U1>(token_lut![<U1>(c8>>24)]));
+				cl4 ::=  16 &  ((16*allowed_mask) >> <U1>(token_lut![<U1>(c8>>32)]));
+				cl5 ::=  32 &  ((32*allowed_mask) >> <U1>(token_lut![<U1>(c8>>40)]));
+				cl6 ::=  64 &  ((64*allowed_mask) >> <U1>(token_lut![<U1>(c8>>48)]));
+				cl7 ::= 128 & ((128*allowed_mask) >> <U1>(token_lut![<U1>(c8>>56)]));
+
+				cl8 := ((cl0 | cl1) | (cl2 | cl3)) | ((cl4 | cl5) | (cl6 | cl7));
+			} FOR(cl8 == 255; Read += 8)
+			Read += FIRST0POS cl8;
+			out->Hots[##*out] := <TokenHot>(:Identifier, :EOF(0));
 		}
 
 		STATIC hex_digit: @(CACHELINE) U1[256] (NOINIT);
@@ -357,9 +445,8 @@ INCLUDE "specials.rl"
 				hex_digit[IT] := IOTA + 10;
 		}
 
-		on_zero(out: Token \) VOID --
+		on_zero(out: FileTokenView \) VOID --
 		{
-			out->Type := :Number;
 			c ::= look();
 			classify ::= token_lut[c];
 			SWITCH(c)
@@ -386,6 +473,8 @@ INCLUDE "specials.rl"
 					}
 				}
 				Read += i;
+				out->Payloads[##*out].{ :Number(payload) };
+				out->Hots[##*out] := <TokenHot>(:Number, :Number(:Normal));
 			}
 			'r', 'R':
 			{
@@ -421,9 +510,8 @@ INCLUDE "specials.rl"
 					BARE, // ?
 					:RawLiteral_8
 				);
-				out->Type := :Number;
-				out->SType.Number := (types[i-1], i);
-				out->Payload.Number := number;
+				out->Hots[##*out] := <TokenHot>(:Number, :Number(types[i-1]));
+				out->Payloads[##*out].{ :Number(number) };
 
 				IF(POPCNT i != 1)
 					tok::err::msg(at(), "raw hex literal must have 1/2/4/8 bytes size");
@@ -450,6 +538,8 @@ INCLUDE "specials.rl"
 					}
 				}
 				advance_nows();
+				out->Payloads[##*out].{ :Number(payload) };
+				out->Hots[##*out] := <TokenHot>(:Number, :Number(:Normal));
 			}
 			'1', '2', '3', '4', '5', '6', '7', '8', '9':
 			{
@@ -460,6 +550,8 @@ INCLUDE "specials.rl"
 					num := (num << 3) | (c - '0');
 					advance_nows();
 				}
+				out->Hots[##*out] := <TokenHot>(:Number, :Number(:Normal));
+				out->Payloads[##*out].{ :Number(num) };
 			}
 			DEFAULT:
 			{
@@ -470,29 +562,70 @@ INCLUDE "specials.rl"
 
 				IF(<U4>(1) << <U1>(classify) & forbidden_follow)
 					term::error(at(), "invalid follow-up character after 0: '", (&c)[FOR 1], "'");
+
+				out->Hots[##*out] := <TokenHot>(:Number, :Number(:Normal));
+				out->Payloads[##*out].{ :Number(0) };
 			}
 			}
 		}
 
-		number_literal(out: Token \, last: CHAR) VOID --
+		number_literal(out: FileTokenView \, last: CHAR) VOID --
 		{
 			number: U8 := last - '0';
-			last := look();
-			WHILE(is_digit(last))
+			next_number ::= number * 10;
+
+			read ::= Read;
+			chars # ::= Contents[][FROM read];
+
+			i ::= 0;
+			last := (-'0') + chars[0];
+			WHILE(<U1>(last) < 10)
 			{
-				number := 10 * number + last - '0';
-				last := look(1);
-				advance_nows();
+				number := next_number + last;
+				next_number := number * 10;
+				last := (-'0') + chars[++i];
 			}
-			out->Type := :Number;
-			out->SType.Number := (:DecNumber, Read - Start);
-			out->Payload.Number := number;
+
+			forbidden_follow: U4# :=
+				<U4>(1) << <U1>(Case::identifier) |
+				<U4>(1) << <U1>(Case::uppercase);
+
+			STATIC digits: U8#[?](
+				<U8>(1),
+				<U8>(10),
+				<U8>(100),
+				<U8>(1000),
+				<U8>(10000),
+				<U8>(100000),
+				<U8>(1000000),
+				<U8>(10000000),
+				<U8>(100000000),
+				<U8>(1000000000),
+				<U8>(10000000000),
+				<U8>(100000000000),
+				<U8>(1000000000000),
+				<U8>(10000000000000),
+				<U8>(100000000000000),
+				<U8>(1000000000000000),
+				<U8>(10000000000000000),
+				<U8>(100000000000000000),
+				<U8>(1000000000000000000),
+				<U8>(10000000000000000000)
+			);
+
+			IF(i >= ##digits || number < digits![i])
+				term::error(at(), "overflowed integer constant");
+			IF(<U4>(1) << <U1>(token_lut![<U1>(last+'0')]) & forbidden_follow)
+				term::error(at(), "invalid follow-up character after number");
+
+			Read += i;
+			out->Hots[##*out] := <TokenHot>(:Number, :Number(:Normal));
+			out->Payloads[##*out].{ :Number(number) };
 		}
 
-		forward_tick_string(out: Token \) VOID --
+		forward_tick_string(out: FileTokenView \) VOID --
 		{
-			out->Type := :String;
-			out->SType.String := :StringTick;
+			out->Hots[##*out] := <TokenHot>(:String, :String(:StringTick));
 			WHILE(!eat2("´"))
 			{
 				IF:!(c ::= getc())
@@ -503,7 +636,7 @@ INCLUDE "specials.rl"
 			}
 		}
 
-		string(out: Token \, delim: CHAR) VOID --
+		string(delim: CHAR) VOID --
 		{
 			FOR(c ::= getc(); c != delim; c := getc())
 			{

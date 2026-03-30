@@ -24,6 +24,10 @@
 		Start: U2;
 		Entries: U2;
 
+		{this: This #&, data: T *, count: U2} --:
+			Start := <UM>(data) - (<UM>(&this) + SIZEOF(This)),
+			Entries := count;
+
 		#? THIS(this: This #?&) T#?[#] --
 			:= <T #? *>(<UM>(&this) + SIZEOF(This) + Start)[FOR Entries];
 		## THIS U4 -- := Entries;
@@ -32,6 +36,10 @@
 	[THIS; T]AssocDynArray
 	{
 		Start: U2;
+
+		{this: This #&, data: T *} --:
+			Start := <UM>(data) - (<UM>(&this) + SIZEOF(This));
+
 		#? THIS(this: This #?&) T#?[] --
 			:= <T #? *>(<UM>(&this) + SIZEOF(This) + Start)[];
 	}

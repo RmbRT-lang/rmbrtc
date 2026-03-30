@@ -1,4 +1,5 @@
 INCLUDE "../src/file.rl"
+INCLUDE "../identifierPool.rl"
 
 ::rlc::tok
 {
@@ -18,7 +19,9 @@ INCLUDE "../src/file.rl"
 		true,
 		type,
 		visit,
-		void
+		void,
+		and,
+		or
 	}
 
 	ENUM Punctuation
@@ -26,6 +29,7 @@ INCLUDE "../src/file.rl"
 		doubleQuestionMark,
 		doubleColonEqual,
 		doubleColon,
+		colonEqual,
 		colon,
 		at,
 		tripleDot,
@@ -44,6 +48,7 @@ INCLUDE "../src/file.rl"
 		hash
 	}
 
+	// parser::Class::DeclMode depends on the relative ordering of this.
 	ENUM DeclarationKeyword
 	{
 		abstract,
@@ -105,7 +110,6 @@ INCLUDE "../src/file.rl"
 		minusColon,
 		backslash,
 		exclamationMarkColon,
-		exclamationMark,
 		tildeColon,
 		tilde,
 		tripleAmp
@@ -114,6 +118,7 @@ INCLUDE "../src/file.rl"
 		questionMark
 	}
 	ENUM PrefixOrPostfixOperator {
+		exclamationMark,
 		doublePlus,
 		doubleMinus
 	}
@@ -128,8 +133,6 @@ INCLUDE "../src/file.rl"
 	ENUM BinaryOperator {
 		forwardSlash,
 		percent,
-		and,
-		or,
 		doublePipe,
 		pipe,
 		circumflex,
@@ -140,8 +143,6 @@ INCLUDE "../src/file.rl"
 		doubleGreater,
 		minusGreaterAsterisk,
 		minusGreater,
-		minus,
-		plus,
 		doubleEqual,
 		greaterEqual,
 		greater,
@@ -164,7 +165,27 @@ INCLUDE "../src/file.rl"
 		prefetch_data,
 		prefetch_code,
 		code_changed,
-		copy_rtti
+		copy_rtti,
+
+		// some special operations
+		// saturating addition
+		sat_add_u1,
+		sat_add_u2,
+		sat_add_u4,
+		sat_add_u8,
+		sat_add_s1,
+		sat_add_s2,
+		sat_add_s4,
+		sat_add_s8,
+
+		sat_sub_u1,
+		sat_sub_u2,
+		sat_sub_u4,
+		sat_sub_u8,
+		sat_sub_s1,
+		sat_sub_s2,
+		sat_sub_s4,
+		sat_sub_s8
 	}
 	ENUM AssignmentOperator {
 		plusEqual,
@@ -177,7 +198,6 @@ INCLUDE "../src/file.rl"
 		ampEqual,
 		doublePipeEqual,
 		pipeEqual,
-		colonEqual,
 		tripleLessEqual,
 		doubleLessEqual,
 		tripleGreaterEqual,
@@ -197,28 +217,18 @@ INCLUDE "../src/file.rl"
 	}
 
 	ENUM NumberType {
-		HexNumber,
-		DecNumber,
-		BinNumber,
-		OctNumber,
+		Normal,
 		RawLiteral_1,
 		RawLiteral_2,
 		RawLiteral_4,
 		RawLiteral_8
 	}
 
-	Number {
-		Type: NumberType;
-		Length: U1;
-
-		{...};
-	}
-
 	// Keep this at or below 16 variants, so that we can store two token types in one byte, for doubled cache efficiency.
 	UNION Type {
 	*	EOF: U2; // Simplifies parser. Also pads the structure size.
-	?	Identifier: U2; // File-local ID
-	?	Number: tok::Number;
+	?	Identifier: rlc::Identifier;
+	?	Number: NumberType;
 	?	String: StringType;
 	?	AuxKeyword: tok::AuxKeyword;
 	?	FlowControl: FlowControlKeyword;
@@ -260,7 +270,8 @@ INCLUDE "../src/file.rl"
 			TYPE SWITCH STATIC(enum)
 			{
 			U2: Name := "Not an enum";
-			tok::Number: "Number";
+			Identifier: Name := "Not an enum";
+			tok::NumberType: "Number";
 			DEFAULT: Name := <CHAR#*>(enum)[];
 			}
 		}
@@ -276,8 +287,7 @@ INCLUDE "../src/file.rl"
 	}
 
 	IdPayload {
-		Global: U2; // Global version of the identifier, not set by tokeniser.
-		// Maybe also export identifier? This will be a bit annoying to do before parsing. Has to be done during parsing, probably. Although we can also make it so that any identifier that is after a "." or "->" or ":" becomes one. Although that is also not quite correct. For :symbols, we'd have to do a separate pass, but for "." and "->", it should be correct. Although it doesn't factor in "::", either. Which for enums would be bad. We have to know whether the identifier we are looking up is a global one or local one. So we have to know whether left of :: is a namespace or not.
+		FileLocal: rlc::FileLocalIdentifier;
 	}
 
 	UNION Payload {

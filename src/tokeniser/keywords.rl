@@ -3,137 +3,80 @@
 	UNION KeywordStorage { Words: U8[2]; Chars: CHAR[16]; }
 
 	Keyword { Text: KeywordStorage; Kw: tok::Type; {...}; }
-	UNION KeywordU
-	{
-		Decl: tok::DeclarationKeyword;
-		BuiltinType: tok::BuiltinType;
-		FlowControl: tok::FlowControlKeyword;
-		Aux: tok::AuxKeyword;
-		BinaryOperator: tok::BinaryOperator;
-		IntrinsicOp: tok::IntrinsicOperatorKeyword;
-	}
 
-	keyword_u_to_token_type: ENUM tok::Type[TABLE ENUM KeywordU](
-		:Decl (:Declaration),
-		:BuiltinType (:BuiltinType),
-		:FlowControl (:FlowControl),
-		:Aux (:AuxKeyword),
-		:BinaryOperator (:BinaryOp),
-		:IntrinsicOp (:IntrinsicOp)
-	);
-
-	keywords: TAGGED tok::KeywordU#[?](
-		:Decl(:abstract),
-		:BinaryOperator(:and),
-		:Aux(:assert),
-		:Aux(:bare),
-		:BuiltinType(:bool),
-		:FlowControl(:break),
-		:FlowControl(:catch),
-		:BuiltinType(:char),
-		:FlowControl(:continue),
-		:IntrinsicOp(:copy_rtti),
-		:FlowControl(:default),
-		:Decl(:destructor),
-		:FlowControl(:die),
-		:FlowControl(:do),
-		:FlowControl(:else),
-		:Decl(:enum),
-		:Decl(:export),
-		:Decl(:extern),
-		:Aux(:false),
-		:Decl(:final),
-		:FlowControl(:finally),
-		:FlowControl(:for),
-		:FlowControl(:if),
-		:Aux(:include),
-		:Aux(:inline),
-		:BuiltinType(:int),
-		:Decl(:mask),
-		:Aux(:noinit),
-		:Aux(:null),
-		:Aux(:number),
-		:BinaryOperator(:or),
-		:Decl(:override),
-		:Decl(:private),
-		:Decl(:protected),
-		:Decl(:public),
-		:FlowControl(:return),
-		:BuiltinType(:s1),
-		:BuiltinType(:s2),
-		:BuiltinType(:s4),
-		:BuiltinType(:s8),
-		:Aux(:sizeof),
-		:BuiltinType(:sm),
-		:Decl(:static),
-		:FlowControl(:switch),
-		:Decl(:test),
-		:Aux(:this),
-		:FlowControl(:throw),
-		:Aux(:true),
-		:FlowControl(:try),
-		:Aux(:type),
-		:BuiltinType(:u1),
-		:BuiltinType(:u2),
-		:BuiltinType(:u4),
-		:BuiltinType(:u8),
-		:BuiltinType(:uchar),
-		:BuiltinType(:uint),
-		:BuiltinType(:um),
-		:Decl(:union),
-		:Decl(:virtual),
-		:Aux(:visit),
-		:Aux(:void),
-		:FlowControl(:while)
-	);
-
-	keyword_storage: {KeywordStorage, ENUM tok::Type, U2}[##keywords] (NOINIT);
+	keyword_storage: {KeywordStorage, ENUM tok::Type, U2}[
+		###tok::DeclarationKeyword +
+		###tok::BuiltinType +
+		###tok::FlowControlKeyword +
+		###tok::AuxKeyword +
+		###tok::IntrinsicOperatorKeyword] (NOINIT);
 	keyword_lut: {KeywordStorage, ENUM tok::Type, U2}[#][26] (NOINIT);
 
 	to_upper(x: CHAR) CHAR -- := (x >= 'a' && x <= 'z') ?? x - ('a' - 'A') : x;
 
-	// keywords are the uppercase text version of their symbolic names.
-	init_keyword_lut() VOID {
-		keyword_lut := NULL;
+	[Enum] start_letters(count: U2[26] &) VOID --
+	{
+		FOR(###Enum)
+			count[to_upper(*<CHAR #*>(<Enum>(IOTA))) - 'A'] += 1;
+	}
 
-		letter ::= 'A';
-		start_idx ::= 0;
-		FOR(keywords)
+	[Enum] fill_letters(count: U2[26] &, type: ENUM tok::Type) VOID --
+	{
+		FOR(###Enum)
 		{
-			name ::= <NameOfEnum>() VISIT>>(IT).Name;
-			first ::= to_upper(name[0]);
-			len ::= std::str::len(name);
+			name_str ::= <CHAR #*>(<Enum>(IOTA));
+			first ::= to_upper(name_str[0]) - 'A';
+			idx ::= count[first]++;
+
+			len ::= std::str::len(name_str[]);
 			ASSERT(len <= SIZEOF(KeywordStorage));
-			ASSERT(first >= letter);
 
-			IF(first != letter)
-			{
-				ASSERT(letter >= 'A');
-				ASSERT(letter <= 'Z');
-				ASSERT(first > letter);
-				ASSERT(first <= 'Z');
-				keyword_lut[letter - 'A'] := keyword_storage[FROM start_idx UNTIL IOTA];
-				start_idx := IOTA;
-				letter := first;
-			}
-
-			storage ::= &keyword_storage[IOTA];
+			storage ::= &keyword_storage[idx];
 			storage->(0) := :Words(0);
-			storage->(1) := keyword_u_to_token_type[IT.(0)];
-			storage->(2) := <U2>(IT.(1).IntrinsicOp);
+			storage->(1) := type;
+			storage->(2) := IOTA;
 
 			FOR(len)
 			{
-				c ::= to_upper(name[IOTA]);
+				c ::= to_upper(name_str[IOTA]);
 				storage->(0).Chars[IOTA] := c;
 			}
 		}
+	}
 
-		keyword_lut[letter - 'A'] := keyword_storage[FROM start_idx];
+	// keywords are the uppercase text version of their symbolic names.
+	init_keyword_lut() VOID {
+		keyword_lut := NULL;
+		letter_keywords_total: U2[26] := 0; // count of keywords with the same starting letter.
+
+		// Count keywords per starting letter.
+		[tok::DeclarationKeyword]start_letters(letter_keywords_total);
+		[tok::BuiltinType]start_letters(letter_keywords_total);
+		[tok::FlowControlKeyword]start_letters(letter_keywords_total);
+		[tok::AuxKeyword]start_letters(letter_keywords_total);
+		[tok::IntrinsicOperatorKeyword]start_letters(letter_keywords_total);
+
+		accum ::= 0;
+		FOR(letter_keywords_total)
+		{
+			// Convert to starting indices.
+			count ::= IT;
+			start ::= accum;
+			IT := start;
+			accum += count;
+
+			// Register keyword range.
+			keyword_lut[IOTA] := keyword_storage[FROM start FOR count];
+		}
+
+		[tok::DeclarationKeyword]fill_letters(letter_keywords_total, :Declaration);
+		[tok::BuiltinType]fill_letters(letter_keywords_total, :BuiltinType);
+		[tok::FlowControlKeyword]fill_letters(letter_keywords_total, :FlowControl);
+		[tok::AuxKeyword]fill_letters(letter_keywords_total, :AuxKeyword);
+		[tok::IntrinsicOperatorKeyword]fill_letters(letter_keywords_total, :IntrinsicOp);
 	}
 
 	lookup_keyword(text: CHAR#[#]) {ENUM tok::Type, U2} -- {
-		ASSERT(##text);
 		IF(##text > SIZEOF(KeywordStorage))
 			= (:Identifier, 0);
 

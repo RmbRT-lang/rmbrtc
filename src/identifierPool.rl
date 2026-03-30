@@ -1,10 +1,56 @@
 
 INCLUDE 'std/memory'
-INCLUDE "mempool.rl"
 INCLUDE 'std/vector'
+
+(// Identifiers:
+
+	rlc::Identifier - Globally deduplicated identifiers. These are used to look up things in the global scope and in namespaces. There can be up to 64Ki distinct identifiers in a program.
+	rlc::FileLocalIdentifier - per-file deduplication of identifiers, so that we have a small size for file-wide lookup tables. This is used to look up things from within function bodies and expressions.
+	rlc::FileDeclIdentifier - only the set of names of publicly reachable declarations in the file, such as members. This lets us have tiny lookup tables for members, keeping classes and enums, etc. compact. Each file contains a lookup table to map global identifiers into these.
+/)
+
+// 0 is invalid / none.
+::rlc Identifier { V: U2; }
+::rlc FileLocalIdentifier { V: U2; }
+::rlc FileDeclIdentifier { V: U2; }
+
+(/
+Looking up a namespace member:
+	namespace.LUT[Identifier]
+	- fast and simple, but namespaces have pessimistic sizes.
+		- We could also have GlobalDeclIdentifier to reduce namespace sizes, but for now, it should be sufficient to keep it as is.
+	- low register pressure and minimal instruction complexity for high parallelisability.
+
+Looking up a member in a member scope:
+	scope.LUT[ scope.File->DeclLut[Identifier] ]
+	- or: scope.LUT[ scope.FileDeclLut[Identifier] ], which would reduce pointer chasing.
+	- One indirection on the index, but cuts down on member scope sizes and keeps register pressure low.
+	- High throughput.
+
+Looking up a member in a local scope:
+	???
+
+	- We probably want to use a LUT[FileLocalIdentifier] here.
+	- We want to first assemble this LUT for the global scope, and look up all possible names.
+	- When entering a nested scope, we want to override entries in the LUT with all values in that scope.
+		- We might want to have a pre-baked namespace.CtxLUT[Identifier], which we can directly query. This way, we can work on all namespaces in a file in parallel, as we no longer need patching. We can create one LUT[FileLocalIdentifier] per namespace that has declarations in the file.
+			- We need to track the list of namespaces having definitions in a file.
+	- Inside local scopes, we need patching and unpatching or something, or we separately maintain a scope for local references. We can actually resolve local references first, and only afterwards look up references that are not local. That way, we have the static/baked per-namespace or per-class .CtxLUT[] scopes, and one temporary scope per function which is modified as we traverse through the AST, and then discarded.
+
+	- How do we parallelise/batch identifier lookups? We somehow need parallelism from the serial parse. Parsing multiple expressions in parallel seems tough, as it is branchy logic. Unless we can fully statemachine-drive the parsing and have multiple interleaved parses on one thread.
+		- During the parsing of an expression (a + b), when reading the (+), we cannot yet emit code anyway, since we do not yet know what is to follow. So we kind of end up with a reverse polish notation / stack of operands and operations. When encountering an identifier, we can queue it for batch lookup. When encountering an operator, we can queue it into the IR / type checker. After resolving all identifiers, we then only have to go through the type checker and pop values off the reverse polish notation argument stack. This could also be made branchless, maybe, or cached with a predictable path for cached types.
+			- We need to look up all queued identifiers whenever a variable gets declared, and then update the LocalLUT[FileLocalIdentifier]. But between declarations, all other references can be batched. So we can still get adequate batching in many situations. OR: we might look up the name in the current and parent localscope and then check its position to decide which value to look up. This ensures only one resolve pass per scope, but it requires nested scope LUTs. We could circumvent this by going through all identifiers in a scope and deduplicating them first or something, but this might defeat the purpose and simplicity of the whole endeavour. So I would rather stick to the initial plan, and that also seems less error-prone to implement.
+				- Although we need to do identifier resolves in multiple passes, we should end up with one linear stream of RPN instructions for an entire function. We can segment that stream into per-statement spans, so that we can try to interleave the work done on multiple statements.
+					- Before processing a statement's operations, we need to ensure all knowable variable types are already resolved. If we encounter an unresolvable variable (e.g., auto variable making an auto function call, templates), only then should special handling occur.
+					- Instructions or expressions that depend on a templated operand need to be processed separately.
+			- During processing/checking/code generation, we want to be able to already know whether something is a definite last use of a variable or not, and we already want to have resolved destructors (especially, whether they are nops or not). Ideally, we only need to patch placeholders for labels, and be able to directly allocate registers on the fly, to achieve reasonable O0 performance.
+
+	- Notice that local symbols can only be variables. All type references must necessarily refer to member types or global types or templates.
+/)
 
 ::rlc::ident
 {
+
 	// Big global hashmap with 4Ki buckets (12 bit selector), and 10-way associative cache without indirection.
 	buckets: @(PAGE) HashBucket[8<<10];
 	// Overflow from buckets gets accumulated into more centralised, unordered sets. Ideally, none of these ever get used, but we still keep a few of them to limit the worst-case cost of vector reallocation and linear searches. We use unordered because we assume they will usually be small. You would probably need a gigantic codebase to trigger the pathological case, but then you should rather tweak the buckets instead or improve the hash function.
@@ -13,7 +59,7 @@ INCLUDE 'std/vector'
 	alloc: std::temp::Alloc := :custom(65536, 65536);
 	strings: CHAR#[#]-std::Vec;
 
-	get(id: Identifier) CHAR#[#] -- := id < ##strings ?? strings[:ok(id)] : "<INVALID IDENT>"[#];
+	get(id: Identifier) CHAR#[#] -- := id.V < ##strings ?? strings[:ok(id.V)] : "<INVALID IDENT>"[#];
 }
 
 ::rlc::ident init() VOID

@@ -91,6 +91,11 @@ INCLUDE 'std/heap'
 		= (<T *>(x.(0)), x.(1));
 	}
 
+	[T]alloc_unhashed_array(count: U4) {T[#], MemID} -- {
+		x ::= alloc_unhashed(SIZEOF(T) * count);
+		= (<T *>(x.(0))[FOR count], x.(1));
+	}
+
 	// memory layout: {size: U2; payload: U1[?]}, id points at payload.
 	alloc_for_hashtable(size: U4) {VOID *, MemID}
 	{
@@ -143,6 +148,15 @@ INCLUDE 'std/heap'
 		}
 	}
 
+	[T]
+	insert_unhashed_array(obj: T![#]) {T[#], MemID} {
+		size ::= ##obj * SIZEOF(T);
+		alloc ::= mempool::alloc_unhashed(size);
+		dst ::= <T *>(alloc.(0))[FOR ##obj];
+		FOR(dst) IT.{ &&obj[IOTA] };
+		= (dst, alloc.(1));
+	}
+
 	insert_unhashed(obj: U1#[#]) MemID {
 		alloc ::= mempool::alloc_unhashed(##obj);
 		std::mem::cpy(alloc.(0), obj[], ##obj);
@@ -157,6 +171,9 @@ INCLUDE 'std/heap'
 }
 
 ::rlc TYPE MemID := U4;
-::rlc [T] Handle { mem: MemID; # *THIS T& -- := *<T *>(mempool::get_memory(mem)); # <BOOL> -- := mem != 0; # get() T * -- := <T *>(mempool::get_memory(mem)); }
-// 0 is invalid / none.
-::rlc TYPE Identifier := U2;
+::rlc [T] Handle {
+	mem: MemID;
+	# *THIS T& -- := *<T *>(mempool::get_memory(mem));
+	# <BOOL> -- := mem != 0;
+	# get() T * -- := <T *>(mempool::get_memory(mem));
+}

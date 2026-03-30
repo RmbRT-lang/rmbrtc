@@ -15,53 +15,39 @@ INCLUDE 'std/hash'
 		{...};
 	}
 	Output {
-		Tokens: @(CACHELINE) tok::FileTokens;
+		Tokens: @(CACHELINE) tok::FileTokenView;
 		File:                src::File;
-		Identifiers:         CHAR#[#] -std::Vec;
-		IdHashes:            U8       -std::Vec;
+		IdToks: {U4, U4}-std::Vec;
 
 		{...};
 	}
 
-	IdToks: {U4, U4}-std::Vec;
-	IdStrs: std::[{U8, std::str::CV}; U2]Map[16]; // len % 16
-	IdStrSet: CHAR#[#]-std::Vec;
+	HotsAlloc: std::temp::Alloc;
+	PayloadsAlloc: std::temp::Alloc;
+	PositionsAlloc: std::temp::Alloc;
 
+	{}:
+		HotsAlloc      := :custom(SIZEOF(tok::TokenHot) * MI, SIZEOF(tok::TokenHot) * MI),
+		PayloadsAlloc  := :custom(SIZEOF(tok::Payload)  * MI, SIZEOF(tok::Payload)  * MI),
+		PositionsAlloc := :custom(SIZEOF(tok::Position) * MI, SIZEOF(tok::Position) * MI);
 
-	[#kN] // Returns a bitmap of whether an entry was found.
-	STATIC multi_find_by_hash(
-		map: std::[{U8, std::str::CV}; U2]Pair[#],
-		hashes: U8[],
-		locs: U4[]
-	) U4 --
+	[T]
+	STATIC grow_array(alloc: std::temp::Alloc &, old_array: T![] &, old: U4, new_array_size: U4) VOID
 	{
-		count ::= ##map;
+		grow_by ::= (new_array_size - old);
+		IF(alloc.try_grow_last_allocation_by(grow_by * SIZEOF(T)))
+			RETURN;
 
-		rs_: U4[kN] := ##map; rs # ::= rs_[];
-		ls_: U4[kN]; ls # ::= ls_[];
+		new_arr ::= <T *>(alloc.alloc_raw(new_array_size * SIZEOF(T), ALIGNOF(T)))[];
+		FOR(old_array[FOR old])
+			new_arr[IOTA].{ IT };
+		old_array := new_arr;
+	}
 
-		found: U4 := 0;
-		WHILE(count)
-		{
-			count >>= 1;
-			|||{kN}
-			{
-				l ::= ls[IOTA];
-				r ::= rs[IOTA];
-				mid ::= (l + r)>>1;
-				n ::= mid+1;
-				midkey ::= map[][mid].Key.(0);
-				hash ::= hashes[IOTA];
-
-				r[IOTA] := (midkey > hash) ?? mid : r;
-				l[IOTA] := (midkey < hash) ?? n : l;
-				found   |= (midkey == hash) << IOTA;
-			}
-		}
-
-		|||{kN} locs[IOTA] := (ls[IOTA] + rs[IOTA]) >> 1;
-
-		= found;
+	[T]
+	STATIC alloc_array(alloc: std::temp::Alloc &, array: T![] &, size: U4) VOID --
+	{
+		array := <T *>(alloc.alloc_raw(size * SIZEOF(T), ALIGNOF(T)))[];
 	}
 
 	handle_job(
@@ -69,72 +55,38 @@ INCLUDE 'std/hash'
 		output: Output *
 	) VOID
 	{
-
-		output->Tokens.clear_reuse();
-		output->Tokens.reserve(4 * 1024);
 		output->File := input.File;
-		output->Identifiers.clear_reuse();
-		output->Identifiers.reserve(4096);
-		output->IdHashes.clear_reuse();
-		output->IdHashes.reserve(4096);
 
-		// We chunk identifiers based on length. This lets us cut down on relocation size. Or we do not even use ordered sets at all. Then we can just do linear searches.
-		FOR(IdStrs)
-		{
-			IT.clear_reuse();
-			IT.reserve(1024);
-		}
+		// This should ensure we do not have a relocation in a file.
+		capacity ::= 256 * KI;
+		alloc_array(HotsAlloc,      output->Tokens.Hots,      capacity);
+		alloc_array(PayloadsAlloc,  output->Tokens.Payloads,  capacity);
+		alloc_array(PositionsAlloc, output->Tokens.Positions, capacity);
 
-		IdToks.clear_reuse();
-		IdToks.reserve(16<<10);
-
-		IdStrSet.clear_reuse();
-		IdStrSet.reserve(16<<10);
+		output->Tokens.TokenCount := 0;
+		output->Tokens += input.First;
 
 		// Job 1: tokenise the file. -- this needs to be twice as fast to sustain the speed at which the SSD can read files. Having this disabled has 1.0ms+ for loading 50 files. Having it enabled has 2.0ms+ for loading 50 files (1 thread), and more like 3-4ms.
 
-		tokId: U4 := 0;
 		// Continue tokenising the files.
-		DO(token ::= input.First)
+		WHILE(input.Tokeniser.parse_next(&output->Tokens))
 		{
-			output->Tokens += token;
-			IF(token.Type == :Identifier)
-				IdToks += (tokId, token.Length);
-			++tokId;
-		} WHILE(input.Tokeniser.parse_next(&token))
+			IF(##output->Tokens == capacity)
+			{
+				old ::= capacity;
+				capacity *= 2;
+
+				grow_array(HotsAlloc,      output->Tokens.Hots,      old, capacity);
+				grow_array(PayloadsAlloc,  output->Tokens.Payloads,  old, capacity);
+				grow_array(PositionsAlloc, output->Tokens.Positions, old, capacity);
+			}
+		}
 		output->Tokens += <tok::Token>(:EOF);
 
-
-		// Job 2: dedup the identifiers. -- this completely kills performance. Having this enabled gives us ~5ms for 50 files (with 2 threads). Even adding multiple threads somehow doesn't improve performance, but actually decreases it. Must be horrible cache usage or something.
-		// If we push this straight into the global identifier deduplicator, we have less work to do, although we also lose the per-file ID, which is important for smaller LUTs. We definitely need a portable version of the identifierPool or something. Or, during insertion of identifiers into the global pool, we also maintain a 64Kbit LUT which we fill up with the deduplicated IDs, and if it is a new hit, we know we had a new distinct identifier in this file. So this stage can prepare the tables, since the deduplicator stage cannot be parallelised. The per-file LUT only needs to be as large as the number of identifiers we have in this file, or 64K at most.
-		f ::= input.File;
-		strcount: U4 := 0;
-
-		idents ::= &output->Identifiers;
-		idhashes ::= &output->IdHashes;
-		FOR(IdToks!)
-		{
-			IF(idents->Capacity <= strcount)
-			{
-				idents->reserve(strcount+1024);
-				idhashes->reserve(strcount+1024);
-			}
-
-			idtok_i ::= IT.(0);
-			tokLen ::= IT.(1);
-			str ::= <src::Span>(output->Tokens.Positions![][idtok_i], tokLen).contents(f);
-			(*idents)![][strcount] := str;
-			
-			hash ::= std::hash_str(str);
-			(*idhashes)![][strcount] := hash;
-
-			entry: {U8, CHAR#[#]} := (hash, str);
-			ident_id ::= IdStrs[##str & (##IdStrs-1)].ensure(entry, strcount);
-
-			strcount += ident_id == strcount;
-			output->Tokens.Hots[idtok_i].SType.Identifier := ident_id;
-		}
-		output->Identifiers.set_size_ok(strcount);
-		output->IdHashes.set_size_ok(strcount);
+		// Reset allocator to the actual allocation size.
+		overshoot ::= capacity - ##output->Tokens;
+		HotsAlloc.shrink_last_allocation_by(overshoot * SIZEOF(tok::TokenHot));
+		PayloadsAlloc.shrink_last_allocation_by(overshoot * SIZEOF(tok::Payload));
+		PositionsAlloc.shrink_last_allocation_by(overshoot * SIZEOF(tok::Position));
 	}
 }

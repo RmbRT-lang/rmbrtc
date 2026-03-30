@@ -21,6 +21,7 @@ INCLUDE 'std/io/format'
 
 		{} --;
 		{file: U2, byte: Index} --: Pos := (file << 21) | (byte & (1 << 21 -1));
+		:raw{pos: U4}: Pos := pos;
 
 		# at() WHERE {
 			last_nl: U4;
@@ -104,6 +105,7 @@ INCLUDE 'std/io/format'
 
 	has_file_h(h: U8, path: CHAR#[#]) src::File-std::Opt
 	{
+		// TODO: we want more performance here.
 		FOR(fileNameHashes!)
 			IF(IT == h && std::str::eq(fileNames[IOTA], path))
 				= :a(IOTA);

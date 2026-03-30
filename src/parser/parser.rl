@@ -7,10 +7,10 @@ INCLUDE "../tokeniser/tokeniser.rl"
 		Hot: tok::TokenHot[];
 		Token: U4;
 		Payloads: tok::Payload[];
-		Positions: src::Index[];
+		Positions: tok::Position[];
 		File: src::File;
 
-		{tokens: tok::FileTokens #&, file: src::File}:
+		{tokens: tok::FileTokenView #&, file: src::File}:
 			Hot := tokens.Hots![],
 			Payloads := tokens.Payloads![],
 			Positions := tokens.Positions![],
@@ -78,14 +78,29 @@ INCLUDE "../tokeniser/tokeniser.rl"
 			= ret;
 		}
 
-		pos_consume_s(type: TAGGED tok::Type) src::Index * --
+		pos_consume_s(type: TAGGED tok::Type) src::Position * --
 		{
 			match ::= match_s(0, type);
-			ret ::= &Positions[Token];
+			ret ::= &Positions[Token].Pos;
 			ret := match ?? ret : NULL;
 			Hot += match;
 			Token += match;
 			= ret;
+		}
+
+		consume_s(type: TAGGED tok::Type) BOOL --
+		{
+			match ::= match_s(0, type);
+			Hot += match;
+			Token += match;
+			= match;
+		}
+		consume_ss(t0: TAGGED tok::Type, t1: TAGGED tok::Type) BOOL --
+		{
+			match ::= match_ss(t0, t1);
+			Hot += match * 2;
+			Token += match * 2;
+			= match;
 		}
 
 		skip_braces() VOID --
@@ -99,7 +114,7 @@ INCLUDE "../tokeniser/tokeniser.rl"
 			skip_nesting_until_after_mask(~0);
 		}
 
-		skip_nesting_until_after_mask(delim_mask: U4) VOID
+		skip_nesting_until_after_mask(delim_mask: U4) tok::Punctuation
 		{
 			open_mask: U4 := 0;
 			open_mask |= <U4>(1) << <U1>(tok::Punctuation::parentheseOpen);
@@ -131,34 +146,162 @@ INCLUDE "../tokeniser/tokeniser.rl"
 				nest_diff ::= ((open_mask >> t) & isPunct) - ((close_mask >> t) & isPunct);
 				nesting += nest_diff;
 
-				IF(nesting)
+				IF(nesting > 0)
 					CONTINUE;
 
 				IF((nesting == 0) & ((delim_mask >> t) & isPunct))
-					RETURN;
+					RETURN >t;
 
 				IF(nesting < 0)
 				{
-					at ::= <src::Position>(File, Positions[start]).at();
-					fail_at(at, "Expected punctuation before nesting level ends");
-					RETURN;
+					fail_pos(start, "Expected punctuation before nesting level ends");
+					DIE;
 				}
 			}
 
-			fail_at(
-				<src::Position>(File, Positions[start]).at(),
+			fail_pos(start,
 				"Expected nesting to close before end of file");
+			DIE;
 		}
 
 		[Punctuations...]
-		skip_nesting_until_after(punct: Punctuations!...) VOID --
+		skip_nesting_until_after(punct: Punctuations!...) tok::Punctuation --
 		{
 			delim_mask: U4 := 0;
 			(delim_mask |= <U4>(1) << <U1>(<tok::Punctuation>(punct)))...;
 			
-			skip_nesting_until_after_mask(delim_mask);
+			= skip_nesting_until_after_mask(delim_mask);
 		}
 
+		skip_nesting_until_mask(delim_mask: U4) tok::Punctuation
+		{
+			open_mask: U4 := 0;
+			open_mask |= <U4>(1) << <U1>(tok::Punctuation::parentheseOpen);
+			open_mask |= <U4>(1) << <U1>(tok::Punctuation::braceOpen);
+			open_mask |= <U4>(1) << <U1>(tok::Punctuation::bracketOpen);
+
+			close_mask: U4 := 0;
+			close_mask |= <U4>(1) << <U1>(tok::Punctuation::parentheseClose);
+			close_mask |= <U4>(1) << <U1>(tok::Punctuation::braceClose);
+			close_mask |= <U4>(1) << <U1>(tok::Punctuation::bracketClose);
+
+			ASSERT(###tok::Punctuation < 32);
+
+			IF((close_mask >> <U1>(stype().Punctuation)) & (type() == :Punctuation))
+				fail("expected nesting to be opened here.");
+
+			start ::= progress();
+
+			PREFETCH_READ &Hot[1*(CACHELINE / SIZEOF(tok::TokenHot))];
+			PREFETCH_READ &Hot[2*(CACHELINE / SIZEOF(tok::TokenHot))];
+			PREFETCH_READ &Hot[3*(CACHELINE / SIZEOF(tok::TokenHot))];
+
+			nesting ::= 0;
+			WHILE(type() != :EOF)
+			{
+				isPunct ::= (type() == :Punctuation);
+				t: U1 := <U1>(stype().Punctuation);
+				nest_diff ::= ((open_mask >> t) & isPunct) - ((close_mask >> t) & isPunct);
+
+				IF(nesting > 0)
+				{
+					nesting += nest_diff;
+					next();
+					CONTINUE;
+				}
+
+				IF((nesting == 0) & ((delim_mask >> t) & isPunct))
+					RETURN >t;
+
+				nesting += nest_diff;
+				next();
+
+				IF(nesting < 0)
+					fail_pos(start, "Expected punctuation before nesting level ends");
+			}
+
+			fail_pos(
+				start,
+				"Expected nesting to close before end of file");
+			DIE;
+		}
+
+		[Punctuations...]
+		skip_nesting_until(punct: Punctuations!...) tok::Punctuation --
+		{
+			delim_mask: U4 := 0;
+			(delim_mask |= <U4>(1) << <U1>(<tok::Punctuation>(punct)))...;
+			
+			= skip_nesting_until_mask(delim_mask);
+		}
+
+		skip_until_nesting_ends_or_mask(delim_mask: U4) tok::Punctuation
+		{
+			open_mask: U4 := 0;
+			open_mask |= <U4>(1) << <U1>(tok::Punctuation::parentheseOpen);
+			open_mask |= <U4>(1) << <U1>(tok::Punctuation::braceOpen);
+			open_mask |= <U4>(1) << <U1>(tok::Punctuation::bracketOpen);
+
+			close_mask: U4 := 0;
+			close_mask |= <U4>(1) << <U1>(tok::Punctuation::parentheseClose);
+			close_mask |= <U4>(1) << <U1>(tok::Punctuation::braceClose);
+			close_mask |= <U4>(1) << <U1>(tok::Punctuation::bracketClose);
+
+			ASSERT(###tok::Punctuation < 32);
+
+			IF((close_mask >> <U1>(stype().Punctuation)) & (type() == :Punctuation))
+				RETURN stype().Punctuation;
+
+			start ::= progress();
+
+			PREFETCH_READ &Hot[1*(CACHELINE / SIZEOF(tok::TokenHot))];
+			PREFETCH_READ &Hot[2*(CACHELINE / SIZEOF(tok::TokenHot))];
+			PREFETCH_READ &Hot[3*(CACHELINE / SIZEOF(tok::TokenHot))];
+
+			nesting ::= 0;
+			WHILE(type() != :EOF)
+			{
+				isPunct ::= (type() == :Punctuation);
+				t: U1 := <U1>(stype().Punctuation);
+				nest_diff ::= ((open_mask >> t) & isPunct) - ((close_mask >> t) & isPunct);
+				nesting += nest_diff;
+
+				IF(nesting > 1)
+				{
+					next();
+					CONTINUE;
+				}
+
+				IF((nesting == 0) & ((delim_mask >> t) & isPunct))
+					RETURN >t;
+
+				IF(nesting < 0)
+					RETURN >t;
+
+				next();
+			}
+
+			fail_pos(start,
+				"Expected nesting to close before end of file");
+			DIE;
+		}
+
+		[Punctuations...]
+		skip_until_nesting_ends_or(punct: Punctuations!...) tok::Punctuation --
+		{
+			delim_mask: U4 := 0;
+			(delim_mask |= <U4>(1) << <U1>(<tok::Punctuation>(punct)))...;
+			
+			= skip_until_nesting_ends_or_mask(delim_mask);
+		}
+
+		[Punctuations...]
+		skip_until_nesting_ends(punct: Punctuations!...) tok::Punctuation --
+		{
+			= skip_until_nesting_ends_or_mask(0);
+		}
+
+		next_if(b: BOOL) VOID -- { Hot += b; Token += b; }
 		next() VOID --  { Hot++;    Token++;    } 
 		next2() VOID -- { Hot += 2; Token += 2; }
 
@@ -205,6 +348,16 @@ INCLUDE "../tokeniser/tokeniser.rl"
 		{
 			fail_at(at(0).at(), <A!&&>(a)...);
 		}
+		[A...]
+		fail_before(a: A!&&...) VOID --
+		{
+			fail_at(at(-1).at(), <A!&&>(a)...);
+		}
+		[A...]
+		fail_pos(pos: U4, a: A!&&...) VOID --
+		{
+			fail_at(at_pos(pos).at(), <A!&&>(a)...);
+		}
 
 		[A...]
 		fail_at(w: WHERE, a: A!&&...) VOID --
@@ -213,15 +366,16 @@ INCLUDE "../tokeniser/tokeniser.rl"
 			term::error(w,
 				<A!&&>(a)..., " in ", context(),
 				" at ", tok::name(current));
+			DIE;
 		}
 
 		# at(offset: S1) src::Position --
-			:= <src::Position>(File, Positions[Token+offset]);
+			:= Positions[Token+offset].Pos;
 
 		# at_pos(pos: U4) src::Position --
-			:= <src::Position>(File, Positions[pos]);
+			:= Positions[pos].Pos;
 
-		# here() src::Position -- := <src::Position>(File, Positions[Token]);
+		# here() src::Position -- := Positions[Token].Pos;
 
 		LocalTracker
 		{
@@ -271,5 +425,13 @@ INCLUDE "../tokeniser/tokeniser.rl"
 		P: Parser\;
 		Name: CHAR #[#];
 		Prev: Trace *;
+	}
+
+	TokenSpan {
+		File: src::File; Start: U4; End: U4;
+		{...} --; {NULL} --; {} -- (NULL);
+
+		# <BOOL> -- := Start != End;
+		# ##THIS U4 -- := End - Start;
 	}
 }

@@ -98,11 +98,58 @@ INCLUDE "iddedupler.rl"
 
 			If possible, we want to avoid having contention in a task that fundamentally only needs one thread. If possible, we want to split tasks into two threads of tighter, homogeneous loops, especially since we are limited by a single source loader thread, so data ingress is also a bottleneck.
 
-		          ---> tokenise --
-		         /                \                          IR
-		load ---<----> tokenise --->--> preparse  ---->    parse
-		         \                /    scope-assemble   local-resolve
-		          ---> tokenise --                     full scope tree
+
+
+		[X] Phase 1: load all files, tokenise, assemble global scope as quickly as possible.
+		[X] load ---> [X] tokenise ---> [X] ident dedup ----> [X] preparse ------------>
+		                                                                   global scope
+
+		[/] Phase 2: finish populating the global scope, resolving all references.
+		------------------------> [ ] preparse2 ---> [ ] body-parse ------------>
+		       global scope                                             IR0
+		                                                            (Templated,
+		                                                         semi-type-checked)
+
+		[ ] Phase 3: generate code.
+		                          ---> optimiser---
+		                         /                 \
+		---> [ ] instantiator --<--> [ ] optimiser ->--> [ ] codegen ----> [ ] link ---->
+		 IR0                    IR1                 IR2              obj0           obj1
+		(Templated,        (Instantiated,         (=IR1?)
+		semi-type-checked) type-checked)
+
+		IR0 should probably be a mix of TRASM and RASM. and IR1 should be RASM, basically.
+
+		And TRASM is basically just RASM with placeholders for immediates or operations.
+		RASM should be as semantically rich as possible, so that no intent gets lost and would have to be regained later. For machine-specific optimisation of the code (such as instruction scheduling and register usage), we should do a final assembly-level optimisation pass after having optimised on the high level RASM already.
+		RASM should integrate as neatly into the language as possible, by exposing lots of intrinsics / builtin operators (such as POPCNT, BSWAP, etc.).
+		A register allocation pass should be mandatory for codegen, so that we never output GCC -O0 tier code that rapes the stack. Constant expression execution should also be mandatory, as well as inlining of inline functions. Especially initialisation of static data tables etc. Beyond that, all other optimisations should be optional.
+
+		We should not need inline assembly. We might need to be able to link to ELF.o files, though, as a way to link to C/ASM stubs for things like syscalls and the general runtime.
+
+		We probably want to also have a tool that converts the IR2 to C or something, so that we can have portable builds that are easy to bootstrap elsewhere (hopefully). Then we can either ship the C-converted IR2, or the IR2->C converter and the IR2.
+
+		We do not need debugging ability. We need to have a C printer for reference, though, for finding bugs in our separate backends. But actually, C is annoying. We can add it once the x86 backend breaks. More useful would be a way to interpret RASM directly, maybe from C. Then we can run RASM programs everywhere in interpreted mode, and build up our strengths from there, so that we can later add direct debugging to RASM and also add it as ground truth. Then we can emulate, or compile RASM, not wasting effort on other technology.
+
+		- [X] Phase 1
+			- [X] loader
+			- [X] tokeniser
+			- [X] Identifier deduplicator (global & file-local).
+			- [X] globalscope preparser
+		- [/] Phase 2
+			- [/] preparse2: class members, etc. -- might move this to phase 1.
+			- [ ] body-parse / post-parse: types, function bodies, expressions, etc.
+				- [ ] typechecking
+				- [ ] IR0 codegen (TRASM?)
+		- [ ] Phase 3
+			- [ ] instantiator
+			- [ ] optimiser (not essential for now)
+			- [ ] x86 codegen
+				- [ ] link post-pass & ELF production
+				- [ ] optimising codegen
+			- [ ] Wasm codegen (no link pass needed, probably, although we need to provide a runtime like the heap. But this can also be done by supplying platform-specific code directly. The only annoying thing would be that we would need to be able to call some WASM builtins like __builtin_wasm_memory_size() / __builtin_wasm_memory_grow(). Although we could also have a builtin that just inserts an opcode. Then we can skip having to be able to read WASM files.)
+				- [ ] optimising codegen
+
 
 		compile() thread     |    loader thread    |  tokeniser pool   |   parser
 		       --- [X] invocation files --->
@@ -115,9 +162,9 @@ INCLUDE "iddedupler.rl"
 
 		                                                  -- [X] token streams -->
 		                           ...
-		       <--- [ ] scope trees + IR0 --------------------------------------
+		       <--- [/] scope trees + IR0 --------------------------------------
 
-		       [ ] merge scopes
+		       [X] merge scopes
 		       [ ] resolve IR0 to IR1 from the scopes
 		       [ ] typecheck IR1
 		       [ ] instantiate into IR2
@@ -142,26 +189,30 @@ INCLUDE "iddedupler.rl"
 			build: Build
 		) VOID
 		{
-			start_time ::= NOW;
+			STATIC loader_pipe: [SrcLoader; #256]PipelineSetup(build.BasePath, >build.IncludePaths!);
+				IF!(build.SINGLE_THREADED) loader_pipe.launch_worker();
 
-			STATIC tok_pipes: [CodeTokeniser; #4]PipelineSetup[1];
+			STATIC tok_pipes: [CodeTokeniser; #16]PipelineSetup[1];
 				IF!(build.SINGLE_THREADED) FOR(tok_pipes) IT.launch_worker();
 			STATIC tok_pipes_p: [CodeTokeniser]Pipeline *[##tok_pipes] (NOINIT);
-			FOR(tok_pipes_p) IT := &tok_pipes[IOTA];
+				FOR(tok_pipes_p) IT := &tok_pipes[IOTA];
 
-			STATIC iddedup_pipe: [IdDeDupler; #2]PipelineSetup;
+			STATIC iddedup_pipe: [IdDeDupler; #16]PipelineSetup;
 				IF!(build.SINGLE_THREADED) iddedup_pipe.launch_worker();
 
-			STATIC parser_pipes: [CodeParser; #2]PipelineSetup[1];
+			STATIC parser_pipes: [CodeParser; #16]PipelineSetup[1];
 				IF!(build.SINGLE_THREADED) FOR(parser_pipes) IT.launch_worker();
 			STATIC parser_pipes_p: [CodeParser]Pipeline *[##parser_pipes] (NOINIT);
-			FOR(parser_pipes_p) IT := &parser_pipes[IOTA];
+				FOR(parser_pipes_p) IT := &parser_pipes[IOTA];
 
-			load_files(files!, build, tok_pipes_p, iddedup_pipe, parser_pipes_p);
+			start_time ::= NOW;
+			load_files(files!, build, loader_pipe, tok_pipes_p, iddedup_pipe, parser_pipes_p);
 
+			loader_pipe.wait_quit(HERE);
 			FOR(tok_pipes) IT.wait_quit(HERE);
 			FOR(parser_pipes) IT.wait_quit(HERE);
 			iddedup_pipe.wait_quit(HERE);
+			end_time ::= NOW;
 
 			IF(build.Type == :checkSyntax)
 				RETURN;
@@ -170,9 +221,13 @@ INCLUDE "iddedupler.rl"
 				size ::= 0;
 				FOR(src::fileContents!)
 					size += ##IT;
-				end_time ::= NOW;
 
-				term::info(NULL, "loaded ", std::io::format::dec(##src::fileNames), " files (", std::io::format::dec(size), " bytes in ", std::io::format::dec((end_time - start_time) / 1000000), ".", std::io::format::dec_x((end_time - start_time) % 1000000 / 1000, 3), "ms). Total identifiers: ", std::io::format::dec(##ident::strings));
+				term::info(NULL, "loaded ", std::io::format::dec(##src::fileNames), " files (", std::io::format::dec(size), " bytes in ", std::io::format::dec((end_time - start_time) / 1000000), ".", std::io::format::dec_x(((end_time - start_time) % 1000000) / 1000, 3), "ms). #ids: ", std::io::format::dec(##ident::strings),
+					", loader: ", std::io::format::dec(loader_pipe.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA)), "µs"
+					", toker: ", std::io::format::dec(tok_pipes[0].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA)), "µs"
+					", dedup: ", std::io::format::dec(iddedup_pipe.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA)), "µs"
+					", preparser: ", std::io::format::dec(parser_pipes[0].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA)), "µs"
+					);
 			}
 
 			(/ TODO:
@@ -182,12 +237,23 @@ INCLUDE "iddedupler.rl"
 				- [X] debug tempalloc.
 				- [X] pre-parse & dedup identifiers
 				- [X] assemble scope tree
-				- [/] write parser
-				- [ ] write AST merger? Actually just let the parser write into the global AST (rather: scope tree) directly.
+				- [X] write AST merger? Actually just let the parser write into the global AST (rather: scope tree) directly.
+				- [ ] write post-parser
+				- [ ] Fully post-process tokens (strings, numbers).
 				- [ ] resolver
 				- [ ] IR -- this is part of the parser already somewhat.
 				- [ ] type check & instantiator
 				- [ ] code gen /)
+
+			(/ Thoughts / Problems:
+				- What is the best way to parse? After having all global scope entries, we can start parsing everything, but we cannot yet reference static members, etc..
+					- We could use 2 preparse steps, where variable types and similar references to global things only get resolved after the second pass. The second pass would create all types and all functions.
+					- Or we merge both into the initial preparse, so that we do not have to touch the tokens twice on potentially different cores. Then we have all classes and all functions etc. already populated in the preparser, and only need to post-parse arguments, types, and bodies/expressions.
+					- Note that we still need to resolve types out of order if we want to be able to refer to later types from earlier types and embed them. We basically need one full resolution pass, and then another pass that tallies up struct sizes and checks for recursive structs.
+						- Only after this pass should we parse function bodies, etc., so that we can directly generate code as we parse, without an immediate AST that gets later completed.
+						- We want to generate some IR code already during the parsing, even before fully instantiating all types.
+						- We also want to know whether certain operations are nops before generating code? Although we also have to be able to hotpatch those when templating, anyway.
+			/)
 
 
 			
@@ -234,24 +300,7 @@ INCLUDE "iddedupler.rl"
 		pipe: [IdDeDupler]Pipeline &) VOID
 	{
 		next_input ::= pipe.next_input();
-		// Make sure the buffers can be reused.
-			// IT.Tokens :=: &&next_input->Tokens;
-		{
-			old ::= &&next_input->Tokens;
-			next_input->Tokens.{&&out.Tokens};
-			out.Tokens.{&&old};
-		}
-		{
-			old ::= &&next_input->Identifiers;
-			next_input->Identifiers := &&out.Identifiers;
-			out.Identifiers := &&old;
-		}
-		{
-			old ::= &&next_input->IdHashes;
-			next_input->IdHashes := &&out.IdHashes;
-			out.IdHashes := &&old;
-		}
-
+		next_input->Tokens := out.Tokens;
 		next_input->File := out.File;
 		pipe.issue_flush_prepared();
 	}
@@ -264,14 +313,7 @@ INCLUDE "iddedupler.rl"
 
 		next_input->File := out.File;
 		next_input->LocalIds := out.LocalIds;
-
-			// IT.Tokens :=: &&next_input->Tokens;
-		(/{
-			old ::= &&next_input->Tokens;
-			next_input->Tokens.{&&out.Tokens};
-			out.Tokens.{&&old};
-		}/)
-			next_input->Tokens := &&out.Tokens;
+		next_input->Tokens := out.Tokens;
 
 		pipe.issue_flush_prepared();
 	}
@@ -279,23 +321,14 @@ INCLUDE "iddedupler.rl"
 	load_files(
 		files: std::Str#[#],
 		build: Build #&,
+		loader_pipe: [SrcLoader]Pipeline &,
 		tokeniser_pipes: [CodeTokeniser]Pipeline \[#],
 		iddedup_pipe: [IdDeDupler]Pipeline &,
 		parser_pipes: [CodeParser]Pipeline \[#]) VOID
 	{
 		includes: rlc::tok::Token - std::Vec := :reserve(2048);
 
-		// Capacity: twice the max number of jobs that can be issued before polling.
-		queue: include::Include- std::Vec := :bare(2048);
-		outputs: TAGGED SrcLoader::Result -std::Vec := :bare(2048);
-
-		loader: SrcLoader (build.BasePath, >build.IncludePaths!);
-		loader_pipe: [SrcLoader]Pipeline(queue!, outputs!, &loader);
-
 		FOR(files) loader_pipe.issue_flush(:relative(build.BasePath, IT!, NULL));
-
-		loading_thread: VOID^ (NOINIT);
-			IF!(build.SINGLE_THREADED) loading_thread.{ loader_pipe.launch_worker() };
 
 		fileNames: std::temp::Alloc := :custom(1<<16, 1 << 12);
 
@@ -367,10 +400,6 @@ INCLUDE "iddedupler.rl"
 		}
 
 		loader_pipe.quit();
-		loader_pipe.wait_quit(HERE);
-		IF!(loading_thread[100000000])
-			term::error(HERE, "Died");
-		loading_thread();
 
 		FOR(tokeniser_pipes)
 		{
@@ -390,7 +419,6 @@ INCLUDE "iddedupler.rl"
 				}
 
 			IT->quit();
-			IT->wait_quit(HERE);
 		}
 
 		WHILE(output ::= iddedup_pipe.get_some(HERE)) {
@@ -408,9 +436,6 @@ INCLUDE "iddedupler.rl"
 			WHILE(IT->get_some(HERE)) { ; }
 			IT->quit();
 		}
-
-		iddedup_pipe.wait_quit(HERE);
-		FOR(parser_pipes) IT->wait_quit(HERE);
 	}
 
 	parse_string(str: tok::Token #&, alloc: std::temp::Alloc &) CHAR#[#]
@@ -481,28 +506,51 @@ INCLUDE "iddedupler.rl"
 		includes: rlc::tok::Token - std::Vec &,
 		tokeniser: tok::Tokeniser &) tok::Token-std::Opt
 	{
-		token: rlc::tok::Token (BARE);
-		IF!(tokeniser.parse_next(&token))
+		STATIC tokens: tok::FileTokens;
+		tokens.clear_reuse();
+		tokens.reserve(2);
+
+		view ::= tokens.view();
+		IF!(tokeniser.parse_next(&view))
 			= NULL;
 
-		WHILE(token.Type == :AuxKeyword
-			&& token.SType.AuxKeyword == :include)
+		hots ::= tokens.Hots![];
+		payloads ::= tokens.Payloads![];
+		positions ::= tokens.Positions![];
+
+		WHILE(hots->Type == :AuxKeyword
+			&& hots->SType.AuxKeyword == :include)
 		{
-			path: rlc::tok::Token (BARE);
-			IF(!tokeniser.parse_next(&path))
+			IF(!tokeniser.parse_next(&view))
 				term::error(tokeniser.at(), "expected path after INCLUDE.");
 
-			IF(path.Type != :String)
+			path: tok::Token (BARE);
+			path.Type := hots[1].Type;
+			path.SType.{ hots[1].SType };
+			path.Payload.{payloads[1]};
+			path.Position := positions[1].Pos;
+			path.Length := positions[1].Length;
+
+			IF(hots[1].Type != :String)
 				term::error(path.at(), "unexpected token after include ", std::str::c(<CHAR #*>(path.Type)[]));
-			IF(path.SType.String != :StringApostrophe && path.SType.String != :StringQuote)
+			IF(hots[1].SType.String != :StringApostrophe && hots[1].SType.String != :StringQuote)
 				term::error(path.at(), "invalid string type for includes");
 
-			added: ?& := (includes += path);
 
-			IF!(tokeniser.parse_next(&token))
+			added: ?& := (includes += path);
+			view := tokens.view();
+
+			IF!(tokeniser.parse_next(&view))
 				= NULL;
 		}
-		= :a(token);
+
+		first_token: tok::Token (BARE);
+		first_token.Type := hots->Type;
+		first_token.SType.{ hots->SType };
+		first_token.Payload.{*payloads};
+		first_token.Position := positions->Pos;
+		first_token.Length := positions->Length;
+		= :a(first_token);
 	}
 
 	::detail EXTERN getenv(CHAR #*) CHAR #*;

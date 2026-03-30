@@ -71,7 +71,10 @@
 		{
 			issued ::= Master.Issued(:<);
 			IF(issued == processed)
+			{
+				PAUSE;
 				CONTINUE;
+			}
 
 				start_processing ::= CPU_COUNTER;
 				end_waiting ::= start_processing;
@@ -99,7 +102,7 @@
 		tries: U4 := 0;
 		start ::= NOW;
 		WHILE(Shared.Quit(:<))
-		{ IF!(tries++ & 255) { IF((NOW)-start > 100000000) DIE; } }
+		{ IF!(++tries & 1023) { IF((NOW)-start > 100 * MEGA) DIE; } }
 	}
 
 	launch_worker() VOID^
@@ -145,8 +148,9 @@
 		attempt ::= 0;
 		WHILE(Shared.Quit(:<))
 		{
-			IF!(attempt++ & 255)
-				IF((NOW) - start > 100000000)
+			PAUSE;
+			IF!(++attempt & 1023)
+				IF((NOW) - start > 100 * MEGA)
 					term::error(at, Job::name(), " thread is stuck!");
 		}
 	}
@@ -160,10 +164,12 @@
 		IF!(MasterLocal.Threaded)
 		{ // AS SLAVE
 			end ::= MasterLocal.Flushed;
+			start_cycle ::= CPU_COUNTER;
 			FOR(i ::= oldFlushed; i < end; i++)
 				Constant.State->handle_job(
 					Constant.Inputs[i % ##Constant.Inputs],
 					&Constant.Outputs[i % ##Constant.Outputs]);
+			SlaveLocal.Processing += CPU_COUNTER - start_cycle;
 			Slave.Processed := :!(end);
 		}
 	}
@@ -183,16 +189,17 @@
 			= NULL;
 
 			{
-		start ::= NOW;
+		start: U8;
 		attempt: U4 := 0;
 		WHILE(MasterLocal.Consumed == MasterLocal.SeenProcessed)
 		{
 			IF(MasterLocal.Flushed != MasterLocal.Issued)
 				flush();
 
-			IF!(attempt++ & 255)
+			IF!(++attempt & 1023)
 			{
-				IF((NOW) - start > 250000000)
+				start := NOW;
+				IF((NOW) - start > 250 * MEGA)
 				{
 					term::error(at,
 						Job::name(),
@@ -206,6 +213,7 @@
 				}
 			}
 			MasterLocal.SeenProcessed := Slave.Processed( :< );
+			PAUSE;
 		}
 			}
 
@@ -230,7 +238,10 @@ PRIVATE:
 	Outputs:  @(CACHELINE) Job::Output+[Cap];
 	Thread: VOID^;
 PUBLIC:
-	{} -> (Inputs, Outputs, &Worker): Inputs(BARE), Outputs(BARE);
+	[Args...]{args:Args!&&...} -> (Inputs, Outputs, &Worker):
+		Worker(<Args!&&>(args)...),
+		Inputs(BARE),
+		Outputs(BARE);
 
 	launch_worker() VOID {
 		worker ::= ->([Job]Pipeline).launch_worker();

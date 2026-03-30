@@ -31,7 +31,6 @@ INCLUDE "../identifierPool.rl"
 		{
 			// We use fat pointers so that we can sort the looked-up value into a work queue without having to chase another pointer.
 
-			Name: U2; // For quick patching/restoring of LUTs.
 			NVType: NonValueGlobal;
 			VType: ValueGlobal;
 
@@ -39,23 +38,24 @@ INCLUDE "../identifierPool.rl"
 			VMem: MemID;
 
 
-			{name: rlc::Identifier}:
+			{}:
 				NVType := :Nil,
 				VType := :Nil,
-				Name := name,
 				NVMem(NOINIT),
 				VMem(NOINIT);
 
-			set_vtype(type: ValueGlobal, name: Identifier, at: U4, p: parser::Parser &) VOID -- {
+			set_value(type: ValueGlobal, id: MemID, name: Identifier, at: U4, p: parser::Parser &) VOID -- {
 				IF(VType != :Nil)
 					term::error(p.at_pos(at).at(), "Re-definition of ", ident::get(name), " as ", std::str::enum(type), " (already exists as ", std::str::enum(VType), ")");
 				VType := type;
+				VMem := id;
 				//term::info(at.at(), std::str::enum(type), " ", ident::get(name));
 			}
-			set_nvtype(type: NonValueGlobal, name: Identifier, at: U4, p: parser::Parser &) VOID -- {
+			set_nonvalue(type: NonValueGlobal, id: MemID, name: Identifier, at: U4, p: parser::Parser &) VOID -- {
 				IF(NVType != :Nil)
 					term::error(p.at_pos(at).at(), "Re-definition of ", ident::get(name), " as ", std::str::enum(type), " (already exists as ", std::str::enum(NVType), ")");
 				NVType := type;
+				NVMem := id;
 				//term::info(at.at(), std::str::enum(type), " ", ident::get(name));
 			}
 		}
@@ -68,7 +68,7 @@ INCLUDE "../identifierPool.rl"
 		// ---> Each file should have a LUT for looking up first-class identifiers (names of defined symbols, not containing names that refer to other things). Each class then refers to its file's LUT, and per class, we only need LUTs that are as the number of symbols that get defined in the file. While this adds indirection, it is still a constant-depth indirection and we can still look up many things in parallel even in the presence of cache misses. So _.x would be "x" -> fileof(typeof(_))."x", typeof(_)."x". This would be a lookup of the type, which is needed anyway, then a lookup in the file's LUT (pointer to which can be saved on the type to avoid one more indirection & touched cacheline), and then a lookup on the type's member LUT, and then a final memory resolve. type lookup, two chained ID LUTs, and the final memory LUT. This allows for overall much smaller memory footprint, better cacheline utilisation per file, less setup work. A file could also differentiate between symbols defined that could be reached from the outside vs. from the inside. With 4 chained memory lookups, we can easily parallelise this, and with contextual locality of references, we also should get a good cache hit rate, and misses should be amortised well, with at least 8 sustainable parallel lookup steps being possible even for LLC misses. With small identifier sets per file, we can also maintain fully resolved sets per scope. Scopes can also have such deduplicated identifier sets. Also, we should differentiate between identifiers that are member lookups (_.x) vs. identifiers that are scope entry lookups (x._). member lookups are always based on the object's type, and therefore do not count into the set of identifiers we want to cache into the lookup for first-order lookups.
 		Lut: Entry-Handle[]; // Full-size mapping for all identifiers.
 		Exists: U1 [];
-		Entries: Entry-Handle -std::Vec;
+		Entries: {U2, Entry-Handle} -std::Vec;
 
 		{}:
 			Lut := std::heap::alloc.[Entry-Handle]alloc_array(1<<16),
@@ -79,21 +79,24 @@ INCLUDE "../identifierPool.rl"
 			FOR(exists_u8) IT := 0;
 		}
 
-		ensure(id: rlc::Identifier) Entry-Handle
+		ensure(_id: rlc::Identifier) Entry-Handle
 		{
+			id ::= _id.V;
 			entry ::= Lut[id];
 			IF!(Exists[id >> 3] & (1 << (id & 7)))
 			{
 				Exists[id >> 3] |= (1 << (id & 7));
 				e ::= mempool::[Entry]alloc_unhashed_t();
-				e.(0)->{id};
+				e.(0)->{};
 				entry := e.(1);
 				Lut[id] := entry;
+				Entries += (id, entry);
 			}
 			= entry;
 		}
 
-		# lookup(id: rlc::Identifier) Entry-Handle -- := Lut[id];
+		# lookup(id: rlc::Identifier) Entry-Handle -- := Lut[id.V];
+		# entry_addr(id: rlc::Identifier) Entry-Handle * -- := &Lut[id.V];
 
 		[#N]
 		# multi_lookup(id: rlc::Identifier#[], out: Entry-Handle []) VOID
@@ -117,27 +120,4 @@ INCLUDE "../identifierPool.rl"
 		ReturnType: :?;
 		Code: IRSpan;
 	}/)
-
-
-	(// Use this to look up many things in one single scope, such as locals, or class members & templates.
-	@param names:
-		An unordered set of names. CAUTION: Must not contain duplicates.
-	@param found_index:
-		-1 if not found, otherwise, the index of the element. /)
-	[#kN]
-	find_linear(
-		ids_to_find: @(SIMD) Identifier [kN] #&,
-		names:               Identifier#[#],
-		found_index: @(SIMD) U2         [kN] &) VOID
-	{
-		|||{ids_to_find}
-		{
-			search_name ::= IT;
-			index: S2 := -1;
-			// roughly 3 cycles per iteration, 8 values. Can execute 2-3 iterations simultaneously, probably, so 16-24 SISD iterations every 3 cycles, being 5-8 SISD iterations per cycle.
-			FOR(names)
-				index ^= MASK(IT == search_name) &~ IOTA;
-			found_index[IOTA] := index;
-		}
-	}
 }
