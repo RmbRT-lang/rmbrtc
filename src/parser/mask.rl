@@ -7,4 +7,5 @@ INCLUDE "members.rl"
 	File: src::File;
 
 	Members: parser::Members;
+	Ops: parser::Operators;
 }

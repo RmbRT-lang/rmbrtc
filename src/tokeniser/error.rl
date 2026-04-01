@@ -20,41 +20,21 @@ INCLUDE 'std/unicode'
 	}
 	}
 
-	os::term::PrintLine_v(:style(:normal, :red),
-		std::str::c(w.(0)[]), ":",
-		std::io::format::dec(w.(1)), ":",
-		std::io::format::dec(w.(2)), ": error: "
-		"unexpected character '", char, "'");
-	os::terminate_error();
+	term::error(w, "unexpected character '", char, "'");
 }
 
 ::rlc::tok::err unexpected_eof(w: WHERE) VOID
 {
-	os::term::PrintLine_v(:style(:normal, :red),
-		std::str::c(w.(0)[]), ":",
-		std::io::format::dec(w.(1)), ":",
-		std::io::format::dec(w.(2)), ": error: "
-		"unexpected end of file");
-	os::terminate_error();
+	term::error(w, "unexpected end of file");
 }
 
 ::rlc::tok::err invalid_char_seq(w: WHERE) VOID
 {
-	os::term::PrintLine_v(:style(:normal, :red),
-		std::str::c(w.(0)[]), ":",
-		std::io::format::dec(w.(1)), ":",
-		std::io::format::dec(w.(2)), ": error: "
-		"invalid character sequence");
-	os::terminate_error();
+	term::error(w, "invalid character sequence");
 }
 
 
 ::rlc::tok::err [Msg...]msg(w: WHERE, msg: Msg!&&...) VOID
 {
-	os::term::PrintLine_v(:style(:normal, :red),
-		std::str::c(w.(0)[]), ":",
-		std::io::format::dec(w.(1)), ":",
-		std::io::format::dec(w.(2)), ": error: ",
-		<Msg!&&>(msg)...);
-	os::terminate_error();
+	term::error(w, <Msg!&&>(msg)...);
 }

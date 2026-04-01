@@ -224,33 +224,33 @@ INCLUDE "specials.rl"
 			is_digit(c)
 			|| is_idfc(c);
 
-		# tok_str() CHAR#[#] -- := Contents[FROM Start UNTIL Read]; 
+		# tok_str() CHAR#[#] -- := Contents[][FROM Start UNTIL Read]; 
 
 		PUBLIC # at() WHERE --
 			:= <WHERE>(src::fileNames[File], line(), column());
 
 		# line() U4 {
 			line: U4 := 1;
-			FOR(Contents[FOR Read])
+			FOR(Contents[][FOR Read])
 				line += (IT == '\n');
 			= line;
 		}
 		# column() U4 {
 			last_newline: U4 := 0;
-			FOR(Contents[FOR Read])
+			FOR(Contents[][FOR Read])
 				last_newline := (IT == '\n') ?? IOTA : last_newline;
 			= Read - last_newline;
 		}
 
-		PUBLIC # look() CHAR := look(0);
-		# look(ahead: UINT) CHAR -- := Contents[Read+ahead];
+		PUBLIC # look() CHAR := look_ahead(0);
+		# look_ahead(ahead: UINT) CHAR -- := Contents[][Read+ahead];
 
 		# look2() U2 -- := *<U2 #*>(<UM>(<CHAR #*>(Contents[])) + Read);
 		# look4() U4 -- := *<U4 #*>(<UM>(<CHAR #*>(Contents[])) + Read);
 		# look8() U8 -- := *<U8 #*>(<UM>(<CHAR #*>(Contents[])) + Read);
 		# char2(v: CHAR[2] #&) U2 -- := *<U2 #*>(<UM>(&v));
 
-		getc() CHAR -- := Contents[Read++];
+		getc() CHAR -- := Contents[][Read++];
 
 		advance_nows() VOID --
 		{
@@ -313,7 +313,7 @@ INCLUDE "specials.rl"
 
 		eatString(str: CHAR#[#]) BOOL {
 			FOR(str)
-				IF(look(IOTA) != IT)
+				IF(look_ahead(IOTA) != IT)
 					= FALSE;
 			Read += ##str;
 			= TRUE;
@@ -336,7 +336,7 @@ INCLUDE "specials.rl"
 
 				buf: CHAR[4] (NOINIT);
 				FOR(i ::= 0; i < len; i++)
-					buf[i] := look(i);
+					buf[i] := look_ahead(i);
 
 				err::unexpected_char(at(), std::code::utf8::point(buf[]));
 			}
@@ -347,7 +347,7 @@ INCLUDE "specials.rl"
 			IF(look() == '/')
 			{
 				i ::= 1;
-				WHILE(look(i++) != '\n') { ; }
+				WHILE(look_ahead(i++) != '\n') { ; }
 				Read += i;
 				= FALSE;
 			} ELSE
@@ -459,7 +459,7 @@ INCLUDE "specials.rl"
 				i ::= 0;
 				FOR(;; i++)
 				{
-					nextc ::= hex_digit[<U1>(look(i+1))];
+					nextc ::= hex_digit[<U1>(look_ahead(i+1))];
 					IF(<U1>(~c))
 					{
 						payload <<= 4;
@@ -483,8 +483,8 @@ INCLUDE "specials.rl"
 				i ::= 0;
 				FOR(;; i++)
 				{	// little endian bytes, big-endian nibbles, 1/2/4/8 bytes.
-					hn ::= hex_digit[look(0)];
-					ln ::= hex_digit[look(1)];
+					hn ::= hex_digit[look_ahead(0)];
+					ln ::= hex_digit[look_ahead(1)];
 
 					b ::= (hn << 4) | ln;
 					IF!(<U1>(~hn)) BREAK;
@@ -523,7 +523,7 @@ INCLUDE "specials.rl"
 				look();
 				FOR(i ::= 0;; i++)
 				{
-					nextc ::= look(1);
+					nextc ::= look_ahead(1);
 					digit: U1 := c - '0';
 					IF(digit <= 1)
 					{
@@ -543,9 +543,9 @@ INCLUDE "specials.rl"
 			}
 			'1', '2', '3', '4', '5', '6', '7', '8', '9':
 			{
-				num: U8 := look(0) - '0';
+				num: U8 := look() - '0';
 				advance_nows();
-				FOR(c ::= look(0); is_digit(c); c := getc())
+				FOR(c ::= look(); is_digit(c); c := getc())
 				{
 					num := (num << 3) | (c - '0');
 					advance_nows();

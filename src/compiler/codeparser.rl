@@ -389,7 +389,7 @@ INCLUDE "../parser/extern.rl"
 				out ::= mempool::[parser::Mask]alloc_unhashed_t();
 				entry ::= scope->ensure(name);
 				out.(0)->Name := name;
-				preparse_mask(p, out.(0));
+				preparse_mask(p, out.(0), name);
 				entry->set_nonvalue(:Mask, out.(1), name, at, p);
 			}
 			:test: {
@@ -447,9 +447,17 @@ INCLUDE "../parser/extern.rl"
 		p.next_if(match);
 
 		// = 1 + index of the bit in the sequence.
-		mode := > ( MASK(match) & POPCNT (mask & (2 << <U1>(decl) -1)) );
+		mode := >POPCNT (  MASK(match) & (mask & (2 << <U1>(decl) -1))  );
 
 		= mode;
+	}
+
+	extract_abstractness(p: parser::Parser &) parser::Abstractness {
+		mask ::= tok::DeclarationKeyword::FLAGS(:abstract, :final, :override, :virtual);
+		decl ::= p.stype().Declaration;
+		p.next();
+
+		= >POPCNT (  mask & (2 << <U1>(decl) -1)  );
 	}
 
 	parser_from_span(span: parser::TokenSpan#&) parser::Parser --
@@ -463,7 +471,11 @@ INCLUDE "../parser/extern.rl"
 	}
 
 	// Call when starting to parse a member scope.
-	alloc_members(file: src::File, m: parser::Members \) std::temp::Alloc::Checkpoint
+	alloc_members(
+		file: src::File,
+		m: parser::Members \,
+		ops: parser::Operators *,
+		ctors: parser::Constructors *) std::temp::Alloc::Checkpoint
 	{
 		s ::= s_member_alloc.save();
 		max_cap ::= LocalIds[:ok(file)];
@@ -471,11 +483,36 @@ INCLUDE "../parser/extern.rl"
 		m->Entries := s_member_alloc.[{U2, parser::Members::LUTEntry-Handle}]alloc_raw_array(max_cap)[FOR 0];
 
 		MemberScopes += m;
+
+		IF(ops)
+		{
+			ops->{};
+			ops->Binary.Ops :=
+				s_member_alloc.[parser::PreparsedBinaryOperator]alloc_raw_array(
+					###parser::BinaryOperator);
+			ops->Prefix.Ops :=
+				s_member_alloc.[parser::PreparsedPrefixOperator]alloc_raw_array(
+					###parser::PrefixOperator);
+			ops->Postfix.Ops :=
+				s_member_alloc.[parser::PreparsedPostfixOperator]alloc_raw_array(
+					###parser::PostfixOperator);
+		}
+
+		IF(ctors)
+		{
+			ctors->{};
+			ctors->NamedCtors := s_member_alloc.[parser::CustomCtor-Handle]alloc_raw_array(max_cap)[FOR 0];
+			ctors->NamedCtorEntries := s_member_alloc.[{FileDeclIdentifier, parser::CustomCtor-Handle}]alloc_raw_array(max_cap)[FOR 0];
+		}
 		= s;
 	}
 
 	// Call this after parsing the member scope.
-	shrink_members(m: parser::Members \, s: std::temp::Alloc::Checkpoint #&) VOID
+	shrink_members(
+		m: parser::Members \,
+		ops: parser::Operators *,
+		ctors: parser::Constructors *,
+		s: std::temp::Alloc::Checkpoint #&) VOID
 	{
 		// We can move these directly into the mempool.
 		m->Entries := mempool::insert_unhashed_array(m->Entries).(0);
@@ -484,6 +521,66 @@ INCLUDE "../parser/extern.rl"
 		idlut ::= s_member_shrunk_alloc.[parser::Members::LUTEntry-Handle]alloc_raw_array(##m->IdLut);
 		FOR(m->IdLut) idlut[][IOTA].{ IT }; // FOR(idlut, m->IdLut) LHS.{ RHS };
 		m->IdLut := idlut;
+
+		IF(ops)
+		{
+			pre ::= mempool::[parser::PreparsedPrefixOperator]alloc_unhashed_array(##ops->Prefix).(0);
+			post ::= mempool::[parser::PreparsedPostfixOperator]alloc_unhashed_array(##ops->Postfix).(0);
+			bin ::= mempool::[parser::PreparsedBinaryOperator]alloc_unhashed_array(##ops->Binary).(0);
+
+			{
+				v ::= &ops->Prefix; arr ::= pre;
+
+				count ::= ##*v;
+				flags ::= v->Present;
+				FOR(i ::= 0; i < count; i++)
+				{
+					op ::= FIRST1POS flags;
+					flags ^= 1<<op;
+					arr[i] := v->Ops[op];
+				}
+				v->Ops := arr;
+			}
+
+			{
+				v ::= &ops->Postfix; arr ::= post;
+
+				count ::= ##*v;
+				flags ::= v->Present;
+				FOR(i ::= 0; i < count; i++)
+				{
+					op ::= FIRST1POS flags;
+					flags ^= 1<<op;
+					arr[i] := v->Ops[op];
+				}
+				v->Ops := arr;
+			}
+
+			{
+				v ::= &ops->Binary; arr ::= bin;
+
+				count ::= ##*v;
+				flags ::= v->Present;
+				FOR(i ::= 0; i < count; i++)
+				{
+					op ::= FIRST1POS flags;
+					flags ^= 1<<op;
+					arr[i] := v->Ops[op];
+				}
+				v->Ops := arr;
+			}
+		}
+
+		IF(ctors)
+		{
+			// We can move these directly into the mempool.
+			ctors->NamedCtorEntries := mempool::insert_unhashed_array(ctors->NamedCtorEntries).(0);
+
+			// We do not yet know the final maximum capacity for members.
+			idlut ::= s_member_shrunk_alloc.[parser::Members::LUTEntry-Handle]alloc_raw_array(##m->IdLut);
+			FOR(m->IdLut) idlut[][IOTA].{ IT }; // FOR(idlut, m->IdLut) LHS.{ RHS };
+			m->IdLut := idlut;
+		}
 
 		s_member_alloc.restore(s);
 	}
@@ -510,7 +607,7 @@ INCLUDE "../parser/extern.rl"
 		out->Templates := template;
 		out->Decl := consume_vmode(p);
 
-		save ::= alloc_members(p.File, &out->Members);
+		save ::= alloc_members(p.File, &out->Members, &out->Ops, &out->Ctors);
 
 		// Inheritance.
 		inheritance: parser::TokenSpan;
@@ -530,10 +627,10 @@ INCLUDE "../parser/extern.rl"
 
 		vis: rlc::Visibility := :public;
 		WHILE(!p.consume_s(:Punctuation(:braceClose)))
-			preparse_member(p, &out->Members, &out->Ctors, NULL, :none, &vis,
+			preparse_member(p, &out->Members, &out->Ctors, &out->Ops, NULL, :none, &vis, FALSE,
 				Members::FLAGS(:Constructors, :Fields, :Functions, :Types));
 
-		shrink_members(&out->Members, save);
+		shrink_members(&out->Members, &out->Ops, &out->Ctors, save);
 	}
 
 	preparse_rawtype(
@@ -542,6 +639,7 @@ INCLUDE "../parser/extern.rl"
 		template: parser::TokenSpan #&) FileLocalIdentifier
 	{
 		out->Templates := template;
+		out->File := p.File;
 
 		p.expect_s(:Punctuation(:parentheseOpen));
 		start ::= p.progress();
@@ -564,14 +662,14 @@ INCLUDE "../parser/extern.rl"
 
 		p.expect_s(:Punctuation(:braceOpen));
 
-		save ::= alloc_members(p.File, &out->Members);
+		save ::= alloc_members(p.File, &out->Members, &out->Ops, &out->Ctors);
 
 		vis: Visibility := :public;
 		WHILE(!p.consume_s(:Punctuation(:braceClose)))
-			preparse_member(p, &out->Members, &out->Ctors, NULL, :none, &vis,
+			preparse_member(p, &out->Members, &out->Ctors, &out->Ops, NULL, :none, &vis, FALSE,
 				Members::FLAGS(:Constructors, :Functions, :Types));
 
-		shrink_members(&out->Members, save);
+		shrink_members(&out->Members, &out->Ops, &out->Ctors, save);
 
 		= local_name;
 	}
@@ -587,10 +685,15 @@ INCLUDE "../parser/extern.rl"
 		IF(p.consume_s(:Punctuation(:braceClose)))
 			RETURN;
 
+		out->Name := name;
+		out->File := p.File;
+		out->DefaultField := -1;
+		out->TruthyFields := 0;
+
 		checkpoint ::= s_postparse_alloc.save();
 		aliases: FileDeclIdentifier-std::[std::temp::Alloc-std::PAlloc]VecT := :reserve(1024, &s_postparse_alloc);
 
-		save ::= alloc_members(p.File, &out->Members);
+		save ::= alloc_members(p.File, &out->Members, NULL, NULL);
 
 		DO(entry_val ::= 0)
 		{
@@ -633,11 +736,11 @@ INCLUDE "../parser/extern.rl"
 			}
 
 			aliases.clear_reuse();
-		} FOR(!p.consume_s(:Punctuation(:comma)); ++entry_val)
+		} FOR(p.consume_s(:Punctuation(:comma)); ++entry_val)
 
 		p.expect_s(:Punctuation(:braceClose));
 
-		shrink_members(&out->Members, save);
+		shrink_members(&out->Members, NULL, NULL, save);
 
 		s_postparse_alloc.restore(checkpoint);
 	}
@@ -651,12 +754,15 @@ INCLUDE "../parser/extern.rl"
 		out->Name := name;
 		out->File := p.File;
 		out->Templates := template;
+		out->DefaultField := -1;
+		out->ValueOfField := -1;
+		out->TruthyFields := 0;
 
-		save ::= alloc_members(p.File, &out->Members);
+		save ::= alloc_members(p.File, &out->Members, NULL, NULL);
 
 		p.expect_s(:Punctuation(:braceOpen));
 
-		FOR(field_idx ::= 0;;field_idx++)
+		FOR(field_idx ::= 0; !p.match_s(0, :Punctuation(:braceClose)); field_idx++)
 		{
 			at ::= p.progress();
 			IF(p.consume_s(:PrefixOrBinaryOp(:asterisk)))
@@ -675,25 +781,55 @@ INCLUDE "../parser/extern.rl"
 
 			IF(p.consume_s(:PostfixOp(:questionMark)))
 				out->TruthyFields |= 1 << field_idx;
+
+			local_name ::= p.payload().Identifier.FileLocal;
+			name ::= p.expect_p(:Identifier).Identifier;
+			IF(p.consume_s(:Punctuation(:semicolon)))
+				CONTINUE;
+
+			p.expect_s(:Punctuation(:colon));
+			type_entry ::= mempool::[parser::TokenSpan]alloc_unhashed_t();
+			type_start ::= p.progress();
+			p.skip_nesting_until(:semicolon);
+			*type_entry.(0) := token_span(type_start, p);
+			p.expect_s(:Punctuation(:semicolon));
+
+			decl_name ::= local_to_decl_name(local_name, p.File);
+
+			entry ::= out->Members.ensure(decl_name);
+			entry->set_value(:UnionField, name, at, p, :UnionField(type_entry.(1)));
 		}
 		p.expect_s(:Punctuation(:braceClose));
 
-		shrink_members(&out->Members, save);
+		shrink_members(&out->Members, NULL, NULL, save);
 	}
 
-	preparse_mask(p: parser::Parser &, out: parser::Mask \) VOID
+	preparse_mask(p: parser::Parser &, out: parser::Mask \, name: Identifier) VOID
 	{
+		out->Name := name;
+		out->File := p.File;
+
 		p.expect_s(:Punctuation(:braceOpen));
 
-		save ::= alloc_members(p.File, &out->Members);
+		save ::= alloc_members(p.File, &out->Members, &out->Ops, NULL);
 		vis: Visibility := :public;
 		WHILE(!p.consume_s(:Punctuation(:braceClose)))
-			preparse_member(p, &out->Members, NULL, NULL, :none, &vis,
+			preparse_member(p, &out->Members, NULL, &out->Ops, NULL, :none, &vis, FALSE,
 				Members::FLAGS(:Functions));
-		shrink_members(&out->Members, save);
+		shrink_members(&out->Members, &out->Ops, NULL, save);
 	}
 
 	preparse_function(
+		p: parser::Parser &,
+		out: parser::Function \,
+		name: Identifier,
+		template: parser::TokenSpan #&) VOID --
+	{
+		preparse_function_internal(p, out, name, template);
+		(out->BodyType, out->Body) := skip_function_body(p);
+	}
+
+	preparse_function_internal(
 		p: parser::Parser &,
 		out: parser::Function \,
 		name: Identifier,
@@ -708,39 +844,21 @@ INCLUDE "../parser/extern.rl"
 		p.skip_nesting(); // skip arguments.
 
 		out->Args := token_span(args_start, p);
-		return_start ::= p.progress();
 
-		IF(p.match_s(0, :Punctuation(:braceOpen)))
-			p.skip_nesting(); // skip return type if it is a tuple.
-		ELSE
-			p.skip_nesting_until(:braceOpen, :semicolon, :colonEqual);
-
-
-		out->Return := token_span(return_start, p);
-		return_end ::= p.progress();
-
-		punct ::= <U8>(1) << <U1>(p.stype().Punctuation);
-		flags ::= tok::Punctuation::FLAGS(:colonEqual, :semicolon, :braceOpen);
-		idx ::= POPCNT ((punct-1) & flags);
-		out->BodyType := >idx;
-
-		body_start ::= p.progress() +1; // skip the first token of the body.
-
-		p.skip_nesting_until_after(:braceClose, :semicolon); // skip body.
-		out->Body := token_span(return_end, p);
+		out->Return := skip_function_return_type(p);
 	}
 
-	preparse_symbolic_constant(p: parser::Parser &, delim: tok::Punctuation) parser::SymbolConstant
+	preparse_symbolic_constant(p: parser::Parser &, delim: tok::Punctuation) parser::DefinitionSymbolConstant
 	{
-		ret: parser::SymbolConstant (NOINIT);
+		ret: parser::DefinitionSymbolConstant (NOINIT);
 
 		p.expect_s(:Punctuation(:colon));
-		IF[name](pl ::= p.consume_p(:Identifier))
+		IF[name](pl ::= p.payload_consume_p(:Identifier))
 		{
-			ret.Name := :Identifier(pl->Identifier);
+			ret.Name := :Identifier(local_to_decl_name(pl->Identifier.FileLocal, p.File));
 		} ELSE
 		{
-			STATIC specials: {TAGGED tok::Type, parser::SymbolConstant::SpecialName}#[?](
+			STATIC specials: {TAGGED tok::Type, parser::SpecialName}#[?](
 				(:BinaryOp(:less), :less),
 				(:BinaryOp(:lessGreater), :lessGreater),
 				(:BinaryOp(:greater), :greater),
@@ -840,19 +958,15 @@ INCLUDE "../parser/extern.rl"
 		= new;
 	}
 
-	ENUM ParsedMemberAttr {
-	*	none,
-	?	isolated,
-	?	maybeIsolated
-	}
-
 	preparse_member(
 		p: parser::Parser &,
 		scope: parser::Members \,
 		ctors: parser::Constructors \,
+		ops: parser::Operators *,
 		template: parser::TokenSpan,
-		attr: ParsedMemberAttr,
+		attr: parser::ParsedMemberAttr,
 		vis: Visibility \,
+		novis: BOOL, // visibility modifiers forbidden?
 		allowed: U4) VOID
 	{
 		// member classes, functions, fields, ctors, etc.. Only register them by name (except for member classes etc., which also declare public fields. They also should be parsed. But no function bodies or anything. Also do not parse the types of variables.
@@ -876,9 +990,12 @@ INCLUDE "../parser/extern.rl"
 				SWITCH(p.stype().Punctuation)
 				{
 				:parentheseOpen: {
-					fn ::= mempool::[parser::Function]alloc_unhashed_t();
-					entry->set_value(:Function, name, at, p, :Normal(*vis, fn.(1)));
-					preparse_function(p, fn.(0), name, template);
+					fn ::= mempool::[parser::MemberFunction]alloc_unhashed_t();
+					fn.(0)->Abstractness := :none;
+					type: parser::VMember := (attr == :static) ?? parser::VMember::StaticMemberFunction : parser::VMember::MemberFunction;
+
+					entry->set_value(type, name, at, p, :Normal(*vis, fn.(1)));
+					preparse_function(p, &fn.(0)->Fn, name, template);
 				}
 				:braceOpen: {
 					IF(attr) p.fail_pos(at, "must not have an attribute");
@@ -902,7 +1019,8 @@ INCLUDE "../parser/extern.rl"
 					field.(0)->Type := token_span(type_start, p);
 					p.expect_s(:Punctuation(:semicolon));
 
-					entry->set_value(:Field, name, at, p, :Normal(*vis, field.(1)));
+					type: parser::VMember := (attr == :static) ?? parser::VMember::StaticField : parser::VMember::Field;
+					entry->set_value(type, name, at, p, :Normal(*vis, field.(1)));
 				}
 				}
 			:Declaration:
@@ -953,17 +1071,25 @@ INCLUDE "../parser/extern.rl"
 				p.skip_nesting();
 				tpl ::= token_span(start, p);
 				IF(##tpl == 2) tpl := NULL;
-				preparse_member(p, scope, ctors, tpl, attr, vis, allowed);
+				preparse_member(p, scope, ctors, ops, tpl, attr, vis, novis, allowed);
 			}
 			:colon: { // :named{} ctor
 				IF(attr) p.fail("must not have an attribute");
 
-				sym ::= preparse_symbolic_constant(p, :braceOpen);
-				rest ::= p.progress();
-				p.skip_braces();
-				p.skip_nesting_until_after(:semicolon, :braceClose);
+				at ::= p.progress();
 
-				ctors->register_named_ctor(sym, token_span(rest, p), template, rest, p);
+				sym ::= preparse_symbolic_constant(p, :braceOpen);
+				p.expect_s(:Punctuation(:braceOpen));
+				args_start ::= p.progress();
+				p.skip_until_nesting_ends();
+				args ::= token_span(args_start, p);
+				p.expect_s(:Punctuation(:braceClose));
+
+				rest_start ::= p.progress();
+				p.skip_nesting_until_after(:semicolon, :braceClose);
+				rest ::= token_span(rest_start, p);
+
+				ctors->register_named_ctor(sym, args, rest, template, at, p);
 			}
 			:braceOpen: { // {} ctor
 				IF(attr) p.fail("must not have an attribute");
@@ -972,6 +1098,9 @@ INCLUDE "../parser/extern.rl"
 
 				special: parser::SpecialCtors (BARE);
 				id: Identifier (0);
+
+				isCustom ::= FALSE;
+				custom_args: parser::TokenSpan (NOINIT);
 
 				mask ::= tok::AuxKeyword::FLAGS(:bare, :null);
 				kw ::= p.stype().AuxKeyword;
@@ -983,7 +1112,6 @@ INCLUDE "../parser/extern.rl"
 					special := > POPCNT (mask & (1 << <U1>(kw) -1));
 				} ELSE IF(p.consume_s(:Punctuation(:tripleDot)))
 				{
-					p.expect_s(:Punctuation(:braceClose));
 					special := :Structure;
 				} ELSE IF(p.consume_s(:PrefixOrBinaryOp(:doubleAmp)))
 				{
@@ -999,13 +1127,24 @@ INCLUDE "../parser/extern.rl"
 				{
 					special := :Default;
 				} ELSE {
-					BREAK;
+					args_start ::= p.progress();
+					p.skip_nesting_until(:braceClose);
+					custom_args := token_span(args_start, p);
+					isCustom := TRUE;
 				}
 
+				IF(!isCustom && template)
+					p.fail_pos(at, std::str::enum(special), " constructors cannot be templated");
+
 				p.expect_s(:Punctuation(:braceClose));
-				body_start ::= p.progress();
+				rest_start ::= p.progress();
 				p.skip_nesting_until_after(:semicolon, :braceClose);
-				ctors->register_special_ctor(special, id, at, p);
+				rest ::= token_span(rest_start, p);
+
+				IF(isCustom)
+					ctors->register_custom_ctor(custom_args, rest, template, at, p);
+				ELSE
+					ctors->register_special_ctor(special, id, rest, at, p);
 			}
 			:hash: {
 				IF(attr) p.fail();
@@ -1016,7 +1155,7 @@ INCLUDE "../parser/extern.rl"
 				ELSE
 					attr := :isolated;
 
-				preparse_member(p, scope, ctors, template, attr, vis, allowed);
+				preparse_member(p, scope, ctors, ops, template, attr, vis, novis, allowed);
 			}
 			}
 		:Declaration:
@@ -1051,7 +1190,7 @@ INCLUDE "../parser/extern.rl"
 				entry ::= scope->ensure(decl_name);
 				def ::= mempool::[parser::Mask]alloc_unhashed_t();
 				entry->set_nonvalue(:Mask, global_name, at, p, :Normal(*vis, def.(1)));
-				preparse_mask(p, def.(0));
+				preparse_mask(p, def.(0), global_name);
 			}
 			:union: {
 				IF(attr) p.fail("must not have an attribute");
@@ -1083,6 +1222,67 @@ INCLUDE "../parser/extern.rl"
 
 				ctors->Destructor := :a( p.at_pos(at), inline, body );
 			}
+			:private: {
+				IF(novis) p.fail("No visibility specifier allowed here");
+				p.next();
+				new_vis: Visibility := :private;
+				IF(p.consume_s(:Punctuation(:colon)))
+					*vis := new_vis;
+				ELSE { vis := &new_vis; novis := TRUE; }
+
+				preparse_member(p, scope, ctors, ops, template, attr, vis, novis, allowed);
+			}
+			:public: {
+				IF(novis) p.fail("No visibility specifier allowed here");
+				p.next();
+				new_vis: Visibility := :public;
+				IF(p.consume_s(:Punctuation(:colon)))
+					*vis := new_vis;
+				ELSE { vis := &new_vis; novis := TRUE; }
+
+				preparse_member(p, scope, ctors, ops, template, attr, vis, novis, allowed);
+			}
+			:protected: {
+				IF(novis) p.fail("No visibility specifier allowed here");
+				p.next();
+				new_vis: Visibility := :protected;
+				IF(p.consume_s(:Punctuation(:colon)))
+					*vis := new_vis;
+				ELSE { vis := &new_vis; novis := TRUE; }
+
+				preparse_member(p, scope, ctors, ops, template, attr, vis, novis, allowed);
+			}
+			:static: {
+				IF(attr != :none) p.fail("duplicate attribute");
+				attr := :static;
+				p.next();
+
+				preparse_member(p, scope, ctors, ops, template, attr, vis, novis, allowed);
+			}
+			:abstract, :override, :final, :virtual: {
+				IF(attr == :static) p.fail("cannot have abstractness on a static member");
+				abst ::= extract_abstractness(p);
+				name_local ::= p.payload().Identifier.FileLocal;
+				name ::= p.expect_p(:Identifier).Identifier;
+				name_decl ::= local_to_decl_name(name_local, p.File);
+
+				out ::= mempool::[parser::MemberFunction]alloc_unhashed_t();
+				fn ::= &out.(0)->Fn;
+				out.(0)->Abstractness := abst;
+
+				preparse_function_internal(p, fn, name, template);
+				IF(abst == :abstract)
+				{
+					p.expect_s(:Punctuation(:semicolon));
+					fn->BodyType := :none;
+				} ELSE
+				{
+					(fn->BodyType, fn->Body) := skip_function_body(p);
+				}
+
+				entry ::= scope->ensure(name_decl);
+				entry->set_value(:MemberFunction, name, at, p, :Normal(*vis, out.(1)));
+			}
 			}
 		}
 		:AuxKeyword:
@@ -1106,32 +1306,259 @@ INCLUDE "../parser/extern.rl"
 				entry->set_nonvalue(:Typedef, global_name, at, p, :Normal(*vis, def.(1)));
 			}
 			:this: {
+				IF!(ops) p.fail("it is illegal to define operators here");
+
 				p.next();
+				at ::= p.progress();
 
 				// op: Operator;
 				IF(t ::= p.consume_p(:PostfixOp))
 				{
-					op ::= parser::postfixOpsfromPostfixTok[*t];
-					preparse_postfix_operator(p, at, members, op, template, attr);
+					op ::= parser::postfixOpsFromPostfixTok[t->PostfixOp];
+					preparse_postfix_operator(p, at, &ops->Postfix, op, template, attr);
 				} ELSE IF(t ::= p.consume_p(:PrefixOrPostfixOp))
 				{
-					op ::= parser::postfixOpsfromPrefixTok[*t];
-					preparse_postfix_operator(p, at, members, op, template, attr);
+					op ::= parser::postfixOpsFromPrefixTok[t->PrefixOrPostfixOp];
+					preparse_postfix_operator(p, at, &ops->Postfix, op, template, attr);
 				} ELSE IF(t ::= p.consume_p(:BinaryOp))
 				{
-					op ::= parser::binopsFromBinaryTok[*t];
-					preparse_binary_operator(p, at, members, op, template, attr);
+					op ::= parser::binOpsFromBinaryTok[t->BinaryOp];
+					preparse_binary_operator(p, at, &ops->Binary, op, template, attr);
 				} ELSE IF(t ::= p.consume_p(:PrefixOrBinaryOp))
 				{
-					op ::= parser::binopsFromPrefixTok[*t];
-					preparse_binary_operator(p, at, members, op, template, attr);
+					op ::= parser::binOpsFromPrefixTok[t->PrefixOrBinaryOp];
+					preparse_binary_operator(p, at, &ops->Binary, op, template, attr);
+				} ELSE IF(t ::= p.consume_p(:AssignmentOp))
+				{
+					IF(attr != :none)
+						p.fail_pos(at, "assignments are not possible on constant objects");
+					op ::= parser::binOpsFromAssignmentTok[t->AssignmentOp];
+					preparse_binary_operator(p, at, &ops->Binary, op, template, attr);
+				} ELSE IF(t ::= p.match_s(0, :Punctuation(:doubleQuestionMark))) {
+					p.fail("cannot overload conditional operator");
+				} ELSE IF(p.consume_s(:Punctuation(:parentheseOpen)))
+				{
+					IF(ops->HasSpecial & parser::SpecialOperator::FLAGS(:call))
+						p.fail("Re-definition of call operator");
+					ops->HasSpecial |= parser::SpecialOperator::FLAGS(:call);
+
+					ops->Call.Attr := attr;
+					ops->Call.Template := template;
+
+					args_start ::= p.progress();
+					p.skip_until_nesting_ends();
+					ops->Call.Args := token_span(args_start, p);
+					p.expect_s(:Punctuation(:parentheseClose));
+
+					ops->Call.Rest := skip_function_return_type(p);
+					(ops->Call.BodyType, ops->Call.Body) := skip_function_body(p);
+				} ELSE IF(p.consume_s(:Punctuation(:bracketOpen)))
+				{
+					IF(ops->HasSpecial & parser::SpecialOperator::FLAGS(:subscript))
+						p.fail("Re-definition of subscript operator");
+					ops->HasSpecial |= parser::SpecialOperator::FLAGS(:subscript);
+
+					ops->Subscript.Attr := attr;
+					ops->Subscript.Template := template;
+
+					// from parseBinaryOp
+					name: FileLocalIdentifier;
+					IF(p.match_ps(:Identifier, :Punctuation(:colon)))
+					{
+						name := p.payload().Identifier.FileLocal;
+						p.next2();
+					}
+
+					arg_type_start ::= p.progress();
+					p.skip_until_nesting_ends();
+					p.expect_s(:Punctuation(:bracketClose));
+					arg_type ::= token_span(arg_type_start, p);
+
+					ret_type ::= skip_function_return_type(p);
+					body ::= skip_function_body(p);
+
+					operator: parser::PreparsedBinaryOperator(
+						attr,
+						template,
+						name,
+						arg_type,
+						ret_type,
+						body.(0),
+						body.(1));
+
+					// \parseBinaryOp
+					ops->Subscript := operator;
 				} ELSE {
 					p.fail("expected postfix or binary operator");
 				}
+			}
+			}
+		:PrefixOp:
+		{
+			IF!(ops) p.fail("cannot overload operators here");
 
-				p.fail("operator unimplemented");
+			op ::= parser::prefixOpsFromPrefixTok[p.stype().PrefixOp];
+			at ::= p.progress();
+			p.next();
+
+			preparse_prefix_operator(p, at, &ops->Prefix, op, template, attr);
+		}
+		:PrefixOrBinaryOp: {
+			IF!(ops) p.fail("cannot overload operators here");
+
+			op ::= parser::prefixOpsFromBinaryTok[p.stype().PrefixOrBinaryOp];
+			at ::= p.progress();
+			p.next();
+
+			preparse_prefix_operator(p, at, &ops->Prefix, op, template, attr);
+		}
+		:PrefixOrPostfixOp: {
+			IF!(ops) p.fail("cannot overload operators here");
+
+			op ::= parser::prefixOpsFromPostfixTok[p.stype().PrefixOrPostfixOp];
+			at ::= p.progress();
+			p.next();
+
+			preparse_prefix_operator(p, at, &ops->Prefix, op, template, attr);
+		}
+		:BinaryOp:
+		{
+			SWITCH(p.stype().BinaryOp)
+			{
+			:less: // <T> conversion operator
+			{
+				IF!(ops) p.fail("no conversion operators allowed");
+				IF(ops->HasSpecial & parser::SpecialOperator::FLAGS(:conversion))
+					p.fail("already has a conversion operator");
+				ops->HasSpecial |= parser::SpecialOperator::FLAGS(:conversion);
+
+				p.next(); // <
+				type_start ::= p.progress();
+				WHILE(!p.match_s(0, :BinaryOp(:greater)))
+					p.next();
+				ops->Conversion.Type := token_span(type_start, p);
+
+				p.next(); // >
+
+				ops->Conversion.Inline
+					:= p.consume_s(:PrefixOrPostfixOp(:doubleMinus))
+					|| p.consume_s(:AuxKeyword(:inline));
+
+				p.skip_nesting_until(:braceOpen, :semicolon, :colonEqual);
+				(ops->Conversion.BodyType, ops->Conversion.Body) := skip_function_body(p);
 			}
 			}
-		} CATCH(err: CHAR#*) p.fail("expected member: ", std::str::c(err[]));
+		}
+		} CATCH(err: CHAR#*) {
+			os::term::PrintLine_v(:style(:normal, :red), std::str::c(err[]));
+			p.fail("expected member.");
+		}
+	}
+
+	preparse_prefix_operator(
+		p: parser::Parser &,
+		at: U4,
+		ops: parser::PrefixOperators \,
+		op: parser::PrefixOperator,
+		template: parser::TokenSpan #&,
+		attr: parser::ParsedMemberAttr) VOID
+	{
+		IF(attr == :static) p.fail("cannot have static operators");
+		IF!(op) p.fail_pos(at, "this operator is forbidden to overload");
+
+		p.expect_s(:AuxKeyword(:this));
+		ret_type ::= skip_function_return_type(p);
+		body ::= skip_function_body(p);
+
+		entry: parser::PreparsedPrefixOperator(
+			attr,
+			template,
+			ret_type,
+			body.(0),
+			body.(1));
+		ops->register(op, entry, at, p);
+	}
+
+	preparse_postfix_operator(
+		p: parser::Parser &,
+		at: U4,
+		ops: parser::PostfixOperators \,
+		op: parser::PostfixOperator,
+		template: parser::TokenSpan #&,
+		attr: parser::ParsedMemberAttr) VOID
+	{
+		IF(attr == :static) p.fail("cannot have static operators");
+		IF!(op) p.fail_pos(at, "this operator is forbidden to overload");
+
+		ret_type ::= skip_function_return_type(p);
+		body ::= skip_function_body(p);
+
+		entry: parser::PreparsedPostfixOperator(
+			attr,
+			template,
+			ret_type,
+			body.(0),
+			body.(1));
+		ops->register(op, entry, at, p);
+	}
+
+	preparse_binary_operator(
+		p: parser::Parser &,
+		at: U4,
+		ops: parser::BinaryOperators \,
+		op: parser::BinaryOperator,
+		template: parser::TokenSpan #&,
+		attr: parser::ParsedMemberAttr) VOID
+	{
+		IF!(op) p.fail_pos(at, "this operator is forbidden to overload");
+
+		name: FileLocalIdentifier;
+		p.expect_s(:Punctuation(:parentheseOpen));
+		IF(p.match_ps(:Identifier, :Punctuation(:colon)))
+		{
+			name := p.payload().Identifier.FileLocal;
+			p.next2();
+		}
+
+		arg_type_start ::= p.progress();
+		p.skip_until_nesting_ends();
+		p.expect_s(:Punctuation(:parentheseClose));
+		arg_type ::= token_span(arg_type_start, p);
+
+		ret_type ::= skip_function_return_type(p);
+		body ::= skip_function_body(p);
+
+		operator: parser::PreparsedBinaryOperator(
+			attr,
+			template,
+			name,
+			arg_type,
+			ret_type,
+			body.(0),
+			body.(1));
+		ops->register(op, operator, at, p);
+	}
+
+	skip_function_return_type(p: parser::Parser &) parser::TokenSpan {
+		start ::= p.progress();
+		IF(p.match_s(0, :Punctuation(:braceOpen)))
+			p.skip_braces();
+		p.skip_nesting_until(:braceOpen, :semicolon, :colonEqual);
+		= token_span(start, p);
+	}
+
+	skip_function_body(p: parser::Parser &) {parser::BodyType, parser::TokenSpan}
+	{
+		punct ::= <U8>(1) << <U1>(p.stype().Punctuation);
+		flags ::= tok::Punctuation::FLAGS(:colonEqual, :semicolon, :braceOpen);
+		idx ::= POPCNT ((punct-1) & flags);
+		type: parser::BodyType := >idx;
+
+		body_start ::= p.progress() +1; // skip the first token of the body in the span.
+
+		p.skip_nesting_until_after(:braceClose, :semicolon); // skip body.
+		span ::= token_span(body_start, p);
+
+		= (type, span);
 	}
 }

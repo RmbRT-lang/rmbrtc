@@ -18,4 +18,18 @@
 
 		{BARE};
 	}
+
+	ENUM Abstractness {
+		none,
+		final,
+		override,
+		virtual,
+		abstract
+	}
+	MemberFunction {
+		Abstractness: parser::Abstractness;
+		Fn: Function;
+
+		{BARE};
+	}
 }

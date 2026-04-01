@@ -11,6 +11,7 @@ INCLUDE "members.rl"
 
 	Ctors:   parser::Constructors;
 	Members: parser::Members;
+	Ops:     parser::Operators;
 
 	{BARE};
 }

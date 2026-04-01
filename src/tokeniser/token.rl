@@ -44,11 +44,11 @@ INCLUDE "../identifierPool.rl"
 		parentheseClose,
 
 		dollar,
-		doubleHash,
 		hash
 	}
 
 	// parser::Class::DeclMode depends on the relative ordering of this.
+	// parser::FunctionFinality depends on the relative ordering of this.
 	ENUM DeclarationKeyword
 	{
 		abstract,
@@ -112,7 +112,8 @@ INCLUDE "../identifierPool.rl"
 		exclamationMarkColon,
 		tildeColon,
 		tilde,
-		tripleAmp
+		tripleAmp,
+		doubleHash
 	}
 	ENUM PostfixOperator {
 		questionMark

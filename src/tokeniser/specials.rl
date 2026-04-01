@@ -113,7 +113,7 @@
 		(">", :BinaryOp(:greater)),
 
 		("$", :Punctuation(:dollar)),
-		("##", :Punctuation(:doubleHash)),
+		("##", :PrefixOp(:doubleHash)),
 		("#", :Punctuation(:hash))
 	);
 

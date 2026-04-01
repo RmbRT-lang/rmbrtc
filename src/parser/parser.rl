@@ -169,7 +169,7 @@ INCLUDE "../tokeniser/tokeniser.rl"
 		{
 			delim_mask: U4 := 0;
 			(delim_mask |= <U4>(1) << <U1>(<tok::Punctuation>(punct)))...;
-			
+
 			= skip_nesting_until_after_mask(delim_mask);
 		}
 
