@@ -24,11 +24,13 @@ INCLUDE "../parser/extern.rl"
 
 	// Parser stack and temporaries.
 
-	// The global rootscope.
+	// The global rootscope. This is the only real output of the preparser.
 	PRIVATE RootScope: scoper::Namespace;
+
+	// Gets reset after every file.
 	PRIVATE MemberScopes: parser::Members \ -std::Vec; // we might also want to be registering other things here, such as a list of all functions, or all return types or something. And we might want to have a union type that we can patch in the post-pass, so that we do not need to move data around.
-	PRIVATE Types: parser::TypeU \ - std::Vec; // standalone types.
-	PRIVATE SignatureRests: parser::SignatureRest \ - std::Vec; // signatures.
+
+	// Caches the file contents of all code files.
 	PRIVATE FileTokens: tok::FileTokenView-std::Vec;
 	PRIVATE LocalIds: U2-std::Vec;
 	PRIVATE LocalDecls: U2-std::Vec;
@@ -115,7 +117,6 @@ INCLUDE "../parser/extern.rl"
 			Tests.Last := e;
 		}
 	}
-
 	preparsedTests: PreparsedTests;
 
 	preparse_ns_entry(

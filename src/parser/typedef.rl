@@ -4,5 +4,5 @@
 	File: src::File;
 
 	Templates: TokenSpan;
-	Type: TokenSpan;
+	Type: TypeU;
 }
