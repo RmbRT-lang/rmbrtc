@@ -6,15 +6,28 @@
 		block // braceOpen
 	}
 
+	UnparsedSignatureRest {
+		Type: TokenSpan;
+	}
+	ParsedSignatureRest {
+		Type: TokenSpan;
+		Inline: BOOL;
+	}
+	// Return type and stuff like the inline attribute.
+	UNION SignatureRest {
+		Preparse: UnparsedSignatureRest;
+		Postparse: ParsedSignatureRest;
+	}
+
 	Function {
 		Name: Identifier;
 		File: src::File;
 		Templates: parser::TokenSpan;
 
 		Args: TokenSpan;
-		Return: TokenSpan;
-		BodyType: parser::BodyType;
-		Body: TokenSpan;
+		Return: SignatureRest;
+
+		BodyType: parser::BodyType; Body: TokenSpan;
 
 		{BARE};
 	}

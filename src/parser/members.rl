@@ -1,4 +1,5 @@
 INCLUDE "symbolconstant.rl"
+INCLUDE "function.rl"
 INCLUDE "../mempool.rl"
 
 ::rlc ENUM Visibility
@@ -452,7 +453,7 @@ INCLUDE "../mempool.rl"
 	PreparsedPrefixOperator {
 		Attr: ParsedMemberAttr;
 		Template: TokenSpan;
-		Type: TokenSpan;
+		Type: SignatureRest;
 		BodyType: parser::BodyType;
 		Body: TokenSpan;
 
@@ -461,11 +462,16 @@ INCLUDE "../mempool.rl"
 	PreparsedPostfixOperator {
 		Attr: ParsedMemberAttr;
 		Template: TokenSpan;
-		Type: TokenSpan;
+		Type: SignatureRest;
 		BodyType: parser::BodyType;
 		Body: TokenSpan;
 
 		{...};
+	}
+
+	UNION TypeU {
+		Preparse: TokenSpan;
+		PostParse: :?;
 	}
 
 	PreparsedBinaryOperator
@@ -473,10 +479,10 @@ INCLUDE "../mempool.rl"
 		Attr: ParsedMemberAttr;
 		Template: TokenSpan;
 		OperandName: FileLocalIdentifier;
-		OperandType: TokenSpan;
-		Type: TokenSpan;
-		BodyType: parser::BodyType;
-		Body: TokenSpan;
+		OperandType: TypeU;
+		Type: SignatureRest;
+		
+		BodyType: parser::BodyType; Body: TokenSpan;
 
 		{...};
 	}
@@ -508,7 +514,7 @@ INCLUDE "../mempool.rl"
 	TYPE PostfixOperators := [PostfixOperator; PreparsedPostfixOperator]OperatorsT;
 
 	ConversionOperator {
-		Type: TokenSpan;
+		Type: TypeU;
 		Inline: BOOL;
 		BodyType: parser::BodyType;
 		Body: TokenSpan;
@@ -521,7 +527,7 @@ INCLUDE "../mempool.rl"
 		Attr: ParsedMemberAttr;
 		Template: TokenSpan;
 		Args: TokenSpan;
-		Rest: TokenSpan;
+		Rest: SignatureRest;
 		BodyType: parser::BodyType;
 		Body: TokenSpan;
 

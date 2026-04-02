@@ -26,15 +26,17 @@ INCLUDE "../parser/extern.rl"
 
 	// The global rootscope.
 	PRIVATE RootScope: scoper::Namespace;
-	PRIVATE MemberScopes: parser::Members \ -std::Vec;
+	PRIVATE MemberScopes: parser::Members \ -std::Vec; // we might also want to be registering other things here, such as a list of all functions, or all return types or something. And we might want to have a union type that we can patch in the post-pass, so that we do not need to move data around.
+	PRIVATE Types: parser::TypeU \ - std::Vec; // standalone types.
+	PRIVATE SignatureRests: parser::SignatureRest \ - std::Vec; // signatures.
 	PRIVATE FileTokens: tok::FileTokenView-std::Vec;
 	PRIVATE LocalIds: U2-std::Vec;
 	PRIVATE LocalDecls: U2-std::Vec;
 	PRIVATE LocalDeclLut: U2-std::Vec-std::Vec; // LocalIdx -> LocalDeclIdx
 
 	{}:
-		MemberScopes := :reserve(1024),
-		FileTokens := :reserve(1024),
+		MemberScopes := :reserve(2048),
+		FileTokens := :reserve(2048),
 		LocalIds := :reserve(2048),
 		LocalDecls := :reserve(2048),
 		LocalDeclLut := :reserve(2048)
@@ -78,106 +80,43 @@ INCLUDE "../parser/extern.rl"
 	token_span(start: U4, p: parser::Parser &) parser::TokenSpan --
 		:= (p.File, start, p.progress());
 
-	Preparse {
-		ENUM PreparsedThing {
-			Class,
-			Rawtype,
-			Function,
-			ExternFunction,
-			ExportFunction,
-			Variable,
-			ExternVariable,
-			ExportVariable,
-			Enum,
-			Union,
-			Mask,
-			Typedef,
-			Test
-		}
-
+	// TODO: see how we want to actually access the tests again later on. Based on that, we want to redo this structure, probably.
+	PreparsedTests {
 		Entry {
-			UNION Extra {
-				link_name: Identifier;
-				name_str: tok::TokenStringPayload;
-				templates: parser::TokenSpan;
-			}
-
 			{BARE};
 
 			scope: scoper::Namespace \;
-			name: Identifier;
+			name_str: tok::TokenStringPayload;
 			span: parser::TokenSpan;
-			extra: Extra;
 			Next: Entry *; // Entries are allocated in a bump allocator, but we cannot guarantee continuity, so we have a linked list.
 		}
 
-		EntryList {
+		TestList {
 			First: Entry *;
 			Last:  Entry *;
 		}
 
-		Allocs: std::temp::Alloc-std::Alloc[TABLE PreparsedThing];
-		Entries:                  EntryList[TABLE PreparsedThing];
-		// Per-file exported identifiers.
-		ExportIdentifiers: U2[#];
+		Alloc: std::temp::Alloc - std::Alloc;
+		Tests: TestList;
 
-		{}: Allocs( :custom(64*KI, 64*KI) );
-
-
-		PRIVATE insert_entry(type: PreparsedThing, e: Entry *) VOID --
-		{
-			e->Next := NULL;
-			IF!(Entries[type].Last)
-				Entries[type].First := e;
-			ELSE
-				Entries[type].Last->Next := e;
-			Entries[type].Last := e;
-		}
-		register(
-			type: PreparsedThing,
-			scope: scoper::Namespace \,
-			name: Identifier,
-			span: parser::TokenSpan,
-			templates: parser::TokenSpan) VOID
-		{
-			e ::= Allocs[type].[Entry]alloc();
-			e->scope := scope;
-			e->name := name;
-			e->span := span;
-			e->extra.templates := templates;
-
-			insert_entry(type, e);
-		}
-
-		register_l(
-			type: PreparsedThing,
-			scope: scoper::Namespace \,
-			name: Identifier,
-			span: parser::TokenSpan,
-			link_name: Identifier) VOID
-		{
-			e ::= Allocs[type].[Entry]alloc();
-			e->scope := scope;
-			e->name := name;
-			e->span := span;
-			e->extra.link_name := link_name;
-
-			insert_entry(type, e);
-		}
+		{}: Alloc := :custom(64*KI, 64*KI);
 
 		register_test(scope: scoper::Namespace \, span: parser::TokenSpan, name: tok::TokenStringPayload) VOID
 		{
-			e ::= Allocs[:Test].[Entry]alloc();
+			e ::= Alloc.[Entry]alloc();
 			e->scope := scope;
-			e->name := 0; // NIL / tests have no name.
+			e->name_str := name;
 			e->span := span;
-			e->extra.name_str := name;
-
-			insert_entry(:Test, e);
+			e->Next := NULL;
+			IF!(Tests.Last)
+				Tests.First := e;
+			ELSE
+				Tests.Last->Next := e;
+			Tests.Last := e;
 		}
 	}
 
-	preparse: Preparse;
+	preparsedTests: PreparsedTests;
 
 	preparse_ns_entry(
 		p: parser::Parser &,
@@ -397,7 +336,7 @@ INCLUDE "../parser/extern.rl"
 					p.fail("Tests cannot be templated");
 				name ::= p.expect_s(:String(:StringQuote)).String;
 				p.skip_braces();
-				preparse.register_test(scope, token_span(start, p), name);
+				preparsedTests.register_test(scope, token_span(start, p), name);
 			}
 			:union: {
 				name ::= p.expect_p(:Identifier).Identifier;
@@ -845,7 +784,7 @@ INCLUDE "../parser/extern.rl"
 
 		out->Args := token_span(args_start, p);
 
-		out->Return := skip_function_return_type(p);
+		out->Return.Preparse := skip_function_return_type(p);
 	}
 
 	preparse_symbolic_constant(p: parser::Parser &, delim: tok::Punctuation) parser::DefinitionSymbolConstant
@@ -1350,7 +1289,7 @@ INCLUDE "../parser/extern.rl"
 					ops->Call.Args := token_span(args_start, p);
 					p.expect_s(:Punctuation(:parentheseClose));
 
-					ops->Call.Rest := skip_function_return_type(p);
+					ops->Call.Rest.Preparse := skip_function_return_type(p);
 					(ops->Call.BodyType, ops->Call.Body) := skip_function_body(p);
 				} ELSE IF(p.consume_s(:Punctuation(:bracketOpen)))
 				{
@@ -1381,8 +1320,8 @@ INCLUDE "../parser/extern.rl"
 						attr,
 						template,
 						name,
-						arg_type,
-						ret_type,
+						:Preparse(arg_type),
+						:Preparse(ret_type),
 						body.(0),
 						body.(1));
 
@@ -1436,7 +1375,7 @@ INCLUDE "../parser/extern.rl"
 				type_start ::= p.progress();
 				WHILE(!p.match_s(0, :BinaryOp(:greater)))
 					p.next();
-				ops->Conversion.Type := token_span(type_start, p);
+				ops->Conversion.Type := :Preparse(token_span(type_start, p));
 
 				p.next(); // >
 
@@ -1473,7 +1412,7 @@ INCLUDE "../parser/extern.rl"
 		entry: parser::PreparsedPrefixOperator(
 			attr,
 			template,
-			ret_type,
+			:Preparse(ret_type),
 			body.(0),
 			body.(1));
 		ops->register(op, entry, at, p);
@@ -1496,7 +1435,7 @@ INCLUDE "../parser/extern.rl"
 		entry: parser::PreparsedPostfixOperator(
 			attr,
 			template,
-			ret_type,
+			:Preparse(ret_type),
 			body.(0),
 			body.(1));
 		ops->register(op, entry, at, p);
@@ -1532,14 +1471,14 @@ INCLUDE "../parser/extern.rl"
 			attr,
 			template,
 			name,
-			arg_type,
-			ret_type,
+			:Preparse(arg_type),
+			:Preparse(ret_type),
 			body.(0),
 			body.(1));
 		ops->register(op, operator, at, p);
 	}
 
-	skip_function_return_type(p: parser::Parser &) parser::TokenSpan {
+	skip_function_return_type(p: parser::Parser &) parser::UnparsedSignatureRest {
 		start ::= p.progress();
 		IF(p.match_s(0, :Punctuation(:braceOpen)))
 			p.skip_braces();

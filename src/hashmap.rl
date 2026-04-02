@@ -7,7 +7,7 @@ INCLUDE 'std/vector'
 ::rlc::hashmap
 {
 	// Big global hashmap with 1Mi buckets (20 bit selector), and 8-way associative cache without indirection.
-	buckets: @(PAGE) HashBucket[1<<20];
+	buckets: @(PAGE) HashBucket[1<<20] (NOINIT); // NOTE: this relies on the .bss section being zeroed. This allows us to allocate (& zero-initialise) pages on demand instead of mandatorily at launch. This allows for much faster launch times (10x).
 	// Overflow from buckets gets accumulated into more centralised, unordered sets. Ideally, none of these ever get used, but we still keep a few of them to limit the worst-case cost of vector reallocation and linear searches. We use unordered because we assume they will usually be small. You would probably need a gigantic codebase to trigger the pathological case, but then you should rather tweak the buckets instead or improve the hash function.
 	overflow: std::[OverflowItem]Vec[1024];
 }

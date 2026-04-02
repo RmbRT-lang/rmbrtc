@@ -237,10 +237,20 @@ INCLUDE "iddedupler.rl"
 				- [X] debug tempalloc.
 				- [X] pre-parse & dedup identifiers
 				- [X] assemble scope tree
+				- [/] preparse all members properly
+					- [X] classes, etc.
+					- [X] functions
+					- [X] operators
+					- [ ] intrinsics
 				- [X] write AST merger? Actually just let the parser write into the global AST (rather: scope tree) directly.
+				- [ ] Fully post-process tokens (strings, numbers)?
 				- [ ] write post-parser
-				- [ ] Fully post-process tokens (strings, numbers).
-				- [ ] resolver
+					- [ ] resolve all type names, field types, typedefs, return types, and inheritances, until all types outside of function bodies are resolved.
+					- [ ] Deduplicate type names, similar to the identifiers?
+						-- we need to think about the concrete type-checking algorithm and its needs. Also, types do not necessarily have to be encoded in data, if they only belong to temporary values that are immediately consumed. In such cases, the type information can be entirely contextual.
+							- we also need to think about the execution model of the type checker & instantiator.
+					- [ ] LATER: think about how to handle auto return types.
+				- [ ] resolver? -- no longer needed.
 				- [ ] IR -- this is part of the parser already somewhat.
 				- [ ] type check & instantiator
 				- [ ] code gen /)

@@ -52,7 +52,7 @@ Looking up a member in a local scope:
 {
 
 	// Big global hashmap with 4Ki buckets (12 bit selector), and 10-way associative cache without indirection.
-	buckets: @(PAGE) HashBucket[8<<10];
+	buckets: @(PAGE) HashBucket[8<<10] (NOINIT); // rely on .bss being 0-initialised.
 	// Overflow from buckets gets accumulated into more centralised, unordered sets. Ideally, none of these ever get used, but we still keep a few of them to limit the worst-case cost of vector reallocation and linear searches. We use unordered because we assume they will usually be small. You would probably need a gigantic codebase to trigger the pathological case, but then you should rather tweak the buckets instead or improve the hash function.
 	overflow: std::[OverflowItem]Vec[128];
 
@@ -66,6 +66,11 @@ Looking up a member in a local scope:
 {
 	strings.reserve(65536);
 	strings += "<NIL ID>"[#]; // [0] is an invalid ID.
+
+	// touch all bucket pages to at least get the page faults out of the way.
+	bucket_ptr: U1 \ := <U1 \>(<VOID \>(&buckets));
+	FOR(offset ::= 0; offset < SIZEOF(#buckets); offset += PAGE)
+		bucket_ptr[offset] := 0;
 }
 
 ::rlc::ident HashBucket
