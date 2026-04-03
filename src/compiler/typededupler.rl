@@ -85,7 +85,7 @@
 	}
 
 	TypeDescriptor {
-		Code: ByteCode[#]; // Restriction: cannot contain TemplateType or InstnatiateTemplate.
+		Code: ByteCode[#]; // Restriction: cannot contain TemplateType or InstantiateTemplate.
 	}
 
 	Context {
