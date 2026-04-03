@@ -67,9 +67,14 @@
 	// For final types, use a prefix tree? With an U2 id into the nodes.
 	// But not all nodes appear as actually instantiated types in the final program, so they might not receive a final runtime type ID. --> We need a deduplicator like with global to file-local IDs.
 	UNION ByteCode {
-		BuiltinType: tok::BuiltinType;
-		TemplateType: U2; // Idx of template in surrounding context? (T)
-		TypeId: U2; // globally deduplicated type. Also for classes, etc.?
+	?	BuiltinType: tok::BuiltinType;
+	?	SymbolType: Identifier; // fundamental
+	?	SpecialSymbolType: U2;
+	?	TypeId: U2; // globally deduplicated type. Also for classes, etc.?
+	?	TemplateType: U2; // Idx of template in surrounding context? (T)
+		TupleType: U2; // number of tuple elements.
+		FnSigType: U2; // number of arguments.
+		TemplateSymbolType: Identifier;
 		ExpandedTemplateTypes: U2; // Idx of template pack, expand it. (Args...)
 		LookupChildType: Identifier;
 		LookupChildScope: Identifier;

@@ -71,6 +71,84 @@
 		DIE;
 	}
 
+	post_parse_type(v: parser::Parser &, out: PostParsedType \) VOID
+	{
+		SWITCH(p.type())
+		{
+		:AuxKeyword:
+			SWITCH(p.stype().AuxKeyword)
+			{
+			:this:
+			{ p.next(); Type += :This (p.consume_s(:Punctuation(:exclamationMark))); }
+			:void: Type += :Void;
+			:null: Type += :Null;
+			}
+		:Declaration:
+			SWITCH(p.stype().Declaration)
+			{
+			:enum: { type_parse_symbol(p); Type += :Enum; }
+			}
+		:BuiltinType:
+		{
+			Type += :BuiltinType(p.stype().BuiltinType);
+		}
+		:Identifier: { type_parse_symbol(p); }
+		:Punctuation:
+			SWITCH(p.stype().Punctuation)
+			{
+			:doubleColon: { type_parse_symbol(p); }
+			:colon: {
+				p.next();
+				IF(id ::= p.consume_p(:Identifier))
+					IF(p.consume_s(:Punctuation(:dot)))
+					{
+						post_parse_type(p);
+						Type += :TemplateSymbolType(id->Identifier);
+					} ELSE
+						Type += :SymbolType(id->Identifier);
+				ELSE p.fail("TODO: special symbols");
+			}
+			:braceOpen:
+			{
+				p.next();
+				post_parse_type(p);
+				IF(p.consume_s(:Punctuation(:braceClose)))
+				{
+					;
+				} ELSE
+				{
+					elems ::= 1;
+					FOR(; p.consume_s(:comma); elems++)
+						post_parse_type(p);
+					p.expect_s(:Punctuation(:braceClose));
+					Type += :TupleType(elems);
+				}
+			}
+			}
+			:parentheseOpen:
+			{
+				p.next();
+				p.expect_s(:Punctuation(:parentheseOpen));
+				args ::= 0;
+				IF(p.match_ss(:AuxKeyword(:void), :Punctuation(:parentheseClose)))
+					p.next2();
+				ELSE IF!(p.consume_s(:Punctuation(:parentheseClose)))
+				{
+					DO ()
+						post_parse_type(p);
+						FOR(p.consume_s(:Punctuation(:comma)); args++)
+					p.expect_s(:Punctuation(:parentheseClose));
+				}
+
+				post_parse_type(p);
+
+				p.expect_s(:Punctuation(:parentheseClose));
+
+				Type += :FnSigType(args);
+			}
+		}
+	}
+
 	post_parse_typedef(v: parser::Typedef *) VOID
 	{
 		p ::= parser(v->Type.Preparse);
