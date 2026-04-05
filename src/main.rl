@@ -25,6 +25,9 @@ main(args: CHAR[#][#]) INT
 {
 	os::term::init();
 
+	//__rl::set_thread_affinity(1<<(THREAD_COUNT-1));
+	__rl::set_thread_affinity(1<<0);
+
 	rlc::init();
 	IF(##args == 1)
 	{

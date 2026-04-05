@@ -1,3 +1,4 @@
+::threading threads_spawned : U8. := 0;
 ::rlc::compiler [Job] Pipeline
 {
 	// shared constant state.
@@ -61,6 +62,11 @@
 		Constant: ConstantR #& := THIS.Constant;
 		Slave: SlaveR & := THIS.Slave;
 		Shared: SharedR & := THIS.Shared;
+
+		STATIC thread_ids: INT[?](1,3,5,7);
+		thread_id ::= (threading::threads_spawned += :?(<U8>(1))) - 1;
+		core ::= thread_ids[thread_id];
+		__rl::set_thread_affinity(1<<core);
 
 		processed ::= Slave.Processed(:<);
 		Shared.Quit := :>(FALSE);
