@@ -69,17 +69,14 @@ INCLUDE 'std/hash'
 		// Job 1: tokenise the file. -- this needs to be twice as fast to sustain the speed at which the SSD can read files. Having this disabled has 1.0ms+ for loading 50 files. Having it enabled has 2.0ms+ for loading 50 files (1 thread), and more like 3-4ms.
 
 		// Continue tokenising the files.
-		WHILE(input.Tokeniser.parse_next(&output->Tokens))
+		WHILE(input.Tokeniser.parse_all(&output->Tokens, capacity))
 		{
-			IF(##output->Tokens == capacity)
-			{
-				old ::= capacity;
-				capacity *= 2;
+			old ::= capacity;
+			capacity *= 2;
 
-				grow_array(HotsAlloc,      output->Tokens.Hots,      old, capacity);
-				grow_array(PayloadsAlloc,  output->Tokens.Payloads,  old, capacity);
-				grow_array(PositionsAlloc, output->Tokens.Positions, old, capacity);
-			}
+			grow_array(HotsAlloc,      output->Tokens.Hots,      old, capacity);
+			grow_array(PayloadsAlloc,  output->Tokens.Payloads,  old, capacity);
+			grow_array(PositionsAlloc, output->Tokens.Positions, old, capacity);
 		}
 		output->Tokens += <tok::Token>(:EOF);
 

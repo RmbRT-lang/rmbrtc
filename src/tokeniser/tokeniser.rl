@@ -207,12 +207,66 @@ INCLUDE "specials.rl"
 			}
 		}
 
+		parse_all(out: FileTokenView \, capacity: U4) BOOL
+		{
+			FOR(;;)
+			{
+				Start := Read;
+				next ::= look4();
+				Read++;
+				case ::= token_lut![<U1>(next)];
+				SWITCH!(case)
+				{
+				:newline: { space_multi(); CONTINUE; }
+				:space: { space_multi(); CONTINUE; }
+				:zero: on_zero(out);
+				:nonzero: number_literal(out, next);
+				:string_apostrophe, :string_quote, :string_backtick:
+				{
+					string(next);
+					out->Hots[##*out] := <TokenHot>(:String, :String(>
+							<U1>(<U1>(case) + <S1>(
+								<U1>(tok::StringType::StringQuote) -
+								<U1>(Case::string_quote)))
+						));
+					out->Payloads[##*out].{ :String(Start, Read - Start) };
+				}
+				:special: { special(out, next); }
+				:uppercase: { keyword(out, next); }
+				:identifier: { identifier(out); }
+				:parentheseOpen:
+					{ IF!(on_parenthese_open(out)) CONTINUE; }
+				:forwardSlash: { IF!(on_slash(out)) CONTINUE; }
+				:other:
+				{
+					IF(eat2("´"))
+					{
+						forward_tick_string(out);
+						out->Payloads[##*out].{ :String(Start, Read - Start) };
+					}
+					ELSE
+					{
+						Read := Start;
+						error();
+					}
+				}
+				:eof: { = FALSE; }
+				}
+
+				out->Positions[##*out].Pos := (File, Start);
+				out->Positions[##*out].Length := Read - Start;
+				out->TokenCount += 1;
+
+				IF(out->TokenCount == capacity)
+					= TRUE;
+			}
+		}
+
 	PROTECTED:
 		Contents: CHAR #[#];
 		Read: src::Index; // The current reading position in the file.
 		File: src::File; // The source file.
 		Start: src::Index; // Start of the current token.
-		Lines: U4;
 
 		STATIC is_idfc(c: CHAR) BOOL :=
 			(c >='a' && c <= 'z')
