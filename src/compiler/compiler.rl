@@ -185,17 +185,26 @@ INCLUDE "iddedupler.rl"
 		// We declare the pipes globally so that we can access them from the post-job hooks, letting them communicate.
 		STATIC loader_pipe: [SrcLoader; #256]PipelineSetup (NOINIT);
 			STATIC on_loader_quit(VOID*) VOID { FOR(tok_pipes) IT.quit(); }
+			STATIC on_loader_idle(VOID*) VOID
+			{
+				loader_pipe.sync(); // sync MASTERLOCAL state.
+				IF(loader_pipe.pending())
+					loader_pipe.flush();
+				ELSE // IF(!loader_pipe.pending_slave())
+					loader_pipe.quit();
+			}
 			STATIC on_file_loaded(ctx: VOID*, result: SrcLoader::Output &) VOID
 			{
-				IF!(result)
-				{
-					IF!(loader_pipe.pending_slave()) loader_pipe.quit();
-					RETURN;
-				}
+				// Problem: each job produces more jobs, but we have only a finite job queue. The number of jobs can temporarily peak excessively. We could change the file loader to a custom solution to fix this.
+
+				IF!(result) RETURN;
+
+				//term::info(NULL, "Loaded file ", std::io::format::dec(result!.File), " ", result!.Name);
 
 				STATIC includes: tok::Token -std::Vec := :reserve(2048);
 				STATIC fileNames: std::temp::Alloc := :custom(1<<16, 1 << 12);
 				includes.clear_reuse();
+				fileNames.clear_and_optimise(1024);
 
 				f ::= result!.File;
 				contents ::= result!.Content;
@@ -220,26 +229,21 @@ INCLUDE "iddedupler.rl"
 							: include::IncludeType::global,
 							basefile.Directory, parse_string(IT, fileNames), IT.at());
 					}
-					loader_pipe.flush();
 				}
 
-				IF!(first_token)
-				{
-					IF!(loader_pipe.pending_slave()) loader_pipe.quit();
-					RETURN;
-				}
+				IF!(first_token) RETURN;
 
 				// Issue the rest of the file to a tokeniser thread.
 				STATIC tok_pipe_next: INT := 0;
 				tok_pipes[tok_pipe_next++ % ##tok_pipes].issue_flush(HERE, &&tokeniser, *first_token, f);
 			}
 
-		STATIC tok_pipes: [CodeTokeniser; #16]PipelineSetup[2];
+		STATIC tok_pipes: [CodeTokeniser; #32]PipelineSetup[2];
 			STATIC on_file_tokenised(VOID*, result: CodeTokeniser::Output &) VOID
 			{
 				STATIC mutex: BOOL. := FALSE;
 
-					WHILE(mutex :=: :<(TRUE)) {;}
+					WHILE(mutex :=: :<(TRUE)) { PAUSE; }
 				pass_along_toker_to_dedupler(result, iddedup_pipe);
 					mutex := :>(FALSE);
 			}
@@ -249,12 +253,12 @@ INCLUDE "iddedupler.rl"
 				IF!( alive += :?(-1)) iddedup_pipe.quit();
 			}
 
-		STATIC iddedup_pipe: [IdDeDupler; #16]PipelineSetup;
+		STATIC iddedup_pipe: [IdDeDupler; #32]PipelineSetup;
 			STATIC on_file_iddeduped(VOID*, result: IdDeDupler::Output &) VOID
 				{ pass_along_dedupler_to_preparser(result, parser_pipe); }
 			STATIC on_iddedup_quit(VOID*) VOID
 				{ parser_pipe.quit(); }
-		STATIC parser_pipe: [CodeParser; #16]PipelineSetup;
+		STATIC parser_pipe: [CodeParser; #32]PipelineSetup;
 
 		(//
 			Compiles the given input files according to the specified build flags.
@@ -268,6 +272,7 @@ INCLUDE "iddedupler.rl"
 
 			loader_pipe.Constant.HookCtx           := &build;
 			loader_pipe.Constant.PostJobHook       := on_file_loaded;
+			loader_pipe.Constant.IdleHook          := on_loader_idle;
 			loader_pipe.Constant.QuitHook          := on_loader_quit;
 			FOR(tok_pipes) IT.Constant.PostJobHook := on_file_tokenised;
 			FOR(tok_pipes) IT.Constant.QuitHook    := on_tokeniser_quit;
@@ -397,7 +402,7 @@ INCLUDE "iddedupler.rl"
 	}
 
 	pass_along_toker_to_dedupler(
-		out: CodeTokeniser::Output &,
+		out: CodeTokeniser::Output #&,
 		pipe: [IdDeDupler]Pipeline &) VOID
 	{
 		next_input ::= pipe.next_input(HERE);
@@ -407,7 +412,7 @@ INCLUDE "iddedupler.rl"
 	}
 
 	pass_along_dedupler_to_preparser(
-		out: IdDeDupler::Output &,
+		out: IdDeDupler::Output #&,
 		pipe: [CodeParser]Pipeline &) VOID
 	{
 		next_input ::= pipe.next_input(HERE);

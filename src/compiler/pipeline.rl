@@ -10,6 +10,7 @@
 
 		HookCtx: VOID *;
 		PostJobHook: ((VOID *, Job::Output+ &) VOID) *;
+		IdleHook: ((VOID*) VOID) *;
 		QuitHook: ((VOID*) VOID) *;
 	}
 
@@ -53,7 +54,7 @@
 	{&&} (BARE) { DIE; }
 
 	{inputs: Job::Input+[#], outputs: Job::Output+[#], state: Job *}:
-		Constant (state, inputs, outputs, NULL, NULL, NULL)
+		Constant (state, inputs, outputs, NULL, NULL, NULL, NULL)
 	{
 		ASSERT(##Constant.Inputs == ##Constant.Outputs);
 	}
@@ -75,10 +76,15 @@
 
 		// Assuming 8 cores, and 2 threads per core. Ideally, we could also get rid of the two tokeniser threads.
 		STATIC thread_masks: INT[?](
+			//44332211
 			0b00000001, // loader
+			//44332211
 			0b00000100, // tokeniser 0
+			//44332211
 			0b00001000, // tokeniser 1
+			//44332211
 			0b00010000, // dedupler
+			//44332211
 			0b01000000  // parser
 		);
 		thread_id ::= (threading::threads_spawned += :?(<U8>(1))) - 1;
@@ -125,6 +131,8 @@
 				start_waiting := CPU_COUNTER;
 				end_processing ::= start_waiting;
 				SlaveLocal.Processing += end_processing - start_processing;
+
+			IF(Constant.IdleHook) Constant.IdleHook(Constant.HookCtx);
 		}
 
 		IF(Constant.QuitHook) Constant.QuitHook(Constant.HookCtx);
@@ -199,25 +207,32 @@
 
 	/// Sends pending work to the worker. This also gets called automatically.
 	flush() VOID -- { // AS MASTER
-		Master.Issued := :>(MasterLocal.Issued);
 		oldFlushed # ::= MasterLocal.Flushed;
 		MasterLocal.Flushed := MasterLocal.Issued;
+		// release the master-local state, so that the worker thread can read it, too.
+		Master.Issued := :>(MasterLocal.Issued);
 
 		IF!(MasterLocal.Threaded)
-		{ // AS SLAVE
-			end ::= MasterLocal.Flushed;
-			start_cycle ::= CPU_COUNTER;
-			FOR(i ::= oldFlushed; i < end; i++)
-				Constant.State->handle_job(
-					Constant.Inputs[i % ##Constant.Inputs],
-					&Constant.Outputs[i % ##Constant.Outputs]);
-			SlaveLocal.Processing += CPU_COUNTER - start_cycle;
-			Slave.Processed := :>(end);
+			flush_st(oldFlushed);
+	}
 
-			IF(Constant.PostJobHook)
-				FOR(i ::= oldFlushed; i < end; i++)
-					Constant.PostJobHook(Constant.HookCtx, Constant.Outputs[i % ##Constant.Outputs]);
-		}
+	PRIVATE flush_st(oldFlushed: U4) VOID { // AS SLAVE
+		end # ::= MasterLocal.Flushed;
+		IF(end == oldFlushed) RETURN;
+		start_cycle ::= CPU_COUNTER;
+		FOR(i ::= oldFlushed; i < end; i++)
+			Constant.State->handle_job(
+				Constant.Inputs[i % ##Constant.Inputs],
+				&Constant.Outputs[i % ##Constant.Outputs]);
+		SlaveLocal.Processing += CPU_COUNTER - start_cycle;
+		Slave.Processed := :>(end);
+
+		IF(Constant.PostJobHook)
+			FOR(i ::= oldFlushed; i < end; i++)
+				Constant.PostJobHook(Constant.HookCtx, Constant.Outputs[i % ##Constant.Outputs]);
+
+		IF(Constant.IdleHook)
+			Constant.IdleHook(Constant.HookCtx);
 	}
 
 	[Args...]issue_flush(w: WHERE, input: Args!&&...) VOID --
@@ -257,6 +272,10 @@
 			ret := Constant.Outputs[FROM start];
 		MasterLocal.Consumed += ##ret;
 		= ret;
+	}
+
+	sync() VOID -- { // AS MASTER
+		MasterLocal.SeenProcessed := Slave.Processed(:<);
 	}
 
 	get_some(at: WHERE) Job::Output+[#]
