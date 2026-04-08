@@ -865,7 +865,7 @@ INCLUDE "../parser/extern.rl"
 
 		p.next();
 
-		out->Type := type;
+		out->Type := :Preparse(type);
 		out->Name := name;
 		out->Templates := template;
 		out->File := p.File;

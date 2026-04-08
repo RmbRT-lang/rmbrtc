@@ -1,8 +1,8 @@
 /// Bloom for looking through the stackframe to track allocations.
 /// Allocates at U8 granularity in constant time, leading to smaller code and faster allocation.
 ::rlc::codegen::x86 U8StackFrame {
-	HighestUsed: U4;
-	PeakUsed: U4;
+	HighestUsed: U4; // current tip.
+	PeakUsed: U4;    // max capacity.
 	WordsFreeBloom: U8;
 	WordsFree: U8[64+ (/Dummy/) 1]; // Indexed by Bloom
 	Scopes: U4[0xffff];
@@ -11,22 +11,26 @@
 	alloc_8() U4 --
 	{
 		size ::= HighestUsed;
-		// Generate 
+		// Generate  (… ???)
 		firstFreeWord_bloombit ::= FIRST1BIT WordsFreeBloom;
-		WordsFreeBloom ^= firstFreeWord_bloombit;
-		firstFreeWord_bloomidx ::= POPCNT (firstFreeWord_bloombit-1); // SISD...
+		WordsFreeBloom ^= firstFreeWord_bloombit; // FIRST1POS/LZCNT + BTR
+		firstFreeWord_bloomidx ::= POPCNT (firstFreeWord_bloombit-1); // can be removed if ^.
+		
+		// NOTE: Can also use FIRST1POS + BTR here. FIRST1POS would be 3-4 Intel, 1-2 AMD cycles.
 		firstFreeWord_slot_bits ::= WordsFree[firstFreeWord_bloomidx];
 		firstFreeWord_slot_bit ::= FIRST1BIT firstFreeWord_slot_bits;
 		firstFreeWord_slot_bits ^= firstFreeWord_slot_bit;
 		WordsFree[firstFreeWord_bloomidx] := firstFreeWord_slot_bits;
-		firstFreeWord_idx ::= POPCNT (firstFreeWord_slot_bit - 1);
+		firstFreeWord_idx ::= POPCNT (firstFreeWord_slot_bit - 1); // can be removed if FIRST1POS
+
+		// We can probably do this better.
 		index ::= (firstFreeWord_bloomidx << 6) | firstFreeWord_idx;
-		index := firstFreeWord_bit ?? size : index;
+		index := firstFreeWord_bloombit ?? size : index;
 
 		// Now, we do generic tracking.
 		size += index == size;
 		HighestUsed := size;
-		Peak := (Peak < size) ?? size: Peak;
+		PeakUsed := (PeakUsed < size) ?? size : PeakUsed;
 		= index;
 	}
 

@@ -170,6 +170,7 @@ INCLUDE "../identifierPool.rl"
 
 		// some special operations
 		// saturating addition
+		// It would be nicer for the implementation if we could replace them by multi-token sequences, such as: SAT_ADD U8. Then we would have far fewer tokens here. We might even split it up into SAT ADD U8, and SAT SUB U8, etc.. Though then we have more work in the expression parser phase, probably?
 		sat_add_u1,
 		sat_add_u2,
 		sat_add_u4,

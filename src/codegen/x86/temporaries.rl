@@ -31,7 +31,7 @@
 		r13,
 		r14,
 		r15,
-		rbx,
+		rbx, // We might want to choose a different priority for legacy registers.
 		rax,
 		rcx,
 		rdx,

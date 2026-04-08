@@ -14,6 +14,7 @@ INCLUDE 'std/tempalloc'
 		(/ To make SWAR actually worthwhile, we need:
 		- getEntry: i, entrySize: = x >> (entrySize * i) & ((1<<entrySize)-1)
 			- Or even just bitmask n := (1 << n) -1 in one cycle. It's actually just like ~(-1 >> (N-n)), so it's not that special. Basically shift up, but fill with ones instead of 0s. so it would be: 0 "<<1" n.
+				- We could actually revert the whole thing and use right shifts, but only if we can guarantee that there's always a sign bit.
 			- We want fast index calculations for slots, for sizes 3 and 5 and maybe 9. Single-cycle.
 			- We want to cut and insert into words, shifting stuff around:
 				??? insert low, high
@@ -32,34 +33,106 @@ INCLUDE 'std/tempalloc'
 		# get_unclamped(i: U1) U1 -- := Storage >> (5 * i);
 		set_clamped(i: U1, v: U1) VOID -- { Storage |= <U8>(v) << (5 * i); }
 
-		// Remove entry and shift all following entires downwards.
+		// Remove entry and shift all following entries downwards.
+		// 4-5 cycles, expect 5. However, if Storage is not in a register, then we have 8 cycles or something. But since Storage is a fixed address, we can expect it to already be in a register. However, not requiring any memory accesses, this is great for interleaving, amortised latencies of 2-3 cycles might be possible.
 		erase_entry(i: U1) VOID -- {
-			shl ::= 5*i;
-			maskNotLower ::= (~<U8>(0) << shl);
+			// 2-3 cycles, expect 3.
+			shl ::= 5*i; // 1-2 cycles, expect 2. Note, get_unclamped also uses this.
+			maskNotLower ::= (~<U8>(0) << shl); // 1 cycle
 
+			// 1 cycle.
 			// Mask all entries before the erased entry.
 			low ::= Storage &~ maskNotLower;
 			// Mask all entries after the erased entry.
 			high ::= (Storage >> 5) & maskNotLower;
+
+			// 1 cycle.
 			// Merge.
 			Storage := low | high;
+
+			(/ Cycles & registers:
+
+			1	;                         MOV maskNotLower, ~0;        MOV low, Storage;
+			2	LEA shl, [i+4*i];         SHR Storage, 5;              ;
+			3	SHL maskNotLower, shl;    ;                            ;
+			4	ANDN low, maskNotLower;   AND Storage, maskNotLower;   ;
+			5	OR Storage, low           ;                            ;
+
+				i/shl is the input. we only use Storage, i/shl, maskNotLower, and low. 4 registers. This means we can run at least two instances in one register set, + pipelining. The only permanent register is Storage, the others are short-lived. Maybe i also has to survive. Anyway, perfect fit for r8-r15, although the shift instructions need to temporarily use CL.
+			/)
 		}
 
 		// Assumes all entries are clamped to 4-bit numbers, so msb is always 0.
+		(/ cycles: 7
+
+		1	;                                  x := storage + SPLAT5_15;
+		2	;                                  ;
+		3	splatted := clamped * SPLAT5_1;    ;
+		4	t1 := x - splatted                 ;
+		5	t1 := t1 & ~SPLAT5_15              ;
+		6	gt := t1 >> 4                      ;
+		7	Storage -= gt;                     ;
+
+		We can also remove the final shift, probably:
+
+		1	;                                    x := storage + SPLAT5_15;
+		2	;                                    x >>= 4;
+		3	splatted := clamped * (SPLAT5_1>>4)  ;
+		4	t1 := x - splatted                   ;
+		5	t1 := t1 &~ SPLAT5_15>>4             ;
+		6	Storage -= gt;                       ;
+
+		Though I am not sure whether that works as intended. Maybe we would need some tweaking to not lose the lowest bits.
+
+		Either way, this is easy to run in parallel, and does not use many registers. We should be able to run both functions at once without any spills.
+
+		NOTE: this only turns into a NOP if clamped == 15 or something.
+		/)
 		dec_if_gt(clamped: U1) VOID -- {
 			// for each element, x + dist must be < 15 if x < clamped.
 			splat15: U8 := 0x0084210842108421 * 15;
-			splatted: U8 := clamped * 0x0084210842108421;
-			x ::= Storage + splat15;
-			gt ::= ((x - splatted) &~ splat15) >> 4;
-			Storage -= gt; // all digits where we subtract are nonzero, so no additional guards needed.
+			splatted: U8 := clamped * 0x0084210842108421; // 3
+			x ::= Storage + splat15; // 1
+			gt ::= ((x - splatted) &~ splat15) >> 4; // 1+2
+			Storage -= gt; // all digits where we subtract are nonzero, so no additional guards needed. // 1
+		}
+
+
+
+		// Should take around 11-12 cycles.
+		// NOTE: to make this nop-friendly, we either have to manipulate the input values or use a conditional move at the end.
+		clobber(reg: U1) VOID
+		{
+			lru: Swar4x12; // : for figuring out what register to spill.
+			order: Swar4x12; // : for knowing where a specific register is.
+			i ::= order.get_unclamped(reg) & 0xf; // 3+1
+			order.dec_if_gt(i); lru.erase(i); lru.append(reg); // 7;   5+2
+		}
+
+		// Should take around 13-14 cycles.
+		spill_lru() U1 // spill the least recently used register.
+		{
+			lur: Swar4x12;
+			order: Swar4x12;
+
+			reg ::= lru & 0xf; // 1
+			lru >>= 4; // 1
+			i ::= order.get_unclamped(reg) & 0xf; // 4
+			order.dec_if_gt(i); // 7
+			= reg;
+		} // we should be able to combine clobber and spill, and combine it with a flag doing conditional assignments at the end, and with the flag also controlling whether to take a register name, or the least recently used register.
+
+		// at 7M LOC/s and 20 ops/LOC, we have a budget of 7.14ns/op, or around 28 cycles. I assume we can bring most of the register logic into around 16 cycles, leaving us with another 12 cycles or so for managing the stack frame.
+		touch(reg: U1) VOID
+		{
+			// essentially the same as clobber, except that in clobber, we care about whether we have to spill a value first.
 		}
 	}
 	Swar4x16 {
 		Storage: U8;
 		// 4 cycles, assuming Storage is already in a register, and we have ANDN.
 		// 5 cycles if no ANDN.
-		erase_entry(i: U1) VOID -- {
+		erase_entry(i: U1) VOID -- { // LRU::erase_entry
 			shl ::= i << 2;
 			maskNotLower ::= ~<U8>(0) << shl;
 			low ::= Storage &~ maskNotLower;
@@ -71,7 +144,7 @@ INCLUDE 'std/tempalloc'
 		get(i: U1) U1 -- := (Storage >> (i<<2)) & 15;
 
 		// 7 cycles, assuming Storage is already in a register.
-		dec_if_gt(v: U1) VOID -- {
+		dec_if_gt(v: U1) VOID -- { // IndexList::on_erased_entry
 			splatted: U8 := v * 0x0101010101010101;
 			mask: U8 := 0x0f0f0f0f0f0f0f0f;
 			diff_even ::= (Storage & mask) + mask;

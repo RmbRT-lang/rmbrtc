@@ -104,8 +104,8 @@
 		NumTemplatedIdSymbolConstant: {Identifier, Type-Handle};
 	}
 
-	ENUM Reference {
-	*	none,
+	ENUM Lifetime {
+	*	instance, // an instance, not a reference.
 	?	localReference, // Local variable, cannot be returned
 	?	globalReference, // global variable
 	?	expiringReference, // && reference, temporary value
@@ -117,7 +117,7 @@
 	Type
 	{
 		Core: TAGGED CoreType;
-		Reference: ir::Reference;
+		Lifetime: ir::Lifetime;
 		Modifiers: U1;
 	}
 

@@ -78,6 +78,19 @@ INCLUDE "specials.rl"
 		# ## THIS U4 -- := TokenCount;
 	}
 
+	(/ currently mandatory latency per token:
+
+		load+classify+switch jump/branch miss, + final branch miss
+		= 5 +   5    +     15?                 +     15 ? = 40
+
+		Average token length maybe 4?
+
+		Current cost per byte is around 25. So 40/4 + 15 per byte.
+
+		Sean's:
+			6 per byte + 6 per token, with specials being 1 token per byte. So we end up with <= 12 per byte + things like number processing, which should add another 1-2 cycles per byte for numbers. And a final reassembly of 4-6 cycles per token, so 6+6 per token, + 8 per byte, would be <= 20 per byte, and more like 12/3+8 = 12 per byte total.
+	/)
+
 
 	// Currently, we have around 32 cycles per byte in the tokeniser. In single-thread mode, we are around 10%-20% faster, so memory migration between pipeline stages is a bit of a slowdown.
 	// We probably cannot avoid the branch miss per token, but since lots of tokens have more than one character, this should only account for maybe ~4 cycles per character, if the average token length is >=4 (including whitespaces and identifier length). What we could also do is to try to make one pre-pass that tries to detect all token boundaries first (start&end of identifiers, start&end of numbers, whitespace spans, etc.), and then group all token spans by their starting character or classification. Afterwards, we can properly parse all tokens separately (for example properly parse :specials, etc.). If we have a branchless way to identify a token span, with maybe exceptions for strings and comments, we should be able to remove the switch structure altogether. A post-pass can then parse all numbers, identifiers, keywords, etc. We should be able to achieve that in just a few cycles per byte, and maybe even organise tokens by their length, so that all identifiers of the same length can be parsed together, and all keywords of the same length, and also all numbers of the same length. We could also try parsing multiple parts of the same file at once, although that would cause problems with strings. But we should at least be able to get twice as fast, maybe more. It might require some advanced techniques in a preprocessing step.
@@ -153,59 +166,8 @@ INCLUDE "specials.rl"
 			token_lut[0] := :eof;
 		}
 
-		parse_next(out: FileTokenView \) BOOL
-		{
-			FOR(;;)
-			{
-				Start := Read;
-				next ::= look4();
-				Read++;
-				case ::= token_lut![<U1>(next)];
-				SWITCH!(case)
-				{
-				:newline: { space_multi(); CONTINUE; }
-				:space: { space_multi(); CONTINUE; }
-				:zero: on_zero(out);
-				:nonzero: number_literal(out, next);
-				:string_apostrophe, :string_quote, :string_backtick:
-				{
-					string(next);
-					out->Hots[##*out] := <TokenHot>(:String, :String(>
-							<U1>(<U1>(case) + <S1>(
-								<U1>(tok::StringType::StringQuote) -
-								<U1>(Case::string_quote)))
-						));
-					out->Payloads[##*out].{ :String(Start, Read - Start) };
-				}
-				:special: { special(out, next); }
-				:uppercase: { keyword(out, next); }
-				:identifier: { identifier(out); }
-				:parentheseOpen:
-					{ IF!(on_parenthese_open(out)) CONTINUE; }
-				:forwardSlash: { IF!(on_slash(out)) CONTINUE; }
-				:other:
-				{
-					IF(eat2("´"))
-					{
-						forward_tick_string(out);
-						out->Payloads[##*out].{ :String(Start, Read - Start) };
-					}
-					ELSE
-					{
-						Read := Start;
-						error();
-					}
-				}
-				:eof: { = FALSE; }
-				}
-
-				out->Positions[##*out].Pos := (File, Start);
-				out->Positions[##*out].Length := Read - Start;
-				out->TokenCount += 1;
-
-				= TRUE;
-			}
-		}
+		parse_next(out: FileTokenView \) BOOL --
+			:= parse_all(out, ##*out + 1);
 
 		parse_all(out: FileTokenView \, capacity: U4) BOOL
 		{
@@ -574,7 +536,7 @@ INCLUDE "specials.rl"
 			{
 				advance_nows();
 				payload: U8 := 0;
-				look();
+				c := look();
 				FOR(i ::= 0;; i++)
 				{
 					nextc ::= look_ahead(1);

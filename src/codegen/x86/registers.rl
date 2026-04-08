@@ -44,6 +44,7 @@
 	!?	EvictedTemp: {TempRegName, U2};
 	}
 
+	// Make a version that writes it to a pointer and increments it if it did evict? Then we can directly produce a stream of only evictions.
 	clobber(reg: TempRegName) TAGGED Eviction {
 		// In case we have an eviction, record it properly.
 		eviction: TAGGED Eviction (NOINIT);
@@ -51,7 +52,7 @@
 		eviction.(1) := (reg, Regs[>reg].temporary);
 
 		// Eliminate from usage bitfield.
-		Used &= ~<U4>(1) <<< >reg;
+		Used &= ~<U4>(1) <<< >reg; // BTR used, reg;   SETC eviction.(0)
 
 		// Mark the register as unused.
 		unlink_lru(reg);
