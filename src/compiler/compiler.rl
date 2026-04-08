@@ -136,8 +136,9 @@ INCLUDE "iddedupler.rl"
 			- [X] tokeniser
 			- [X] Identifier deduplicator (global & file-local).
 			- [X] globalscope preparser
-		- [/] Phase 2
 			- [/] preparse2: class members, etc. -- might move this to phase 1.
+		- [/] Phase 2
+			- [ ] return type & field type resolution: at least for untemplated things.
 			- [ ] body-parse / post-parse: types, function bodies, expressions, etc.
 				- [ ] typechecking
 				- [ ] IR0 codegen (TRASM?)
@@ -181,6 +182,80 @@ INCLUDE "iddedupler.rl"
 		Multi-parser: same thing. We do not get many files
 		/)
 
+		// We declare the pipes globally so that we can access them from the post-job hooks, letting them communicate.
+		STATIC loader_pipe: [SrcLoader; #256]PipelineSetup (NOINIT);
+			STATIC on_loader_quit(VOID*) VOID { FOR(tok_pipes) IT.quit(); }
+			STATIC on_file_loaded(ctx: VOID*, result: SrcLoader::Output &) VOID
+			{
+				IF!(result)
+				{
+					IF!(loader_pipe.pending_slave()) loader_pipe.quit();
+					RETURN;
+				}
+
+				STATIC includes: tok::Token -std::Vec := :reserve(2048);
+				STATIC fileNames: std::temp::Alloc := :custom(1<<16, 1 << 12);
+				includes.clear_reuse();
+
+				f ::= result!.File;
+				contents ::= result!.Content;
+
+				// Parse includes.
+				tokeniser: rlc::tok::Tokeniser(f, contents);
+				first_token ::= compiler::parse_includes(includes, tokeniser);
+
+				basefile: os::fs::FilePath := result!.Name;
+
+				build ::= <Build *>(ctx);
+				// Do not load includes if we are to only check the syntax of the input files.
+				IF(build->Type != :checkSyntax)
+				{
+					// Queue all includes for the loader.
+					FOR(includes!)
+					{
+						ASSERT(IT.Type == :String);
+						loader_pipe.issue(HERE,
+							IT.SType.String == :StringQuote
+							?? include::IncludeType::relative
+							: include::IncludeType::global,
+							basefile.Directory, parse_string(IT, fileNames), IT.at());
+					}
+					loader_pipe.flush();
+				}
+
+				IF!(first_token)
+				{
+					IF!(loader_pipe.pending_slave()) loader_pipe.quit();
+					RETURN;
+				}
+
+				// Issue the rest of the file to a tokeniser thread.
+				STATIC tok_pipe_next: INT := 0;
+				tok_pipes[tok_pipe_next++ % ##tok_pipes].issue_flush(HERE, &&tokeniser, *first_token, f);
+			}
+
+		STATIC tok_pipes: [CodeTokeniser; #16]PipelineSetup[2];
+			STATIC on_file_tokenised(VOID*, result: CodeTokeniser::Output &) VOID
+			{
+				STATIC mutex: BOOL. := FALSE;
+
+					WHILE(mutex :=: :<(TRUE)) {;}
+				pass_along_toker_to_dedupler(result, iddedup_pipe);
+					mutex := :>(FALSE);
+			}
+			STATIC on_tokeniser_quit(VOID *) VOID
+			{
+				STATIC alive: INT. := ##tok_pipes;
+				IF!( alive += :?(-1)) iddedup_pipe.quit();
+			}
+
+		STATIC iddedup_pipe: [IdDeDupler; #16]PipelineSetup;
+			STATIC on_file_iddeduped(VOID*, result: IdDeDupler::Output &) VOID
+				{ pass_along_dedupler_to_preparser(result, parser_pipe); }
+			STATIC on_iddedup_quit(VOID*) VOID
+				{ parser_pipe.quit(); }
+		STATIC parser_pipe: [CodeParser; #16]PipelineSetup;
+
 		(//
 			Compiles the given input files according to the specified build flags.
 		/)
@@ -189,29 +264,29 @@ INCLUDE "iddedupler.rl"
 			build: Build
 		) VOID
 		{
-			STATIC loader_pipe: [SrcLoader; #256]PipelineSetup(build.BasePath, >build.IncludePaths!);
-				IF!(build.SINGLE_THREADED) loader_pipe.launch_worker();
+			loader_pipe.{ build.BasePath, >build.IncludePaths! };
 
-			STATIC tok_pipes: [CodeTokeniser; #16]PipelineSetup[1];
-				IF!(build.SINGLE_THREADED) FOR(tok_pipes) IT.launch_worker();
-			STATIC tok_pipes_p: [CodeTokeniser]Pipeline *[##tok_pipes] (NOINIT);
-				FOR(tok_pipes_p) IT := &tok_pipes[IOTA];
+			loader_pipe.Constant.HookCtx           := &build;
+			loader_pipe.Constant.PostJobHook       := on_file_loaded;
+			loader_pipe.Constant.QuitHook          := on_loader_quit;
+			FOR(tok_pipes) IT.Constant.PostJobHook := on_file_tokenised;
+			FOR(tok_pipes) IT.Constant.QuitHook    := on_tokeniser_quit;
+			iddedup_pipe.Constant.PostJobHook      := on_file_iddeduped;
+			iddedup_pipe.Constant.QuitHook         := on_iddedup_quit;
 
-			STATIC iddedup_pipe: [IdDeDupler; #16]PipelineSetup;
-				IF!(build.SINGLE_THREADED) iddedup_pipe.launch_worker();
-
-			STATIC parser_pipes: [CodeParser; #16]PipelineSetup[1];
-				IF!(build.SINGLE_THREADED) FOR(parser_pipes) IT.launch_worker();
-			STATIC parser_pipes_p: [CodeParser]Pipeline *[##parser_pipes] (NOINIT);
-				FOR(parser_pipes_p) IT := &parser_pipes[IOTA];
+			IF!(build.SINGLE_THREADED)
+			{
+				loader_pipe.launch_worker();
+				FOR(tok_pipes) IT.launch_worker();
+				iddedup_pipe.launch_worker();
+				//parser_pipe.launch_worker();
+			}
 
 			start_time ::= NOW;
-			load_files(files!, build, loader_pipe, tok_pipes_p, iddedup_pipe, parser_pipes_p);
-
-			loader_pipe.wait_quit(HERE);
-			FOR(tok_pipes) IT.wait_quit(HERE);
-			FOR(parser_pipes) IT.wait_quit(HERE);
-			iddedup_pipe.wait_quit(HERE);
+				FOR(files) loader_pipe.issue(HERE, :relative(build.BasePath, IT!, NULL));
+				loader_pipe.flush(); // we are only allowed to flush once from the main thread.
+				IF!(build.SINGLE_THREADED)
+					parser_pipe.run_worker();
 			end_time ::= NOW;
 
 			IF(build.Type == :checkSyntax)
@@ -219,14 +294,29 @@ INCLUDE "iddedupler.rl"
 
 			{
 				size ::= 0;
+				lines ::= 0;
 				FOR(src::fileContents!)
+				{
+					IF(##IT) lines += IT[][##IT-1] != '\n';
 					size += ##IT;
+					FOR(IT) lines += IT == '\n';
+				}
 
-				term::info(NULL, "loaded ", std::io::format::dec(##src::fileNames), " files (", std::io::format::dec(size), " bytes in ", std::io::format::dec((end_time - start_time) / 1000000), ".", std::io::format::dec_x(((end_time - start_time) % 1000000) / 1000, 3), "ms). #ids: ", std::io::format::dec(##ident::strings),
-					", loader: ", std::io::format::dec(loader_pipe.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA)), "µs"
-					", toker: ", std::io::format::dec(tok_pipes[0].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA)), "µs"
-					", dedup: ", std::io::format::dec(iddedup_pipe.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA)), "µs"
-					", preparser: ", std::io::format::dec(parser_pipes[0].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA)), "µs"
+				lines_per_second ::= (GIGA * lines) / (end_time - start_time);
+				target: U8 := 1000000;
+				budget ::= (10000 * target) / lines_per_second;
+
+				term::info(NULL, "Phase 1: ", std::io::format::dec(##src::fileNames), "F (", std::io::format::dec(lines), "L, ", std::io::format::dec(size), "B) in ", std::io::format::dec((end_time - start_time) / 1000000), ".", std::io::format::dec_x(((end_time - start_time) % 1000000) / 1000, 3), "ms. ", std::io::format::dec(##ident::strings), " ids"
+					", ",
+					std::io::format::dec_x(loader_pipe.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs load, ",
+					std::io::format::dec_x(tok_pipes[0].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs+",
+					std::io::format::dec_x(tok_pipes[1].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs tok, ",
+					std::io::format::dec_x(iddedup_pipe.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs dedup, ",
+					std::io::format::dec_x(parser_pipe.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs preparse",
+					" // ",
+					std::io::format::dec((end_time - start_time) / size), ".", std::io::format::dec_x((((end_time - start_time) % size) * 100) / size, 2), "ns/B, ",
+					std::io::format::dec((lines_per_second + 500) / MEGA), ".", std::io::format::dec_x(((lines_per_second + 500) % MEGA) / 1000, 3), "ML/s, ",
+					std::io::format::dec(budget / 100), ".", std::io::format::dec_x(budget % 100, 2), "% of budget"
 					);
 			}
 
@@ -243,6 +333,7 @@ INCLUDE "iddedupler.rl"
 					- [X] operators
 					- [ ] intrinsics
 				- [X] write AST merger? Actually just let the parser write into the global AST (rather: scope tree) directly.
+				- [ ] Check whether making tokeniser process in a loop produces a speedup.
 				- [ ] Fully post-process tokens (strings, numbers)?
 				- [ ] write post-parser
 					- [ ] resolve all type names, field types, typedefs, return types, and inheritances, until all types outside of function bodies are resolved.
@@ -309,7 +400,7 @@ INCLUDE "iddedupler.rl"
 		out: CodeTokeniser::Output &,
 		pipe: [IdDeDupler]Pipeline &) VOID
 	{
-		next_input ::= pipe.next_input();
+		next_input ::= pipe.next_input(HERE);
 		next_input->Tokens := out.Tokens;
 		next_input->File := out.File;
 		pipe.issue_flush_prepared();
@@ -319,133 +410,13 @@ INCLUDE "iddedupler.rl"
 		out: IdDeDupler::Output &,
 		pipe: [CodeParser]Pipeline &) VOID
 	{
-		next_input ::= pipe.next_input();
+		next_input ::= pipe.next_input(HERE);
 
 		next_input->File := out.File;
 		next_input->LocalIds := out.LocalIds;
 		next_input->Tokens := out.Tokens;
 
 		pipe.issue_flush_prepared();
-	}
-
-	load_files(
-		files: std::Str#[#],
-		build: Build #&,
-		loader_pipe: [SrcLoader]Pipeline &,
-		tokeniser_pipes: [CodeTokeniser]Pipeline \[#],
-		iddedup_pipe: [IdDeDupler]Pipeline &,
-		parser_pipes: [CodeParser]Pipeline \[#]) VOID
-	{
-		includes: rlc::tok::Token - std::Vec := :reserve(2048);
-
-		FOR(files) loader_pipe.issue_flush(:relative(build.BasePath, IT!, NULL));
-
-		fileNames: std::temp::Alloc := :custom(1<<16, 1 << 12);
-
-		reset: std::temp::Locals::Scope;
-
-		tokeniser_round ::= 0;
-		parser_round ::= 0;
-		/// Parse all code first.
-		WHILE(processed ::= loader_pipe.get_some(HERE))
-		{
-			FOR(processed)
-			{
-				IF:!(result ::= IT)
-					CONTINUE;
-				includes.clear_reuse();
-
-				f ::= result!.File;
-				contents ::= result!.Content;
-
-				// Parse includes.
-				tokeniser: rlc::tok::Tokeniser(f, contents);
-				first_token ::= compiler::parse_includes(includes, tokeniser);
-
-				basefile: os::fs::FilePath := result!.Name;
-
-				// Do not load includes if we are to only check the syntax of the input files.
-				IF(build.Type != :checkSyntax)
-				{
-					// Queue all includes for the loader.
-					FOR(includes!)
-					{
-						ASSERT(IT.Type == :String);
-						loader_pipe.issue_flush(
-							IT.SType.String == :StringQuote
-							?? include::IncludeType::relative
-							: include::IncludeType::global,
-							basefile.Directory, parse_string(IT, fileNames), IT.at());
-					}
-					loader_pipe.flush();
-				}
-				// Issue the rest of the file to a tokeniser thread.
-				IF!(first_token)
-					CONTINUE;
-
-				IF(parser_pipes[parser_round % ##parser_pipes]->full())
-					parser_pipes[parser_round % ##parser_pipes]->get_some(HERE);
-
-				i ::= tokeniser_round++ % ##tokeniser_pipes;
-				IF(tokeniser_pipes[i]->full())
-				{
-					tokenised ::= tokeniser_pipes[i]->get_some(HERE);
-					ASSERT(tokenised);
-					FOR(tokenised)
-					{
-						IF(iddedup_pipe.full())
-							FOR(iddedup_pipe.get_some(HERE))
-							{
-								IF(parser_pipes[parser_round % ##parser_pipes]->full())
-									parser_pipes[parser_round % ##parser_pipes]->get_some(HERE);
-								pass_along_dedupler_to_preparser(IT, *parser_pipes[parser_round++ % ##parser_pipes]);
-							}
-
-						pass_along_toker_to_dedupler(IT, iddedup_pipe);
-					}
-				}
-					//tokeniser_pipes[i].get_some();
-				tokeniser_pipes[i]->issue_flush(&&tokeniser, *first_token, f);
-			}
-		}
-
-		loader_pipe.quit();
-
-		FOR(tokeniser_pipes)
-		{
-			WHILE(tokenised ::= IT->get_some(HERE))
-				FOR(tokenised)
-				{
-					//BUG: ST: the queued jobs for the tokeniser do not get flushed.
-					IF(iddedup_pipe.full())
-						FOR(iddedup_pipe.get_some(HERE))
-						{
-							IF(parser_pipes[parser_round % ##parser_pipes]->full())
-								parser_pipes[parser_round % ##parser_pipes]->get_some(HERE);
-							pass_along_dedupler_to_preparser(IT, *parser_pipes[parser_round++ % ##parser_pipes]);
-						}
-
-					pass_along_toker_to_dedupler(IT, iddedup_pipe);
-				}
-
-			IT->quit();
-		}
-
-		WHILE(output ::= iddedup_pipe.get_some(HERE)) {
-			FOR(output)
-			{
-				IF(parser_pipes[parser_round % ##parser_pipes]->full())
-					parser_pipes[parser_round % ##parser_pipes]->get_some(HERE);
-				pass_along_dedupler_to_preparser(IT, *parser_pipes[parser_round++ % ##parser_pipes]);
-			}
-		}
-		iddedup_pipe.quit();
-
-		FOR(parser_pipes)
-		{
-			WHILE(IT->get_some(HERE)) { ; }
-			IT->quit();
-		}
 	}
 
 	parse_string(str: tok::Token #&, alloc: std::temp::Alloc &) CHAR#[#]
