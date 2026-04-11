@@ -1,4 +1,4 @@
-INCLUDE "pipeline.rl"
+INCLUDE "../pipeline.rl"
 
 ::rlc::compiler SrcLoader
 {

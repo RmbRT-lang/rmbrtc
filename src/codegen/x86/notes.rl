@@ -4,6 +4,8 @@ INCLUDE 'std/tempalloc'
 
 ::rlc::codegen::x86::dumb
 {
+	// CODEGEN NOTES: we probably first want a forwards pass over the IR for typechecking, but a backwards pass over the IR for the initial register allocation, which lets us identify constraints regarding which operations require which values in what registers. And then we do a forward pass that inserts loads, spills, and migration operations to satisfy the constraints. We can then do another pass over the registers and values to identify pathological patterns. This could be done using a circuit.
+
 	
 	Swar4x12 { // We prefer SWAR over memory accesses, because SWAR is SIMD-isable. We want to operate on multiple instances at once.
 		Storage: U8;

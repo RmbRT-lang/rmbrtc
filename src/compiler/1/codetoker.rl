@@ -1,4 +1,4 @@
-INCLUDE "../tokeniser/tokeniser.rl"
+INCLUDE "../../tokeniser/tokeniser.rl"
 INCLUDE 'std/map'
 INCLUDE 'std/hash'
 

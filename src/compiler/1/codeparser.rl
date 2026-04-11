@@ -1,16 +1,16 @@
-INCLUDE "../scoper/scope.rl"
-INCLUDE "../parser/parser.rl"
-INCLUDE "../parser/class.rl"
-INCLUDE "../parser/rawtype.rl"
-INCLUDE "../parser/enum.rl"
-INCLUDE "../parser/union.rl"
-INCLUDE "../parser/mask.rl"
-INCLUDE "../parser/function.rl"
-INCLUDE "../parser/field.rl"
-INCLUDE "../parser/symbolconstant.rl"
-INCLUDE "../parser/typedef.rl"
-INCLUDE "../parser/globalvariable.rl"
-INCLUDE "../parser/extern.rl"
+INCLUDE "../../scoper/scope.rl"
+INCLUDE "../../parser/parser.rl"
+INCLUDE "../../parser/class.rl"
+INCLUDE "../../parser/rawtype.rl"
+INCLUDE "../../parser/enum.rl"
+INCLUDE "../../parser/union.rl"
+INCLUDE "../../parser/mask.rl"
+INCLUDE "../../parser/function.rl"
+INCLUDE "../../parser/field.rl"
+INCLUDE "../../parser/symbolconstant.rl"
+INCLUDE "../../parser/typedef.rl"
+INCLUDE "../../parser/globalvariable.rl"
+INCLUDE "../../parser/extern.rl"
 
 ::rlc::compiler CodeParser
 {
@@ -133,7 +133,9 @@ INCLUDE "../parser/extern.rl"
 		{
 			at ::= p.progress();  name ::= p.stype().Identifier;  p.next();
 
-			entry ::= scope->ensure(name);
+			global_decl_name ::= global_to_decl_name(name);
+
+			entry ::= scope->ensure(global_decl_name);
 			start ::= p.progress();
 
 			SWITCH(p.type())
@@ -192,26 +194,28 @@ INCLUDE "../parser/extern.rl"
 
 				p.next();
 				name ::= p.expect_p(:Identifier).Identifier;
-				entry ::= scope->ensure(name);
-				pentry ::= entry.get();
+				global_decl_name ::= global_to_decl_name(name);
+				entry ::= scope->ensure(global_decl_name);
+				pentry ::= &entry->NonValue;
 
 				child_ns: scoper::Namespace * (NOINIT);
 
-				IF(pentry->NVType == :Namespace)
+				IF(pentry->Type == :Namespace)
 				{
 					// Merge / reuse existing namespace.
-					child_ns := <scoper::Namespace-Handle>(pentry->NVMem).get();
-				} ELSE IF(pentry->NVType == :Nil)
+					child_ns := <scoper::Namespace-Handle>(pentry->Mem).get();
+				} ELSE IF(pentry->Type == :Nil)
 				{
 					// Nil: insert new namespace.
 					ns_entry ::= mempool::[scoper::Namespace]alloc_unhashed_t();
 					child_ns := ns_entry.(0);
 					child_ns->{};
-					pentry->NVType := :Namespace;
-					pentry->NVMem := ns_entry.(1);
+					pentry->Type := :Namespace;
+					pentry->Mem := ns_entry.(1);
+					scope->Namespaces += (global_decl_name.V, ns_entry.(1));
 				} ELSE
 				{
-					p.fail("Symbol ", std::io::format::hex(<UM>(pentry)) ," redefined as namespace, was ", std::str::enum(pentry->NVType));
+					p.fail("Symbol ", ident::strings[name.V] ," redefined as namespace, was ", std::str::enum(pentry->Type));
 				}
 
 				IF(p.consume_s(:Punctuation(:braceOpen)))
@@ -225,7 +229,8 @@ INCLUDE "../parser/extern.rl"
 				out ::= mempool::[parser::Rawtype]alloc_unhashed_t();
 				preparse_rawtype(p, out.(0), template);
 				name ::= out.(0)->Name;
-				entry ::= scope->ensure(name);
+				global_decl_name ::= global_to_decl_name(name);
+				entry ::= scope->ensure(global_decl_name);
 				entry->set_nonvalue(:Rawtype, out.(1), name, at, p);
 			}
 			:bracketOpen: {
@@ -251,7 +256,8 @@ INCLUDE "../parser/extern.rl"
 					p.fail("Enums cannot be templated");
 
 				name ::= p.expect_p(:Identifier).Identifier;
-				entry ::= scope->ensure(name);
+				global_decl_name ::= global_to_decl_name(name);
+				entry ::= scope->ensure(global_decl_name);
 				out ::= mempool::[parser::Enum]alloc_unhashed_t();
 				entry->set_nonvalue(:Enum, out.(1), name, at, p);
 				preparse_enum(p, out.(0), name);
@@ -273,7 +279,8 @@ INCLUDE "../parser/extern.rl"
 				start := p.progress();
 				name ::= p.expect_p(:Identifier).Identifier;
 				out.(0)->Name := name;
-				entry ::= scope->ensure(name);
+				global_decl_name ::= global_to_decl_name(name);
+				entry ::= scope->ensure(global_decl_name);
 				punct ::= p.stype().Punctuation;
 				expect ::= tok::Punctuation::FLAGS(:colon, :parentheseOpen);
 				IF!(expect >> <U1>(punct) & (p.type() == :Punctuation))
@@ -299,7 +306,8 @@ INCLUDE "../parser/extern.rl"
 
 				start := p.progress();
 				name ::= p.expect_p(:Identifier).Identifier;
-				entry ::= scope->ensure(name);
+				global_decl_name ::= global_to_decl_name(name);
+				entry ::= scope->ensure(global_decl_name);
 				punct ::= p.stype().Punctuation;
 				IF(p.type() != :Punctuation)
 					p.fail();
@@ -327,7 +335,8 @@ INCLUDE "../parser/extern.rl"
 			:mask: {
 				name ::= p.expect_p(:Identifier).Identifier;
 				out ::= mempool::[parser::Mask]alloc_unhashed_t();
-				entry ::= scope->ensure(name);
+				global_decl_name ::= global_to_decl_name(name);
+				entry ::= scope->ensure(global_decl_name);
 				out.(0)->Name := name;
 				preparse_mask(p, out.(0), name);
 				entry->set_nonvalue(:Mask, out.(1), name, at, p);
@@ -341,7 +350,8 @@ INCLUDE "../parser/extern.rl"
 			}
 			:union: {
 				name ::= p.expect_p(:Identifier).Identifier;
-				entry ::= scope->ensure(name);
+				global_decl_name ::= global_to_decl_name(name);
+				entry ::= scope->ensure(global_decl_name);
 				out ::= mempool::[parser::Union]alloc_unhashed_t();
 				preparse_union(p, out.(0), name, template);
 				entry->set_nonvalue(:Union, out.(1), name, at, p);
@@ -355,7 +365,8 @@ INCLUDE "../parser/extern.rl"
 				at ::= p.progress(); p.next();
 				name ::= p.expect_p(:Identifier).Identifier;
 
-				entry ::= scope->ensure(name);
+				global_decl_name ::= global_to_decl_name(name);
+				entry ::= scope->ensure(global_decl_name);
 				out ::= mempool::[parser::Typedef]alloc_unhashed_t();
 				preparse_typedef(p, out.(0), name, template);
 				entry->set_nonvalue(:Typedef, out.(1), name, at, p);
@@ -368,6 +379,10 @@ INCLUDE "../parser/extern.rl"
 
 	preparse2() VOID
 	{
+		RootScope.post_process_1(NULL, NULL);
+		RootScope.post_process_2();
+
+
 		// 3. fully parse everything, immediately resolving all things to their proper scope entries. -- actually, this does not happen yet. We want a separate stage for this, after we have the fully populated global scope.
 
 		// We only parse those things that have internal scopes and define things inside that get looked up from the outside.
@@ -655,11 +670,11 @@ INCLUDE "../parser/extern.rl"
 			local_id ::= p.payload_expect_p(:Identifier).Identifier.FileLocal;
 			dedup_id ::= local_to_decl_name(local_id, p.File);
 
-			main_entry ::= out->Members.ensure(dedup_id);
-			IF(main_entry->VType)
+			main_entry ::= &out->Members.ensure(dedup_id)->Value;
+			IF(main_entry->Type)
 				p.fail_pos(at, "duplicate enum constant");
-			main_entry->VType := :EnumConstant;
-			main_entry->VEntry.{ :EnumConstant(entry_val, dedup_id) };
+			main_entry->Type := :EnumConstant;
+			main_entry->Entry.{ :EnumConstant(entry_val, dedup_id) };
 
 			WHILE(p.consume_s(:Punctuation(:colonEqual)))
 			{
@@ -668,11 +683,11 @@ INCLUDE "../parser/extern.rl"
 				dedup_alias_id ::= local_to_decl_name(alias_local_id, p.File);
 				aliases += dedup_alias_id;
 
-				alias_entry ::= out->Members.ensure(dedup_alias_id).get();
-				IF(alias_entry->VType)
+				alias_entry ::= &out->Members.ensure(dedup_alias_id)->Value;
+				IF(alias_entry->Type)
 					p.fail_pos(at, "duplicate enum constant");
-				alias_entry->VType := :EnumConstant;
-				alias_entry->VEntry.{ :EnumConstant(entry_val, dedup_alias_id) };
+				alias_entry->Type := :EnumConstant;
+				alias_entry->Entry.{ :EnumConstant(entry_val, dedup_alias_id) };
 			}
 
 			aliases.clear_reuse();
@@ -882,6 +897,19 @@ INCLUDE "../parser/extern.rl"
 		Enum,
 		Constructor,
 		Destructor
+	}
+
+	global_to_decl_name(name_global: rlc::Identifier) rlc::GlobalDeclIdentifier --
+	{
+		count: U2 := ##ident::GlobalDeclsLut;
+		dedup_id: U2 * := &ident::GlobalDeclsLut[:ok(name_global.V)];
+		old ::= *dedup_id;
+		fresh ::= old == 0;
+		new ::= fresh ?? count : old;
+		count += fresh;
+		*dedup_id := new;
+		ident::GlobalDeclsLut.set_size_ok(count);
+		= new;
 	}
 
 	local_to_decl_name(name_local: rlc::FileLocalIdentifier, file: src::File) rlc::FileDeclIdentifier --

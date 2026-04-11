@@ -3,11 +3,7 @@ INCLUDE 'std/vector'
 INCLUDE 'std/optional'
 INCLUDE 'std/sync/race'
 
-INCLUDE "srcloader.rl"
-INCLUDE "includes.rl"
-INCLUDE "codetoker.rl"
-INCLUDE "codeparser.rl"
-INCLUDE "iddedupler.rl"
+INCLUDE "1/stage.rl"
 
 ::rlc::compiler
 {
@@ -39,6 +35,7 @@ INCLUDE "iddedupler.rl"
 		/)
 		LegacyScoping: BOOL;
 		SINGLE_THREADED: BOOL;
+		TRACK_FILE_IDSETS: BOOL;
 
 		{type: BuildType} INLINE:
 			Type(type),
@@ -81,6 +78,7 @@ INCLUDE "iddedupler.rl"
 			} FOR(len < ##incs; incs := incs[AFTER len])
 
 			SINGLE_THREADED := std::str::eq(std::str::c(detail::getenv("RLC_ST"!)[]), "1");
+			TRACK_FILE_IDSETS := std::str::eq(std::str::c(detail::getenv("RLC_IDS"!)[]), "1");
 
 			term::info(NULL,
 				"SINGLE_THREADED: ", SINGLE_THREADED ?? "TRUE"[#] : "FALSE"[#]);
@@ -183,82 +181,6 @@ INCLUDE "iddedupler.rl"
 		/)
 
 		// We declare the pipes globally so that we can access them from the post-job hooks, letting them communicate.
-		STATIC loader_pipe: [SrcLoader; #256]PipelineSetup (NOINIT);
-			STATIC on_loader_quit(VOID*) VOID { FOR(tok_pipes) IT.quit(); }
-			STATIC on_loader_idle(VOID*) VOID
-			{
-				loader_pipe.sync(); // sync MASTERLOCAL state.
-				IF(loader_pipe.pending())
-					loader_pipe.flush();
-				ELSE // IF(!loader_pipe.pending_slave())
-					loader_pipe.quit();
-			}
-			STATIC on_file_loaded(ctx: VOID*, result: SrcLoader::Output &) VOID
-			{
-				// Problem: each job produces more jobs, but we have only a finite job queue. The number of jobs can temporarily peak excessively. We could change the file loader to a custom solution to fix this.
-
-				IF!(result) RETURN;
-
-				//term::info(NULL, "Loaded file ", std::io::format::dec(result!.File), " ", result!.Name);
-
-				STATIC includes: tok::Token -std::Vec := :reserve(2048);
-				STATIC fileNames: std::temp::Alloc := :custom(1<<16, 1 << 12);
-				includes.clear_reuse();
-				fileNames.clear_and_optimise(1024);
-
-				f ::= result!.File;
-				contents ::= result!.Content;
-
-				// Parse includes.
-				tokeniser: rlc::tok::Tokeniser(f, contents);
-				first_token ::= compiler::parse_includes(includes, tokeniser);
-
-				basefile: os::fs::FilePath := result!.Name;
-
-				build ::= <Build *>(ctx);
-				// Do not load includes if we are to only check the syntax of the input files.
-				IF(build->Type != :checkSyntax)
-				{
-					// Queue all includes for the loader.
-					FOR(includes!)
-					{
-						ASSERT(IT.Type == :String);
-						loader_pipe.issue(HERE,
-							IT.SType.String == :StringQuote
-							?? include::IncludeType::relative
-							: include::IncludeType::global,
-							basefile.Directory, parse_string(IT, fileNames), IT.at());
-					}
-				}
-
-				IF!(first_token) RETURN;
-
-				// Issue the rest of the file to a tokeniser thread.
-				STATIC tok_pipe_next: INT := 0;
-				tok_pipes[tok_pipe_next++ % ##tok_pipes].issue_flush(HERE, &&tokeniser, *first_token, f);
-			}
-
-		STATIC tok_pipes: [CodeTokeniser; #32]PipelineSetup[2];
-			STATIC on_file_tokenised(VOID*, result: CodeTokeniser::Output &) VOID
-			{
-				STATIC mutex: BOOL. := FALSE;
-
-					WHILE(mutex :=: :<(TRUE)) { PAUSE; }
-				pass_along_toker_to_dedupler(result, iddedup_pipe);
-					mutex := :>(FALSE);
-			}
-			STATIC on_tokeniser_quit(VOID *) VOID
-			{
-				STATIC alive: INT. := ##tok_pipes;
-				IF!( alive += :?(-1)) iddedup_pipe.quit();
-			}
-
-		STATIC iddedup_pipe: [IdDeDupler; #32]PipelineSetup;
-			STATIC on_file_iddeduped(VOID*, result: IdDeDupler::Output &) VOID
-				{ pass_along_dedupler_to_preparser(result, parser_pipe); }
-			STATIC on_iddedup_quit(VOID*) VOID
-				{ parser_pipe.quit(); }
-		STATIC parser_pipe: [CodeParser; #32]PipelineSetup;
 
 		(//
 			Compiles the given input files according to the specified build flags.
@@ -268,61 +190,10 @@ INCLUDE "iddedupler.rl"
 			build: Build
 		) VOID
 		{
-			loader_pipe.{ build.BasePath, >build.IncludePaths! };
-
-			loader_pipe.Constant.HookCtx           := &build;
-			loader_pipe.Constant.PostJobHook       := on_file_loaded;
-			loader_pipe.Constant.IdleHook          := on_loader_idle;
-			loader_pipe.Constant.QuitHook          := on_loader_quit;
-			FOR(tok_pipes) IT.Constant.PostJobHook := on_file_tokenised;
-			FOR(tok_pipes) IT.Constant.QuitHook    := on_tokeniser_quit;
-			iddedup_pipe.Constant.PostJobHook      := on_file_iddeduped;
-			iddedup_pipe.Constant.QuitHook         := on_iddedup_quit;
-
-			IF!(build.SINGLE_THREADED)
 			{
-				loader_pipe.launch_worker();
-				FOR(tok_pipes) IT.launch_worker();
-				iddedup_pipe.launch_worker();
-				//parser_pipe.launch_worker();
-			}
-
-			start_time ::= NOW;
-				FOR(files) loader_pipe.issue(HERE, :relative(build.BasePath, IT!, NULL));
-				loader_pipe.flush(); // we are only allowed to flush once from the main thread.
-				IF!(build.SINGLE_THREADED)
-					parser_pipe.run_worker();
-			end_time ::= NOW;
-
-			IF(build.Type == :checkSyntax)
-				RETURN;
-
-			{
-				size ::= 0;
-				lines ::= 0;
-				FOR(src::fileContents!)
-				{
-					IF(##IT) lines += IT[][##IT-1] != '\n';
-					size += ##IT;
-					FOR(IT) lines += IT == '\n';
-				}
-
-				lines_per_second ::= (GIGA * lines) / (end_time - start_time);
-				target: U8 := 1000000;
-				budget ::= (10000 * target) / lines_per_second;
-
-				term::info(NULL, "Phase 1: ", std::io::format::dec(##src::fileNames), "F (", std::io::format::dec(lines), "L, ", std::io::format::dec(size), "B) in ", std::io::format::dec((end_time - start_time) / 1000000), ".", std::io::format::dec_x(((end_time - start_time) % 1000000) / 1000, 3), "ms. ", std::io::format::dec(##ident::strings), " ids"
-					", ",
-					std::io::format::dec_x(loader_pipe.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs load, ",
-					std::io::format::dec_x(tok_pipes[0].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs+",
-					std::io::format::dec_x(tok_pipes[1].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs tok, ",
-					std::io::format::dec_x(iddedup_pipe.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs dedup, ",
-					std::io::format::dec_x(parser_pipe.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs preparse",
-					" // ",
-					std::io::format::dec((end_time - start_time) / size), ".", std::io::format::dec_x((((end_time - start_time) % size) * 100) / size, 2), "ns/B, ",
-					std::io::format::dec((lines_per_second + 500) / MEGA), ".", std::io::format::dec_x(((lines_per_second + 500) % MEGA) / 1000, 3), "ML/s, ",
-					std::io::format::dec(budget / 100), ".", std::io::format::dec_x(budget % 100, 2), "% of budget"
-					);
+				stage1: Stage1 (&build);
+				stage1.launch_workers();
+				stage1.run(files);
 			}
 
 			(/ TODO:
@@ -399,144 +270,6 @@ INCLUDE "iddedupler.rl"
 				RETURN;
 			//DIE "outputs not implemented";
 		}
-	}
-
-	pass_along_toker_to_dedupler(
-		out: CodeTokeniser::Output #&,
-		pipe: [IdDeDupler]Pipeline &) VOID
-	{
-		next_input ::= pipe.next_input(HERE);
-		next_input->Tokens := out.Tokens;
-		next_input->File := out.File;
-		pipe.issue_flush_prepared();
-	}
-
-	pass_along_dedupler_to_preparser(
-		out: IdDeDupler::Output #&,
-		pipe: [CodeParser]Pipeline &) VOID
-	{
-		next_input ::= pipe.next_input(HERE);
-
-		next_input->File := out.File;
-		next_input->LocalIds := out.LocalIds;
-		next_input->Tokens := out.Tokens;
-
-		pipe.issue_flush_prepared();
-	}
-
-	parse_string(str: tok::Token #&, alloc: std::temp::Alloc &) CHAR#[#]
-	{
-		ASSERT(str.Type == :String);
-		contents ::= str.contents();
-		SWITCH(t ::= str.SType.String)
-		{
-		:StringQuote, :StringApostrophe:
-			contents := contents[FROM 1 UNTIL ##contents-1];
-		DEFAULT:
-			term::error(HERE, "unhandled string type: ", std::str::enum(t));
-		}
-
-		buffer ::= <CHAR *>(std::heap::alloc.alloc_raw_region(##contents, 16))[];
-
-		o ::= 0;
-		FOR(i ::= 0; i < ##contents; i++)
-		{
-			IF(contents[i] != '\\')
-			{
-				buffer[o++] := contents[i];
-				CONTINUE;
-			}
-
-			SWITCH(ch ::= contents[++i])
-			{
-			'\\': buffer[o++] := '\\';
-			'x', 'X': {
-				IF(##contents <= i+2) term::error(str.at(), "Contains unfinished hex sequence");
-
-				high ::= contents[++i];
-				low ::= contents[++i];
-				
-				IF(high >= '0' && high <= '9')
-					high := high - '0';
-				ELSE IF(high >= 'a' && high <= 'f')
-					high := high - 'a' + 0xa;
-				ELSE IF(high >= 'A' && high <= 'F')
-					high := high - 'A' + 0xa;
-				ELSE term::error(str.at(), "invalid hex sequence");
-
-				IF(low >= '0' && low <= '9')
-					low := low - '0';
-				ELSE IF(low >= 'a' && low <= 'f')
-					low := low - 'a' + 0xa;
-				ELSE IF(low >= 'A' && low <= 'F')
-					low := low - 'A' + 0xa;
-				ELSE term::error(str.at(), "invalid hex sequence");
-
-				buffer[o++] := high << 4 | low;
-			}
-			'n': buffer[o++] := '\n';
-			'r': buffer[o++] := '\r';
-			't': buffer[o++] := '\t';
-			'"': buffer[o++] := '"';
-			'\'': buffer[o++] := '\\';
-			'`': buffer[o++] := '`';
-			DEFAULT:
-				term::error(str.at(), "invalid escape sequence: \\", (&ch)[FOR 1]);
-			}
-		}
-
-		= buffer[UNTIL o];
-	}
-
-	parse_includes(
-		includes: rlc::tok::Token - std::Vec &,
-		tokeniser: tok::Tokeniser &) tok::Token-std::Opt
-	{
-		STATIC tokens: tok::FileTokens;
-		tokens.clear_reuse();
-		tokens.reserve(2);
-
-		view ::= tokens.view();
-		IF!(tokeniser.parse_next(&view))
-			= NULL;
-
-		hots ::= tokens.Hots![];
-		payloads ::= tokens.Payloads![];
-		positions ::= tokens.Positions![];
-
-		WHILE(hots->Type == :AuxKeyword
-			&& hots->SType.AuxKeyword == :include)
-		{
-			IF(!tokeniser.parse_next(&view))
-				term::error(tokeniser.at(), "expected path after INCLUDE.");
-
-			path: tok::Token (BARE);
-			path.Type := hots[1].Type;
-			path.SType.{ hots[1].SType };
-			path.Payload.{payloads[1]};
-			path.Position := positions[1].Pos;
-			path.Length := positions[1].Length;
-
-			IF(hots[1].Type != :String)
-				term::error(path.at(), "unexpected token after include ", std::str::c(<CHAR #*>(path.Type)[]));
-			IF(hots[1].SType.String != :StringApostrophe && hots[1].SType.String != :StringQuote)
-				term::error(path.at(), "invalid string type for includes");
-
-
-			added: ?& := (includes += path);
-			view := tokens.view();
-
-			IF!(tokeniser.parse_next(&view))
-				= NULL;
-		}
-
-		first_token: tok::Token (BARE);
-		first_token.Type := hots->Type;
-		first_token.SType.{ hots->SType };
-		first_token.Payload.{*payloads};
-		first_token.Position := positions->Pos;
-		first_token.Length := positions->Length;
-		= :a(first_token);
 	}
 
 	::detail EXTERN getenv(CHAR #*) CHAR #*;

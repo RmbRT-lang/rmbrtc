@@ -327,8 +327,8 @@
 
 ::rlc::compiler [Job; #Cap] PipelineSetup -> [Job]Pipeline
 {
-PRIVATE:
 	Worker:                Job;
+PRIVATE:
 	Inputs:   @(CACHELINE) Job::Input+[Cap];
 	Outputs:  @(CACHELINE) Job::Output+[Cap];
 	Thread: VOID^;

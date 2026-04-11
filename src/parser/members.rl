@@ -76,14 +76,29 @@ INCLUDE "../mempool.rl"
 	}
 }
 
+(/ Member scopes:
+
+	We have the IdLut, which takes a FileDeclIdentifier, for outer lookup.
+	For inner lookup, we also use a FileDeclIdentifier, and we inherit all static members of outer classes.
+
+	However, inner lookup does not inherit from namespaces, because of the different naming scheme. So to perform a complete inner lookup, we have to perform the inner lookup of the member scope, and if that fails, an inner lookup of the namespace scope using the Identifier.
+
+	We could make this branchless by always looking up both names. However, this would also double the cache usage. Anyway, an innerLookup from a member requires both identifiers and both scopes.
+/)
 
 ::rlc::parser Members {
-	LUTEntry {
-		NVType:   NVMember;
-		NVEntry:  MemberEntry;
+	VEntry {
+		Type: VMember;
+		Entry: MemberEntry;
+	}
+	NVEntry {
+		Type: NVMember;
+		Entry: MemberEntry;
+	}
 
-		VType:   VMember;
-		VEntry:  MemberEntry;
+	LUTEntry {
+		NonValue: NVEntry;
+		Value: VEntry;
 
 		set_value(
 			type: VMember,
@@ -92,10 +107,10 @@ INCLUDE "../mempool.rl"
 			p: parser::Parser &,
 			e: MemberEntry) VOID --
 		{
-			IF(VType != :Nil)
-				term::error(p.at_pos(at).at(), "Re-definition of ", ident::get(global_name), " as ", std::str::enum(type), " (already exists as ", std::str::enum(VType), ")");
-			VType := type;
-			VEntry.{e};
+			IF(Value.Type != :Nil)
+				term::error(p.at_pos(at).at(), "Re-definition of ", ident::get(global_name), " as ", std::str::enum(type), " (already exists as ", std::str::enum(Value.Type), ")");
+			Value.Type := type;
+			Value.Entry.{e};
 		}
 		set_nonvalue(
 			type: NVMember,
@@ -104,16 +119,19 @@ INCLUDE "../mempool.rl"
 			p: parser::Parser &,
 			e: MemberEntry) VOID --
 		{
-			IF(NVType != :Nil)
-				term::error(p.at_pos(at).at(), "Re-definition of ", ident::get(global_name), " as ", std::str::enum(type), " (already exists as ", std::str::enum(NVType), ")");
-			NVType := type;
-			NVEntry.{e};
+			IF(NonValue.Type != :Nil)
+				term::error(p.at_pos(at).at(), "Re-definition of ", ident::get(global_name), " as ", std::str::enum(type), " (already exists as ", std::str::enum(NonValue.Type), ")");
+			NonValue.Type := type;
+			NonValue.Entry.{e};
 		}
 	}
 
 	// First, we allocate the LUT in a tempalloc, with conservative capacity. Then, it gets shrunk into a second tempalloc as tight fit, and then migrated into the mempool with the file's number of decl identifiers as the final capacity. They start out with 0 boundary, and then grow. We copy it twice but this allows for much less register pressure and no branching or bounds checks during lookups later on, which can improve throughput on lookups.
 	IdLut: LUTEntry-Handle[#];
 	Entries: {U2, LUTEntry-Handle} [#]; // for patching.
+
+	InnerLutV: VEntry[];
+	InnerLutNV: NVEntry[];
 
 	ensure(id: rlc::FileDeclIdentifier) LUTEntry-Handle {
 		IF(id.V < ##IdLut)
@@ -139,6 +157,71 @@ INCLUDE "../mempool.rl"
 
 	// Call this only after finalise_members() has been called. We are going through great efforts to make this as simple as possible, for efficiency during name resolution.
 	# lookup(id: rlc::FileDeclIdentifier) LUTEntry-Handle -- := IdLut[][id.V];
+
+	post_process(outerLutV: VEntry#[], outerLutNV: NVEntry#[], cap: U2) VOID
+	{
+		// TODO PERFORMANCE: have one big pool of ##FileDeclIds * ##MemberScopes per file.
+		InnerLutV := std::heap::alloc.[VEntry]alloc_array(cap);
+		InnerLutNV := std::heap::alloc.[NVEntry]alloc_array(cap);
+
+		// Inherit access to all types.
+		IF(outerLutNV)
+		{
+			FOR(cap) InnerLutNV[IOTA] := outerLutNV[IOTA];
+			FOR(Entries!)
+			{
+				entry ::= &IT.(1)->NonValue;
+				IF(entry->Type)
+					InnerLutNV[IT.(0)] := *entry;
+				ELSE
+					InnerLutNV[IT.(0)] := outerLutNV[IT.(0)];
+			}
+		}
+		ELSE
+		{
+			FOR(cap) InnerLutNV[IOTA] := IdLut[IOTA]->NonValue;
+		}
+
+		// Only inherit access to static value members, as inner scopes do not have access to the THIS object of the outer class.
+		IF(outerLutV)
+		{
+			// TODO PERFORMANCE: make this branchless.
+			FOR(cap)
+			{
+				IF(1 << <U1>(InnerLutV[IOTA].Type) & VMember::FLAGS(:StaticField, :StaticMemberFunction))
+					InnerLutV[IOTA] := outerLutV[IOTA];
+				ELSE
+					InnerLutV[IOTA] := IdLut[IOTA]->Value;
+			}
+		} ELSE
+		{
+			FOR(cap) InnerLutV[IOTA] := IdLut[IOTA]->Value;
+		}
+
+		// Post-process children as well.
+		FOR(Entries!)
+		{
+			x ::= &IT.(1)->NonValue;
+			type ::= x->Type;
+			mem ::= x->Entry.Normal.Memory;
+
+			members: Members * (NOINIT);
+
+			// Class::OFFSETOF(Members) would be a good syntax.
+			SWITCH(type)
+			{ // TODO PERFORMANCE: OFFSETOF table instead.
+			:Nil: CONTINUE;
+			:Class: members := &<parser::Class-Handle>(mem)->Members;
+			:Rawtype: members := &<parser::Rawtype-Handle>(mem)->Members;
+			:Typedef: CONTINUE;
+			:Mask: members := &<parser::Mask-Handle>(mem)->Members;
+			:Union: members := &<parser::Union-Handle>(mem)->Members;
+			:Enum: members := &<parser::Enum-Handle>(mem)->Members;
+			}
+
+			members->post_process(InnerLutV, InnerLutNV, cap);
+		}
+	}
 }
 
 ::rlc::parser {
