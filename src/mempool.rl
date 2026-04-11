@@ -132,6 +132,7 @@ INCLUDE 'std/heap'
 			ASSERT(size < SIZEOF(#mempool::chunk0));
 
 			chunk ::= (alignProgress + words) / ##chunk0;
+			// TODO: use a guaranteed 0-initialising allocator here.
 			mempool::chunksN[chunk] := >std::heap::alloc.alloc_raw_region(
 				SIZEOF(#mempool::chunk0),
 				CACHELINE);
