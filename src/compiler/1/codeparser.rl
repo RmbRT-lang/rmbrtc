@@ -25,10 +25,10 @@ INCLUDE "../../parser/extern.rl"
 	// Parser stack and temporaries.
 
 	// The global rootscope. This is the only real output of the preparser.
-	PRIVATE RootScope: scoper::Namespace;
+	RootScope: scoper::Namespace;
 
 	// Gets reset after every file.
-	PRIVATE MemberScopes: parser::Members \ -std::Vec; // we might also want to be registering other things here, such as a list of all functions, or all return types or something. And we might want to have a union type that we can patch in the post-pass, so that we do not need to move data around.
+	PRIVATE MemberScopes: {BOOL, parser::Members \} -std::Vec; // we might also want to be registering other things here, such as a list of all functions, or all return types or something. And we might want to have a union type that we can patch in the post-pass, so that we do not need to move data around.
 
 	// Caches the file contents of all code files.
 	PRIVATE FileTokens: tok::FileTokenView-std::Vec;
@@ -66,12 +66,15 @@ INCLUDE "../../parser/extern.rl"
 		LocalDecls[:ok(in.File)] := 0;
 		LocalDeclLut[:ok(in.File)].resize(in.LocalIds);
 
-		// 2. pre-parse global scope entries (skipping bodies via matching braces) into scope global tree. Populate global scope lookups.
+		// 2. pre-parse global scope entries into the global scope tree. Populate global scope lookups. Function bodies, expressions, and type names are skipped via matching parentheses.
 		p: rlc::parser::Parser(FileTokens[:ok(in.File)], in.File);
 		WHILE(!p.eof())
 			preparse_ns_entry(p, &RootScope, NULL);
 
-		FOR(MemberScopes!) finalise_members(LocalIds[:ok(in.File)], IT);
+		// 3. Post-process the member scopes in the file, giving them the ##LocalDeclIds capacity for their LUTs (i.e., no bounds checks needed), and create scope-relative lookup tables.
+		ids ::= LocalDecls[:ok(in.File)];
+		FOR(MemberScopes!) finalise_members(ids, IT.(1));
+		FOR(MemberScopes!) IF(IT.(0)) IT.(1)->post_process(NULL, NULL, ids);
 		MemberScopes.clear_reuse();
 
 		s_member_alloc.clear_and_optimise(4*KI);
@@ -266,19 +269,17 @@ INCLUDE "../../parser/extern.rl"
 				IF(template)
 					p.fail("External symbols cannot be templated");
 
-				out ::= mempool::[parser::Extern]alloc_unhashed_t();
 
-				out.(0)->LinkName := 0;
+				linkname: Identifier (0);
 				IF(p.consume_s(:Punctuation(:bracketOpen)))
 				{
-					out.(0)->LinkName := p.expect_p(:Identifier).Identifier;
+					linkname := p.expect_p(:Identifier).Identifier;
 					p.expect_s(:Punctuation(:bracketClose));
 				}
 
 
 				start := p.progress();
 				name ::= p.expect_p(:Identifier).Identifier;
-				out.(0)->Name := name;
 				global_decl_name ::= global_to_decl_name(name);
 				entry ::= scope->ensure(global_decl_name);
 				punct ::= p.stype().Punctuation;
@@ -286,12 +287,30 @@ INCLUDE "../../parser/extern.rl"
 				IF!(expect >> <U1>(punct) & (p.type() == :Punctuation))
 					p.fail("expected ':' or '('");
 
-				p.next_if(punct == :colon);
-				rest_start ::= p.progress();
-				p.skip_nesting_until_after(:semicolon);
-				out.(0)->Rest := token_span(rest_start, p);
-				vtype ::= punct == :colon ?? scoper::ValueGlobal::ExternVariable : scoper::ValueGlobal::ExternFunction;
-				entry->set_value(vtype, out.(1), name, at, p);
+				IF(punct == :colon)
+				{
+					p.next();
+					out ::= mempool::[parser::ExternVariable]alloc_unhashed_t();
+					out.(0)->Name := name;
+					type_start ::= p.progress();
+					p.skip_nesting_until(:semicolon);
+					out.(0)->Type.Preparse := token_span(type_start, p);
+					entry->set_value(:ExternVariable, out.(1), name, at, p);
+				} ELSE
+				{
+					out ::= mempool::[parser::ExternFunction]alloc_unhashed_t();
+					out.(0)->Name := name;
+					args_start ::= p.progress();
+					p.skip_nesting();
+					out.(0)->Args := token_span(args_start, p);
+
+					type_start ::= p.progress();
+					p.skip_nesting_until(:semicolon);
+					out.(0)->Rest.Preparse := token_span(type_start, p);
+
+					entry->set_value(:ExternFunction, out.(1), name, at, p);
+				}
+				p.next(); // ;
 			}
 			:export: {
 				IF(template)
@@ -430,14 +449,18 @@ INCLUDE "../../parser/extern.rl"
 		file: src::File,
 		m: parser::Members \,
 		ops: parser::Operators *,
-		ctors: parser::Constructors *) std::temp::Alloc::Checkpoint
+		ctors: parser::Constructors *,
+		needs_inner_lut: BOOL) std::temp::Alloc::Checkpoint
 	{
 		s ::= s_member_alloc.save();
 		max_cap ::= LocalIds[:ok(file)];
 		m->IdLut := s_member_alloc.[parser::Members::LUTEntry-Handle]alloc_raw_array(max_cap)[FOR 0];
 		m->Entries := s_member_alloc.[{U2, parser::Members::LUTEntry-Handle}]alloc_raw_array(max_cap)[FOR 0];
 
-		MemberScopes += m;
+		m->InnerLutV := NULL;
+		m->InnerLutNV := NULL;
+
+		MemberScopes += (!IsInMember && needs_inner_lut, m);
 
 		IF(ops)
 		{
@@ -562,7 +585,7 @@ INCLUDE "../../parser/extern.rl"
 		out->Templates := template;
 		out->Decl := consume_vmode(p);
 
-		save ::= alloc_members(p.File, &out->Members, &out->Ops, &out->Ctors);
+		save ::= alloc_members(p.File, &out->Members, &out->Ops, &out->Ctors, TRUE);
 
 		// Inheritance.
 		inheritance: parser::TokenSpan;
@@ -617,7 +640,7 @@ INCLUDE "../../parser/extern.rl"
 
 		p.expect_s(:Punctuation(:braceOpen));
 
-		save ::= alloc_members(p.File, &out->Members, &out->Ops, &out->Ctors);
+		save ::= alloc_members(p.File, &out->Members, &out->Ops, &out->Ctors, TRUE);
 
 		vis: Visibility := :public;
 		WHILE(!p.consume_s(:Punctuation(:braceClose)))
@@ -648,7 +671,7 @@ INCLUDE "../../parser/extern.rl"
 		checkpoint ::= s_postparse_alloc.save();
 		aliases: FileDeclIdentifier-std::[std::temp::Alloc-std::PAlloc]VecT := :reserve(1024, &s_postparse_alloc);
 
-		save ::= alloc_members(p.File, &out->Members, NULL, NULL);
+		save ::= alloc_members(p.File, &out->Members, NULL, NULL, FALSE);
 
 		DO(entry_val ::= 0)
 		{
@@ -713,7 +736,7 @@ INCLUDE "../../parser/extern.rl"
 		out->ValueOfField := -1;
 		out->TruthyFields := 0;
 
-		save ::= alloc_members(p.File, &out->Members, NULL, NULL);
+		save ::= alloc_members(p.File, &out->Members, NULL, NULL, FALSE);
 
 		p.expect_s(:Punctuation(:braceOpen));
 
@@ -766,7 +789,7 @@ INCLUDE "../../parser/extern.rl"
 
 		p.expect_s(:Punctuation(:braceOpen));
 
-		save ::= alloc_members(p.File, &out->Members, &out->Ops, NULL);
+		save ::= alloc_members(p.File, &out->Members, &out->Ops, NULL, FALSE);
 		vis: Visibility := :public;
 		WHILE(!p.consume_s(:Punctuation(:braceClose)))
 			preparse_member(p, &out->Members, NULL, &out->Ops, NULL, :none, &vis, FALSE,
@@ -855,7 +878,7 @@ INCLUDE "../../parser/extern.rl"
 			p.skip_nesting(); // Skip the function signature.
 
 		after_type ::= p.skip_nesting_until(:colonEqual, :parentheseOpen, :semicolon);
-		out->Type := token_span(type_start, p);
+		out->Type.Preparse := token_span(type_start, p);
 
 		p.next_if(after_type == :colonEqual);
 
@@ -926,6 +949,8 @@ INCLUDE "../../parser/extern.rl"
 		= new;
 	}
 
+	IsInMember: U4;
+
 	preparse_member(
 		p: parser::Parser &,
 		scope: parser::Members \,
@@ -938,6 +963,8 @@ INCLUDE "../../parser/extern.rl"
 		allowed: U4) VOID
 	{
 		// member classes, functions, fields, ctors, etc.. Only register them by name (except for member classes etc., which also declare public fields. They also should be parsed. But no function bodies or anything. Also do not parse the types of variables.
+
+		++IsInMember;
 
 		TRY SWITCH(p.type())
 		{
@@ -1419,8 +1446,10 @@ INCLUDE "../../parser/extern.rl"
 		}
 		} CATCH(err: CHAR#*) {
 			os::term::PrintLine_v(:style(:normal, :red), std::str::c(err[]));
-			p.fail("expected member.");
+			p.fail("expected member");
 		}
+
+		--IsInMember;
 	}
 
 	preparse_prefix_operator(

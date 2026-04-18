@@ -24,6 +24,16 @@ INCLUDE "../identifierPool.rl"
 		or
 	}
 
+	ENUM RegionKeyword
+	{
+		unknown,
+		local,
+		global,
+		arg,
+		member,
+		owned
+	}
+
 	ENUM Punctuation
 	{
 		doubleQuestionMark,
@@ -233,6 +243,7 @@ INCLUDE "../identifierPool.rl"
 	?	Number: NumberType;
 	?	String: StringType;
 	?	AuxKeyword: tok::AuxKeyword;
+	?	Region: tok::RegionKeyword;
 	?	FlowControl: FlowControlKeyword;
 	?	BuiltinType: tok::BuiltinType;
 	?	IntrinsicOp: IntrinsicOperatorKeyword;
@@ -245,26 +256,6 @@ INCLUDE "../identifierPool.rl"
 	?	PostfixOp: PostfixOperator;
 	?	Punctuation: tok::Punctuation;
 	}
-	has_secondary_type_f: U2 # :=
-		(0 << <U1>(<ENUM Type>(:Identifier))) |
-		(0 << <U1>(<ENUM Type>(:Number))) |
-		(1 << <U1>(<ENUM Type>(:String))) |
-		(1 << <U1>(<ENUM Type>(:AuxKeyword))) |
-		(1 << <U1>(<ENUM Type>(:FlowControl))) |
-		(1 << <U1>(<ENUM Type>(:BuiltinType))) |
-		(1 << <U1>(<ENUM Type>(:IntrinsicOp))) |
-		(1 << <U1>(<ENUM Type>(:Declaration))) |
-		(1 << <U1>(<ENUM Type>(:AssignmentOp))) |
-		(1 << <U1>(<ENUM Type>(:BinaryOp))) |
-		(1 << <U1>(<ENUM Type>(:PrefixOp))) |
-		(1 << <U1>(<ENUM Type>(:PrefixOrPostfixOp))) |
-		(1 << <U1>(<ENUM Type>(:PrefixOrBinaryOp))) |
-		(1 << <U1>(<ENUM Type>(:PostfixOp))) |
-		(1 << <U1>(<ENUM Type>(:Punctuation)));
-	has_secondary_type(tok: ENUM Type) BOOL --
-		:= has_secondary_type_f & (1 << <U1>(tok));
-	secondary_type(type: ENUM Type, secondary: Type) U2 --
-		:= (MASK has_secondary_type(type)) & secondary.EOF;
 
 	NameOfEnum {
 		Name: CHAR#[];

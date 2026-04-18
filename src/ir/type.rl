@@ -7,7 +7,7 @@
 	{
 		Handle: U8;
 
-		# decode() Type --;
+		# decode() Type;
 	}
 
 	ENUM SpecialSymbol
@@ -33,7 +33,7 @@
 		## THIS U4 -- := Entries;
 	}
 
-	[THIS; T]AssocDynArray
+	[This; T]AssocDynArray
 	{
 		Start: U2;
 
@@ -48,13 +48,13 @@
 		Ret: TypeHandle;
 		Args: U2;
 
-		# size() U4 -- := SIZEOF(THIS) + ArgCount * SIZEOF(TypeHandle);
-		# args() TypeHandle#[#] -- := <TypeHandle *>(&(&THIS)[1])[FOR ArgCount];
+		# size() U4 -- := SIZEOF(THIS) + Args * SIZEOF(TypeHandle);
+		# args() TypeHandle#[#] -- := <TypeHandle *>(&(&THIS)[1])[FOR Args];
 	}
 
 	TplClass {
-		Class: ir::Class-Handle;
-		TemplateArgs: U4-IrArg; // TODO: We want to evaluate this and replace it with an actual deduplicated constant, probably. We can use additional un-hashed data to refer to a mapping: at the end of the TplClass as it appears in the AST, we append a field that contains an index into a context-dependent array. The array is then repopulated for each context, and contains the fully resolved type's ID. Does this have any advantages over a generic mapping? We also want to have constant-evaluated expressions mapped that way, probably.
+		Class: :Class-Handle;
+		TemplateArgs: [:IrArg.U4]Handle; // TODO: We want to evaluate this and replace it with an actual deduplicated constant, probably. We can use additional un-hashed data to refer to a mapping: at the end of the TplClass as it appears in the AST, we append a field that contains an index into a context-dependent array. The array is then repopulated for each context, and contains the fully resolved type's ID. Does this have any advantages over a generic mapping? We also want to have constant-evaluated expressions mapped that way, probably.
 	}
 
 	// TODO: we probably want to merge the types and values from ir.rl.
@@ -85,17 +85,17 @@
 
 		TemplateType: U4; // template argument index
 
-		Class: ir::Class-Handle;
-		TplClass: TplClass-Handle;
+		Class: :Class-Handle;
+		TplClass: ir::TplClass-Handle;
 
 		FnSignature: MemID;
-		TplFnSignature: TplFnSignature-Handle;
+		TplFnSignature;//: ir::TplFnSignature-Handle;
 
 		Union: MemID;
-		TplUnion: TplUnion-Handle;
+		TplUnion;//: ir::TplUnion-Handle;
 
 		Rawtype: MemID;
-		TplRawtype: TplRawType-Handle;
+		TplRawtype;//: ir::TplRawType-Handle;
 
 		IdSymbolConstant: Identifier;
 		NumberSymbolConstant: S8;
@@ -119,6 +119,7 @@
 		Core: TAGGED CoreType;
 		Lifetime: ir::Lifetime;
 		Modifiers: U1;
+		{...};
 	}
 
 	UNION Indirection
@@ -134,7 +135,7 @@
 
 	Modifier
 	{
-		Qualifier;
-		Indirection;
+		Qualifier: :Qualifier-Handle;
+		Indirection: ir::Indirection;
 	}
 }

@@ -1,6 +1,6 @@
 ::rlc::parser GlobalVariable
 {
 	Name: Identifier;
-	Type: TokenSpan;
+	Type: TypeU;
 	Initialiser: TokenSpan;
 }

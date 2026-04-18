@@ -1,8 +1,16 @@
-::rlc::parser Extern {
+::rlc::parser ExternFunction {
 	Name: Identifier;
 	LinkName: Identifier;
 
-	Rest: TokenSpan;
+	Args: TokenSpan;
+	Rest: SignatureRest;
+}
+
+::rlc::parser ExternVariable {
+	Name: Identifier;
+	LinkName: Identifier;
+
+	Type: TypeU;
 }
 
 ::rlc::parser ExportFunction {

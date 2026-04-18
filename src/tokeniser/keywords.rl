@@ -9,6 +9,7 @@
 		###tok::BuiltinType +
 		###tok::FlowControlKeyword +
 		###tok::AuxKeyword +
+		###tok::RegionKeyword +
 		###tok::IntrinsicOperatorKeyword] (NOINIT);
 	keyword_lut: {KeywordStorage, ENUM tok::Type, U2}[#][26] (NOINIT);
 
@@ -54,6 +55,7 @@
 		[tok::BuiltinType]start_letters(letter_keywords_total);
 		[tok::FlowControlKeyword]start_letters(letter_keywords_total);
 		[tok::AuxKeyword]start_letters(letter_keywords_total);
+		[tok::RegionKeyword]start_letters(letter_keywords_total);
 		[tok::IntrinsicOperatorKeyword]start_letters(letter_keywords_total);
 
 		accum ::= 0;
@@ -73,6 +75,7 @@
 		[tok::BuiltinType]fill_letters(letter_keywords_total, :BuiltinType);
 		[tok::FlowControlKeyword]fill_letters(letter_keywords_total, :FlowControl);
 		[tok::AuxKeyword]fill_letters(letter_keywords_total, :AuxKeyword);
+		[tok::RegionKeyword]fill_letters(letter_keywords_total, :Region);
 		[tok::IntrinsicOperatorKeyword]fill_letters(letter_keywords_total, :IntrinsicOp);
 	}
 

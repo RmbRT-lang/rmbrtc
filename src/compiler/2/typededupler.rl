@@ -1,3 +1,5 @@
+INCLUDE "../../ir/type.rl"
+
 ::rlc::compiler::typededup {
 
 	(/ Master plan:
@@ -62,6 +64,54 @@
 		If this is not parallelisable, we could also use the time that this happens at to do something completely unrelated, like loading .ELF files that we want to link against, and preparing them for code generation. Additionally, we could also already generate JIT code for the instantiator and code generator, based on the types that are already resolved. Or some kind of processing of function bodies.
 	/)
 
+
+
+
+
+
+
+	(/ NEW Flow:
+
+	1. [X] Preprocessing step:
+		We process all scopes in the global scope tree to allow for easier lookups.
+	2. [/] Parsing step:
+		We parse all types into a stream of bytecode for the type resolver. Even multiple type instances could be fit into that one big stream. We pass around chunks of bytecode, maybe up to 1024 operations at a time (??). The type resolver can then execute those linearly. Additionally, we can pass an array containing the start markers for the bytecode sequences, indicating where each type in the sequence starts.
+			-- [/] Finish type parsing logic
+			-- [ ] Finish bytecode generation & design
+	3. [ ] Processing / resolving step:
+		The resolver processes the bytecode and spits out resolved types (also resolving scope names etc.).
+			-- [/] Type bytecode processor
+	4. [ ] Deduplication step:
+		We can deduplicate all processed types in the hashmap, assigning them compact IDs. We do not want to deduplicate unfinished types, though (such as those depending on templates). So a Type ID is probably a mempool handle and a flag, indicating whether they are fully resolved or not. We may want to give them running numbers like for identifiers. And we also want to differentiate between types that ever occur in a type switch / TYPE() expression and those that do not. This way, we can keep those numbers/tables dense and small.
+			-- We do not want to deduplicate tuple types passed to constructors (especially for arrays and tables), or types of similar transient values. We might only want to do that for signature types, return types, and variable types. Everything else gets thrown away after first use anyway, and would only clutter the mempool & hashtable needlessly.
+	5. [ ] Body parse:
+		We start parsing function bodies etc., which can then assume that all publicly reachable symbols are fully typed / resolved already (except for template-dependent type references and auto types). We need to typecheck expressions and also resolve references to local variables in this step, and already prepare the IR for the code generator. Since function bodies are highly heterogeneous, we might want to split a function body into many separate statements that can then be typechecked simultaneously. The problem is the sequential dependency within a function body. But we could definitely typecheck multiple function bodies in a batch. 
+			-- We could also introduce a preliminary step that parses all expressions that are needed to fully resolve all exposed auto-types (auto function signatures, global auto variables, etc.). Then we can have the next step be more optimised.
+	6. [ ] Expression typechecker & IR generator:
+		We process the IR0 streams of multiple functions in an interleaved manner, if possible. Register pressure could make that less efficient, though. We output the IR1. Actually, we have a slight problem because we need to know whether a variable is used for the last time, because definite last use means we generate a destructor call and also give it move semantics. This means type checking cannot be done until we know the last use. So we first need to know the full function body, then flag all last usages, and only then we can generate IR1 code and typecheck.
+			-- TODO: define clear rules for last-use analysis and its interaction with nop elimination: specifically, whether a nop-eliminated last use changes the type of the previous use by promoting it into a last use.
+	7. [ ] Instantiator:
+		After having the IR1 for all code in the entire project, we take the IR1 and instantiate templates and do inlining, etc.. One problem, though, with templates, is that we do not know whether a template call is going to be a nop, and whether that should count as last use for the parameters or not. On the other hand, we do not want to complicate the system too much, and we also do not want destructors to be moved forward by apparent keepalive calls that turn out to be nops sometimes. Or do we? We could have explicitly strict destructors for variables where we rely on side-effects like that.
+	8. [ ] Optimiser? -- nop elemination, code transformation, etc. -- not needed for now. Though we do want to eliminate nops already, I think. But no need for tryhard optimisations.
+	9. [ ] Codegen:
+		At first, we want to directly run the optimised IR code in an interpreter. This will let us build a good debugging experience that does not depend on ELF/DWARF and other platform- and architecture-dependent technologies. This would also allow for debugging from within a browser, etc.. Then we only need an IR interpreter for each platform, which should be quite manageable.
+		Afterwards, we can add native code generation backends for the various platforms.
+
+
+
+	Observations:
+		- Step 1 and 2 can be run in parallel. The resolver needs step 1 to be fully completed, but can perform work on the parser's output before it fully finishes.
+			- This means we probably want to set up a pipeline that lets the parser continuously feed new work into the type resolver.
+		- We probably also want to first generate all IR0 for everything.
+		- If we want to have unique instantiations, then we probably need the instantiator to be a single worker thread. We would then need some kind of request-response IPC flow. This means instantiations would be asynchronous. What we can do is request all instantiations for all functions in one huge batch, and then continue typechecking stuff that does not need instantiations.
+			-- Inlined functions etc. should be instantiated in-line as well, so they do not need to go through a deduplication step, and we can directly substitute the IR & placeholders. Only classes and non-inline functions should go through deduplication for the instantiation.
+				-- We already know whether a function is inline or not, at the time we encounter its invocation. So we can immediately decide what to do with it.
+			-- A template instantiation's arguments might rely on the result of another template instantiation before it, so they cannot be instantiated within one batch request. But since we have lots of functions that we can process bit-by-bit in a round-robin fashion, that latency should not matter too much. We simply execute one round, gathering up all the template instantiations we need, and pass them to the instantiator thread. Then we process the rest of the round. We can actually have two work queues: one of functions that can proceed immediately, and one for functions that need to wait for the instantiator to proceed. After each step, a function gets assigned to either queue based on what was encountered.
+	/)
+
+
+
+
 	ENUM Indirection {
 		Reference,
 		Pointer,
@@ -72,58 +122,43 @@
 		Future
 	}
 
-	ENUM Qualifier {
-		Const,
-		MaybeConst,
-		Shared
-	}
-
-	ENUM Constness {
-		Mutable,
-		Const,
-		MaybeConst
-	}
-	ENUM Sharedness {
-		Unique,
-		Shared
-	}
-
-	Qualifier { // NOTE: Could be compressed to 3 bits.
+	(/Qualifier { // NOTE: Could be compressed to 3 bits.
 		Const: Constness;
 		Shared: Sharedness;
-	}
+	}/)
 
 	Modifier {
-		Indirection: ir::Indirection;
-		Qualifier: ir::Qualifier;
+		Indirection: typededup::Indirection;
+		Qualifier: typededup::Qualifier;
+		{BARE};
 	}
 
 	(/ Example:
 
 		std::io::File
 			start: (Surrounding scope)
-			code: LookupScope(std).LookupScope(io).LookupType(File)
+			code: ChildScope(std).ChildScope(io).ChildType(File)
 
 		std::[INT]Vector
 			start: (Surrounding scope)
-			code: LookupScope(std).LookupType(Vector).InstantiateTemplate(0)
+			code: ChildScope(std).ChildType(Vector).InstantiateTemplate(0)
 			ctx.0: BuiltinType(INT)
 
 		::std::[INT]Vector
 			start: (root scope)
-			code: LookupScope(std).LookupType(Vector).InstantiateTemplate(0)
+			code: ChildScope(std).ChildType(Vector).InstantiateTemplate(0)
 			ctx.0: BuiltinType(INT)
 
 		std::[std::[INT]Vector]Vector
 			start: (Surrounding scope)
-			code: LookupScope(std).LookupType(Vector).InstantiateTemplate(0)
-			ctx.0: LookupScope(std).LookupType(Vector).InstantiateTemplate(1)
+			code: ChildScope(std).ChildType(Vector).InstantiateTemplate(0)
+			ctx.0: ChildScope(std).ChildType(Vector).InstantiateTemplate(1)
 			ctx.1: BuiltinType(INT)
 	/)
 
 
 	PerScopeLookupRequestBatch {
-		Start: Scope *;
+		Start: :Scope *;
 		Requests: U2;
 	}
 	LookupRequest {
@@ -152,34 +187,6 @@
 		Results: U2[#]; // NOTE: we may want to make sure that the dedupler can write to this without having to steal it from another core.
 	}
 
-	// Something that a bytecode operation is performed on. We want to batch processing based on value type and operation. Also, if we batch based on that, we also do not need to store the value tag.
-	// TODO: How do we unify this with values and code generation?
-	UNION TypeCore { // IMPORTANT: keep below 32 entries.
-		BuiltinType: tok::BuiltinType; // U1 etc.
-		Void;
-		This;
-		ThisNoDecay;
-		SymbolType: Identifier; // :name
-		TemplateSymbolType: Identifier; // :name.T
-		SpecialSymbolType: U2; // :? etc.
-
-		UserType: U2; // User type ID.
-		TaggedUnion: U2; // User type ID of Union.
-		EnumTag: U2; // User type ID of Union.
-		TemplateType: U2; // Idx of template in surrounding context? (T)
-
-		NonNullPointer;
-		MaybePointer;
-		Array;
-		AutoArray;
-		Table;
-		Slice;
-		SizedSlice;
-		Atomic; // TODO: Do we want this as a qualifier or as an indirection? Ideally, we want to allow non-atomic writes and reads for atomic values (such as for memcpy when we are the current owner). Actually, atomic is a level of sharedness? But INT.[?] is not INT[?]., because we do need to be clear on what piece of data has to be atomically updated. I think for now, we should only allow atomics on primitive types and pointers. If we have atomics here, we can leverage them into their own SWITCH case, without having to do manual IFs for checking the flag.
-
-		TupleType;
-		FnSigType;
-	}
 
 	// We want TypeCore + TypeMod[]. TypeCore contains the atoms, like user types, builtins, and symbol types. TypeMod contains arrays and other things that composit over types.
 	UNION TypeMod {
@@ -189,56 +196,23 @@
 	TypeMeta { // NOTE: could be compressed to one byte (6 bits).
 		Qualifier: typededup::Qualifier; // 3
 		Lifetime: ir::Lifetime;          // 3
+		{BARE};
 	}
 
-	// For final types, use a prefix tree? With an U2 id into the nodes.
-	// But not all nodes appear as actually instantiated types in the final program, so they might not receive a final runtime type ID. --> We need a deduplicator like with global to file-local IDs.
-	UNION ByteCode {
-		MakeTuple: U2; // number of tuple elements.
-		MakeFnSig: U2; // number of arguments.
-		MakeTemplateSymbolType: Identifier;
-		ExpandTemplateTypes: U2; // Idx of template pack, expand it. (Args...)
-		LookupType: Identifier;
-		LookupScope: Identifier;
-		InstantiateTemplate: U2; // Idx of template arguments to apply to the bytecode.
-		AddModifier: typededup::Modifier; // when adding any modifiers.
-		MakeAutoArray;
-		MakeArray;
-		MakeTable;
-		MakePointer;
-		Dereference; // element of pointer or array, or result of *THIS/THIS-> operator.
-		GetUnionTag;
-		MakeTaggedUnion;
-		TupleFieldAccess: U2; // .(Index)
-		FieldAccess: U2; // .(:Field)
-	}
+	
+
+	// Processing a type, we sort the operations into precedence groups. If we encounter a new operation that does not take precedence over the next queued-up operation, we execute the other operation first.
+	Precedences: U1[TABLE ENUM ByteCode];
 
 	FullState { // NOTE: could be compressed to just 4 bytes:
 		Meta: TypeMeta;          // 1 byte      | 6 bits
 		Kind: ENUM TypeCore;     // 1 byte      | 5 bits = 11
 		//                          1 byte free | 5 bits = 16, could be used for extra tag.
-		Core: typedup::TypeCore; // 2 bytes
+		Core: typededup::TypeCore; // 2 bytes
+
+		{BARE};
 	}
 
-	PackedExtendedState {
-		Bits: U4;
-		Extra: ExtraTypeInfo;
-
-		# kind() ENUM TypeCore := >(Bits & 31);
-		set0_kind(v: ENUM TypeCore) VOID -- := Bits |= <U4>(v);
-
-		# constness() Constness -- := >(Bits >> 5 & 3);
-		set0_constness(v: Constness) VOID -- := Bits |= <U4>(v) << 5;
-
-		# sharedness() Sharedness -- := >(Bits >> 7 & 1);
-		set0_kind(v: Sharedness) VOID -- := Bits |= <U4>(v) << 7;
-
-		# lifetime() ir::Lifetime -- := >(Bits >> 8 & 7);
-		set0_lifetime(v: ir::Lifetime) VOID -- := Bits |= <U4>(v) << 8;
-
-		# extra_tag() ExtraTypeInfoTag -- := :Raw(Bits >> 11); // & 31 implicit.
-		set0_extra_tag(v: ExtraTypeInfoTag) VOID -- := Bits |= <U4>(v.Raw) << 11;
-	}
 
 	::extra {
 		UNION ArrayInfo {
@@ -263,12 +237,35 @@
 		Table: extra::TableInfo;
 	}
 
+	PackedExtendedState {
+		Bits: U4;
+		Extra: ExtraTypeInfo;
+
+		# kind() ENUM TypeCore := >(Bits & 31);
+		set0_kind(v: ENUM TypeCore) VOID -- { Bits |= <U4>(v); }
+
+		# constness() Constness -- := >(Bits >> 5 & 3);
+		set0_constness(v: Constness) VOID -- { Bits |= <U4>(v) << 5; }
+
+		# sharedness() Sharedness -- := >(Bits >> 7 & 1);
+		set0_sharedness(v: Sharedness) VOID -- { Bits |= <U4>(v) << 7; }
+
+		# lifetime() ir::Lifetime -- := >(Bits >> 8 & 7);
+		set0_lifetime(v: ir::Lifetime) VOID -- { Bits |= <U4>(v) << 8; }
+
+		# extra_tag() ExtraTypeInfoTag -- := :Raw(Bits >> 11); // & 31 implicit.
+		set0_extra_tag(v: ExtraTypeInfoTag) VOID -- { Bits |= <U4>(v.Raw) << 11; }
+	}
+
+
 	FixedType {
 		Stages: FullState[#];
 		AdditionalInfo: ExtraTypeInfo[#];
 	}
 
 	LiveType {
+		StartGlobal: BOOL;
+		Code: ByteCode-std::Vec;
 		Stages: FullState - std::Vec;
 	}
 
@@ -323,7 +320,7 @@
 	// Parser stack and temporaries.
 	PRIVATE Alloc: std::temp::Alloc;
 
-	Out: LiveType;
+	Out: typededup::LiveType;
 
 	Current: U4;
 	Starts: U4-std::Vec; // starting location of unfinished types.
@@ -333,7 +330,13 @@
 		Starts.pop_back(&Current);
 	}
 
-	parse_type(p: Parser &) VOID
+	nest_value() VOID {}
+	nest_type() VOID {}
+	resume() VOID {}
+
+	parse_type_mods(parser::Parser &) VOID { }
+
+	parse_type(p: parser::Parser &) VOID
 	{
 		SWITCH(p.type())
 		{
@@ -356,7 +359,7 @@
 				{
 					DO()
 					{
-						IF(p.consume(:Punctuation(:hash)))
+						IF(p.consume_s(:Punctuation(:hash)))
 						{
 							nest_value();
 							p.expect_s(:Number(:Normal));
@@ -371,9 +374,9 @@
 					id ::= p.expect_p(:Identifier).Identifier;
 
 					IF(p.match_s(0, :Punctuation(:doubleColon)))
-						Out.Code += :LookupScope(id);
+						Out.Code += :ChildScope(id);
 					ELSE
-						Out.Code += :LookupType(id);
+						Out.Code += :ChildType(id);
 				} ELSE {
 					Out.StartGlobal := FALSE;
 					parse_type_symbol_child_no_tpl(p);
@@ -391,28 +394,21 @@
 			SWITCH(p.stype().AuxKeyword)
 			{
 			:void:
-			{
 				Out.Code += :Void;
-			}
 			:this:
-			{
-				x ::= p.consume_s(:PrefixOrPostfixOperator(:exclamationMark));
-				add: TAGGED TypeCore := :This;
-				add.(0) := WHEN(x) ThisNoDecay;
-				Out.Code += add;
-			}
+				Out.Code += :ThisType(p.consume_s(:PrefixOrPostfixOp(:exclamationMark)));
 			}
 		}
 	}
 
-	parse_type_symbol_child_no_tpl(p: Parser &) VOID
+	parse_type_symbol_child_no_tpl(p: parser::Parser &) VOID
 	{
 		id: Identifier;
 		DO()
 		{
 			// TODO: template arguments parsing.
 			id := p.expect_p(:Identifier).Identifier;
-		} FOR(p.consume_s(:Punctuation(:doubleColon)); out.Code += :LookupScope(id))
-		out.Code += :LookupType(id);
+		} FOR(p.consume_s(:Punctuation(:doubleColon)); Out.Code += :ChildScope(id))
+		Out.Code += :ChildType(id);
 	}
 }

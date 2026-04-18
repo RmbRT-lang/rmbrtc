@@ -62,6 +62,8 @@ Looking up a member in a local scope:
 	GlobalDeclsLut: U2-std::Vec;
 
 	get(id: Identifier) CHAR#[#] -- := id.V < ##strings ?? strings[:ok(id.V)] : "<INVALID IDENT>"[#];
+
+	get_global_decl(id: Identifier) GlobalDeclIdentifier -- := GlobalDeclsLut[:ok(id.V)];
 }
 
 ::rlc::ident init() VOID

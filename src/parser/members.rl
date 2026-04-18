@@ -158,11 +158,24 @@ INCLUDE "../mempool.rl"
 	// Call this only after finalise_members() has been called. We are going through great efforts to make this as simple as possible, for efficiency during name resolution.
 	# lookup(id: rlc::FileDeclIdentifier) LUTEntry-Handle -- := IdLut[][id.V];
 
+	# lookup_inner_t(id: rlc::FileDeclIdentifier) NVEntry * -- {
+		entry ::= &InnerLutNV[id.V];
+		= entry->Type ?? entry : NULL;
+	}
+	# lookup_inner_s(id: rlc::FileDeclIdentifier) NVEntry * -- {
+		entry ::= &InnerLutNV[id.V];
+		= entry->Type ?? entry : NULL;
+	}
+	# lookup_inner_v(id: rlc::FileDeclIdentifier) VEntry * -- {
+		entry ::= &InnerLutV[id.V];
+		= entry->Type ?? entry : NULL;
+	}
+
 	post_process(outerLutV: VEntry#[], outerLutNV: NVEntry#[], cap: U2) VOID
 	{
 		// TODO PERFORMANCE: have one big pool of ##FileDeclIds * ##MemberScopes per file.
-		InnerLutV := std::heap::alloc.[VEntry]alloc_array(cap);
-		InnerLutNV := std::heap::alloc.[NVEntry]alloc_array(cap);
+		InnerLutV := mempool::[VEntry]alloc_unhashed_array(cap).(0);
+		InnerLutNV := mempool::[NVEntry]alloc_unhashed_array(cap).(0);
 
 		// Inherit access to all types.
 		IF(outerLutNV)

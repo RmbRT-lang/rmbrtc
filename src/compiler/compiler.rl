@@ -4,6 +4,7 @@ INCLUDE 'std/optional'
 INCLUDE 'std/sync/race'
 
 INCLUDE "1/stage.rl"
+INCLUDE "2/stage.rl"
 
 ::rlc::compiler
 {
@@ -58,6 +59,9 @@ INCLUDE "1/stage.rl"
 			load_include_dirs();
 		}
 
+		// b: Build := :withOutput("test.exe", :executable)
+		// (:withOutput, "test.exe", :executable)
+
 		/// Loads default include directories from the environment variable.
 		PRIVATE load_include_dirs() VOID
 		{
@@ -107,6 +111,16 @@ INCLUDE "1/stage.rl"
 		       global scope                                             IR0
 		                                                            (Templated,
 		                                                         semi-type-checked)
+		
+			[ ] preparse2:
+			           type+code                 res.type+code
+			types parser ----> type/symbol resolver ---> IR0 generator? (TRASM/??)
+
+			[ ] body-parse:
+			-------------> expression typechecker ----------> ????????
+			fully typed      & type resolver         IR0 +
+			global scope                         instantiation
+			 + bodies                              requests?
 
 		[ ] Phase 3: generate code.
 		                          ---> optimiser---
@@ -128,22 +142,36 @@ INCLUDE "1/stage.rl"
 		We probably want to also have a tool that converts the IR2 to C or something, so that we can have portable builds that are easy to bootstrap elsewhere (hopefully). Then we can either ship the C-converted IR2, or the IR2->C converter and the IR2.
 
 		We do not need debugging ability. We need to have a C printer for reference, though, for finding bugs in our separate backends. But actually, C is annoying. We can add it once the x86 backend breaks. More useful would be a way to interpret RASM directly, maybe from C. Then we can run RASM programs everywhere in interpreted mode, and build up our strengths from there, so that we can later add direct debugging to RASM and also add it as ground truth. Then we can emulate, or compile RASM, not wasting effort on other technology.
+			Having a RASM -> C converter vs. a RASM interpreter vs. RASM -> assembly converter does not make that much of a difference. Though I guess we can definitely skip the C source printing step. Having a portable RASM interpreter would allow us to run code everywhere without having an actual compiler backend. This could be useful for browser apps for example. And this could be the reference against which we can check native codegen backends. And we can verify the interpeter against the bootstrap compiler. We can then ship a RASM of the compiler and the interpreter and already have a fully ported compiler.
+
+			And yeah, we definitely want to build our own foundation on top of RASM, and not on top of some retarded platform-specific format like ELF+DWARF and whatever other OSes are using. We want to have a debugger that integrates on a language level, not on a machine-code level.
+
+			Also, having RASM instead of machine code for debugging also allows us to check for thread safety and memory model stuff, and initialisation, page faults, and all those things. We can even simulate cache behaviour and generate performance profile data based on that. For that, we need a very mature RASM interpreter.
+
+			We can then also set the CPU performance profile in the interpreter to help the optimiser (latency & throughput of instructions, issue ports, branch miss penalties, memory latencies, line fill buffers, etc.).
 
 		- [X] Phase 1
 			- [X] loader
 			- [X] tokeniser
 			- [X] Identifier deduplicator (global & file-local).
 			- [X] globalscope preparser
-			- [/] preparse2: class members, etc. -- might move this to phase 1.
+			- [X] preparse2: class members, etc. -- might move this to phase 1.
+			- [X] post-pass:
+				- [X] compress namespace scopes (globalIds)
+				- [X] bake namespace-relative lookups. (globalDeclIds)
+				- [X] compress member scopes (fileIds -> fileDeclIds)
+				- [X] bake member-scope-relative lookups. (fileDeclIds)
 		- [/] Phase 2
 			- [ ] return type & field type resolution: at least for untemplated things.
 			- [ ] body-parse / post-parse: types, function bodies, expressions, etc.
 				- [ ] typechecking
 				- [ ] IR0 codegen (TRASM?)
 		- [ ] Phase 3
-			- [ ] instantiator
+			- [ ] instantiator (TRASM -> RASM, full resolution)
 			- [ ] optimiser (not essential for now)
-			- [ ] x86 codegen
+			- [ ] RASM codegen & RASM interpreter
+		- [ ] Phase 4
+			- [ ] x86 codegen -- we could also have a pseudo-x86 IR stage if that helps with anything, and then generate actual x86 from that. Then we do not have to optimise on actual x86 instruction encodings.
 				- [ ] link post-pass & ELF production
 				- [ ] optimising codegen
 			- [ ] Wasm codegen (no link pass needed, probably, although we need to provide a runtime like the heap. But this can also be done by supplying platform-specific code directly. The only annoying thing would be that we would need to be able to call some WASM builtins like __builtin_wasm_memory_size() / __builtin_wasm_memory_grow(). Although we could also have a builtin that just inserts an opcode. Then we can skip having to be able to read WASM files.)
@@ -190,10 +218,12 @@ INCLUDE "1/stage.rl"
 			build: Build
 		) VOID
 		{
+			rootScope: scoper::Namespace (BARE);
 			{
 				stage1: Stage1 (&build);
 				stage1.launch_workers();
 				stage1.run(files);
+				rootScope := &&stage1.Parser.Worker.RootScope;
 			}
 
 			(/ TODO:
@@ -209,15 +239,17 @@ INCLUDE "1/stage.rl"
 					- [X] operators
 					- [ ] intrinsics
 				- [X] write AST merger? Actually just let the parser write into the global AST (rather: scope tree) directly.
+				- [X] namespace scope merging for O(1) relative lookups
+				- [X] member scope merging for O(1) relative lookups
 				- [ ] Check whether making tokeniser process in a loop produces a speedup.
 				- [ ] Fully post-process tokens (strings, numbers)?
-				- [ ] write post-parser
-					- [ ] resolve all type names, field types, typedefs, return types, and inheritances, until all types outside of function bodies are resolved.
+				- [/] write post-parser
+					- [/] resolve all type names, field types, typedefs, return types, and inheritances, until all types outside of function bodies are resolved.
 					- [ ] Deduplicate type names, similar to the identifiers?
 						-- we need to think about the concrete type-checking algorithm and its needs. Also, types do not necessarily have to be encoded in data, if they only belong to temporary values that are immediately consumed. In such cases, the type information can be entirely contextual.
 							- we also need to think about the execution model of the type checker & instantiator.
 					- [ ] LATER: think about how to handle auto return types.
-				- [ ] resolver? -- no longer needed.
+				- [ ] resolver? -- This is now simply an operation in the IR bytecode.
 				- [ ] IR -- this is part of the parser already somewhat.
 				- [ ] type check & instantiator
 				- [ ] code gen /)
@@ -225,8 +257,8 @@ INCLUDE "1/stage.rl"
 			(/ Thoughts / Problems:
 				- What is the best way to parse? After having all global scope entries, we can start parsing everything, but we cannot yet reference static members, etc..
 					- We could use 2 preparse steps, where variable types and similar references to global things only get resolved after the second pass. The second pass would create all types and all functions.
-					- Or we merge both into the initial preparse, so that we do not have to touch the tokens twice on potentially different cores. Then we have all classes and all functions etc. already populated in the preparser, and only need to post-parse arguments, types, and bodies/expressions.
-					- Note that we still need to resolve types out of order if we want to be able to refer to later types from earlier types and embed them. We basically need one full resolution pass, and then another pass that tallies up struct sizes and checks for recursive structs.
+					- [X] Or we merge both into the initial preparse, so that we do not have to touch the tokens twice on potentially different cores. Then we have all classes and all functions etc. already populated in the preparser, and only need to post-parse arguments, types, and bodies/expressions.
+					- Note that we still need to resolve types out of order if we want to be able to refer to later types from earlier types and embed them. We basically need one full symbol resolution pass, and then another pass that tallies up struct sizes and checks for recursive structs.
 						- Only after this pass should we parse function bodies, etc., so that we can directly generate code as we parse, without an immediate AST that gets later completed.
 						- We want to generate some IR code already during the parsing, even before fully instantiating all types.
 						- We also want to know whether certain operations are nops before generating code? Although we also have to be able to hotpatch those when templating, anyway.
@@ -238,6 +270,12 @@ INCLUDE "1/stage.rl"
 
 			IF(build.Type == :createAST)
 				RETURN;
+
+			{
+				stage2: Stage2 (&build);
+				stage2.launch_workers();
+				stage2.run(&&rootScope);
+			}
 
 			/// Seed instantiator with items to process.
 			SWITCH(build.Type)

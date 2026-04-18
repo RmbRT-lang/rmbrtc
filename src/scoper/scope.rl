@@ -265,8 +265,34 @@ INCLUDE "../identifierPool.rl"
 			}
 		}
 
-		# lookup_inner_v(id: GlobalDeclIdentifier) VEntry *-- := InnerLutV[id.V].Type ?? &InnerLutV[id.V] : NULL;
+		# lookup_inner_v(id: GlobalDeclIdentifier) VEntry *-- {
+			entry ::= &InnerLutV[id.V];
+			= entry->Type ?? entry : NULL;
+		}
 		# lookup_inner_t(id: GlobalDeclIdentifier) NVEntry * -- := InnerLutNV[id.V].Type ?? &InnerLutNV[id.V] : NULL;
+
+		# lookup_t(id: GlobalDeclIdentifier) Entry * -- {
+			handle ::= Lut[id.V];
+			IF!(handle) term::error(HERE, "No such symbol. TODO: better message");
+			entry ::= handle.get();
+
+			= (1 << <U1>(entry->NonValue.Type) & ~NonValueGlobal::FLAGS(:Nil, :Namespace))
+				?? entry
+				:  NULL;
+		}
+		# lookup_v(id: GlobalDeclIdentifier) Entry *-- {
+			handle ::= lookup(id);
+			IF!(handle) term::error(HERE, "No such symbol. TODO: better message");
+			entry ::= handle.get();
+			= entry->Value.Type ?? entry : NULL;
+		}
+		# lookup_s(id: GlobalDeclIdentifier) Entry *-- {
+			handle ::= lookup(id);
+			IF!(handle) term::error(HERE, "No such symbol. TODO: better message");
+			entry ::= handle.get();
+
+			= entry->NonValue.Type ?? entry : NULL;
+		}
 	}
 (/
 	GlobalVariable {

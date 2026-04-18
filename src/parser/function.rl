@@ -10,7 +10,7 @@
 		Type: TokenSpan;
 	}
 	ParsedSignatureRest {
-		Type: TokenSpan;
+		Type: :?;
 		Inline: BOOL;
 	}
 	// Return type and stuff like the inline attribute.
