@@ -4,15 +4,16 @@ INCLUDE "postparser.rl"
 ::rlc::compiler Stage2 {
 	Build: compiler::Build \;
 
+	Parser: CodePostParser;
+
 	{build: compiler::Build \}:
-		Build := build;
+		Build := build,
+		Parser (BARE);
 
-	launch_workers() VOID
+	run(rootScope: scoper::Namespace, fileTokens: tok::FileTokenView[#]) VOID
 	{
-	}
+		Parser.{&rootScope, fileTokens};
 
-
-	run(rootScope: scoper::Namespace) VOID
-	{
+		Parser.post_parse_ns(&rootScope);
 	}
 }

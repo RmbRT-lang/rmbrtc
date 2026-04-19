@@ -31,9 +31,10 @@ INCLUDE "../../parser/extern.rl"
 	PRIVATE MemberScopes: {BOOL, parser::Members \} -std::Vec; // we might also want to be registering other things here, such as a list of all functions, or all return types or something. And we might want to have a union type that we can patch in the post-pass, so that we do not need to move data around.
 
 	// Caches the file contents of all code files.
-	PRIVATE FileTokens: tok::FileTokenView-std::Vec;
+	FileTokens: tok::FileTokenView-std::Vec;
 	PRIVATE LocalIds: U2-std::Vec;
 	PRIVATE LocalDecls: U2-std::Vec;
+		// TODO PERFORMANCE: use linear allocator here, and slices.
 	PRIVATE LocalDeclLut: U2-std::Vec-std::Vec; // LocalIdx -> LocalDeclIdx
 
 	{}:
@@ -652,7 +653,7 @@ INCLUDE "../../parser/extern.rl"
 		= local_name;
 	}
 
-	STATIC s_postparse_alloc:           std::temp::Alloc := :custom(1*MI, 1*MI);
+	STATIC s_postparse_alloc:     std::temp::Alloc := :custom(1*MI, 1*MI);
 	STATIC s_member_alloc:        std::temp::Alloc := :custom(128*KI, 128*KI);
 	STATIC s_member_shrunk_alloc: std::temp::Alloc := :custom(128*KI, 128*KI);
 

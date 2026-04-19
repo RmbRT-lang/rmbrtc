@@ -6,17 +6,27 @@ INCLUDE "type-processor.rl"
 	// The global rootscope. This is the only real output of the preparser.
 	RootScope: scoper::Namespace \;
 
-	// Gets reset after every file.
-	PRIVATE MemberScopes: parser::Members \ -std::Vec; // we might also want to be registering other things here, such as a list of all functions, or all return types or something. And we might want to have a union type that we can patch in the post-pass, so that we do not need to move data around.
+	Code: type::InterleavedByteCodes-std::Vec;
+	Contexts: type::RequestContext[###type::InterleavedByteCodes];
+	Spans: type::ByteCodeSpan[###type::InterleavedByteCodes];
+	CurrentRequest: U1;
+	CurrentRequestStart: U4;
+	CurrentRequestLength: U2;
 
-	// Up to 1K requests per batch, and multiple parallel batches?
-	RequestedTypes: U2[1024]-std::Vec; // gets written by the type dedupler. We only read.
-	Writeback: parser::TypeU *[1024]-std::Vec; // entirely local.
+	FileTokens: tok::FileTokenView[#];
 
 
+	{
+		rootScope: scoper::Namespace \,
+		fileTokens: tok::FileTokenView[#]
+	}:
+		RootScope := rootScope,
+		FileTokens := fileTokens,
+		Code := :reserve(2048),
+		Contexts (NOINIT),
+		Spans (NOINIT);
 
 
-	// Types are a stream of reverse polish notation operands / operations.
 
 
 	Entries {
@@ -261,13 +271,6 @@ INCLUDE "type-processor.rl"
 	// Workflow: one thread (or multiple threads?) traverses the root scope, and one more thread receives requests to deduplicate types. We want to create entries for the instantiator, so that each type first gets deduplicated and then checked whether it already got instantiated.
 	// We pass requests in batches to reduce the synchronisation overhead.
 
-	Code: type::InterleavedByteCodes-std::Vec;
-	Contexts: type::RequestContext[###type::InterleavedByteCodes];
-	Spans: type::ByteCodeSpan[###type::InterleavedByteCodes];
-	CurrentRequest: U1;
-	CurrentRequestStart: U4;
-	CurrentRequestLength: U2;
-
 	submit_batch() VOID { ; }
 	end_request() :?
 	{
@@ -311,6 +314,7 @@ INCLUDE "type-processor.rl"
 		:BuiltinType:
 		{
 			emit_bytecode(:MakeBuiltinType(p.stype().BuiltinType));
+			p.next();
 		}
 		:Identifier: { type_parse_symbol(p); }
 		:Punctuation:
@@ -554,9 +558,13 @@ INCLUDE "type-processor.rl"
 		{
 			tokens: tok::FileTokenView #&,
 			file: src::File,
+			start: U4,
 			end: U4
 		}-> (tokens, file):
-			End := end;
+			End := end
+		{
+			->(parser::Parser).advance_by(start);
+		}
 
 		expect_done() VOID -- {
 			IF(->(parser::Parser).Token != End)
@@ -564,9 +572,8 @@ INCLUDE "type-processor.rl"
 		}
 	}
 
-	parser(span: parser::TokenSpan #&) SpanParser {
-		DIE;
-	}
+	parser(span: parser::TokenSpan #&) SpanParser
+		:= (FileTokens[span.File], span.File, span.Start, span.End);
 
 	post_parse_typedef(v: parser::Typedef *) VOID
 	{
@@ -605,7 +612,7 @@ INCLUDE "type-processor.rl"
 			p ::= parser(v->Return.Preparse.Type);
 
 			post_parse_type(p);
-			v->Return.Postparse.Inline := p.consume_s(:Punctuation(:colon));
+			v->Return.Postparse.Inline := p.consume_s(:PrefixOrPostfixOp(:doubleMinus));
 			p.expect_done();
 			v->Return.Postparse.Type := end_request();
 		}

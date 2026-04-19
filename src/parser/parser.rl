@@ -305,6 +305,8 @@ INCLUDE "../tokeniser/tokeniser.rl"
 		next() VOID --  { Hot++;    Token++;    } 
 		next2() VOID -- { Hot += 2; Token += 2; }
 
+		advance_by(amount: U4) VOID -- { Hot += amount; Token += amount; }
+
 		# type() ENUM tok::Type -- := Hot->Type;
 		# stype() tok::Type -- := Hot->SType;
 		# payload() tok::Payload -- := Payloads[Token];
