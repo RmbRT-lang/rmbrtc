@@ -59,20 +59,18 @@ Looking up a member in a local scope:
 
 	alloc: std::temp::Alloc := :custom(65536, 65536);
 	strings: CHAR#[#]-std::Vec;
-	GlobalDeclsLut: U2-std::Vec;
+	GlobalDeclCount: U4 := 1;
+	GlobalDeclsLut: U2[1<<16] (NOINIT);
 
 	get(id: Identifier) CHAR#[#] -- := id.V < ##strings ?? strings[:ok(id.V)] : "<INVALID IDENT>"[#];
 
-	get_global_decl(id: Identifier) GlobalDeclIdentifier -- := GlobalDeclsLut[:ok(id.V)];
+	get_global_decl(id: Identifier) GlobalDeclIdentifier -- := GlobalDeclsLut[id.V];
 }
 
 ::rlc::ident init() VOID
 {
 	strings.reserve(65536);
 	strings += "<NIL ID>"[#]; // [0] is an invalid ID.
-
-	GlobalDeclsLut.reserve(1<<16);
-	GlobalDeclsLut += 0;
 
 	// touch all bucket pages to at least get the page faults out of the way.
 	bucket_ptr: U1 \ := <U1 \>(<VOID \>(&buckets));

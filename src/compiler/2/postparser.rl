@@ -45,17 +45,17 @@ INCLUDE "type-processor.rl"
 		ListAlloc: std::temp::Alloc - std::Alloc (BARE);
 		ListAlloc.Impl.{ :custom(1*MI, 1*MI) };
 
-		Values: Entries[TABLE scoper::ValueGlobal];
-		NonValues: Entries[TABLE scoper::NonValueGlobal];
+		Values: Entries[TABLE ENUM scoper::VGlobal];
+		NonValues: Entries[TABLE ENUM scoper::NVGlobal];
 
 		// We over-allocate the entries. But we skip all namespaces and enums.
 		entries ::= ListAlloc.[VOID *]alloc_array(
-			##ns->Entries * ((###scoper::NonValueGlobal-3) + (###scoper::ValueGlobal-1))
+			##ns->Entries * ((###ENUM scoper::NVGlobal-2) + (###ENUM scoper::VGlobal-1))
 		)[];
 
 		STATIC dummy: VOID *[1] (NOINIT);
 
-		nv_exclude ::= scoper::NonValueGlobal::FLAGS(:Nil, :Namespace, :Enum);
+		nv_exclude ::= scoper::NVGlobal::FLAGS(:Nil, :Enum);
 
 		consumed ::= 0;
 		FOR(NonValues)
@@ -74,7 +74,7 @@ INCLUDE "type-processor.rl"
 			consumed += ##ns->Entries;
 		}
 		NonValues[:Nil].Data := dummy[];
-		NonValues[:Namespace].Data := dummy[];
+		//NonValues[:Namespace].Data := dummy[];
 		NonValues[:Enum].Data := dummy[];
 		Values[:Nil].Data := dummy[];
 
@@ -84,8 +84,8 @@ INCLUDE "type-processor.rl"
 		FOR(ns->Entries!)
 		{
 			lut_ptr ::= ns->Lut[IT.(0)].get();
-			value_ptr ::= mempool::get_memory(lut_ptr->Value.Mem);
-			nonvalue_ptr ::= mempool::get_memory(lut_ptr->NonValue.Mem);
+			value_ptr ::= mempool::get_memory(lut_ptr->Value.Mem.Nil);
+			nonvalue_ptr ::= mempool::get_memory(lut_ptr->NonValue.Mem.Nil);
 
 			is_value ::= lut_ptr->Value.Type;
 			is_nonvalue ::= lut_ptr->NonValue.Type;
@@ -102,23 +102,13 @@ INCLUDE "type-processor.rl"
 
 		// Process all values.
 		FOR(Values[:Function].[parser::Function]get())
-		{
-			public_job_sig(IT->Return, ns, NULL); // &IT.Templates);
-		}
+			post_parse_function_types(IT, ns, NULL);
 		FOR(Values[:ExportFunction].[parser::ExportFunction]get())
-		{
-			{
-				p ::= parser(IT->Fn.Args);
-				post_parse_function_args(p, ns, NULL);
-				p.expect_done();
-			}
-
-			public_job_sig(IT->Fn.Return, ns, NULL);
-		}
+			post_parse_function_types(&IT->Fn, ns, NULL);
 		FOR(Values[:ExternFunction].[parser::ExternFunction]get())
 		{
 			p ::= parser(IT->Args);
-			post_parse_function_args(p, ns, NULL);
+			post_parse_function_args(p, ns, NULL, NULL);
 			p.expect_done();
 
 			p := parser(IT->Rest.Preparse.Type);
@@ -127,69 +117,71 @@ INCLUDE "type-processor.rl"
 		}
 		FOR(Values[:Variable].[parser::GlobalVariable]get())
 		{
-			public_job(IT->Type, ns, NULL);
+			job(IT->Type, ns, NULL, NULL);
 		}
 		FOR(Values[:ExportVariable].[parser::ExportVariable]get())
 		{
-			public_job(IT->Var.Type, ns, NULL);
+			job(IT->Var.Type, ns, NULL, NULL);
 		}
 		FOR(Values[:ExternVariable].[parser::ExternVariable]get())
 		{
-			public_job(IT->Type, ns, NULL);
+			job(IT->Type, ns, NULL, NULL);
 		}
 
 		// Process all nonvalues.
 		FOR(NonValues[:Class].[parser::Class]get())
-			post_parse_class_types(IT);
+			post_parse_class_types(IT, ns, NULL);
 
 		FOR(NonValues[:Rawtype].[parser::Rawtype]get())
-		{
-			post_parse_members_types(&IT->Members);
-		}
+			post_parse_rawtype_types(IT, ns, NULL);
 
 		FOR(NonValues[:Typedef].[parser::Typedef]get())
 		{
-			public_job(IT->Type, ns, NULL); // &IT->Templates);
+			post_parse_typedef(IT, ns, NULL, NULL);
 		}
 
 		FOR(NonValues[:Mask].[parser::Mask]get())
 		{
-			post_parse_members_types(&IT->Members);
+			post_parse_members_types(ns, &IT->Members);
 		}
 
 		FOR(NonValues[:Union].[parser::Union]get())
 		{
-			post_parse_union_types(IT);
+			post_parse_union_types(IT, ns);
+		}
+
+		FOR(NonValues[:Namespace].[scoper::Namespace]get())
+		{
+			post_parse_ns(IT);
 		}
 	}
 
 
 	// parse all return types or other public-facing types in a member scope.
-	post_parse_members_types(ms: parser::Members \) VOID
+	post_parse_members_types(
+		ns: scoper::Namespace \,
+		ms: parser::Members \) VOID
 	{
 		FOR(ms->Entries!)
 		{
 			idx ::= IT.(0);
 			entry ::= IT.(1).get();
 
+			tpl ::= &ms->Templates;
+
 			IF(t ::= entry->NonValue.Type) SWITCH!(t)
 			{
 			:Nil: { ; }
 			:Class:
-				post_parse_class_types(
-					<parser::Class-Handle>(entry->NonValue.Entry.Normal.Memory).get());
+				post_parse_class_types(entry->NonValue.Entry.Class.get(), ns, ms);
 			:Rawtype:
-				post_parse_rawtype_types(
-					<parser::Rawtype-Handle>(entry->NonValue.Entry.Normal.Memory).get());
+				post_parse_rawtype_types(entry->NonValue.Entry.Rawtype.get(), ns, ms);
 			:Typedef:
-				post_parse_typedef(
-					<parser::Typedef-Handle>(entry->NonValue.Entry.Normal.Memory).get());
+				post_parse_typedef(entry->NonValue.Entry.Typedef.get(), ns, ms, tpl);
 			:Mask:
-				post_parse_mask_types(
-					<parser::Mask-Handle>(entry->NonValue.Entry.Normal.Memory).get());
+				post_parse_mask_types(entry->NonValue.Entry.Mask.get(), ns);
 			:Union:
-				post_parse_union_types(
-					<parser::Union-Handle>(entry->NonValue.Entry.Normal.Memory).get());
+				post_parse_union_types(entry->NonValue.Entry.Union.get(), ns);
 			:Enum: { ; }
 			}
 
@@ -198,20 +190,19 @@ INCLUDE "type-processor.rl"
 			:Nil: { ; }
 			:Field:
 				post_parse_member_variable_type(
-					<parser::MemberVariable-Handle>(entry->NonValue.Entry.Normal.Memory).get());
+					entry->Value.Entry.Field.get(), ns, ms);
 			:StaticField:
-				post_parse_global_variable_type(
-					<parser::GlobalVariable-Handle>(entry->NonValue.Entry.Normal.Memory).get());
+				post_parse_variable_type(
+					entry->Value.Entry.StaticField.get(), ns, ms, tpl);
 			:MemberFunction:
 				post_parse_function_types(
-					&<parser::MemberFunction-Handle>(entry->NonValue.Entry.Normal.Memory)->Fn);
+					&entry->Value.Entry.MemberFunction->Fn, ns, ms);
 			:StaticMemberFunction:
 				post_parse_function_types(
-					<parser::Function-Handle>(entry->NonValue.Entry.Normal.Memory).get());
+					entry->Value.Entry.StaticMemberFunction.get(), ns, ms);
 			:EnumConstant: { ; }
 			:UnionField:
-				DIE;
-				// post_parse_type(<parser::UnionField \>(mem));
+				post_parse_union_field(entry->Value.Entry.UnionField.get(), ns, ms);
 			}
 		}
 	}
@@ -220,6 +211,7 @@ INCLUDE "type-processor.rl"
 	post_parse_function_args(
 		p: parser::Parser &,
 		ns: scoper::Namespace \,
+		ms: parser::Members *,
 		templateCtx: :TemplateCtx *) VOID
 	{
 		p.expect_s(:Punctuation(:parentheseOpen));
@@ -242,28 +234,30 @@ INCLUDE "type-processor.rl"
 		}
 	}
 
-	public_job_sig(
+	job_sig(
 		sig: parser::SignatureRest &,
 		scope: scoper::Namespace \,
+		members: parser::Members *,
 		templateCtx: :TemplateCtx *) VOID --
 	{
 		p ::= parser(sig.Preparse.Type);
 		post_parse_type(p);
+		sig.Postparse.Type := end_request();
 		sig.Postparse.Inline :=
 			p.consume_s(:PrefixOrPostfixOp(:doubleMinus)) ||
 			p.consume_s(:AuxKeyword(:inline));
-
 		p.expect_done();
 	}
 
-	public_job(
+	job(
 		type: parser::TypeU &,
 		scope: scoper::Namespace \,
+		members: parser::Members *,
 		templateCtx: :TemplateCtx *) VOID --
 	{
 		p ::= parser(type.Preparse);
 		post_parse_type(p);
-		// type.PostParse := ???;
+		type.PostParse := end_request();
 		p.expect_done();
 	}
 
@@ -295,21 +289,23 @@ INCLUDE "type-processor.rl"
 
 	post_parse_type(p: parser::Parser &) VOID
 	{
-		SWITCH(p.type())
+		TRY SWITCH(p.type())
 		{
 		:AuxKeyword:
 			SWITCH(p.stype().AuxKeyword)
 			{
 			:this:
 			{ p.next(); emit_bytecode(:MakeThisType(p.consume_s(:PrefixOrPostfixOp(:exclamationMark)))); }
-			:void: emit_bytecode(:MakeVoid);
-			:null: emit_bytecode(:MakeNullType);
+			:void: { p.next(); emit_bytecode(:MakeVoid); }
+			:null: { p.next(); emit_bytecode(:MakeNullType); }
 			}
 		:Declaration:
 			SWITCH(p.stype().Declaration)
 			{
 			:enum:
 			{ p.next(); emit_bytecode(:GetUnionTag); type_parse_symbol(p); }
+			:tagged:
+			{ p.next(); emit_bytecode(:MakeTaggedUnion); type_parse_symbol(p); }
 			}
 		:BuiltinType:
 		{
@@ -371,34 +367,56 @@ INCLUDE "type-processor.rl"
 				emit_bytecode(:MakeFnSig(args));
 			}
 			}
-		}
+		} CATCH(err: CHAR#*) { p.fail("expected type:\n", std::str::c(err[])); }
 
 		// pointers, arrays, indirections, etc.
-		DO(progress ::= p.progress())
+		TRY DO(progress ::= p.progress())
 		{
 			SWITCH?(p.type())
 			{
 			:Punctuation:
 				SWITCH?(p.stype().Punctuation)
 				{
-				:bracketOpen: DIE; // array, etc.
+				:bracketOpen:
+				{
+					p.next();
+					IF(p.consume_s(:Punctuation(:bracketClose))) // []
+						emit_bytecode(:MakeSlice);
+					ELSE IF(p.consume_ss(:Punctuation(:hash), :Punctuation(:bracketClose))) // [#]
+						emit_bytecode(:MakeSizedSlice);
+					ELSE // [dimension]
+					{
+						p.fail("TODO: expression parsing for array bounds");
+					}
+				}
+				:hash: {
+					p.next();
+
+					mod: types::PackedModifier;
+					mod.set0_constness(
+						p.consume_s(:PostfixOp(:questionMark))
+						?? types::Constness::Const
+						:  types::Constness::MaybeConst);
+
+					emit_bytecode(:AddModifier(mod));
+				}
 				}
 			:PrefixOrBinaryOp:
 				SWITCH?(p.stype().PrefixOrBinaryOp)
 				{
-				:asterisk: { emit_bytecode(:MakePointer); }
+				:asterisk: { p.next(); emit_bytecode(:MakePointer); }
 				// T-std::Vector  -> std::[T]Vector
 				// V-std::[K]Map  -> std::[K;V]Map
 				:minus:
 				{
+					p.next();
 					type_parse_symbol(p);
 					emit_bytecode(:AddTemplateArg);
 				}
 				}
 			}
 		} FOR(progress != p.progress(); progress := p.progress())
-
-
+		CATCH(err: CHAR#*) { p.fail("expected type:\n", std::str::c(err[])); }
 	}
 
 	// ::symbol
@@ -550,7 +568,13 @@ INCLUDE "type-processor.rl"
 		p.expect_s(:Punctuation(:bracketClose));
 	}
 
-	post_parse_member_variable_type(parser::MemberVariable *) VOID { DIE; }
+	post_parse_member_variable_type(
+		v: parser::Field *,
+		ns: scoper::Namespace \,
+		ms: parser::Members \) VOID
+	{
+		job(v->Type, ns, ms, &ms->Templates);
+	}
 
 	SpanParser -> parser::Parser {
 		End: U4;
@@ -575,7 +599,11 @@ INCLUDE "type-processor.rl"
 	parser(span: parser::TokenSpan #&) SpanParser
 		:= (FileTokens[span.File], span.File, span.Start, span.End);
 
-	post_parse_typedef(v: parser::Typedef *) VOID
+	post_parse_typedef(
+		v: parser::Typedef *,
+		ns: scoper::Namespace \,
+		ms: parser::Members *,
+		:TemplateCtx *) VOID
 	{
 		p ::= parser(v->Type.Preparse);
 
@@ -584,30 +612,73 @@ INCLUDE "type-processor.rl"
 		v->Type.PostParse := end_request();
 	}
 
-	post_parse_class_types(v: parser::Class *) VOID
+	post_parse_class_types(
+		v: parser::Class *,
+		ns: scoper::Namespace \,
+		ms: parser::Members *) VOID
 	{
-		// TODO: inheritance.
-		post_parse_members_types(&v->Members);
+		// TODO: inheritance (scoped in ms, not v->Members!)
+		post_parse_members_types(ns, &v->Members);
 	}
 
-	post_parse_rawtype_types(v: parser::Rawtype *) VOID
+	post_parse_rawtype_types(
+		v: parser::Rawtype *,
+		ns: scoper::Namespace \,
+		ms: parser::Members *) VOID
 	{
-		post_parse_members_types(&v->Members);
+		// TODO: parse type size and alignment (scoped in ms, not v->Members!)
+		post_parse_members_types(ns, &v->Members);
 	}
 
-	post_parse_mask_types(v: parser::Mask *) VOID
+	post_parse_mask_types(
+		v: parser::Mask *,
+		ns: scoper::Namespace \) VOID
 	{
-		post_parse_members_types(&v->Members);
+		post_parse_members_types(ns, &v->Members);
 	}
 
-	post_parse_union_types(v: parser::Union *) VOID
+	post_parse_union_types(
+		v: parser::Union *,
+		ns: scoper::Namespace \) VOID
 	{
-		post_parse_members_types(&v->Members);
+		post_parse_members_types(ns, &v->Members);
+	}
+
+	post_parse_union_field(
+		v: parser::UnionField *,
+		ns: scoper::Namespace \,
+		ms: parser::Members \) VOID
+	{
+		job(v->Type, ns, ms, &ms->Templates);
 	}
 
 
-	post_parse_function_types(v: parser::Function *) VOID
+	post_parse_templates(
+		v: parser::Templates &,
+		ns: scoper::Namespace \,
+		ms: parser::Members *) VOID
 	{
+		;
+	}
+
+	post_parse_function_types(
+		v: parser::Function *,
+		ns: scoper::Namespace \,
+		ms: parser::Members *) VOID
+	{
+		{
+			post_parse_templates(v->Templates, ns, ms);
+		}
+
+		{
+			p ::= parser(v->Args.Preparse);
+			post_parse_function_args(p, ns, ms, &v->Templates.Postparse);
+			p.expect_done();
+		}
+
+		{
+		}
+
 		{
 			p ::= parser(v->Return.Preparse.Type);
 
@@ -616,26 +687,13 @@ INCLUDE "type-processor.rl"
 			p.expect_done();
 			v->Return.Postparse.Type := end_request();
 		}
-
-		{
-
-			p ::= parser(v->Args);
-			IF(v->Args)
-			{
-				DO()
-					post_parse_arg(p);
-					WHILE(p.consume_s(:Punctuation(:comma)))
-
-				p.expect_done();
-			}
-		}
 	}
 
-	post_parse_arg(p: parser::Parser &) VOID { DIE; }
-
-	post_parse_export_function_types(v: parser::ExportFunction *) VOID
+	post_parse_export_function_types(
+		v: parser::ExportFunction \,
+		ns: scoper::Namespace \) VOID
 	{
-		post_parse_function_types(&v->Fn);
+		post_parse_function_types(&v->Fn, ns, NULL);
 	}
 
 	post_parse_extern_function_types(v: parser::ExternFunction *) VOID
@@ -663,24 +721,12 @@ INCLUDE "type-processor.rl"
 		}/)
 	}
 
-	post_parse_global_variable_type(v: parser::GlobalVariable *) VOID
+	post_parse_variable_type(
+		v: parser::GlobalVariable *,
+		ns: scoper::Namespace \,
+		ms: parser::Members *,
+		tpl: :TemplateCtx *) VOID
 	{
-		p ::= parser(v->Type.Preparse);
-		post_parse_type(p);
-		p.expect_done();
-	}
-
-	post_parse_export_variable_type(v: parser::ExportVariable *) VOID
-	{
-		post_parse_global_variable_type(&v->Var);
-	}
-
-	post_parse_extern_variable_type(v: parser::ExternVariable *) VOID
-	{
-		DIE;
-		(/
-		p ::= parser(v->Rest);
-		post_parse_type(p, v->Type);
-		p.expect_done();/)
+		job(v->Type, ns, ms, tpl);
 	}
 }

@@ -2,5 +2,6 @@
 {
 	Name: Identifier;
 	Type: TypeU;
+	Alignment: TokenSpan;
 	Initialiser: TokenSpan;
 }

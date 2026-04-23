@@ -38,7 +38,8 @@ INCLUDE 'std/hash'
 		IF(alloc.try_grow_last_allocation_by(grow_by * SIZEOF(T)))
 			RETURN;
 
-		new_arr ::= <T *>(alloc.alloc_raw(new_array_size * SIZEOF(T), ALIGNOF(T)))[];
+		new_arr: T[];
+		[T]alloc_array(alloc, new_arr, new_array_size);
 		FOR(old_array[FOR old])
 			new_arr[IOTA].{ IT };
 		old_array := new_arr;
@@ -47,7 +48,10 @@ INCLUDE 'std/hash'
 	[T]
 	STATIC alloc_array(alloc: std::temp::Alloc &, array: T![] &, size: U4) VOID --
 	{
-		array := <T *>(alloc.alloc_raw(size * SIZEOF(T), ALIGNOF(T)))[];
+		align ::= ALIGNOF(T);
+		IF(align<CACHELINE)
+			align := CACHELINE;
+		array := <T *>(alloc.alloc_raw(size * SIZEOF(T), align))[];
 	}
 
 	handle_job(

@@ -135,6 +135,8 @@
 
 		MakeAutoArray;
 		MakeArray;
+		MakeSlice;
+		MakeSizedSlice;
 		MakeTable;
 		MakePointer;
 		Dereference; // element of pointer or array, or result of *THIS/THIS-> operator.

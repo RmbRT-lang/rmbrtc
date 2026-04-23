@@ -25,15 +25,6 @@ main(args: CHAR[#][#]) INT
 {
 	os::term::init();
 
-	//__rl::set_thread_affinity(1<<(THREAD_COUNT-1));
-
-	(/ Now that the main thread no longer annoys everyone, it is alright.
-	IF(THREAD_COUNT >= 8)
-		// schedule the main thread everywhere except on the cores we assign for the workers.
-		__rl::set_thread_affinity(
-			(1 << THREAD_COUNT -1)
-			&~ (1<<1 | 1<<2 | 1<<3 | 1<<5 | 1<<7)); /)
-
 	rlc::init();
 	IF(##args == 1)
 	{

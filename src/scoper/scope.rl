@@ -1,41 +1,38 @@
 INCLUDE "../identifierPool.rl"
+INCLUDE "../mempool.rl"
 ::rlc::scoper
 {
-	// Actually, it seems like all of these are also potentially valid namespaces.
-	ENUM NonValueGlobal
-	{
-	*	Nil,
-	?	Namespace,
-	?	Class,
-	?	Rawtype,
-	?	Typedef,
-	?	Mask,
-	?	Union,
-	?	Enum
+	UNION NVGlobal {
+	*	Nil:       MemID;
+	?	Namespace: scoper::Namespace -Handle;
+	?	Class:     parser::Class     -Handle;
+	?	Rawtype:   parser::Rawtype   -Handle;
+	?	Typedef:   parser::Typedef   -Handle;
+	?	Mask:      parser::Mask      -Handle;
+	?	Union:     parser::Union     -Handle;
+	?	Enum:      parser::Enum      -Handle;
 	}
-
-	ENUM ValueGlobal
-	{
-	*	Nil,
-	?	Function,
-	?	ExportFunction,
-	?	ExternFunction,
-	?	Variable,
-	?	ExportVariable,
-	?	ExternVariable
+	UNION VGlobal {
+	*	Nil:            MemID;
+	?	Function:       parser::Function       -Handle;
+	?	ExportFunction: parser::ExportFunction -Handle;
+	?	ExternFunction: parser::ExternFunction -Handle;
+	?	Variable:       parser::GlobalVariable -Handle;
+	?	ExportVariable: parser::ExportVariable -Handle;
+	?	ExternVariable: parser::ExternVariable -Handle;
 	}
-
 	Namespace
 	{
+
 		// We use fat pointers so that we can sort the looked-up value into a work queue without having to chase another pointer.
 		NVEntry {
-			Type: NonValueGlobal;
-			Mem: MemID;
+			Type: ENUM NVGlobal;
+			Mem: NVGlobal;
 		}
 
 		VEntry {
-			Type: ValueGlobal;
-			Mem: MemID;
+			Type: ENUM VGlobal;
+			Mem: VGlobal;
 		}
 
 		Entry
@@ -43,14 +40,26 @@ INCLUDE "../identifierPool.rl"
 			NonValue: NVEntry;
 			Value: VEntry;
 
-			set_value(type: ValueGlobal, id: MemID, name: Identifier, at: U4, p: parser::Parser &) VOID -- {
+			set_value(
+				v: TAGGED VGlobal,
+				name: Identifier,
+				at: U4,
+				p: parser::Parser &) VOID --
+			{
+				type ::= v.(0); id ::= v.(1);
 				IF(Value.Type != :Nil)
 					term::error(p.at_pos(at).at(), "Re-definition of ", ident::get(name), " as ", std::str::enum(type), " (already exists as ", std::str::enum(Value.Type), ")");
 				Value.Type := type;
 				Value.Mem := id;
 				//term::info(at.at(), std::str::enum(type), " ", ident::get(name));
 			}
-			set_nonvalue(type: NonValueGlobal, id: MemID, name: Identifier, at: U4, p: parser::Parser &) VOID -- {
+			set_nonvalue(
+				v: TAGGED NVGlobal,
+				name: Identifier,
+				at: U4,
+				p: parser::Parser &) VOID --
+			{
+				type ::= v.(0); id ::= v.(1);
 				IF(NonValue.Type != :Nil)
 					term::error(p.at_pos(at).at(), "Re-definition of ", ident::get(name), " as ", std::str::enum(type), " (already exists as ", std::str::enum(NonValue.Type), ")");
 				NonValue.Type := type;
@@ -141,7 +150,7 @@ INCLUDE "../identifierPool.rl"
 		// NOTE PERFOMANCE: complexity is ##namespaces * ##idents, but it gives us much faster and simpler (loopless, branchless) scope-relative lookups for all identifiers.
 		post_process_1(outerLutV: VEntry#[], outerLutNV: NVEntry#[]) VOID
 		{
-			cap ::= ##ident::GlobalDeclsLut;
+			cap ::= ident::GlobalDeclCount;
 			STATIC t_alloc_i: std::temp::Alloc := :custom(16 * MI, 16 * MI);
 			STATIC t_alloc: std::temp::Alloc-std::AllocPimpl-std::Alloc := <std::temp::Alloc-std::AllocPimpl>(&t_alloc_i);
 
@@ -185,7 +194,7 @@ INCLUDE "../identifierPool.rl"
 			InnerLutNV := innerLutNV;
 
 			// If we had the guarantee that it is already 0-initialised, then we would not have to deal with it. But then we also wouldn't need Exists to begin with. TODO: we want to have an allocator that is guaranteed to 0-initialise, via mmap().
-			IF(0)FOR(cap) // NOTE PERFORMANCE: This loop takes up around 0.1ms already.
+			IF(1)FOR(cap) // NOTE PERFORMANCE: This loop takes up around 0.1ms already.
 			{
 				handle ::= Lut[IOTA];
 				exists: BOOL := Exists[IOTA >> 3] & (1 << (IOTA & 7));
@@ -207,7 +216,7 @@ INCLUDE "../identifierPool.rl"
 					FOR(cap) innerLutV[IOTA] := outerLutV[IOTA];
 					FOR(cap) innerLutNV[IOTA] := outerLutNV[IOTA];
 				}
-			} ELSE IF(0) // NOTE PERFORMANCE: not really measurable since this is only 1/50th of the cases (only the root scope).
+			} ELSE IF(1) // NOTE PERFORMANCE: not really measurable since this is only 1/50th of the cases (only the root scope).
 			{
 				FOR(cap) innerLutV[IOTA].{};
 				FOR(cap) innerLutNV[IOTA].{};
@@ -276,7 +285,7 @@ INCLUDE "../identifierPool.rl"
 			IF!(handle) term::error(HERE, "No such symbol. TODO: better message");
 			entry ::= handle.get();
 
-			= (1 << <U1>(entry->NonValue.Type) & ~NonValueGlobal::FLAGS(:Nil, :Namespace))
+			= (1 << <U1>(entry->NonValue.Type) & ~NVGlobal::FLAGS(:Nil, :Namespace))
 				?? entry
 				:  NULL;
 		}

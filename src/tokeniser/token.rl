@@ -73,6 +73,7 @@ INCLUDE "../identifierPool.rl"
 		protected,
 		public,
 		static,
+		tagged,
 		test,
 		union,
 		virtual

@@ -17,24 +17,30 @@ INCLUDE "../mempool.rl"
 
 ::rlc::parser
 {
-	ENUM NVMember {
-	*	Nil,
-	?	Class,
-	?	Rawtype,
-	?	Typedef,
-	?	Mask,
-	?	Union,
-	?	Enum
+	UNION NVMember {
+	*	Nil;
+	?	Class:   parser::Class   -Handle;
+	?	Rawtype: parser::Rawtype -Handle;
+	?	Typedef: parser::Typedef -Handle;
+	?	Mask:    parser::Mask    -Handle;
+	?	Union:   parser::Union   -Handle;
+	?	Enum:    parser::Enum    -Handle;
 	}
 
-	ENUM VMember {
-	*	Nil,
-	?	Field,
-	?	StaticField,
-	?	MemberFunction,
-	?	StaticMemberFunction,
-	?	EnumConstant, // Could merge this into StaticField, or not.
-	?	UnionField
+
+	EnumConstant {
+		Index: U2;
+		Identifier: FileDeclIdentifier;
+	}
+
+	UNION VMember {
+	*	Nil;
+	?	Field:                parser::Field -Handle;
+	?	StaticField:          parser::GlobalVariable -Handle;
+	?	MemberFunction:       parser::MemberFunction -Handle;
+	?	StaticMemberFunction: parser::Function       -Handle;
+	?	EnumConstant:         parser::EnumConstant;
+	?	UnionField:           parser::UnionField     -Handle;
 	}
 
 	(// (/ Unused for some reason? /)
@@ -52,27 +58,27 @@ INCLUDE "../mempool.rl"
 		UnionField
 	}/)
 
-	NormalMemberEntry {
-		Visibility: rlc::Visibility;
-		Memory: MemID;
-
-
-		{BARE};
-		{...};
-	}
-
-	EnumConstant {
-		Index: U2;
-		Identifier: FileDeclIdentifier;
+	UNION TypeU {
+		Preparse: TokenSpan;
+		PostParse: :?;
 	}
 
 	UnionField {
-		Type: TokenSpan-Handle;
+		Type: TypeU;
 	}
-	UNION MemberEntry {
-	!	Normal: NormalMemberEntry;
-		EnumConstant: parser::EnumConstant;
-		UnionField: parser::UnionField;
+
+
+	VMemberEntry {
+		UNION Memory {
+			Nil;
+
+		}
+
+		Visibility: rlc::Visibility;
+		M: Memory;
+
+		{BARE};
+		{...};
 	}
 }
 
@@ -88,12 +94,27 @@ INCLUDE "../mempool.rl"
 
 ::rlc::parser Members {
 	VEntry {
-		Type: VMember;
-		Entry: MemberEntry;
+		Type: ENUM VMember;
+		Visibility: rlc::Visibility;
+		Entry: VMember;
+
+		{}: Type := :Nil, Visibility(BARE), Entry(NOINIT);
+
+		{vis: rlc::Visibility, m: TAGGED VMember} --:
+			Type(m.(0)),
+			Visibility(vis),
+			Entry(m.(1));
 	}
 	NVEntry {
-		Type: NVMember;
-		Entry: MemberEntry;
+		Type: ENUM NVMember;
+		Visibility: rlc::Visibility;
+		Entry: NVMember;
+
+		{}: Type := :Nil, Visibility(BARE), Entry(NOINIT);
+		{vis: rlc::Visibility, m: TAGGED NVMember} --:
+			Type(m.(0)),
+			Visibility(vis),
+			Entry(m.(1));
 	}
 
 	LUTEntry {
@@ -101,28 +122,26 @@ INCLUDE "../mempool.rl"
 		Value: VEntry;
 
 		set_value(
-			type: VMember,
 			global_name: Identifier,
 			at: U4,
 			p: parser::Parser &,
-			e: MemberEntry) VOID --
+			e: VEntry) VOID --
 		{
+			type ::= e.Type;
 			IF(Value.Type != :Nil)
 				term::error(p.at_pos(at).at(), "Re-definition of ", ident::get(global_name), " as ", std::str::enum(type), " (already exists as ", std::str::enum(Value.Type), ")");
-			Value.Type := type;
-			Value.Entry.{e};
+			Value := e;
 		}
 		set_nonvalue(
-			type: NVMember,
 			global_name: Identifier,
 			at: U4,
 			p: parser::Parser &,
-			e: MemberEntry) VOID --
+			e: NVEntry) VOID --
 		{
+			type ::= e.Type;
 			IF(NonValue.Type != :Nil)
 				term::error(p.at_pos(at).at(), "Re-definition of ", ident::get(global_name), " as ", std::str::enum(type), " (already exists as ", std::str::enum(NonValue.Type), ")");
-			NonValue.Type := type;
-			NonValue.Entry.{e};
+			NonValue := e;
 		}
 	}
 
@@ -132,6 +151,9 @@ INCLUDE "../mempool.rl"
 
 	InnerLutV: VEntry[];
 	InnerLutNV: NVEntry[];
+
+	Templates: :TemplateCtx;
+	Fields: U2;
 
 	ensure(id: rlc::FileDeclIdentifier) LUTEntry-Handle {
 		IF(id.V < ##IdLut)
@@ -192,23 +214,29 @@ INCLUDE "../mempool.rl"
 		}
 		ELSE
 		{
-			FOR(cap) InnerLutNV[IOTA] := IdLut[IOTA]->NonValue;
+			FOR(cap) InnerLutNV[IOTA].{};
+			FOR(Entries!)
+			{
+				entry ::= &IT.(1)->NonValue;
+				InnerLutNV[IT.(0)] := *entry;
+			}
 		}
 
 		// Only inherit access to static value members, as inner scopes do not have access to the THIS object of the outer class.
+		FOR(cap) InnerLutV[IOTA].{};
 		IF(outerLutV)
 		{
 			// TODO PERFORMANCE: make this branchless.
 			FOR(cap)
 			{
-				IF(1 << <U1>(InnerLutV[IOTA].Type) & VMember::FLAGS(:StaticField, :StaticMemberFunction))
+				IF(1 << <U1>(outerLutV[IOTA].Type) & VMember::FLAGS(:StaticField, :StaticMemberFunction))
 					InnerLutV[IOTA] := outerLutV[IOTA];
-				ELSE
-					InnerLutV[IOTA] := IdLut[IOTA]->Value;
 			}
-		} ELSE
+		}
+		FOR(Entries!)
 		{
-			FOR(cap) InnerLutV[IOTA] := IdLut[IOTA]->Value;
+			entry ::= &IT.(1)->Value;
+			InnerLutV[IT.(0)] := *entry;
 		}
 
 		// Post-process children as well.
@@ -216,7 +244,7 @@ INCLUDE "../mempool.rl"
 		{
 			x ::= &IT.(1)->NonValue;
 			type ::= x->Type;
-			mem ::= x->Entry.Normal.Memory;
+			mem ::= x->Entry;
 
 			members: Members * (NOINIT);
 
@@ -224,12 +252,12 @@ INCLUDE "../mempool.rl"
 			SWITCH(type)
 			{ // TODO PERFORMANCE: OFFSETOF table instead.
 			:Nil: CONTINUE;
-			:Class: members := &<parser::Class-Handle>(mem)->Members;
-			:Rawtype: members := &<parser::Rawtype-Handle>(mem)->Members;
+			:Class: members := &mem.Class->Members;
+			:Rawtype: members := &mem.Rawtype->Members;
 			:Typedef: CONTINUE;
-			:Mask: members := &<parser::Mask-Handle>(mem)->Members;
-			:Union: members := &<parser::Union-Handle>(mem)->Members;
-			:Enum: members := &<parser::Enum-Handle>(mem)->Members;
+			:Mask: members := &mem.Mask->Members;
+			:Union: members := &mem.Union->Members;
+			:Enum: members := &mem.Enum->Members;
 			}
 
 			members->post_process(InnerLutV, InnerLutNV, cap);
@@ -565,11 +593,6 @@ INCLUDE "../mempool.rl"
 		{...};
 	}
 
-	UNION TypeU {
-		Preparse: TokenSpan;
-		PostParse: :?;
-	}
-
 	PreparsedBinaryOperator
 	{
 		Attr: ParsedMemberAttr;
@@ -647,12 +670,5 @@ INCLUDE "../mempool.rl"
 		Subscript: PreparsedBinaryOperator;
 
 		{}: Conversion(BARE), Call(BARE), Subscript(BARE);
-	}
-
-	MemberVariable {
-		Location: src::Position;
-		Name: rlc::Identifier;
-		Type: TokenSpan;
-		Isolated: BOOL;
 	}
 }

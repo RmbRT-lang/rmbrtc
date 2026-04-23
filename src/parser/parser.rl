@@ -109,6 +109,12 @@ INCLUDE "../tokeniser/tokeniser.rl"
 				fail("Expected braces");
 			skip_nesting();
 		}
+		skip_parentheses() VOID --
+		{
+			IF(!match_s(0, :Punctuation(:parentheseOpen)))
+				fail("Expected parentheses");
+			skip_nesting();
+		}
 
 		skip_nesting() VOID -- {
 			skip_nesting_until_after_mask(~0);

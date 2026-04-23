@@ -35,7 +35,7 @@ INCLUDE "../../parser/extern.rl"
 	PRIVATE LocalIds: U2-std::Vec;
 	PRIVATE LocalDecls: U2-std::Vec;
 		// TODO PERFORMANCE: use linear allocator here, and slices.
-	PRIVATE LocalDeclLut: U2-std::Vec-std::Vec; // LocalIdx -> LocalDeclIdx
+	PRIVATE LocalDeclLut: U2-std::Vec; //-std::Vec; // LocalIdx -> LocalDeclIdx
 
 	{}:
 		MemberScopes := :reserve(2048),
@@ -52,20 +52,24 @@ INCLUDE "../../parser/extern.rl"
 	handle_job(in: Input &, out: Output *) VOID
 	{
 		// Remember tokens for later.
-		IF(in.File <= ##FileTokens)
+		IF!(in.File < ##FileTokens)
+		{
 			FileTokens.resize_bare(in.File+1);
+		}
+		ASSERT(##FileTokens > in.File);
 		FileTokens[:ok(in.File)] := in.Tokens; // copy, let the toker reuse the buffer.
 
 		// Global/Local ID buffers
-		IF(in.File <= ##LocalIds)
+		IF!(in.File < ##LocalIds)
 		{
 			LocalIds.resize_bare(in.File+1);
 			LocalDecls.resize_bare(in.File+1);
-			LocalDeclLut.resize_bare(in.File+1);
+			//LocalDeclLut.resize_bare(in.File+1);
 		}
 		LocalIds[:ok(in.File)] := in.LocalIds;
 		LocalDecls[:ok(in.File)] := 0;
-		LocalDeclLut[:ok(in.File)].resize(in.LocalIds);
+		LocalDeclLut.clear_reuse();
+		LocalDeclLut.resize(in.LocalIds); // TODO: linear allocator.
 
 		// 2. pre-parse global scope entries into the global scope tree. Populate global scope lookups. Function bodies, expressions, and type names are skipped via matching parentheses.
 		p: rlc::parser::Parser(FileTokens[:ok(in.File)], in.File);
@@ -150,12 +154,12 @@ INCLUDE "../../parser/extern.rl"
 				:parentheseOpen: {
 					out ::= mempool::[parser::Function]alloc_unhashed_t();
 					preparse_function(p, out.(0), name, template);
-					entry->set_value(:Function, out.(1), name, at, p);
+					entry->set_value(:Function(out.(1)), name, at, p);
 				}
 				:braceOpen: {
 					out ::= mempool::[parser::Class]alloc_unhashed_t();
 					preparse_class(p, out.(0), name, template);
-					entry->set_nonvalue(:Class, out.(1), name, at, p);
+					entry->set_nonvalue(:Class(out.(1)), name, at, p);
 				}
 				:colon: {
 					IF(template)
@@ -163,7 +167,7 @@ INCLUDE "../../parser/extern.rl"
 
 					out ::= mempool::[parser::GlobalVariable]alloc_unhashed_t();
 					preparse_global_variable(p, out.(0), name);
-					entry->set_value(:Variable, out.(1), name, at, p);
+					entry->set_value(:Variable(out.(1)), name, at, p);
 				}
 				}
 			:Declaration:
@@ -173,7 +177,7 @@ INCLUDE "../../parser/extern.rl"
 				{
 					out ::= mempool::[parser::Class]alloc_unhashed_t();
 					preparse_class(p, out.(0), name, template);
-					entry->set_nonvalue(:Class, out.(1), name, at, p);
+					entry->set_nonvalue(:Class(out.(1)), name, at, p);
 				}
 				}
 			:BinaryOp:
@@ -183,7 +187,7 @@ INCLUDE "../../parser/extern.rl"
 				{
 					out ::= mempool::[parser::Class]alloc_unhashed_t();
 					preparse_class(p, out.(0), name, template);
-					entry->set_nonvalue(:Class, out.(1), name, at, p);
+					entry->set_nonvalue(:Class(out.(1)), name, at, p);
 				}
 				}
 			}
@@ -202,12 +206,12 @@ INCLUDE "../../parser/extern.rl"
 				entry ::= scope->ensure(global_decl_name);
 				pentry ::= &entry->NonValue;
 
-				child_ns: scoper::Namespace * (NOINIT);
+				child_ns: scoper::Namespace *;// (NOINIT);
 
 				IF(pentry->Type == :Namespace)
 				{
 					// Merge / reuse existing namespace.
-					child_ns := <scoper::Namespace-Handle>(pentry->Mem).get();
+					child_ns := pentry->Mem.Namespace.get();
 				} ELSE IF(pentry->Type == :Nil)
 				{
 					// Nil: insert new namespace.
@@ -215,7 +219,7 @@ INCLUDE "../../parser/extern.rl"
 					child_ns := ns_entry.(0);
 					child_ns->{};
 					pentry->Type := :Namespace;
-					pentry->Mem := ns_entry.(1);
+					pentry->Mem := :Namespace(ns_entry.(1));
 					scope->Namespaces += (global_decl_name.V, ns_entry.(1));
 				} ELSE
 				{
@@ -235,7 +239,7 @@ INCLUDE "../../parser/extern.rl"
 				name ::= out.(0)->Name;
 				global_decl_name ::= global_to_decl_name(name);
 				entry ::= scope->ensure(global_decl_name);
-				entry->set_nonvalue(:Rawtype, out.(1), name, at, p);
+				entry->set_nonvalue(:Rawtype(out.(1)), name, at, p);
 			}
 			:bracketOpen: {
 				IF(template)
@@ -263,7 +267,7 @@ INCLUDE "../../parser/extern.rl"
 				global_decl_name ::= global_to_decl_name(name);
 				entry ::= scope->ensure(global_decl_name);
 				out ::= mempool::[parser::Enum]alloc_unhashed_t();
-				entry->set_nonvalue(:Enum, out.(1), name, at, p);
+				entry->set_nonvalue(:Enum(out.(1)), name, at, p);
 				preparse_enum(p, out.(0), name);
 			}
 			:extern: {
@@ -296,7 +300,7 @@ INCLUDE "../../parser/extern.rl"
 					type_start ::= p.progress();
 					p.skip_nesting_until(:semicolon);
 					out.(0)->Type.Preparse := token_span(type_start, p);
-					entry->set_value(:ExternVariable, out.(1), name, at, p);
+					entry->set_value(:ExternVariable(out.(1)), name, at, p);
 				} ELSE
 				{
 					out ::= mempool::[parser::ExternFunction]alloc_unhashed_t();
@@ -309,7 +313,7 @@ INCLUDE "../../parser/extern.rl"
 					p.skip_nesting_until(:semicolon);
 					out.(0)->Rest.Preparse := token_span(type_start, p);
 
-					entry->set_value(:ExternFunction, out.(1), name, at, p);
+					entry->set_value(:ExternFunction(out.(1)), name, at, p);
 				}
 				p.next(); // ;
 			}
@@ -340,14 +344,14 @@ INCLUDE "../../parser/extern.rl"
 					out.(0)->LinkName := link_name;
 
 					preparse_global_variable(p, &out.(0)->Var, name);
-					entry->set_value(:ExportVariable, out.(1), name, at, p);
+					entry->set_value(:ExportVariable(out.(1)), name, at, p);
 				}
 				:parentheseOpen: {
 					out ::= mempool::[parser::ExportFunction]alloc_unhashed_t();
 					out.(0)->LinkName := link_name;
 
 					preparse_function(p, &out.(0)->Fn, name, template);
-					entry->set_value(:ExportFunction, out.(1), name, at, p);
+					entry->set_value(:ExportFunction(out.(1)), name, at, p);
 				}
 				DEFAULT: p.fail("expected ':' or '('");
 				}
@@ -359,7 +363,7 @@ INCLUDE "../../parser/extern.rl"
 				entry ::= scope->ensure(global_decl_name);
 				out.(0)->Name := name;
 				preparse_mask(p, out.(0), name);
-				entry->set_nonvalue(:Mask, out.(1), name, at, p);
+				entry->set_nonvalue(:Mask(out.(1)), name, at, p);
 			}
 			:test: {
 				IF(template)
@@ -374,7 +378,7 @@ INCLUDE "../../parser/extern.rl"
 				entry ::= scope->ensure(global_decl_name);
 				out ::= mempool::[parser::Union]alloc_unhashed_t();
 				preparse_union(p, out.(0), name, template);
-				entry->set_nonvalue(:Union, out.(1), name, at, p);
+				entry->set_nonvalue(:Union(out.(1)), name, at, p);
 			}
 			}
 		}
@@ -389,7 +393,7 @@ INCLUDE "../../parser/extern.rl"
 				entry ::= scope->ensure(global_decl_name);
 				out ::= mempool::[parser::Typedef]alloc_unhashed_t();
 				preparse_typedef(p, out.(0), name, template);
-				entry->set_nonvalue(:Typedef, out.(1), name, at, p);
+				entry->set_nonvalue(:Typedef(out.(1)), name, at, p);
 			}
 			}
 		} CATCH(err: CHAR #*) {
@@ -698,7 +702,8 @@ INCLUDE "../../parser/extern.rl"
 			IF(main_entry->Type)
 				p.fail_pos(at, "duplicate enum constant");
 			main_entry->Type := :EnumConstant;
-			main_entry->Entry.{ :EnumConstant(entry_val, dedup_id) };
+			main_entry->Visibility := :public;
+			main_entry->Entry := :EnumConstant(entry_val, dedup_id);
 
 			WHILE(p.consume_s(:Punctuation(:colonEqual)))
 			{
@@ -711,7 +716,8 @@ INCLUDE "../../parser/extern.rl"
 				IF(alias_entry->Type)
 					p.fail_pos(at, "duplicate enum constant");
 				alias_entry->Type := :EnumConstant;
-				alias_entry->Entry.{ :EnumConstant(entry_val, dedup_alias_id) };
+				alias_entry->Visibility := :public;
+				alias_entry->Entry := :EnumConstant(entry_val, dedup_alias_id);
 			}
 
 			aliases.clear_reuse();
@@ -767,16 +773,16 @@ INCLUDE "../../parser/extern.rl"
 				CONTINUE;
 
 			p.expect_s(:Punctuation(:colon));
-			type_entry ::= mempool::[parser::TokenSpan]alloc_unhashed_t();
+			type_entry ::= mempool::[parser::UnionField]alloc_unhashed_t();
 			type_start ::= p.progress();
 			p.skip_nesting_until(:semicolon);
-			*type_entry.(0) := token_span(type_start, p);
+			*type_entry.(0) := :Preparse(token_span(type_start, p));
 			p.expect_s(:Punctuation(:semicolon));
 
 			decl_name ::= local_to_decl_name(local_name, p.File);
 
 			entry ::= out->Members.ensure(decl_name);
-			entry->set_value(:UnionField, name, at, p, :UnionField(type_entry.(1)));
+			entry->set_value(name, at, p, (:public, :UnionField(type_entry.(1))));
 		}
 		p.expect_s(:Punctuation(:braceClose));
 
@@ -816,13 +822,13 @@ INCLUDE "../../parser/extern.rl"
 	{
 		out->Name := name;
 		out->File := p.File;
-		out->Templates := template;
+		out->Templates := :Preparse(template);
 
 		args_start ::= p.progress();
 
 		p.skip_nesting(); // skip arguments.
 
-		out->Args := token_span(args_start, p);
+		out->Args := :Preparse(token_span(args_start, p));
 
 		out->Return.Preparse := skip_function_return_type(p);
 	}
@@ -872,6 +878,17 @@ INCLUDE "../../parser/extern.rl"
 	{
 		out->Name := name;
 		p.expect_s(:Punctuation(:colon));
+
+		alignment: parser::TokenSpan;
+		IF(p.consume_s(:Punctuation(:at)))
+		{
+			p.expect_s(:Punctuation(:parentheseOpen));
+			align_start ::= p.progress();
+			p.skip_until_nesting_ends();
+			alignment := token_span(align_start, p);
+			p.expect_s(:Punctuation(:parentheseClose));
+		}
+		out->Alignment := alignment;
 
 		type_start ::= p.progress();
 		// If the type is a function pointer.
@@ -925,21 +942,21 @@ INCLUDE "../../parser/extern.rl"
 
 	global_to_decl_name(name_global: rlc::Identifier) rlc::GlobalDeclIdentifier --
 	{
-		count: U2 := ##ident::GlobalDeclsLut;
-		dedup_id: U2 * := &ident::GlobalDeclsLut[:ok(name_global.V)];
+		count: U2 := ident::GlobalDeclCount;
+		dedup_id: U2 * := &ident::GlobalDeclsLut[name_global.V];
 		old ::= *dedup_id;
 		fresh ::= old == 0;
 		new ::= fresh ?? count : old;
 		count += fresh;
 		*dedup_id := new;
-		ident::GlobalDeclsLut.set_size_ok(count);
+		ident::GlobalDeclCount := count;
 		= new;
 	}
 
 	local_to_decl_name(name_local: rlc::FileLocalIdentifier, file: src::File) rlc::FileDeclIdentifier --
 	{
 		decl_count: U2 * := &LocalDecls[:ok(file)];
-		dedup_id: U2 * := &LocalDeclLut[:ok(file)][:ok(name_local.V)];
+		dedup_id: U2 * := &LocalDeclLut[:ok(name_local.V)];
 		old ::= *dedup_id;
 		count ::= *decl_count;
 		fresh ::= old == 0;
@@ -954,9 +971,9 @@ INCLUDE "../../parser/extern.rl"
 
 	preparse_member(
 		p: parser::Parser &,
-		scope: parser::Members \,
-		ctors: parser::Constructors \,
-		ops: parser::Operators *,
+		scope: parser::Members \ #,
+		ctors: parser::Constructors \ #,
+		ops: parser::Operators * #,
 		template: parser::TokenSpan,
 		attr: parser::ParsedMemberAttr,
 		vis: Visibility \,
@@ -986,18 +1003,28 @@ INCLUDE "../../parser/extern.rl"
 				SWITCH(p.stype().Punctuation)
 				{
 				:parentheseOpen: {
-					fn ::= mempool::[parser::MemberFunction]alloc_unhashed_t();
-					fn.(0)->Abstractness := :none;
-					type: parser::VMember := (attr == :static) ?? parser::VMember::StaticMemberFunction : parser::VMember::MemberFunction;
+					fn: parser::Function *;// (NOINIT);
+					IF(attr == :static)
+					{
+						sfn ::= mempool::[parser::Function]alloc_unhashed_t();
+						fn := sfn.(0);
 
-					entry->set_value(type, name, at, p, :Normal(*vis, fn.(1)));
-					preparse_function(p, &fn.(0)->Fn, name, template);
+						entry->set_value(name, at, p, (*vis, :StaticMemberFunction(sfn.(1))));
+					} ELSE
+					{
+						mfn ::= mempool::[parser::MemberFunction]alloc_unhashed_t();
+						fn := &mfn.(0)->Fn;
+						mfn.(0)->Abstractness := :none;
+
+						entry->set_value(name, at, p, (*vis, :MemberFunction(mfn.(1))));
+					}
+					preparse_function(p, fn, name, template);
 				}
 				:braceOpen: {
 					IF(attr) p.fail_pos(at, "must not have an attribute");
 
 					class ::= mempool::[parser::Class]alloc_unhashed_t();
-					entry->set_nonvalue(:Class, name, at, p, :Normal(*vis, class.(1)));
+					entry->set_nonvalue(name, at, p, (*vis, :Class(class.(1))));
 					preparse_class(p, class.(0), name, template);
 				}
 				:colon: {
@@ -1005,18 +1032,82 @@ INCLUDE "../../parser/extern.rl"
 					IF(template) p.fail("Variables cannot be templated");
 
 					p.next();
+
+					alignment: parser::TokenSpan;
+					IF(p.consume_s(:Punctuation(:at)))
+					{
+						p.expect_s(:Punctuation(:parentheseOpen));
+						align_start ::= p.progress();
+						p.skip_until_nesting_ends();
+						alignment := token_span(align_start, p);
+						p.expect_s(:Punctuation(:parentheseClose));
+					}
+
 					type_start ::= p.progress();
-					field ::= mempool::[parser::Field]alloc_unhashed_t();
-					p.skip_nesting_until(:semicolon);
+					IF(p.match_s(0, :Punctuation(:parentheseOpen)))
+						p.skip_parentheses();
+					p.skip_nesting_until(:parentheseOpen, :semicolon, :colonEqual);
+					type_span ::= token_span(type_start, p);
 
-					field.(0)->Name := name;
-					field.(0)->File := p.File;
-					field.(0)->Isolated := FALSE;
-					field.(0)->Type := token_span(type_start, p);
+					IF(attr == :static)
+					{
+						field ::= mempool::[parser::GlobalVariable]alloc_unhashed_t();
+						field.(0)->Name := name;
+						field.(0)->Alignment := alignment;
+						field.(0)->Type := :Preparse(type_span);
+
+						p.consume_s(:Punctuation(:colonEqual));
+						start_init ::= p.progress();
+						p.skip_nesting_until(:semicolon);
+						field.(0)->Initialiser := token_span(start_init, p);
+
+						entry->set_value(name, at, p, (*vis, :StaticField(field.(1))));
+					} ELSE
+					{
+						field ::= mempool::[parser::Field]alloc_unhashed_t();
+						field.(0)->Name := name;
+						field.(0)->Location := p.at_pos(at);
+						field.(0)->Alignment := alignment;
+						field.(0)->Isolated := attr == :isolated;
+						field.(0)->Index := scope->Fields++;
+						field.(0)->Type := :Preparse(type_span);
+
+						entry->set_value(name, at, p, (*vis, :Field(field.(1))));
+					}
+
 					p.expect_s(:Punctuation(:semicolon));
+				}
+				:semicolon: // Name; fields.
+				{
+					IF(attr == :maybeIsolated) p.fail("must not have #? attribute");
+					IF(template) p.fail("Variables cannot be templated");
 
-					type: parser::VMember := (attr == :static) ?? parser::VMember::StaticField : parser::VMember::Field;
-					entry->set_value(type, name, at, p, :Normal(*vis, field.(1)));
+					type_span ::= token_span(at, p);
+
+					IF(attr == :static)
+					{
+						field ::= mempool::[parser::GlobalVariable]alloc_unhashed_t();
+						field.(0)->Name := name;
+						field.(0)->Alignment := NULL;
+						field.(0)->Type := :Preparse(type_span);
+
+						field.(0)->Initialiser := NULL;
+
+						entry->set_value(name, at, p, (*vis, :StaticField(field.(1))));
+					} ELSE
+					{
+						field ::= mempool::[parser::Field]alloc_unhashed_t();
+						field.(0)->Name := name;
+						field.(0)->Location := p.at_pos(at);
+						field.(0)->Alignment := NULL;
+						field.(0)->Isolated := attr == :isolated;
+						field.(0)->Index := scope->Fields++;
+						field.(0)->Type := :Preparse(type_span);
+
+						entry->set_value(name, at, p, (*vis, :Field(field.(1))));
+					}
+
+					p.expect_s(:Punctuation(:semicolon));
 				}
 				}
 			:Declaration:
@@ -1027,7 +1118,7 @@ INCLUDE "../../parser/extern.rl"
 					IF(attr) p.fail("must not have an attribute");
 
 					class ::= mempool::[parser::Class]alloc_unhashed_t();
-					entry->set_nonvalue(:Class, name, at, p, :Normal(*vis, class.(1)));
+					entry->set_nonvalue(name, at, p, (*vis, :Class(class.(1))));
 					preparse_class(p, class.(0), name, template);
 				}
 				}
@@ -1039,7 +1130,7 @@ INCLUDE "../../parser/extern.rl"
 					IF(attr) p.fail("must not have an attribute");
 
 					class ::= mempool::[parser::Class]alloc_unhashed_t();
-					entry->set_nonvalue(:Class, name, at, p, :Normal(*vis, class.(1)));
+					entry->set_nonvalue(name, at, p, (*vis, :Class(class.(1))));
 					preparse_class(p, class.(0), name, template);
 				}
 				}
@@ -1057,7 +1148,7 @@ INCLUDE "../../parser/extern.rl"
 				lname ::= preparse_rawtype(p, rawtype.(0), template);
 				gname ::= rawtype.(0)->Name;
 				entry ::= scope->ensure(local_to_decl_name(lname, p.File));
-				entry->set_nonvalue(:Rawtype, gname, at, p, :Normal(*vis, rawtype.(1)));
+				entry->set_nonvalue(gname, at, p, (*vis, :Rawtype(rawtype.(1))));
 			}
 			:bracketOpen: {
 				IF(template) p.fail("already had a template declaration");
@@ -1172,7 +1263,7 @@ INCLUDE "../../parser/extern.rl"
 				decl_name ::= local_to_decl_name(local_name, p.File);
 				entry ::= scope->ensure(decl_name);
 				def ::= mempool::[parser::Enum]alloc_unhashed_t();
-				entry->set_nonvalue(:Enum, global_name, at, p, :Normal(*vis, def.(1)));
+				entry->set_nonvalue(global_name, at, p, (*vis, :Enum(def.(1))));
 				preparse_enum(p, def.(0), global_name);
 			}
 			:mask: {
@@ -1185,7 +1276,7 @@ INCLUDE "../../parser/extern.rl"
 				decl_name ::= local_to_decl_name(local_name, p.File);
 				entry ::= scope->ensure(decl_name);
 				def ::= mempool::[parser::Mask]alloc_unhashed_t();
-				entry->set_nonvalue(:Mask, global_name, at, p, :Normal(*vis, def.(1)));
+				entry->set_nonvalue(global_name, at, p, (*vis, :Mask(def.(1))));
 				preparse_mask(p, def.(0), global_name);
 			}
 			:union: {
@@ -1198,7 +1289,7 @@ INCLUDE "../../parser/extern.rl"
 				decl_name ::= local_to_decl_name(local_name, p.File);
 				entry ::= scope->ensure(decl_name);
 				def ::= mempool::[parser::Union]alloc_unhashed_t();
-				entry->set_nonvalue(:Union, global_name, at, p, :Normal(*vis, def.(1)));
+				entry->set_nonvalue(global_name, at, p, (*vis, :Union(def.(1))));
 				preparse_union(p, def.(0), global_name, template);
 			}
 			:destructor: {
@@ -1277,7 +1368,7 @@ INCLUDE "../../parser/extern.rl"
 				}
 
 				entry ::= scope->ensure(name_decl);
-				entry->set_value(:MemberFunction, name, at, p, :Normal(*vis, out.(1)));
+				entry->set_value(name, at, p, (*vis, :MemberFunction(out.(1))));
 			}
 			}
 		}
@@ -1299,7 +1390,7 @@ INCLUDE "../../parser/extern.rl"
 				def_p ::= def.(0);
 
 				preparse_typedef(p, def_p, global_name, template);
-				entry->set_nonvalue(:Typedef, global_name, at, p, :Normal(*vis, def.(1)));
+				entry->set_nonvalue(global_name, at, p, (*vis, :Typedef(def.(1))));
 			}
 			:this: {
 				IF!(ops) p.fail("it is illegal to define operators here");

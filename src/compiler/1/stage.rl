@@ -33,9 +33,14 @@ INCLUDE "iddedupler.rl"
 	{
 		IF!(Build->SINGLE_THREADED)
 		{
-			Loader.launch_worker();
-			FOR(Tokenisers) IT.launch_worker();
+			Parser.MasterLocal.Threaded := TRUE;
+			IdDedupler.MasterLocal.Threaded := TRUE;
+			FOR(Tokenisers) IT.MasterLocal.Threaded := TRUE;
+			Loader.MasterLocal.Threaded := TRUE;
+
 			IdDedupler.launch_worker();
+			FOR(Tokenisers) IT.launch_worker();
+			Loader.launch_worker();
 			//Parser.launch_worker(); // we run the parser pipe in the main thread, which saves us the sleep/notify and additional thread creation.
 		}
 	}
@@ -77,13 +82,15 @@ INCLUDE "iddedupler.rl"
 				std::io::format::dec(phase_1_time / 1000000), ".", std::io::format::dec_x((phase_1_time % 1000000) / 1000, 3),
 				"+", std::io::format::dec(post_time / 1000000), ".", std::io::format::dec_x((post_time % 1000000) / 1000, 3), "ms. ",
 				std::io::format::dec(##ident::strings), "|",
-				std::io::format::dec(##ident::GlobalDeclsLut), " ids"
+				std::io::format::dec(ident::GlobalDeclCount), " ids"
 				", ",
 				std::io::format::dec_x(Loader.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs load, ",
-				std::io::format::dec_x(Tokenisers[0].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs+",
-				std::io::format::dec_x(Tokenisers[1].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs tok, ",
+				std::io::format::dec_x(Tokenisers[0].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)),
+				"+",std::io::format::dec_x(Tokenisers[1].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)),
+				"+",std::io::format::dec_x(Tokenisers[2].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)),
+				"µs tok, ",
 				std::io::format::dec_x(IdDedupler.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs dedup, ",
-				std::io::format::dec_x(Parser.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs preparse",
+				std::io::format::dec_x(Parser.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs parse",
 				" // ",
 				std::io::format::dec((end_time - start_time) / size), ".", std::io::format::dec_x((((end_time - start_time) % size) * 100) / size, 2), "ns/B, ",
 				std::io::format::dec((lines_per_second + 500) / MEGA), ".", std::io::format::dec_x(((lines_per_second + 500) % MEGA) / 1000, 3), "ML/s, ",
@@ -94,7 +101,7 @@ INCLUDE "iddedupler.rl"
 	}
 
 
-	Loader: [SrcLoader; #256]PipelineSetup;
+	Loader: @(CACHELINE) [SrcLoader; #256]PipelineSetup;
 		TokPipeNext: INT;
 		STATIC on_loader_quit(ctx: VOID*) VOID
 		{
@@ -158,16 +165,10 @@ INCLUDE "iddedupler.rl"
 			Tokenisers[TokPipeNext++ % ##Tokenisers].issue_flush(HERE, &&tokeniser, *first_token, f);
 		}
 
-	Tokenisers: [CodeTokeniser; #32]PipelineSetup[2];
+	Tokenisers: @(CACHELINE)  [CodeTokeniser; #32]PipelineSetup[3];
 		STATIC on_file_tokenised(ctx: VOID*, result: CodeTokeniser::Output &) VOID
-		{
-			STATIC mutex: BOOL. := FALSE;
-
-				WHILE(mutex :=: :<(TRUE)) { PAUSE; }
-			<THIS *>(ctx)->pass_along_toker_to_dedupler(result);
-				mutex := :>(FALSE);
-		}
-		TokersAlive: INT.;
+			{ <THIS *>(ctx)->pass_along_toker_to_dedupler(result); }
+		TokersAlive: @(CACHELINE) INT.;
 		STATIC on_tokeniser_quit(ctx: VOID *) VOID
 			{ <THIS *>(ctx)->on_tokeniser_quit_impl(); }
 		on_tokeniser_quit_impl() VOID --
@@ -175,7 +176,7 @@ INCLUDE "iddedupler.rl"
 			IF!( TokersAlive += :?(-1) ) IdDedupler.quit();
 		}
 
-	IdDedupler: [compiler::IdDeDupler; #32]PipelineSetup;
+	IdDedupler: @(CACHELINE) [compiler::IdDeDupler; #32]PipelineSetup;
 		STATIC on_file_iddeduped(ctx: VOID*, result: IdDeDupler::Output &) VOID
 			{ <THIS *>(ctx)->on_file_iddeduped_impl(result); }
 		on_file_iddeduped_impl(result: IdDeDupler::Output &) VOID --
@@ -185,17 +186,24 @@ INCLUDE "iddedupler.rl"
 				term::info(NULL, std::io::format::dec(result.LocalIds), " identifiers in ", src::fileNames[:ok(result.File)]);
 		}
 		STATIC on_iddedup_quit(ctx: VOID*) VOID
-			{ <THIS *>(ctx)->Parser.quit(); }
-	Parser: [CodeParser; #32]PipelineSetup;
+			{ <THIS *>(ctx)->on_iddedup_quit_impl(); }
+		on_iddedup_quit_impl() VOID --
+			{ Parser.quit(); }
+	Parser: @(CACHELINE) [CodeParser; #32]PipelineSetup;
 
 
+	DeduplerMutex: BOOL.;
 	pass_along_toker_to_dedupler(
 		out: CodeTokeniser::Output #&) VOID
 	{
+		WHILE(DeduplerMutex :=: :<(TRUE)) PAUSE;
+
 		next_input ::= IdDedupler.next_input(HERE);
 		next_input->Tokens := out.Tokens;
 		next_input->File := out.File;
 		IdDedupler.issue_flush_prepared();
+
+		DeduplerMutex := :>(FALSE);
 	}
 
 	pass_along_dedupler_to_preparser(

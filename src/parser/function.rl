@@ -1,5 +1,9 @@
+INCLUDE "../mempool.rl"
+INCLUDE "../identifierPool.rl"
 ::rlc::parser
 {
+	TYPE TypeHandle := :?;
+
 	ENUM BodyType { // keep order in sync with tok::Punctuation
 		none, // semicolon
 		shorthand, // colonEqual
@@ -19,12 +23,27 @@
 		Postparse: ParsedSignatureRest;
 	}
 
+	ParsedArguments {
+		TypeHandle;
+		Count: U2;
+		Names: Identifier-Handle;
+	}
+	UNION Arguments {
+		Preparse: TokenSpan;
+		Postparse: ParsedArguments;
+	}
+
+	UNION Templates {
+		Preparse: parser::TokenSpan;
+		Postparse: :TemplateCtx;
+	}
+
 	Function {
 		Name: Identifier;
 		File: src::File;
-		Templates: parser::TokenSpan;
+		Templates: parser::Templates;
 
-		Args: TokenSpan;
+		Args: Arguments;
 		Return: SignatureRest;
 
 		BodyType: parser::BodyType; Body: TokenSpan;

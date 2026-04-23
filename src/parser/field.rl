@@ -3,12 +3,13 @@
 	Field
 	{
 		Name: Identifier; // for easier inspection?
-		File: src::File; // ?
+		Location: src::Position;
 
 		Isolated: BOOL;
 		Index: U2; // for memory layout.
+		Alignment: TokenSpan;
 
-		Type: TokenSpan;
+		Type: TypeU;
 
 		{BARE};
 	}

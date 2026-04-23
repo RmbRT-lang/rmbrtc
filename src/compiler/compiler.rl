@@ -273,6 +273,7 @@ INCLUDE "2/stage.rl"
 			IF(build.Type == :createAST)
 				RETURN;
 
+			IF(1)
 			{
 				stage2: Stage2 (&build);
 				//stage2.launch_workers();

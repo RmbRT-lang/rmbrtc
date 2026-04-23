@@ -43,12 +43,12 @@
 		Quit: @(CACHELINE) BOOL.;
 		{}: Quit := TRUE;
 	}
-	Constant: ConstantR;
-	MasterLocal: MasterLocalR;
-	Master: MasterR;
-	Slave: SlaveR;
-	SlaveLocal: SlaveLocalR;
-	Shared: SharedR;
+	Constant: @(CACHELINE) ConstantR;
+	MasterLocal: @(CACHELINE) MasterLocalR;
+	Master: @(CACHELINE) MasterR;
+	Slave: @(CACHELINE) SlaveR;
+	SlaveLocal: @(CACHELINE) SlaveLocalR;
+	Shared: @(CACHELINE) SharedR;
 
 	{#&} (BARE) { DIE; }
 	{&&} (BARE) { DIE; }
@@ -83,6 +83,8 @@
 			//44332211
 			0b00001000, // tokeniser 1
 			//44332211
+			0b00000010, // tokeniser 2
+			//44332211
 			0b00010000, // dedupler
 			//44332211
 			0b01000000  // parser
@@ -115,6 +117,7 @@
 				end_waiting ::= start_processing;
 				SlaveLocal.Waiting += end_waiting - start_waiting;
 
+			hook: U8 := 0;
 			WHILE(processed != issued)
 			{
 				output ::= &Constant.Outputs[processed % ##Constant.Outputs];
@@ -123,14 +126,21 @@
 					output);
 				++processed;
 
-				Slave.Processed := :>(processed);
 
-				IF(Constant.PostJobHook) Constant.PostJobHook(Constant.HookCtx, *output);
+				// TODO CAUTION: make sure we still have access to the output during the post job hook.
+				IF(Constant.PostJobHook)
+				{
+					hook_start ::= CPU_COUNTER;
+					Constant.PostJobHook(Constant.HookCtx, *output);
+					hook += CPU_COUNTER - hook_start;
+				}
+
+				Slave.Processed := :>(processed);
 			}
 
 				start_waiting := CPU_COUNTER;
 				end_processing ::= start_waiting;
-				SlaveLocal.Processing += end_processing - start_processing;
+				SlaveLocal.Processing += (end_processing - start_processing) - hook;
 
 			IF(Constant.IdleHook) Constant.IdleHook(Constant.HookCtx);
 		}
@@ -327,7 +337,7 @@
 
 ::rlc::compiler [Job; #Cap] PipelineSetup -> [Job]Pipeline
 {
-	Worker:                Job;
+	Worker:   @(CACHELINE) Job;
 PRIVATE:
 	Inputs:   @(CACHELINE) Job::Input+[Cap];
 	Outputs:  @(CACHELINE) Job::Output+[Cap];

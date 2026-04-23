@@ -17,6 +17,8 @@ INCLUDE 'std/heap'
 
 	get_memory(addr: U4) VOID * --
 	{
+		IF(!addr) = NULL;
+
 		/// Ideally, we would have a fixed address that we use, which would reduce the memory latency. But then again, it doesn't really matter much, because we need to bridge a cache miss anyway. But if we could have one large buffer that automatically grows on page faults, that would be great.
 		(/IF(addr < ##chunk0)
 			= &chunk0[addr];
@@ -86,7 +88,7 @@ INCLUDE 'std/heap'
 		}
 	}
 
-	[T]alloc_unhashed_t() {T *, MemID} -- {
+	[T]alloc_unhashed_t() {T *, T-Handle} -- {
 		x ::= alloc_unhashed(SIZEOF(T));
 		= (<T *>(x.(0)), x.(1));
 	}
