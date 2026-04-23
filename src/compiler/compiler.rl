@@ -104,19 +104,22 @@ INCLUDE "2/stage.rl"
 
 
 
+		~ 15 % of the budget, or 7.4M LOC/s
 		[X] Phase 1: load all files, tokenise, assemble global scope as quickly as possible.
 		[X] load ---> [X] tokenise ---> [X] ident dedup ----> [X] preparse ------------>
 		                                                                   global scope
 
+		~ 4-5 % of the budget, or 24M LOC/s
 		[/] Phase 2: finish populating the global scope, resolving all references.
-		------------------------> [ ] preparse2 ---> [ ] body-parse ------------>
+		------------------------> [/] preparse2 ---> [ ] body-parse ------------>
 		       global scope                                             IR0
 		                                                            (Templated,
 		                                                         semi-type-checked)
 		
-			[ ] preparse2:
-			           type+code                 res.type+code
-			types parser ----> type/symbol resolver ---> IR0 generator? (TRASM/??)
+			[/] preparse2:
+			           [X] type+code                 [ ] res.type+code
+			[X] types parser ----> [ ] type/symbol resolver ---> [ ] IR0 generator? (TRASM/??)
+
 
 			[ ] body-parse:
 			-------------> expression typechecker ----------> ????????
