@@ -35,7 +35,7 @@ INCLUDE "../mempool.rl"
 
 	UNION VMember {
 	*	Nil;
-	?	Field:                parser::Field -Handle;
+	?	Field:                parser::Field          -Handle;
 	?	StaticField:          parser::GlobalVariable -Handle;
 	?	MemberFunction:       parser::MemberFunction -Handle;
 	?	StaticMemberFunction: parser::Function       -Handle;

@@ -133,12 +133,17 @@
 		AddModifier: PackedModifier; // when adding any modifiers.
 		SetRegionTarget: Region; // when adding a modifier with a region that is parameterised.
 
+		ExpressionDummy; // Placeholder for not-parsed expression.
+		MakeAutoType;
+		ExpandVariadicType;
+		MakeNoDecayType;
 		MakeAutoArray;
 		MakeArray;
 		MakeSlice;
 		MakeSizedSlice;
 		MakeTable;
 		MakePointer;
+		MakeNonNullPointer;
 		Dereference; // element of pointer or array, or result of *THIS/THIS-> operator.
 		GetUnionTag; // Is a prefix operation!
 		MakeTaggedUnion;

@@ -241,8 +241,7 @@ INCLUDE "type-processor.rl"
 		templateCtx: :TemplateCtx *) VOID --
 	{
 		p ::= parser(sig.Preparse.Type);
-		post_parse_type(p);
-		sig.Postparse.Type := end_request();
+		sig.Postparse.Type := post_parse_type(p);
 		sig.Postparse.Inline :=
 			p.consume_s(:PrefixOrPostfixOp(:doubleMinus)) ||
 			p.consume_s(:AuxKeyword(:inline));
@@ -256,8 +255,7 @@ INCLUDE "type-processor.rl"
 		templateCtx: :TemplateCtx *) VOID --
 	{
 		p ::= parser(type.Preparse);
-		post_parse_type(p);
-		type.PostParse := end_request();
+		type.PostParse := post_parse_type(p);
 		p.expect_done();
 	}
 
@@ -265,14 +263,14 @@ INCLUDE "type-processor.rl"
 	// Workflow: one thread (or multiple threads?) traverses the root scope, and one more thread receives requests to deduplicate types. We want to create entries for the instantiator, so that each type first gets deduplicated and then checked whether it already got instantiated.
 	// We pass requests in batches to reduce the synchronisation overhead.
 
-	submit_batch() VOID { ; }
+	submit_batch() VOID { }
 	end_request() :?
 	{
-		Spans[CurrentRequest++] := (CurrentRequestStart, CurrentRequestLength + CurrentRequestLength);
+		Spans[CurrentRequest % ###type::InterleavedByteCodes] := (CurrentRequestStart, CurrentRequestLength + CurrentRequestLength);
 		CurrentRequestStart += CurrentRequestLength;
 		CurrentRequestLength := 0;
 
-		IF(!CurrentRequest) submit_batch();
+		IF!(++CurrentRequest % ###type::InterleavedByteCodes) submit_batch();
 
 		= :?;
 	}
@@ -284,10 +282,11 @@ INCLUDE "type-processor.rl"
 			Code.prepare_pushback();
 			Code.set_size_ok(CurrentRequestLength+1);
 		}
-		Code[:ok(CurrentRequestLength++)][CurrentRequest] := op;
+		Code[:ok(CurrentRequestLength++)][CurrentRequest % ###type::InterleavedByteCodes]
+			:= op;
 	}
 
-	post_parse_type(p: parser::Parser &) VOID
+	post_parse_type(p: parser::Parser &) :?
 	{
 		TRY SWITCH(p.type())
 		{
@@ -367,6 +366,14 @@ INCLUDE "type-processor.rl"
 				emit_bytecode(:MakeFnSig(args));
 			}
 			}
+		:PostfixOp:
+			SWITCH(p.stype().PostfixOp)
+			{
+			:questionMark: {
+				p.next();
+				emit_bytecode(:MakeAutoType);
+			}
+			}
 		} CATCH(err: CHAR#*) { p.fail("expected type:\n", std::str::c(err[])); }
 
 		// pointers, arrays, indirections, etc.
@@ -386,7 +393,9 @@ INCLUDE "type-processor.rl"
 						emit_bytecode(:MakeSizedSlice);
 					ELSE // [dimension]
 					{
-						p.fail("TODO: expression parsing for array bounds");
+						p.skip_until_nesting_ends();
+						p.expect_s(:Punctuation(:bracketClose));
+						//p.fail("TODO: expression parsing for array bounds");
 					}
 				}
 				:hash: {
@@ -399,6 +408,11 @@ INCLUDE "type-processor.rl"
 						:  types::Constness::MaybeConst);
 
 					emit_bytecode(:AddModifier(mod));
+				}
+				:tripleDot:
+				{
+					p.next();
+					emit_bytecode(:ExpandVariadicType);
 				}
 				}
 			:PrefixOrBinaryOp:
@@ -413,15 +427,35 @@ INCLUDE "type-processor.rl"
 					type_parse_symbol(p);
 					emit_bytecode(:AddTemplateArg);
 				}
+				:amp: {
+					p.next();
+					m: types::PackedModifier;
+					m.set0_region(:UnknownReference);
+					emit_bytecode(:AddModifier(m));
+				}
+				:doubleAmp: {
+					p.next();
+					m: types::PackedModifier;
+					m.set0_region(:ExpiringReference);
+					emit_bytecode(:AddModifier(m));
+				}
+				}
+			:PrefixOp:
+				SWITCH?(p.stype().PrefixOp)
+				{
+				:backslash: { p.next(); emit_bytecode(:MakeNonNullPointer); }
 				}
 			}
 		} FOR(progress != p.progress(); progress := p.progress())
 		CATCH(err: CHAR#*) { p.fail("expected type:\n", std::str::c(err[])); }
+
+		= end_request();
 	}
 
 	// ::symbol
 	// [T]symbol
 	// symbol::child
+	// symbol!
 	// NOTE: Before calling, set out->Context.
 
 	// std::[INT *]Vector
@@ -440,6 +474,9 @@ INCLUDE "type-processor.rl"
 			:bracketOpen: type_parse_relative_symbol(p);
 			}
 		}
+
+		IF(p.consume_s(:PrefixOrPostfixOp(:exclamationMark)))
+			emit_bytecode(:MakeNoDecayType);
 	}
 
 	// (RootScope)::rootSymbol    -> :RootScope, :LookupChild(rootSymbol)
@@ -534,7 +571,8 @@ INCLUDE "type-processor.rl"
 	// TODO: do we even want to keep types and expressions separate anymore?
 	parse_expression(p: parser::Parser &) VOID
 	{
-		DIE;
+		p.skip_until_nesting_ends_or(:comma, :semicolon);
+		emit_bytecode(:ExpressionDummy);
 	}
 
 	type_parse_templates(p: parser::Parser &) VOID
@@ -607,9 +645,8 @@ INCLUDE "type-processor.rl"
 	{
 		p ::= parser(v->Type.Preparse);
 
-		post_parse_type(p);
+		v->Type.PostParse := post_parse_type(p);
 		p.expect_done();
-		v->Type.PostParse := end_request();
 	}
 
 	post_parse_class_types(
@@ -682,10 +719,9 @@ INCLUDE "type-processor.rl"
 		{
 			p ::= parser(v->Return.Preparse.Type);
 
-			post_parse_type(p);
+			v->Return.Postparse.Type := post_parse_type(p);
 			v->Return.Postparse.Inline := p.consume_s(:PrefixOrPostfixOp(:doubleMinus));
 			p.expect_done();
-			v->Return.Postparse.Type := end_request();
 		}
 	}
 

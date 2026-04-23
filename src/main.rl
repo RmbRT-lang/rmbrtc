@@ -84,7 +84,7 @@ main(args: CHAR[#][#]) INT
 			{
 				os::term::Print_v(
 					:style(:dim, :red), args[0],
-					:style(:normal, :same), ": exected argument after ':'.\n",
+					:style(:normal, :same), ": expected argument after ':'.\n",
 					:style(:normal, :cyan), "run ", :style(:bold, :same), args[0], " help", :style(:normal, :same), " for help.\n");
 				= 1;
 			} ELSE IF(##args > flag+1)
