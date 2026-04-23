@@ -29,6 +29,39 @@ INCLUDE "iddedupler.rl"
 	{&&} (BARE) { DIE; }
 	{#&} (BARE) { DIE; }
 
+	ThreadMasks {
+		Parser: U8;
+		IdDedupler: U8;
+		Loader: U8;
+		Tokenisers: U8[3];
+
+		{} {
+			// Assuming 8 cores, and 2 threads per core. Ideally, we could also get rid of the two tokeniser threads.
+			IF(THREAD_COUNT >= 8) {
+				//                 ______11
+				Loader        := 0b00000001;
+				Tokenisers[2] := 0b00000010;
+				//                 ____22__
+				Tokenisers[0] := 0b00000100;
+				Tokenisers[1] := 0b00001000;
+				//                 __33____
+				IdDedupler    := 0b00010000;
+				//                 44______
+				Parser        := 0b01000000;
+			} ELSE IF(THREAD_COUNT == 6) {
+				//                 ______11
+				Loader        := 0b00000001;
+				Tokenisers[2] := 0b00000010;
+				//                 ____22__
+				Tokenisers[0] := 0b00000100;
+				Tokenisers[1] := 0b00001000;
+				//                 __33____
+				IdDedupler    := 0b00010000;
+				Parser        := 0b00100000;
+			}
+		}
+	}
+
 	launch_workers() VOID
 	{
 		IF!(Build->SINGLE_THREADED)
@@ -38,20 +71,24 @@ INCLUDE "iddedupler.rl"
 			FOR(Tokenisers) IT.MasterLocal.Threaded := TRUE;
 			Loader.MasterLocal.Threaded := TRUE;
 
-			IdDedupler.launch_worker();
-			FOR(Tokenisers) IT.launch_worker();
-			Loader.launch_worker();
+			threads: ThreadMasks;
+
+			IdDedupler.launch_worker(threads.IdDedupler);
+			FOR(Tokenisers) IT.launch_worker(threads.Tokenisers[IOTA]);
+			Loader.launch_worker(threads.Loader);
 			//Parser.launch_worker(); // we run the parser pipe in the main thread, which saves us the sleep/notify and additional thread creation.
 		}
 	}
 
 	run(files: std::Str#[#]) VOID
 	{
+		threads: ThreadMasks;
+
 		start_time ::= NOW;
 			FOR(files) Loader.issue(HERE, :relative(Build->BasePath, IT!, NULL));
 			Loader.flush(); // we are only allowed to flush once from the main thread.
 			IF!(Build->SINGLE_THREADED)
-				Parser.run_worker();
+				Parser.run_worker(threads.Parser);
 		post_process_start ::= NOW;
 			Parser.Worker.preparse2();
 		end_time ::= NOW;

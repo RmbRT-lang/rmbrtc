@@ -62,39 +62,19 @@
 	DESTRUCTOR { Shared.Quit := :>(TRUE); }
 
 
-	PUBLIC run_worker() VOID {
+	PUBLIC run_worker(thread_mask: U8) VOID {
 		MasterLocal.Threaded := TRUE;
-		worker_thread();
+		worker_thread(thread_mask);
 	}
 
-	PRIVATE worker_thread() VOID
+	PRIVATE worker_thread(thread_mask: U8) VOID
 	{
 		Master: MasterR # & := THIS.Master;
 		Constant: ConstantR #& := THIS.Constant;
 		Slave: SlaveR & := THIS.Slave;
 		Shared: SharedR & := THIS.Shared;
 
-		// Assuming 8 cores, and 2 threads per core. Ideally, we could also get rid of the two tokeniser threads.
-		STATIC thread_masks: INT[?](
-			//44332211
-			0b00000001, // loader
-			//44332211
-			0b00000100, // tokeniser 0
-			//44332211
-			0b00001000, // tokeniser 1
-			//44332211
-			0b00000010, // tokeniser 2
-			//44332211
-			0b00010000, // dedupler
-			//44332211
-			0b01000000  // parser
-		);
-		thread_id ::= (threading::threads_spawned += :?(<U8>(1))) - 1;
-		IF(THREAD_COUNT >= 8)
-		{
-			cores ::= thread_masks[thread_id];
-			__rl::set_thread_affinity(cores);
-		}
+		__rl::set_thread_affinity(thread_mask);
 
 		processed ::= Slave.Processed(:<);
 		Shared.Quit := :>(FALSE);
@@ -157,10 +137,10 @@
 		{ IF!(++tries & 1023) { IF((NOW)-start > 100 * MEGA) DIE; } }
 	}
 
-	launch_worker() VOID^
+	launch_worker(thread_mask: U8) VOID^
 	{
 		MasterLocal.Threaded := TRUE;
-		thread: VOID^(^worker_thread());
+		thread: VOID^(^worker_thread(thread_mask));
 		wait_launched();
 		= &&thread;
 	}
@@ -348,8 +328,8 @@ PUBLIC:
 		Inputs(BARE),
 		Outputs(BARE);
 
-	launch_worker() VOID {
-		worker ::= ->([Job]Pipeline).launch_worker();
+	launch_worker(thread_mask: U8) VOID {
+		worker ::= ->([Job]Pipeline).launch_worker(thread_mask);
 		Thread :=: worker;
 		->([Job]Pipeline).wait_launched();
 	}
