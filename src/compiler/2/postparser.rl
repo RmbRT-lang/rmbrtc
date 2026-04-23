@@ -9,7 +9,7 @@ INCLUDE "type-processor.rl"
 	Code: type::InterleavedByteCodes-std::Vec;
 	Contexts: type::RequestContext[###type::InterleavedByteCodes];
 	Spans: type::ByteCodeSpan[###type::InterleavedByteCodes];
-	CurrentRequest: U1;
+	CurrentRequest: U4;
 	CurrentRequestStart: U4;
 	CurrentRequestLength: U2;
 
@@ -224,11 +224,17 @@ INCLUDE "type-processor.rl"
 				{
 					name ::= p.stype().Identifier;
 					p.next2();
-					post_parse_type(p);
-				} ELSE {
-					// Type
-					post_parse_type(p);
 				}
+
+				// TODO WARNING CAUTION BUG CRITICAL: handle alignment properly.
+				IF(p.consume_s(:Punctuation(:at)))
+				{
+					p.expect_s(:Punctuation(:parentheseOpen));
+					p.skip_until_nesting_ends();
+					p.expect_s(:Punctuation(:parentheseClose));
+				}
+
+				post_parse_type(p);
 			} WHILE(p.consume_s(:Punctuation(:comma)))
 			p.expect_s(:Punctuation(:parentheseClose));
 		}
@@ -318,14 +324,31 @@ INCLUDE "type-processor.rl"
 			:doubleColon: type_parse_root_symbol(p);
 			:colon: {
 				p.next();
-				IF(id ::= p.consume_p(:Identifier))
+				IF[parse_symbol](id ::= p.consume_p(:Identifier))
 					IF(p.consume_s(:BinaryOp(:dot)))
 					{
 						emit_bytecode(:MakeTemplateSymbolType(id->Identifier));
 						post_parse_type(p);
 					} ELSE
 						emit_bytecode(:MakeSymbolType(id->Identifier));
-				ELSE p.fail("TODO: special symbols");
+				ELSE
+				{
+					STATIC special_table: TAGGED tok::Type[TABLE types::SpecialSymbol](
+						:questionMark(:PostfixOp(:questionMark)),
+						:exclamationMark(:PrefixOrPostfixOp(:exclamationMark)),
+						:less(:BinaryOp(:less)),
+						:greater(:BinaryOp(:greater)),
+						:lessGreater(:BinaryOp(:lessGreater))
+					);
+
+					FOR(special_table)
+						IF(p.consume_s(IT))
+						{
+							emit_bytecode(:MakeSpecialSymbolType(IOTA));
+							BREAK [parse_symbol];
+						}
+					p.fail("expected special symbol ('?', '!', '<', '>', or '<>')");
+				}
 			}
 			:bracketOpen: type_parse_symbol(p);
 			:braceOpen:
@@ -377,13 +400,17 @@ INCLUDE "type-processor.rl"
 		} CATCH(err: CHAR#*) { p.fail("expected type:\n", std::str::c(err[])); }
 
 		// pointers, arrays, indirections, etc.
-		TRY DO(progress ::= p.progress())
+		TRY DO[follow_up](progress ::= p.progress())
 		{
-			SWITCH?(p.type())
+			SWITCH(p.type())
 			{
 			:Punctuation:
-				SWITCH?(p.stype().Punctuation)
+				SWITCH(p.stype().Punctuation)
 				{
+				:parentheseClose, :braceClose, :bracketClose,
+				:parentheseOpen, :braceOpen,
+				:comma, :semicolon, :colonEqual:
+					BREAK [follow_up];
 				:bracketOpen:
 				{
 					p.next();
@@ -416,7 +443,7 @@ INCLUDE "type-processor.rl"
 				}
 				}
 			:PrefixOrBinaryOp:
-				SWITCH?(p.stype().PrefixOrBinaryOp)
+				SWITCH(p.stype().PrefixOrBinaryOp)
 				{
 				:asterisk: { p.next(); emit_bytecode(:MakePointer); }
 				// T-std::Vector  -> std::[T]Vector
@@ -439,11 +466,34 @@ INCLUDE "type-processor.rl"
 					m.set0_region(:ExpiringReference);
 					emit_bytecode(:AddModifier(m));
 				}
+				:plus: {
+					p.next(); // T::Type+ is a hack for C++ codegen.
+				}
 				}
 			:PrefixOp:
-				SWITCH?(p.stype().PrefixOp)
+				SWITCH(p.stype().PrefixOp)
 				{
 				:backslash: { p.next(); emit_bytecode(:MakeNonNullPointer); }
+				}
+			:BinaryOp:
+				SWITCH(p.stype().BinaryOp)
+				{
+				:dot: {
+					p.next();
+					m: types::PackedModifier;
+					m.set0_sharedness(:ThreadShared);
+					emit_bytecode(:AddModifier(m));
+				}
+				:circumflex:
+				{
+					p.next();
+					emit_bytecode(:MakeProcessHandle);
+				}
+				}
+			:PrefixOrPostfixOp:
+				SWITCH(p.stype().PrefixOrPostfixOp)
+				{
+				:doubleMinus: BREAK [follow_up];
 				}
 			}
 		} FOR(progress != p.progress(); progress := p.progress())

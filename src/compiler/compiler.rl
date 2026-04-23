@@ -20,6 +20,8 @@ INCLUDE "2/stage.rl"
 		verifyFull
 	}
 
+	Stats { size: U4; lines: U4; }
+
 	Build
 	{
 		BasePath: os::fs::DirectoryPath;
@@ -218,12 +220,13 @@ INCLUDE "2/stage.rl"
 			build: Build
 		) VOID
 		{
+			stats: Stats;
 			rootScope: scoper::Namespace (BARE);
 			fileTokens: tok::FileTokenView-std::Vec (BARE);
 			{
 				STATIC stage1: Stage1 (&build);
 				stage1.launch_workers();
-				stage1.run(files);
+				stats := stage1.run(files);
 				rootScope := &&stage1.Parser.Worker.RootScope;
 				fileTokens := &&stage1.Parser.Worker.FileTokens;
 			}
@@ -277,7 +280,7 @@ INCLUDE "2/stage.rl"
 			{
 				stage2: Stage2 (&build);
 				//stage2.launch_workers();
-				stage2.run(&&rootScope, fileTokens!);
+				stage2.run(&&rootScope, fileTokens!, stats);
 			}
 
 			/// Seed instantiator with items to process.

@@ -80,7 +80,7 @@ INCLUDE "iddedupler.rl"
 		}
 	}
 
-	run(files: std::Str#[#]) VOID
+	run(files: std::Str#[#]) Stats
 	{
 		threads: ThreadMasks;
 
@@ -93,19 +93,22 @@ INCLUDE "iddedupler.rl"
 			Parser.Worker.preparse2();
 		end_time ::= NOW;
 
-		IF(Build->Type == :checkSyntax)
-			RETURN;
-
+		stats: Stats;
 		{
-			size ::= 0;
-			lines ::= 0;
 			FOR(src::fileContents!)
 			{
-				IF(##IT) lines += IT[][##IT-1] != '\n';
-				size += ##IT;
-				FOR(IT) lines += IT == '\n';
+				IF(##IT) stats.lines += IT[][##IT-1] != '\n';
+				stats.size += ##IT;
+				FOR(IT) stats.lines += IT == '\n';
 			}
+		}
 
+		IF(Build->Type == :checkSyntax)
+			RETURN stats;
+
+		{
+			lines ::= stats.lines;
+			size ::= stats.size;
 			phase_1_time ::= post_process_start - start_time;
 			post_time ::= end_time - post_process_start;
 			lines_per_second ::= (GIGA * lines) / (phase_1_time + post_time);
@@ -135,6 +138,8 @@ INCLUDE "iddedupler.rl"
 				std::io::format::dec(budget_2 / 100), ".", std::io::format::dec_x(budget_2 % 100, 2), "% of budget"
 				);
 		}
+
+		= stats;
 	}
 
 

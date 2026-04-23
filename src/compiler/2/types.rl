@@ -94,6 +94,15 @@
 		set0_region(v: ENUM Region) VOID -- { Bits |= <U2>(v) << 4; }
 	}
 
+	ENUM SpecialSymbol
+	{
+		questionMark,
+		exclamationMark,
+		less,
+		greater,
+		lessGreater
+	}
+
 	// For final types, use a prefix tree? With an U2 id into the nodes.
 	// But not all nodes appear as actually instantiated types in the final program, so they might not receive a final runtime type ID. --> We need a deduplicator like with global to file-local IDs.
 	UNION ByteCode {
@@ -103,6 +112,7 @@
 		MakeFnSig: U2; // number of arguments.
 		MakeTemplateSymbolType: Identifier; // Prefix: turn next type into template arg for symbol type.
 		MakeSymbolType: Identifier;
+		MakeSpecialSymbolType: SpecialSymbol;
 		MakeThisType: BOOL; // Whether it is nodecay
 		ExpandTemplateTypes: U2; // Idx of template pack, expand it. (Args...)
 
@@ -144,6 +154,7 @@
 		MakeTable;
 		MakePointer;
 		MakeNonNullPointer;
+		MakeProcessHandle;
 		Dereference; // element of pointer or array, or result of *THIS/THIS-> operator.
 		GetUnionTag; // Is a prefix operation!
 		MakeTaggedUnion;
