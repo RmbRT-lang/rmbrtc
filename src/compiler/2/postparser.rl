@@ -14,6 +14,7 @@ INCLUDE "type-processor.rl"
 	CurrentRequestLength: U2;
 
 	FileTokens: tok::FileTokenView[#];
+	ListAlloc: std::temp::Alloc - std::Alloc;
 
 
 	{
@@ -24,7 +25,11 @@ INCLUDE "type-processor.rl"
 		FileTokens := fileTokens,
 		Code := :reserve(2048),
 		Contexts (NOINIT),
-		Spans (NOINIT);
+		Spans (NOINIT),
+		ListAlloc(BARE)
+	{
+		ListAlloc.Impl.{ :custom(1*MI, 1*MI) };
+	}
 
 
 
@@ -39,15 +44,15 @@ INCLUDE "type-processor.rl"
 		[T]get() T * [#] -- := <T **>(&Data[0])[FOR Count];
 	}
 
+
 	post_parse_ns(ns: scoper::Namespace \) VOID
 	{
 
-		ListAlloc: std::temp::Alloc - std::Alloc (BARE);
-		ListAlloc.Impl.{ :custom(1*MI, 1*MI) };
 
 		Values: Entries[TABLE ENUM scoper::VGlobal];
 		NonValues: Entries[TABLE ENUM scoper::NVGlobal];
 
+		save ::= ListAlloc.Impl.save();
 		// We over-allocate the entries. But we skip all namespaces and enums.
 		entries ::= ListAlloc.[VOID *]alloc_array(
 			##ns->Entries * ((###ENUM scoper::NVGlobal-2) + (###ENUM scoper::VGlobal-1))
@@ -102,9 +107,15 @@ INCLUDE "type-processor.rl"
 
 		// Process all values.
 		FOR(Values[:Function].[parser::Function]get())
-			post_parse_function_types(IT, ns, NULL);
+		{
+			next ::= (&IT)[##RANGE == IOTA+1 ?? 0 : 1];
+			post_parse_function_types(IT, next, ns, NULL);
+		}
 		FOR(Values[:ExportFunction].[parser::ExportFunction]get())
-			post_parse_function_types(&IT->Fn, ns, NULL);
+		{
+			next ::= (&IT)[##RANGE == IOTA+1 ?? 0 : 1];
+			post_parse_function_types(&IT->Fn, &next->Fn, ns, NULL);
+		}
 		FOR(Values[:ExternFunction].[parser::ExternFunction]get())
 		{
 			p ::= parser(IT->Args);
@@ -117,14 +128,20 @@ INCLUDE "type-processor.rl"
 		}
 		FOR(Values[:Variable].[parser::GlobalVariable]get())
 		{
+			next ::= (&IT)[##RANGE == IOTA+1 ?? 0 : 1];
+			prefetch_tokens(next->Type.Preparse);
 			job(IT->Type, ns, NULL, NULL);
 		}
 		FOR(Values[:ExportVariable].[parser::ExportVariable]get())
 		{
+			next ::= (&IT)[##RANGE == IOTA+1 ?? 0 : 1];
+			prefetch_tokens(next->Var.Type.Preparse);
 			job(IT->Var.Type, ns, NULL, NULL);
 		}
 		FOR(Values[:ExternVariable].[parser::ExternVariable]get())
 		{
+			next ::= (&IT)[##RANGE == IOTA+1 ?? 0 : 1];
+			prefetch_tokens(next->Type.Preparse);
 			job(IT->Type, ns, NULL, NULL);
 		}
 
@@ -154,6 +171,8 @@ INCLUDE "type-processor.rl"
 		{
 			post_parse_ns(IT);
 		}
+
+		ListAlloc.Impl.restore(save);
 	}
 
 
@@ -196,10 +215,10 @@ INCLUDE "type-processor.rl"
 					entry->Value.Entry.StaticField.get(), ns, ms, tpl);
 			:MemberFunction:
 				post_parse_function_types(
-					&entry->Value.Entry.MemberFunction->Fn, ns, ms);
+					&entry->Value.Entry.MemberFunction->Fn, NULL, ns, ms);
 			:StaticMemberFunction:
 				post_parse_function_types(
-					entry->Value.Entry.StaticMemberFunction.get(), ns, ms);
+					entry->Value.Entry.StaticMemberFunction.get(), NULL, ns, ms);
 			:EnumConstant: { ; }
 			:UnionField:
 				post_parse_union_field(entry->Value.Entry.UnionField.get(), ns, ms);
@@ -270,7 +289,7 @@ INCLUDE "type-processor.rl"
 	// We pass requests in batches to reduce the synchronisation overhead.
 
 	submit_batch() VOID { }
-	end_request() :?
+	end_request() :? --
 	{
 		Spans[CurrentRequest % ###type::InterleavedByteCodes] := (CurrentRequestStart, CurrentRequestLength + CurrentRequestLength);
 		CurrentRequestStart += CurrentRequestLength;
@@ -748,11 +767,24 @@ INCLUDE "type-processor.rl"
 		;
 	}
 
+	prefetch_tokens(s: parser::TokenSpan #&) VOID -- {
+		PREFETCH_READ &FileTokens[][s.File].Hots[s.Start];
+	}
+
+	prefetch_function_types(v: parser::Function *) VOID --
+	{
+		prefetch_tokens(v->Args.Preparse);
+		prefetch_tokens(v->Return.Preparse.Type);
+	}
+
 	post_parse_function_types(
 		v: parser::Function *,
+		v_next: parser::Function *,
 		ns: scoper::Namespace \,
 		ms: parser::Members *) VOID
 	{
+		prefetch_function_types(v_next ?? v_next : v);
+
 		{
 			post_parse_templates(v->Templates, ns, ms);
 		}
@@ -761,9 +793,6 @@ INCLUDE "type-processor.rl"
 			p ::= parser(v->Args.Preparse);
 			post_parse_function_args(p, ns, ms, &v->Templates.Postparse);
 			p.expect_done();
-		}
-
-		{
 		}
 
 		{
@@ -779,7 +808,7 @@ INCLUDE "type-processor.rl"
 		v: parser::ExportFunction \,
 		ns: scoper::Namespace \) VOID
 	{
-		post_parse_function_types(&v->Fn, ns, NULL);
+		post_parse_function_types(&v->Fn, NULL, ns, NULL);
 	}
 
 	post_parse_extern_function_types(v: parser::ExternFunction *) VOID

@@ -248,19 +248,21 @@ INCLUDE "../mempool.rl"
 
 			members: Members * (NOINIT);
 
-			// Class::OFFSETOF(Members) would be a good syntax.
-			SWITCH(type)
-			{ // TODO PERFORMANCE: OFFSETOF table instead.
-			:Nil: CONTINUE;
-			:Class: members := &mem.Class->Members;
-			:Rawtype: members := &mem.Rawtype->Members;
-			:Typedef: CONTINUE;
-			:Mask: members := &mem.Mask->Members;
-			:Union: members := &mem.Union->Members;
-			:Enum: members := &mem.Enum->Members;
-			}
+			STATIC member_offset: U4[TABLE ENUM NVMember](
+				:Nil(0),
+				:Class(<UM>(&<parser::Class *>(NULL)->Members)),
+				:Rawtype(<UM>(&<parser::Rawtype *>(NULL)->Members)),
+				:Typedef(0),
+				:Mask(<UM>(&<parser::Mask *>(NULL)->Members)),
+				:Union(<UM>(&<parser::Union *>(NULL)->Members)),
+				:Enum(<UM>(&<parser::Enum *>(NULL)->Members))
+			);
 
-			members->post_process(InnerLutV, InnerLutNV, cap);
+			IF(1 << <U1>(type) & ~NVMember::FLAGS(:Nil, :Typedef))
+			{
+				members := >( <UM>(mem.Class.get()) + member_offset[type] );
+				members->post_process(InnerLutV, InnerLutNV, cap);
+			}
 		}
 	}
 }
