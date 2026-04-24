@@ -11,11 +11,12 @@ INCLUDE "../../parser/symbolconstant.rl"
 INCLUDE "../../parser/typedef.rl"
 INCLUDE "../../parser/globalvariable.rl"
 INCLUDE "../../parser/extern.rl"
+INCLUDE "../../parser/ids.rl"
 
 ::rlc::compiler::stage1::parse {
 
-	PostParseQueue {
-		Buckets: parser::TokenSpan[#]-std::Vec;
+	[T]PostParseQueue {
+		Buckets: T[#]-std::Vec;
 		EntryCount: U4;
 		EntryAlloc: std::temp::Alloc-std::Alloc;
 
@@ -30,6 +31,38 @@ INCLUDE "../../parser/extern.rl"
 			EntryAlloc.Impl.delete();
 			Buckets.clear_delete();
 		}
+
+		// Add a new entry, return its ID.
+		THIS += (v: T) U4 --
+		{
+			IF(EntryAlloc.Impl.try_grow_last_allocation_by(SIZEOF(T)))
+			{
+				bucket: T[#] & := Buckets[##Buckets-1];
+				bucket[][##bucket] := v;
+				++##bucket;
+			} ELSE {
+				obj ::= EntryAlloc.[T]alloc();
+				Buckets += obj[FOR 1];
+				obj->{v};
+			}
+
+			= ++EntryCount;
+		}
+	}
+
+	Preparsed {
+		Span: parser::TokenSpan;
+		Ns: scoper::Namespace \;
+		Ms: parser::Members *;
+	}
+	PreparsedBody {
+		Core: Preparsed;
+		Args: parser::ArgsID;
+	}
+
+	PreparsedSpecialCtorBody {
+		Core: Preparsed;
+		ArgName: FileLocalIdentifier;
 	}
 
 	// The global rootscope. This is the only real output of the preparser.
@@ -38,12 +71,12 @@ INCLUDE "../../parser/extern.rl"
 	// Caches the file contents of all code files.
 	FileTokens: tok::FileTokenView-std::Vec;
 
-
-	Types: PostParseQueue;
-	Expressions: PostParseQueue;
-	Bodies: PostParseQueue;
-	Arguments: PostParseQueue;
-	Returns: PostParseQueue;
+	Types:             Preparsed               -PostParseQueue;
+	Expressions:       Preparsed               -PostParseQueue;
+	Bodies:            PreparsedBody           -PostParseQueue;
+	SpecialCtorBodies: PreparsedSpecialCtorBody-PostParseQueue;
+	Arguments:         Preparsed               -PostParseQueue;
+	Returns:           PreparsedBody           -PostParseQueue;
 
 	init() VOID {
 		RootScope.Entries.reserve(1<<16);
@@ -85,6 +118,10 @@ INCLUDE "../../parser/extern.rl"
 
 	STATIC name() CHAR#[#] -- := "code preparser";
 
+
+	Ns: scoper::Namespace *;
+	Ms: parser::Members *;
+
 	handle_job(in: Input &, out: Output *) VOID
 	{
 		// Remember tokens for later.
@@ -116,8 +153,22 @@ INCLUDE "../../parser/extern.rl"
 		PessimisticMemberAlloc.clear_and_optimise(4*KI);
 	}
 
-	token_span(start: U4, p: parser::Parser &) parser::TokenSpan --
+	PRIVATE span_impl(start: U4, p: parser::Parser &) Preparsed --
+		:= ((p.File, start, p.progress()), Ns, Ms);
+	todo_token_span(start: U4, p: parser::Parser &) parser::TokenSpan --
 		:= (p.File, start, p.progress());
+	type_token_span(start: U4, p: parser::Parser &) parser::TypeID --
+		:= Types += span_impl(start, p);
+	expression_token_span(start: U4, p: parser::Parser &) parser::ExpressionID --
+		:= Expressions += span_impl(start, p);
+	return_token_span(start: U4, p: parser::Parser &, args: parser::ArgsID) parser::RestID --
+		:= Returns += (span_impl(start, p), args);
+	body_token_span(start: U4, p: parser::Parser &, args: parser::ArgsID) parser::BodyID --
+		:= Bodies += (span_impl(start, p), args);
+	special_ctor_body_token_span(start: U4, p: parser::Parser &, argName: FileLocalIdentifier) parser::SpecialCtorBodyID --
+		:= SpecialCtorBodies += (span_impl(start, p), argName);
+	args_token_span(start: U4, p: parser::Parser &) parser::ArgsID --
+		:= Arguments += span_impl(start, p);
 
 	// TODO: see how we want to actually access the tests again later on. Based on that, we want to redo this structure, probably.
 	PreparsedTests {
@@ -161,6 +212,9 @@ INCLUDE "../../parser/extern.rl"
 		scope: scoper::Namespace \,
 		template: parser::TokenSpan) VOID
 	{
+		old_ns ::= Ns;
+		Ns := scope;
+
 		// Namespace entries use the global identifier IDs. Never register a local ID in a namespace.
 		// All other scopes use file-local IDs for members, allowing for smaller LUTs and better cache coherence.
 
@@ -275,7 +329,7 @@ INCLUDE "../../parser/extern.rl"
 					p.fail("already had a template declaration");
 				start ::= p.progress();
 				p.skip_nesting();
-				tpl ::= token_span(start, p);
+				tpl ::= todo_token_span(start, p);
 				IF(##tpl == 2) tpl := NULL;
 				preparse_ns_entry(p, scope, tpl);
 			}
@@ -328,7 +382,8 @@ INCLUDE "../../parser/extern.rl"
 					out.(0)->Name := name;
 					type_start ::= p.progress();
 					p.skip_nesting_until(:semicolon);
-					out.(0)->Type.Preparse := token_span(type_start, p);
+					type ::= type_token_span(type_start, p);
+					out.(0)->Type.Preparse := type;
 					entry->set_value(:ExternVariable(out.(1)), name, at, p);
 				} ELSE
 				{
@@ -336,11 +391,13 @@ INCLUDE "../../parser/extern.rl"
 					out.(0)->Name := name;
 					args_start ::= p.progress();
 					p.skip_nesting();
-					out.(0)->Args := token_span(args_start, p);
+					args ::= args_token_span(args_start, p);
+					out.(0)->Args := args;
 
 					type_start ::= p.progress();
 					p.skip_nesting_until(:semicolon);
-					out.(0)->Rest.Preparse := token_span(type_start, p);
+					rest ::= return_token_span(type_start, p, args);
+					out.(0)->Rest.Preparse := rest;
 
 					entry->set_value(:ExternFunction(out.(1)), name, at, p);
 				}
@@ -365,7 +422,6 @@ INCLUDE "../../parser/extern.rl"
 				IF(p.type() != :Punctuation)
 					p.fail();
 
-				span ::= token_span(start, p);
 				SWITCH(punct)
 				{
 				:colon: {
@@ -399,7 +455,7 @@ INCLUDE "../../parser/extern.rl"
 					p.fail("Tests cannot be templated");
 				name ::= p.expect_s(:String(:StringQuote)).String;
 				p.skip_braces();
-				preparsedTests.register_test(scope, token_span(start, p), name);
+				preparsedTests.register_test(scope, todo_token_span(start, p), name);
 			}
 			:union: {
 				name ::= p.expect_p(:Identifier).Identifier;
@@ -428,6 +484,8 @@ INCLUDE "../../parser/extern.rl"
 		} CATCH(err: CHAR #*) {
 			p.fail("expected namespace entry: ", std::str::c(err[]));
 		}
+
+		Ns := old_ns;
 	}
 
 	preparse2() VOID
@@ -627,7 +685,7 @@ INCLUDE "../../parser/extern.rl"
 		{
 			inh_start ::= p.progress();
 			p.skip_nesting_until(:braceOpen, :semicolon);
-			inheritance := token_span(inh_start, p);
+			inheritance := todo_token_span(inh_start, p);
 		}
 
 		out->Inheritance := inheritance;
@@ -656,13 +714,13 @@ INCLUDE "../../parser/extern.rl"
 		p.expect_s(:Punctuation(:parentheseOpen));
 		start ::= p.progress();
 		cls ::= p.skip_until_nesting_ends_or(:comma);
-		out->Size := token_span(start, p);
+		out->Size := expression_token_span(start, p);
 		p.next();
 		IF(cls == :comma)
 		{
 			start := p.progress();
 			p.skip_until_nesting_ends();
-			out->Alignment := token_span(start, p);
+			out->Alignment := expression_token_span(start, p);
 			p.expect_s(:Punctuation(:parentheseClose));
 		}
 
@@ -793,7 +851,7 @@ INCLUDE "../../parser/extern.rl"
 			type_entry ::= mempool::[parser::UnionField]alloc_unhashed_t();
 			type_start ::= p.progress();
 			p.skip_nesting_until(:semicolon);
-			*type_entry.(0) := :Preparse(token_span(type_start, p));
+			*type_entry.(0) := :Preparse(type_token_span(type_start, p));
 			p.expect_s(:Punctuation(:semicolon));
 
 			decl_name ::= local_to_decl_name(local_name);
@@ -827,15 +885,15 @@ INCLUDE "../../parser/extern.rl"
 		name: Identifier,
 		template: parser::TokenSpan #&) VOID --
 	{
-		preparse_function_internal(p, out, name, template);
-		(out->BodyType, out->Body) := skip_function_body(p);
+		args ::= preparse_function_internal(p, out, name, template);
+		(out->BodyType, out->Body) := skip_function_body(p, args);
 	}
 
 	preparse_function_internal(
 		p: parser::Parser &,
 		out: parser::Function \,
 		name: Identifier,
-		template: parser::TokenSpan #&) VOID
+		template: parser::TokenSpan #&) parser::ArgsID
 	{
 		out->Name := name;
 		out->File := p.File;
@@ -845,9 +903,12 @@ INCLUDE "../../parser/extern.rl"
 
 		p.skip_nesting(); // skip arguments.
 
-		out->Args := :Preparse(token_span(args_start, p));
+		args ::= args_token_span(args_start, p);
+		out->Args := :Preparse(args);
 
-		out->Return.Preparse := skip_function_return_type(p);
+		out->Return.Preparse := skip_function_return_type(p, args);
+
+		= args;
 	}
 
 	preparse_symbolic_constant(p: parser::Parser &, delim: tok::Punctuation) parser::DefinitionSymbolConstant
@@ -880,7 +941,7 @@ INCLUDE "../../parser/extern.rl"
 		{
 			tpl_start ::= p.progress();
 			p.skip_nesting_until(delim);
-			ret.Template := token_span(tpl_start, p);
+			ret.Template := todo_token_span(tpl_start, p);
 		} ELSE
 		{
 			ret.Template := NULL;
@@ -896,13 +957,13 @@ INCLUDE "../../parser/extern.rl"
 		out->Name := name;
 		p.expect_s(:Punctuation(:colon));
 
-		alignment: parser::TokenSpan;
+		alignment: parser::ExpressionID;
 		IF(p.consume_s(:Punctuation(:at)))
 		{
 			p.expect_s(:Punctuation(:parentheseOpen));
 			align_start ::= p.progress();
 			p.skip_until_nesting_ends();
-			alignment := token_span(align_start, p);
+			alignment := expression_token_span(align_start, p);
 			p.expect_s(:Punctuation(:parentheseClose));
 		}
 		out->Alignment := alignment;
@@ -913,13 +974,13 @@ INCLUDE "../../parser/extern.rl"
 			p.skip_nesting(); // Skip the function signature.
 
 		after_type ::= p.skip_nesting_until(:colonEqual, :parentheseOpen, :semicolon);
-		out->Type.Preparse := token_span(type_start, p);
+		out->Type.Preparse := type_token_span(type_start, p);
 
 		p.next_if(after_type == :colonEqual);
 
 		v_start ::= p.progress();
 		p.skip_nesting_until(:semicolon);
-		out->Initialiser := token_span(v_start, p);
+		out->Initialiser := expression_token_span(v_start, p);
 
 		p.expect_s(:Punctuation(:semicolon));
 	}
@@ -934,7 +995,7 @@ INCLUDE "../../parser/extern.rl"
 
 		type_start ::= p.progress();
 		p.skip_nesting_until(:semicolon);
-		type ::= token_span(type_start, p);
+		type ::= type_token_span(type_start, p);
 
 		p.next();
 
@@ -1000,6 +1061,8 @@ INCLUDE "../../parser/extern.rl"
 		// member classes, functions, fields, ctors, etc.. Only register them by name (except for member classes etc., which also declare public fields. They also should be parsed. But no function bodies or anything. Also do not parse the types of variables.
 
 		++IsInMember;
+		old_ms ::= Ms;
+		Ms := scope;
 
 		TRY SWITCH(p.type())
 		{
@@ -1050,13 +1113,13 @@ INCLUDE "../../parser/extern.rl"
 
 					p.next();
 
-					alignment: parser::TokenSpan;
+					alignment: parser::ExpressionID;
 					IF(p.consume_s(:Punctuation(:at)))
 					{
 						p.expect_s(:Punctuation(:parentheseOpen));
 						align_start ::= p.progress();
 						p.skip_until_nesting_ends();
-						alignment := token_span(align_start, p);
+						alignment := expression_token_span(align_start, p);
 						p.expect_s(:Punctuation(:parentheseClose));
 					}
 
@@ -1064,7 +1127,7 @@ INCLUDE "../../parser/extern.rl"
 					IF(p.match_s(0, :Punctuation(:parentheseOpen)))
 						p.skip_parentheses();
 					p.skip_nesting_until(:parentheseOpen, :semicolon, :colonEqual);
-					type_span ::= token_span(type_start, p);
+					type_span ::= type_token_span(type_start, p);
 
 					IF(attr == :static)
 					{
@@ -1076,7 +1139,7 @@ INCLUDE "../../parser/extern.rl"
 						p.consume_s(:Punctuation(:colonEqual));
 						start_init ::= p.progress();
 						p.skip_nesting_until(:semicolon);
-						field.(0)->Initialiser := token_span(start_init, p);
+						field.(0)->Initialiser := expression_token_span(start_init, p);
 
 						entry->set_value(name, at, p, (*vis, :StaticField(field.(1))));
 					} ELSE
@@ -1099,7 +1162,7 @@ INCLUDE "../../parser/extern.rl"
 					IF(attr == :maybeIsolated) p.fail("must not have #? attribute");
 					IF(template) p.fail("Variables cannot be templated");
 
-					type_span ::= token_span(at, p);
+					type_span ::= type_token_span(at, p);
 
 					IF(attr == :static)
 					{
@@ -1173,7 +1236,7 @@ INCLUDE "../../parser/extern.rl"
 
 				start ::= p.progress();
 				p.skip_nesting();
-				tpl ::= token_span(start, p);
+				tpl ::= todo_token_span(start, p);
 				IF(##tpl == 2) tpl := NULL;
 				preparse_member(p, scope, ctors, ops, tpl, attr, vis, novis, allowed);
 			}
@@ -1186,12 +1249,16 @@ INCLUDE "../../parser/extern.rl"
 				p.expect_s(:Punctuation(:braceOpen));
 				args_start ::= p.progress();
 				p.skip_until_nesting_ends();
-				args ::= token_span(args_start, p);
+				args ::= args_token_span(args_start, p);
 				p.expect_s(:Punctuation(:braceClose));
 
 				rest_start ::= p.progress();
+				p.skip_nesting_until(:semicolon, :braceOpen);
+				rest ::= todo_token_span(rest_start, p);
+
+				body_start ::= p.progress();
 				p.skip_nesting_until_after(:semicolon, :braceClose);
-				rest ::= token_span(rest_start, p);
+				body ::= body_token_span(body_start, p, args);
 
 				ctors->register_named_ctor(sym, args, rest, template, at, p);
 			}
@@ -1201,10 +1268,10 @@ INCLUDE "../../parser/extern.rl"
 				at ::= p.progress(); p.next();
 
 				special: parser::SpecialCtors (BARE);
-				id: Identifier (0);
 
 				isCustom ::= FALSE;
-				custom_args: parser::TokenSpan (NOINIT);
+				custom_args: parser::ArgsID;
+				special_arg_name: FileLocalIdentifier;
 
 				mask ::= tok::AuxKeyword::FLAGS(:bare, :null);
 				kw ::= p.stype().AuxKeyword;
@@ -1219,13 +1286,13 @@ INCLUDE "../../parser/extern.rl"
 					special := :Structure;
 				} ELSE IF(p.consume_s(:PrefixOrBinaryOp(:doubleAmp)))
 				{
-					id: Identifier := 0;
-					IF(t ::= p.consume_p(:Identifier)) id := t->Identifier;
+					IF(v ::= p.payload_consume_p(:Identifier))
+						special_arg_name := v->Identifier.FileLocal;
 					special := :Move;
 				} ELSE IF(p.consume_ss(:Punctuation(:hash), :PrefixOrBinaryOp(:amp)))
 				{
-					id: Identifier := 0;
-					IF(t ::= p.consume_p(:Identifier)) id := t->Identifier;
+					IF(v ::= p.payload_consume_p(:Identifier))
+						special_arg_name := v->Identifier.FileLocal;
 					special := :Copy;
 				} ELSE IF(p.match_s(0, :Punctuation(:braceClose)))
 				{
@@ -1233,7 +1300,7 @@ INCLUDE "../../parser/extern.rl"
 				} ELSE {
 					args_start ::= p.progress();
 					p.skip_nesting_until(:braceClose);
-					custom_args := token_span(args_start, p);
+					custom_args := args_token_span(args_start, p);
 					isCustom := TRUE;
 				}
 
@@ -1242,13 +1309,21 @@ INCLUDE "../../parser/extern.rl"
 
 				p.expect_s(:Punctuation(:braceClose));
 				rest_start ::= p.progress();
-				p.skip_nesting_until_after(:semicolon, :braceClose);
-				rest ::= token_span(rest_start, p);
+				p.skip_nesting_until(:semicolon, :braceOpen);
+				rest ::= todo_token_span(rest_start, p);
 
+				body_start ::= p.progress();
+				p.skip_nesting_until_after(:semicolon, :braceClose);
 				IF(isCustom)
-					ctors->register_custom_ctor(custom_args, rest, template, at, p);
+				{
+					body ::= body_token_span(body_start, p, custom_args);
+					ctors->register_custom_ctor(custom_args, rest, body, template, at, p);
+				}
 				ELSE
-					ctors->register_special_ctor(special, id, rest, at, p);
+				{
+					body ::= special_ctor_body_token_span(body_start, p, special_arg_name);
+					ctors->register_special_ctor(special, rest, body, at, p);
+				}
 			}
 			:hash: {
 				IF(attr) p.fail();
@@ -1322,7 +1397,7 @@ INCLUDE "../../parser/extern.rl"
 
 				body_start ::= p.progress();
 				p.skip_braces();
-				body ::= token_span(body_start, p);
+				body ::= body_token_span(body_start, p, NULL);
 
 				ctors->Destructor := :a( p.at_pos(at), inline, body );
 			}
@@ -1374,14 +1449,14 @@ INCLUDE "../../parser/extern.rl"
 				fn ::= &out.(0)->Fn;
 				out.(0)->Abstractness := abst;
 
-				preparse_function_internal(p, fn, name, template);
+				args ::= preparse_function_internal(p, fn, name, template);
 				IF(abst == :abstract)
 				{
 					p.expect_s(:Punctuation(:semicolon));
 					fn->BodyType := :none;
 				} ELSE
 				{
-					(fn->BodyType, fn->Body) := skip_function_body(p);
+					(fn->BodyType, fn->Body) := skip_function_body(p, args);
 				}
 
 				entry ::= scope->ensure(name_decl);
@@ -1451,11 +1526,12 @@ INCLUDE "../../parser/extern.rl"
 
 					args_start ::= p.progress();
 					p.skip_until_nesting_ends();
-					ops->Call.Args := token_span(args_start, p);
+					args ::= args_token_span(args_start, p);
+					ops->Call.Args := :Preparse(args);
 					p.expect_s(:Punctuation(:parentheseClose));
 
-					ops->Call.Rest.Preparse := skip_function_return_type(p);
-					(ops->Call.BodyType, ops->Call.Body) := skip_function_body(p);
+					ops->Call.Rest.Preparse := skip_function_return_type(p, args);
+					(ops->Call.BodyType, ops->Call.Body) := skip_function_body(p, args);
 				} ELSE IF(p.consume_s(:Punctuation(:bracketOpen)))
 				{
 					IF(ops->HasSpecial & parser::SpecialOperator::FLAGS(:subscript))
@@ -1465,27 +1541,18 @@ INCLUDE "../../parser/extern.rl"
 					ops->Subscript.Attr := attr;
 					ops->Subscript.Template := template;
 
-					// from parseBinaryOp
-					name: FileLocalIdentifier;
-					IF(p.match_ps(:Identifier, :Punctuation(:colon)))
-					{
-						name := p.payload().Identifier.FileLocal;
-						p.next2();
-					}
-
-					arg_type_start ::= p.progress();
+					args_start ::= p.progress();
 					p.skip_until_nesting_ends();
+					args ::= args_token_span(args_start, p);
 					p.expect_s(:Punctuation(:bracketClose));
-					arg_type ::= token_span(arg_type_start, p);
 
-					ret_type ::= skip_function_return_type(p);
-					body ::= skip_function_body(p);
+					ret_type ::= skip_function_return_type(p, args);
+					body ::= skip_function_body(p, args);
 
 					operator: parser::PreparsedBinaryOperator(
 						attr,
 						template,
-						name,
-						:Preparse(arg_type),
+						:Preparse(args),
 						:Preparse(ret_type),
 						body.(0),
 						body.(1));
@@ -1540,7 +1607,7 @@ INCLUDE "../../parser/extern.rl"
 				type_start ::= p.progress();
 				WHILE(!p.match_s(0, :BinaryOp(:greater)))
 					p.next();
-				ops->Conversion.Type := :Preparse(token_span(type_start, p));
+				ops->Conversion.Type := :Preparse(type_token_span(type_start, p));
 
 				p.next(); // >
 
@@ -1549,7 +1616,7 @@ INCLUDE "../../parser/extern.rl"
 					|| p.consume_s(:AuxKeyword(:inline));
 
 				p.skip_nesting_until(:braceOpen, :semicolon, :colonEqual);
-				(ops->Conversion.BodyType, ops->Conversion.Body) := skip_function_body(p);
+				(ops->Conversion.BodyType, ops->Conversion.Body) := skip_function_body(p, NULL);
 			}
 			}
 		}
@@ -1559,6 +1626,7 @@ INCLUDE "../../parser/extern.rl"
 		}
 
 		--IsInMember;
+		Ms := old_ms;
 	}
 
 	preparse_prefix_operator(
@@ -1573,8 +1641,8 @@ INCLUDE "../../parser/extern.rl"
 		IF!(op) p.fail_pos(at, "this operator is forbidden to overload");
 
 		p.expect_s(:AuxKeyword(:this));
-		ret_type ::= skip_function_return_type(p);
-		body ::= skip_function_body(p);
+		ret_type ::= skip_function_return_type(p, NULL);
+		body ::= skip_function_body(p, NULL);
 
 		entry: parser::PreparsedPrefixOperator(
 			attr,
@@ -1596,8 +1664,8 @@ INCLUDE "../../parser/extern.rl"
 		IF(attr == :static) p.fail("cannot have static operators");
 		IF!(op) p.fail_pos(at, "this operator is forbidden to overload");
 
-		ret_type ::= skip_function_return_type(p);
-		body ::= skip_function_body(p);
+		ret_type ::= skip_function_return_type(p, NULL);
+		body ::= skip_function_body(p, NULL);
 
 		entry: parser::PreparsedPostfixOperator(
 			attr,
@@ -1626,34 +1694,33 @@ INCLUDE "../../parser/extern.rl"
 			p.next2();
 		}
 
-		arg_type_start ::= p.progress();
+		args_start ::= p.progress();
 		p.skip_until_nesting_ends();
+		args ::= args_token_span(args_start, p);
 		p.expect_s(:Punctuation(:parentheseClose));
-		arg_type ::= token_span(arg_type_start, p);
 
-		ret_type ::= skip_function_return_type(p);
-		body ::= skip_function_body(p);
+		ret_type ::= skip_function_return_type(p, args);
+		body ::= skip_function_body(p, args);
 
 		operator: parser::PreparsedBinaryOperator(
 			attr,
 			template,
-			name,
-			:Preparse(arg_type),
+			:Preparse(args),
 			:Preparse(ret_type),
 			body.(0),
 			body.(1));
 		ops->register(op, operator, at, p);
 	}
 
-	skip_function_return_type(p: parser::Parser &) parser::UnparsedSignatureRest {
+	skip_function_return_type(p: parser::Parser &, args: parser::ArgsID) parser::RestID {
 		start ::= p.progress();
 		IF(p.match_s(0, :Punctuation(:braceOpen)))
 			p.skip_braces();
 		p.skip_nesting_until(:braceOpen, :semicolon, :colonEqual);
-		= token_span(start, p);
+		= return_token_span(start, p, args);
 	}
 
-	skip_function_body(p: parser::Parser &) {parser::BodyType, parser::TokenSpan}
+	skip_function_body(p: parser::Parser &, args: parser::ArgsID) {parser::BodyType, parser::BodyID}
 	{
 		punct ::= <U8>(1) << <U1>(p.stype().Punctuation);
 		flags ::= tok::Punctuation::FLAGS(:colonEqual, :semicolon, :braceOpen);
@@ -1663,7 +1730,7 @@ INCLUDE "../../parser/extern.rl"
 		body_start ::= p.progress() +1; // skip the first token of the body in the span.
 
 		p.skip_nesting_until_after(:braceClose, :semicolon); // skip body.
-		span ::= token_span(body_start, p);
+		span ::= body_token_span(body_start, p, args);
 
 		= (type, span);
 	}

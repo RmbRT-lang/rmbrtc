@@ -7,7 +7,7 @@
 
 		Isolated: BOOL;
 		Index: U2; // for memory layout.
-		Alignment: TokenSpan;
+		Alignment: ExpressionID;
 
 		Type: TypeU;
 

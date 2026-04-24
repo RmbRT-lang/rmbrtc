@@ -59,7 +59,7 @@ INCLUDE "../mempool.rl"
 	}/)
 
 	UNION TypeU {
-		Preparse: TokenSpan;
+		Preparse: TypeID;
 		PostParse: :?;
 	}
 
@@ -271,13 +271,14 @@ INCLUDE "../mempool.rl"
 	NamedCtor { // :Name{Args} Rest
 		Name: SymbolConstant;
 		Template: TokenSpan;
-		Args: TokenSpan;
+		Args: ArgsID;
 		Rest: TokenSpan;
+		Body: BodyID;
 		{BARE};
 	}
 	SpecialCtor { // e.g. {#&ArgName} Rest
-		ArgName: Identifier;
 		Rest: TokenSpan;
+		Body: SpecialCtorBodyID;
 	}
 	ENUM SpecialCtors {
 		// These have to come first, see (codeparser.REF A), and be in the same order as in AuxKeyword.
@@ -293,13 +294,14 @@ INCLUDE "../mempool.rl"
 	Destructor {
 		At: src::Position;
 		Inline: BOOL;
-		Body: TokenSpan;
+		Body: BodyID;
 	}
 
 	CustomCtor {
 		Template: TokenSpan;
-		Args: TokenSpan;
-		Rest: TokenSpan;
+		Args: ArgsID;
+		Rest: RestID;
+		Body: BodyID;
 	}
 
 	Constructors {
@@ -343,7 +345,7 @@ INCLUDE "../mempool.rl"
 
 		register_named_ctor(
 			sym: DefinitionSymbolConstant #&,
-			args: TokenSpan,
+			args: ArgsID,
 			rest: TokenSpan,
 			template: TokenSpan,
 			at: U4,
@@ -377,8 +379,8 @@ INCLUDE "../mempool.rl"
 
 		register_special_ctor(
 			special: parser::SpecialCtors,
-			name: Identifier,
 			rest: TokenSpan,
+			body: SpecialCtorBodyID,
 			at: U4,
 			p: Parser &) VOID
 		{
@@ -386,13 +388,14 @@ INCLUDE "../mempool.rl"
 				p.fail_pos(at, "Redefinition of ", std::str::enum(special), " constructor");
 			HasSpecialCtors |= 1 << <U1>(special);
 
-			SpecialCtors[special].ArgName := name;
 			SpecialCtors[special].Rest := rest;
+			SpecialCtors[special].Body := body;
 		}
 
 		register_custom_ctor(
-			args: TokenSpan,
+			args: parser::ArgsID,
 			rest: TokenSpan,
+			body: parser::BodyID,
 			template: TokenSpan,
 			at: U4,
 			p: Parser &) VOID
@@ -403,6 +406,7 @@ INCLUDE "../mempool.rl"
 			CustomCtor.Template := template;
 			CustomCtor.Args := args;
 			CustomCtor.Rest := rest;
+			CustomCtor.Body := body;
 		}
 	}
 
@@ -581,7 +585,7 @@ INCLUDE "../mempool.rl"
 		Template: TokenSpan;
 		Type: SignatureRest;
 		BodyType: parser::BodyType;
-		Body: TokenSpan;
+		Body: BodyID;
 
 		{...};
 	}
@@ -590,7 +594,7 @@ INCLUDE "../mempool.rl"
 		Template: TokenSpan;
 		Type: SignatureRest;
 		BodyType: parser::BodyType;
-		Body: TokenSpan;
+		Body: BodyID;
 
 		{...};
 	}
@@ -599,11 +603,10 @@ INCLUDE "../mempool.rl"
 	{
 		Attr: ParsedMemberAttr;
 		Template: TokenSpan;
-		OperandName: FileLocalIdentifier;
-		OperandType: TypeU;
+		Args: Arguments;
 		Type: SignatureRest;
 		
-		BodyType: parser::BodyType; Body: TokenSpan;
+		BodyType: parser::BodyType; Body: BodyID;
 
 		{...};
 	}
@@ -638,7 +641,7 @@ INCLUDE "../mempool.rl"
 		Type: TypeU;
 		Inline: BOOL;
 		BodyType: parser::BodyType;
-		Body: TokenSpan;
+		Body: BodyID;
 
 		{BARE};
 	}
@@ -647,10 +650,10 @@ INCLUDE "../mempool.rl"
 	{
 		Attr: ParsedMemberAttr;
 		Template: TokenSpan;
-		Args: TokenSpan;
+		Args: Arguments;
 		Rest: SignatureRest;
 		BodyType: parser::BodyType;
-		Body: TokenSpan;
+		Body: BodyID;
 
 		{BARE};
 	}

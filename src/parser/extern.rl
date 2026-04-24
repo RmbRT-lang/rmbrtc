@@ -2,7 +2,7 @@
 	Name: Identifier;
 	LinkName: Identifier;
 
-	Args: TokenSpan;
+	Args: ArgsID;
 	Rest: SignatureRest;
 }
 

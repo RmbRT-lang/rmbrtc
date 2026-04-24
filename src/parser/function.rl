@@ -1,5 +1,6 @@
 INCLUDE "../mempool.rl"
 INCLUDE "../identifierPool.rl"
+INCLUDE "ids.rl"
 ::rlc::parser
 {
 	TYPE TypeHandle := :?;
@@ -10,16 +11,13 @@ INCLUDE "../identifierPool.rl"
 		block // braceOpen
 	}
 
-	UnparsedSignatureRest {
-		Type: TokenSpan;
-	}
 	ParsedSignatureRest {
 		Type: :?;
 		Inline: BOOL;
 	}
 	// Return type and stuff like the inline attribute.
 	UNION SignatureRest {
-		Preparse: UnparsedSignatureRest;
+		Preparse: RestID;
 		Postparse: ParsedSignatureRest;
 	}
 
@@ -29,7 +27,7 @@ INCLUDE "../identifierPool.rl"
 		Names: Identifier-Handle;
 	}
 	UNION Arguments {
-		Preparse: TokenSpan;
+		Preparse: ArgsID;
 		Postparse: ParsedArguments;
 	}
 
@@ -46,7 +44,7 @@ INCLUDE "../identifierPool.rl"
 		Args: Arguments;
 		Return: SignatureRest;
 
-		BodyType: parser::BodyType; Body: TokenSpan;
+		BodyType: parser::BodyType; Body: BodyID;
 
 		{BARE};
 	}

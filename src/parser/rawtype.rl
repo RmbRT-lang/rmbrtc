@@ -6,8 +6,8 @@ INCLUDE "members.rl"
 	File: src::File;
 	Templates: parser::TokenSpan;
 
-	Size:      TokenSpan;
-	Alignment: TokenSpan;
+	Size:      ExpressionID;
+	Alignment: ExpressionID;
 
 	Ctors:   parser::Constructors;
 	Members: parser::Members;
