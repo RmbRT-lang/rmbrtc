@@ -10,12 +10,13 @@ INCLUDE "postparser.rl"
 		Build := build,
 		Parser (BARE);
 
-	run(rootScope: scoper::Namespace, fileTokens: tok::FileTokenView[#], stats: compiler::Stats) VOID
+	run(stats: compiler::Stats) VOID
 	{
-		Parser.{&rootScope, fileTokens};
+		rootscope ::= &stage1::parse::RootScope;
+		Parser.{rootscope, stage1::parse::FileTokens!};
 
 		start ::= NOW;
-		Parser.post_parse_ns(&rootScope);
+		Parser.post_parse_ns(rootscope);
 		end ::= NOW;
 
 		delta ::= end - start;

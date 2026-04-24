@@ -5,7 +5,7 @@ INCLUDE "codeparser.rl"
 INCLUDE "iddedupler.rl"
 
 
-::rlc::compiler Stage1
+::rlc::compiler::stage1 Stage1
 {
 	Build: compiler::Build \;
 
@@ -207,7 +207,7 @@ INCLUDE "iddedupler.rl"
 			Tokenisers[TokPipeNext++ % ##Tokenisers].issue_flush(HERE, &&tokeniser, *first_token, f);
 		}
 
-	Tokenisers: @(CACHELINE)  [CodeTokeniser; #32]PipelineSetup[3];
+	STATIC Tokenisers: @(CACHELINE)  [CodeTokeniser; #32]PipelineSetup[3];
 		STATIC on_file_tokenised(ctx: VOID*, result: CodeTokeniser::Output &) VOID
 			{ <THIS *>(ctx)->pass_along_toker_to_dedupler(result); }
 		TokersAlive: @(CACHELINE) INT.;
@@ -231,7 +231,7 @@ INCLUDE "iddedupler.rl"
 			{ <THIS *>(ctx)->on_iddedup_quit_impl(); }
 		on_iddedup_quit_impl() VOID --
 			{ Parser.quit(); }
-	Parser: @(CACHELINE) [CodeParser; #32]PipelineSetup;
+	Parser: @(CACHELINE) [parse::CodeParser; #32]PipelineSetup;
 
 
 	DeduplerMutex: BOOL.;

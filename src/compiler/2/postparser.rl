@@ -6,6 +6,9 @@ INCLUDE "type-processor.rl"
 	// The global rootscope. This is the only real output of the preparser.
 	RootScope: scoper::Namespace \;
 
+	// TODO PERFORMANCE: we want to be able to iterate over all fields of a class, and all functions, etc.. So we want the member scope to already have pre-grouped homogeneous arrays. We can have one global linear allocator for that, though nested classes would break that. OR, we do not even go over it per-class, but just emit a note when parsing. Then, the post-parser can iterate over homogeneous collections. ACTUALLY: we want to only have one huge collection of all types that need to be parsed. And maybe one collection of all arguments and signatures or something. And then we just blaze through those without having to walk any scope tree. That should not be much more work for the preparser. And then variables or functions would simply have a handle to the workload. We could then have a writeback phase maybe that lets us gather all related information for a function etc. in one spot? Idk.
+	// We can do the same for function bodies. We can set up a pointer to the namespace and member scope we are in, and a token span. Just jobs for later parsing. Then, we can also reuse the same system for when types depend on values, or when values depend on types. We just add more jobs. And then we can do one huge evaluation of everything, ideally interleaved. That should also solve most of our other problems. We could also do a similar thing for statements within a body, I guess. Though we also have a sequential dependency between things in a body, so we might have to go for interleaved but sequential execution here.
+
 	Code: type::InterleavedByteCodes-std::Vec;
 	Contexts: type::RequestContext[###type::InterleavedByteCodes];
 	Spans: type::ByteCodeSpan[###type::InterleavedByteCodes];

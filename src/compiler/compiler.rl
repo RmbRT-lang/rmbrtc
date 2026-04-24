@@ -224,14 +224,10 @@ INCLUDE "2/stage.rl"
 		) VOID
 		{
 			stats: Stats;
-			rootScope: scoper::Namespace (BARE);
-			fileTokens: tok::FileTokenView-std::Vec (BARE);
 			{
-				STATIC stage1: Stage1 (&build);
+				stage1: stage1::Stage1 (&build);
 				stage1.launch_workers();
 				stats := stage1.run(files);
-				rootScope := &&stage1.Parser.Worker.RootScope;
-				fileTokens := &&stage1.Parser.Worker.FileTokens;
 			}
 
 			(/ TODO:
@@ -283,7 +279,7 @@ INCLUDE "2/stage.rl"
 			{
 				stage2: Stage2 (&build);
 				//stage2.launch_workers();
-				stage2.run(&&rootScope, fileTokens!, stats);
+				stage2.run(stats);
 			}
 
 			/// Seed instantiator with items to process.
