@@ -116,6 +116,10 @@ INCLUDE "2/stage.rl"
 		                                                         semi-type-checked)
 
 			~ 1.1 % of the budget, or 90M LOC/s
+			-> Rework to queues instead of AST walking.
+			~ 0.9 % of the budget, or 110M LOC/s
+			-> Prefetching
+			~ 0.82 % of the budget, or 120M LOC/s (33% speed increase)
 			[/] preparse2:
 			           [X] type+code                 [ ] res.type+code
 			[X] types parser ----> [ ] type/symbol resolver ---> [ ] IR0 generator? (TRASM/??)

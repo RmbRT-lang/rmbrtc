@@ -71,12 +71,14 @@ INCLUDE "../../parser/ids.rl"
 	// Caches the file contents of all code files.
 	FileTokens: tok::FileTokenView-std::Vec;
 
+
 	Types:             Preparsed               -PostParseQueue;
+	Arguments:         Preparsed               -PostParseQueue;
+	Returns:           PreparsedBody           -PostParseQueue;
+
 	Expressions:       Preparsed               -PostParseQueue;
 	Bodies:            PreparsedBody           -PostParseQueue;
 	SpecialCtorBodies: PreparsedSpecialCtorBody-PostParseQueue;
-	Arguments:         Preparsed               -PostParseQueue;
-	Returns:           PreparsedBody           -PostParseQueue;
 
 	init() VOID {
 		RootScope.Entries.reserve(1<<16);

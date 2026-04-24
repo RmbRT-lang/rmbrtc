@@ -46,9 +46,11 @@ INCLUDE "type-processor.rl"
 
 	post_parse() VOID
 	{
+		prefetch ::= 3;
+
 		FOR(compiler::stage1::parse::Types.Buckets!) FOR(IT)
 		{
-			next ::= &(&IT)[##RANGE == IOTA+1 ?? 0 : 1];
+			next ::= &(&IT)[##RANGE == IOTA+prefetch ?? 0 : prefetch];
 			prefetch_tokens(next->Span);
 
 			job(IT.Span, IT.Ns, IT.Ms, NULL);
@@ -56,7 +58,7 @@ INCLUDE "type-processor.rl"
 
 		FOR(compiler::stage1::parse::Arguments.Buckets!) FOR(IT)
 		{
-			next ::= &(&IT)[##RANGE == IOTA+1 ?? 0 : 1];
+			next ::= &(&IT)[##RANGE == IOTA+prefetch ?? 0 : prefetch];
 			prefetch_tokens(next->Span);
 
 			IF!(IT.Span) CONTINUE;
@@ -67,7 +69,7 @@ INCLUDE "type-processor.rl"
 
 		FOR(compiler::stage1::parse::Returns.Buckets!) FOR(IT)
 		{
-			next ::= &(&IT)[##RANGE == IOTA+1 ?? 0 : 1];
+			next ::= &(&IT)[##RANGE == IOTA+prefetch ?? 0 : prefetch];
 			prefetch_tokens(next->Core.Span);
 
 			job_sig(IT.Core.Span, IT.Core.Ns, IT.Core.Ms, NULL);
@@ -555,7 +557,9 @@ INCLUDE "type-processor.rl"
 	}
 
 	prefetch_tokens(s: parser::TokenSpan #&) VOID -- {
-		PREFETCH_READ &FileTokens[][s.File].Hots[s.Start];
+		addr: UM := > &FileTokens[][s.File].Hots[s.Start];
+		PREFETCH_READ <VOID*>(addr);
+		PREFETCH_READ <VOID*>(addr + CACHELINE);
 	}
 
 }
