@@ -389,9 +389,11 @@ INCLUDE "../../parser/ids.rl"
 				{
 					out ::= mempool::[parser::ExternFunction]alloc_unhashed_t();
 					out.(0)->Name := name;
+					p.expect_s(:Punctuation(:parentheseOpen));
 					args_start ::= p.progress();
-					p.skip_nesting();
+					p.skip_until_nesting_ends();
 					args ::= args_token_span(args_start, p);
+					p.expect_s(:Punctuation(:parentheseClose));
 					out.(0)->Args := args;
 
 					type_start ::= p.progress();
@@ -899,11 +901,11 @@ INCLUDE "../../parser/ids.rl"
 		out->File := p.File;
 		out->Templates := :Preparse(template);
 
+		p.expect_s(:Punctuation(:parentheseOpen));
 		args_start ::= p.progress();
-
-		p.skip_nesting(); // skip arguments.
-
+		p.skip_until_nesting_ends();
 		args ::= args_token_span(args_start, p);
+		p.expect_s(:Punctuation(:parentheseClose));
 		out->Args := :Preparse(args);
 
 		out->Return.Preparse := skip_function_return_type(p, args);

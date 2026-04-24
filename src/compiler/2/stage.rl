@@ -16,7 +16,7 @@ INCLUDE "postparser.rl"
 		Parser.{rootscope, stage1::parse::FileTokens!};
 
 		start ::= NOW;
-		Parser.post_parse_ns(rootscope);
+		Parser.post_parse();
 		end ::= NOW;
 
 		delta ::= end - start;
