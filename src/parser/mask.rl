@@ -6,6 +6,6 @@ INCLUDE "members.rl"
 	Name: Identifier;
 	File: src::File;
 
-	Members: parser::Members;
+	Members: parser::MemberScopeID;
 	Ops: parser::Operators;
 }

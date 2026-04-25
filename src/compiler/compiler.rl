@@ -107,6 +107,8 @@ INCLUDE "2/stage.rl"
 		~ 13.5 % of the budget, or 7.4M LOC/s
 		-> output stuff that we skip over.
 		~ 15 % of the budget, or 6.6M LOC/s... we want to get back to >7M.
+		-> central pool of namespaces and member scopes
+		~ 15 % of the budget, or 6.6M LOC/s...
 		[X] Phase 1: load all files, tokenise, assemble global scope as quickly as possible.
 		[X] load ---> [X] tokenise ---> [X] ident dedup ----> [X] preparse ------------>
 		                                                                   global scope
@@ -128,6 +130,11 @@ INCLUDE "2/stage.rl"
 			~ 0.9 % of the budget, or 110M LOC/s
 			-> Prefetching the queue (more complex lookup pattern confused the HW prefetcher)
 			~ 0.82% of the budget, or 120M LOC/s
+			-> Ignoring queue lookups (doing less work)
+			~ 0.9 % of the budget, or 110M LOC/s (????)
+			-> central pool of namespaces and member scopes (unrelated to this)
+			~ 0.76 % of the budget, or 130M LOC/s (????)
+
 			[/] preparse2:
 			           [X] type+code                 [ ] res.type+code
 			[X] types parser ----> [ ] type/symbol resolver ---> [ ] IR0 generator? (TRASM/??)

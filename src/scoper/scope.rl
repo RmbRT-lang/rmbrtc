@@ -1,10 +1,11 @@
 INCLUDE "../identifierPool.rl"
 INCLUDE "../mempool.rl"
+INCLUDE "../parser/ids.rl"
 ::rlc::scoper
 {
 	UNION NVGlobal {
 	*	Nil:       MemID;
-	?	Namespace: scoper::Namespace -Handle;
+	?	Namespace: parser::NamespaceID; // CAUTION: this is not a MemID!!!
 	?	Class:     parser::Class     -Handle;
 	?	Rawtype:   parser::Rawtype   -Handle;
 	?	Typedef:   parser::Typedef   -Handle;
@@ -77,13 +78,14 @@ INCLUDE "../mempool.rl"
 		Lut: Entry-Handle[]; // Full-size mapping for all identifiers.
 		Exists: U1 [];
 		Entries: {U2, Entry-Handle} -std::Vec;
-		Namespaces: {U2, Namespace-Handle}-std::Vec;
+		Namespaces: {U2, parser::NamespaceID}-std::Vec;
 
 		// Full-size mapping for all identifiers. For relative lookups from inside the namespace. We have split this into two because we only want to look up one at a time. We could also use a fused entry like the other lookup table, though. We could also use duplicate Entries or something, and follow the same structure as Lut. However, the Lut only has that indirection because we want to save on pointer sizes due to the massive, sparse, 64K overallocation. These however are not overallocated, although still sparse. Ideally, we would also use a version of this for an OuterLut, and then simply throw away Lut. That way, we could also unify namespace and member scopes again, maybe? Although we have to differentiate anyway since members use a different identifier for their lookups.
 		InnerLutV: VEntry[];
 		InnerLutNV: NVEntry[];
 
-		Id: U2;
+		Id: parser::NamespaceID;
+		Parent: parser::NamespaceID;
 
 		{}:
 			Lut := std::heap::alloc.[Entry-Handle]alloc_array(1<<16),
@@ -151,7 +153,7 @@ INCLUDE "../mempool.rl"
 
 		// Only call this after all parsing is finished. It allows us to look up an identifier from within a nested scope with a single operation. Also 0-initialises the previously unset fields in Lut. This makes it safe to look up members without checking for Exists.
 		// NOTE PERFOMANCE: complexity is ##namespaces * ##idents, but it gives us much faster and simpler (loopless, branchless) scope-relative lookups for all identifiers.
-		post_process_1(outerLutV: VEntry#[], outerLutNV: NVEntry#[]) VOID
+		post_process() VOID
 		{
 			cap ::= ident::GlobalDeclCount;
 			STATIC t_alloc_i: std::temp::Alloc := :custom(16 * MI, 16 * MI);
@@ -205,8 +207,11 @@ INCLUDE "../mempool.rl"
 				Lut[IOTA] := handle;
 			}
 
-			IF(outerLutV)
+			IF(Parent.ID)
 			{
+				parent ::= Parent.get();
+				outerLutV: VEntry#[] := parent->InnerLutV;
+				outerLutNV: NVEntry#[] := parent->InnerLutNV;
 				//NOTE PERFORMANCE: if everything else is disabled, this costs 0.3ms. However, with the other loops enabled, this only has a cost of 0.04ms. So we know for sure that the main cost of our algorithm is the cache misses. However, the outerLut should be still in cache when we use it, most of the time, maybe. Although going through multiple tree levels would probably evict it. However, it should still be in L3 cache even then, so we should not be bandwidth-limited here, and the LUTs fit into L3. Though we might be unable to use it fully. It would be better to go breadth-first instead of depth-first, I think.
 
 				// Inherit the relative lookup of the parent.
@@ -238,42 +243,6 @@ INCLUDE "../mempool.rl"
 			{
 				entry ::= IT.(1);
 				innerLutNV[IT.(0)] := *entry;
-			}
-		}
-
-		// This step recurses into the
-		post_process_2() VOID
-		{
-			IF(Namespaces)
-			{
-				// Placebo optimisation, but it breaks the dependency chain up a bit.
-				{
-					i ::= 0;
-					entry ::= Namespaces![][i].(1).get();
-					PREFETCH_READ entry->Namespaces.data();
-					PREFETCH_READ entry->Entries.data();
-					WHILE(++i != ##Namespaces) {
-						next ::= Namespaces![][i].(1).get();
-						PREFETCH_READ next;
-						old ::= entry;
-						entry := next;
-						old->post_process_1(InnerLutV, InnerLutNV);
-					}
-					entry->post_process_1(InnerLutV, InnerLutNV);
-				}
-
-				{
-					i ::= 0;
-					entry ::= Namespaces![][i].(1).get();
-					WHILE(++i != ##Namespaces) {
-						next ::= Namespaces![][i].(1).get();
-						PREFETCH_READ next;
-						old ::= entry;
-						entry := next;
-						old->post_process_2();
-					}
-					entry->post_process_2();
-				}
 			}
 		}
 

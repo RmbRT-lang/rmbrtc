@@ -17,7 +17,7 @@ INCLUDE "members.rl"
 
 	Inheritance: TokenSpan;
 	Ctors: parser::Constructors;
-	Members: parser::Members;
+	Members: parser::MemberScopeID;
 	Ops: parser::Operators;
 
 

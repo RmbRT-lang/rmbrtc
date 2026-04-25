@@ -8,5 +8,5 @@ INCLUDE "members.rl"
 	DefaultField: S2; // -1 if none
 	TruthyFields: U8; // can only have up to 64 fields if truthy members exist.
 
-	Members: parser::Members;
+	Members: parser::MemberScopeID;
 }

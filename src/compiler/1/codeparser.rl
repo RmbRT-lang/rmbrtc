@@ -52,8 +52,8 @@ INCLUDE "../../parser/ids.rl"
 
 	Preparsed {
 		Span: parser::TokenSpan;
-		Ns: U2;
-		Ms: U2;
+		Ns: parser::NamespaceID;
+		Ms: parser::MemberScopeID;
 	}
 	PreparsedBody {
 		Core: Preparsed;
@@ -64,9 +64,6 @@ INCLUDE "../../parser/ids.rl"
 		Core: Preparsed;
 		ArgName: FileLocalIdentifier;
 	}
-
-	// The global rootscope. This is the only real output of the preparser.
-	RootScope: scoper::Namespace;
 
 	// Caches the file contents of all code files.
 	FileTokens: tok::FileTokenView-std::Vec;
@@ -81,11 +78,21 @@ INCLUDE "../../parser/ids.rl"
 	SpecialCtorBodies: PreparsedSpecialCtorBody-PostParseQueue;
 
 	// TODO: instead of pointers, just store them here directly, so that we touch fewer cachelines when looking them up (fixed address calculation).
-	Namespaces: scoper::Namespace * -std::Vec;
-	MemberScopes: parser::Members * -std::Vec;
+	// TODO: when we replace this, we also need to adjust the namespace postprocessing logic. We no longer need recursive namespace descent, but we will need backpointers / parent references in namespaces. But then we can also save one vector allocation per namespace (the .Namespaces field).
+	Namespaces: scoper::Namespace -std::Vec;
+	// TODO: when we replace this, we also need to adjust how member scopes get post-processed. But this should also be similar to what we do for namespaces. Then we can also remove the recursive part for the member scopes, and no longer even need the dumb switch loop.
+	MemberScopes: parser::Members -std::Vec;
+
+	namespace(id: parser::NamespaceID) scoper::Namespace \ -- := &Namespaces[:ok(id.ID)];
+	member_scope(id: parser::MemberScopeID) parser::Members * -- {
+		IF!(id) = NULL;
+		= &MemberScopes[:ok(id.ID)];
+	}
+	member_scope_ok(id: parser::MemberScopeID) parser::Members \ --
+		:= &MemberScopes[:ok(id.ID)];
+
 
 	init() VOID {
-		RootScope.Entries.reserve(1<<16);
 		FileTokens.reserve(2048);
 
 		Types.init();
@@ -96,8 +103,11 @@ INCLUDE "../../parser/ids.rl"
 		Bodies.init();
 		SpecialCtorBodies.init();
 
-		Namespaces.reserve(2048);      Namespaces += &RootScope;
-		MemberScopes.reserve(16 * KI); MemberScopes += NULL;
+		Namespaces.reserve(2048);
+		rootScope ::= &(Namespaces += ());
+		rootScope->Entries.reserve(1<<16);
+
+		MemberScopes.reserve(16 * KI);
 	}
 }
 ::rlc::compiler::stage1::parse CodeParser
@@ -119,10 +129,7 @@ INCLUDE "../../parser/ids.rl"
 	// This could be removed, as we currently shrink the lookup tables down and then pad them out again to their final size during the post-pass. TODO: A/B performance testing.
 	ShrunkMemberAlloc:      std::temp::Alloc;
 
-	// Gets reset after every file.
-	FileOuterMemberScopes: parser::Members \ -std::Vec; // we might also want to be registering other things here, such as a list of all functions, or all return types or something. And we might want to have a union type that we can patch in the post-pass, so that we do not need to move data around.
-
-	{}: FileOuterMemberScopes := :reserve(2048),
+	{}:
 		LocalDeclLut := :reserve(1<<16),
 		PessimisticMemberAlloc := :custom(128*KI, 128*KI),
 		ShrunkMemberAlloc := :custom(128*KI, 128*KI);
@@ -130,8 +137,8 @@ INCLUDE "../../parser/ids.rl"
 	STATIC name() CHAR#[#] -- := "code preparser";
 
 
-	Ns: U2;
-	Ms: U2;
+	Ns: parser::NamespaceID;
+	Ms: parser::MemberScopeID;
 
 	handle_job(in: Input &, out: Output *) VOID
 	{
@@ -154,13 +161,18 @@ INCLUDE "../../parser/ids.rl"
 		// 2. pre-parse global scope entries into the global scope tree. Populate global scope lookups. Function bodies, expressions, and type names are skipped via matching parentheses.
 		p: rlc::parser::Parser(FileTokens[:ok(in.File)], in.File);
 		WHILE(!p.eof())
-			preparse_ns_entry(p, &RootScope, NULL);
+			preparse_ns_entry(p, namespace(0), NULL);
 
 		// 3. Post-process the member scopes in the file, giving them the ##LocalDeclIds capacity for their LUTs (i.e., no bounds checks needed), and create scope-relative lookup tables.
 		ids ::= LocalDecls;
-		FOR(MemberScopes![FROM member_scopes_start]) finalise_members(IT);
-		FOR(FileOuterMemberScopes!) IT->post_process(NULL, NULL, ids);
-		FileOuterMemberScopes.clear_reuse();
+		FOR(MemberScopes![FROM member_scopes_start])
+		{
+			finalise_members(&IT);
+			IF(IT.NeedsInnerLUT) IT.post_process(ids);
+		}
+
+		ASSERT(Ns.ID == 0);
+		ASSERT(!Ms);
 
 		ShrunkMemberAlloc.clear_and_optimise(4*KI);
 		PessimisticMemberAlloc.clear_and_optimise(4*KI);
@@ -311,13 +323,14 @@ INCLUDE "../../parser/ids.rl"
 				} ELSE IF(pentry->Type == :Nil)
 				{
 					// Nil: insert new namespace.
-					ns_entry ::= mempool::[scoper::Namespace]alloc_unhashed_t();
-					child_ns := ns_entry.(0);
-					child_ns->{};
-					child_ns->Id := ##Namespaces; Namespaces += child_ns;
+					ns_id: parser::NamespaceID := ##Namespaces;
+					ns_entry ::= &(Namespaces += ());
+					child_ns := ns_entry;
+					child_ns->Parent := Ns;
+					child_ns->Id := ns_id;
 					pentry->Type := :Namespace;
-					pentry->Mem := :Namespace(ns_entry.(1));
-					scope->Namespaces += (global_decl_name.V, ns_entry.(1));
+					pentry->Mem := :Namespace(ns_id);
+					scope->Namespaces += (global_decl_name.V, ns_id);
 				} ELSE
 				{
 					p.fail("Symbol ", ident::strings[name.V] ," redefined as namespace, was ", std::str::enum(pentry->Type));
@@ -506,9 +519,15 @@ INCLUDE "../../parser/ids.rl"
 
 	preparse2() VOID
 	{
-		RootScope.post_process_1(NULL, NULL);
-		RootScope.post_process_2();
-
+		FOR(Namespaces!)
+		{
+			next ::= &(&IT)[##RANGE == IOTA+1 ?? 0 : 1];
+			next_2 ::= &(&IT)[##RANGE == IOTA+2 ?? 0 : 2];
+			PREFETCH_READ next->Entries.data();
+			PREFETCH_READ next_2;
+			PREFETCH_READ next->Parent.get();
+			IT.post_process();
+		}
 
 		// 3. fully parse everything, immediately resolving all things to their proper scope entries. -- actually, this does not happen yet. We want a separate stage for this, after we have the fully populated global scope.
 
@@ -552,14 +571,23 @@ INCLUDE "../../parser/ids.rl"
 		Types
 	}
 
+	AllocMembers {
+		Save: std::temp::Alloc::Checkpoint;
+		Ms: parser::Members \;
+	}
+
 	// Call when starting to parse a member scope.
 	alloc_members(
-		m: parser::Members \,
+		out: parser::MemberScopeID \,
 		ops: parser::Operators *,
 		ctors: parser::Constructors *,
-		needs_inner_lut: BOOL) std::temp::Alloc::Checkpoint
+		needs_inner_lut: BOOL) AllocMembers
 	{
-		m->Id := ##MemberScopes; MemberScopes += m;
+		id ::= ##MemberScopes;
+		*out := id;
+		m ::= &(MemberScopes += BARE);
+		m->Id := id;
+		m->Parent := Ms;
 
 		s ::= PessimisticMemberAlloc.save();
 		max_cap ::= LocalIds;
@@ -569,8 +597,7 @@ INCLUDE "../../parser/ids.rl"
 		m->InnerLutV := NULL;
 		m->InnerLutNV := NULL;
 
-		IF(!IsInMember && needs_inner_lut)
-			FileOuterMemberScopes += m;
+		m->NeedsInnerLUT := (!IsInMember && needs_inner_lut);
 
 		IF(ops)
 		{
@@ -592,7 +619,7 @@ INCLUDE "../../parser/ids.rl"
 			ctors->NamedCtors := PessimisticMemberAlloc.[parser::CustomCtor-Handle]alloc_raw_array(max_cap)[FOR 0];
 			ctors->NamedCtorEntries := PessimisticMemberAlloc.[{FileDeclIdentifier, parser::CustomCtor-Handle}]alloc_raw_array(max_cap)[FOR 0];
 		}
-		= s;
+		= (s, m);
 	}
 
 	// Call this after parsing the member scope.
@@ -696,7 +723,7 @@ INCLUDE "../../parser/ids.rl"
 		out->Templates := template;
 		out->Decl := consume_vmode(p);
 
-		save ::= alloc_members(&out->Members, &out->Ops, &out->Ctors, TRUE);
+		alloc ::= alloc_members(&out->Members, &out->Ops, &out->Ctors, TRUE);
 
 		// Inheritance.
 		inheritance: parser::TokenSpan;
@@ -716,10 +743,10 @@ INCLUDE "../../parser/ids.rl"
 
 		vis: rlc::Visibility := :public;
 		WHILE(!p.consume_s(:Punctuation(:braceClose)))
-			preparse_member(p, &out->Members, &out->Ctors, &out->Ops, NULL, :none, &vis, FALSE,
+			preparse_member(p, alloc.Ms, &out->Ctors, &out->Ops, NULL, :none, &vis, FALSE,
 				Members::FLAGS(:Constructors, :Fields, :Functions, :Types));
 
-		shrink_members(&out->Members, &out->Ops, &out->Ctors, save);
+		shrink_members(alloc.Ms, &out->Ops, &out->Ctors, alloc.Save);
 	}
 
 	preparse_rawtype(
@@ -751,14 +778,14 @@ INCLUDE "../../parser/ids.rl"
 
 		p.expect_s(:Punctuation(:braceOpen));
 
-		save ::= alloc_members(&out->Members, &out->Ops, &out->Ctors, TRUE);
+		alloc ::= alloc_members(&out->Members, &out->Ops, &out->Ctors, TRUE);
 
 		vis: Visibility := :public;
 		WHILE(!p.consume_s(:Punctuation(:braceClose)))
-			preparse_member(p, &out->Members, &out->Ctors, &out->Ops, NULL, :none, &vis, FALSE,
+			preparse_member(p, alloc.Ms, &out->Ctors, &out->Ops, NULL, :none, &vis, FALSE,
 				Members::FLAGS(:Constructors, :Functions, :Types));
 
-		shrink_members(&out->Members, &out->Ops, &out->Ctors, save);
+		shrink_members(alloc.Ms, &out->Ops, &out->Ctors, alloc.Save);
 
 		= local_name;
 	}
@@ -775,7 +802,7 @@ INCLUDE "../../parser/ids.rl"
 		out->DefaultField := -1;
 		out->TruthyFields := 0;
 
-		save ::= alloc_members(&out->Members, NULL, NULL, FALSE);
+		alloc ::= alloc_members(&out->Members, NULL, NULL, FALSE);
 
 		DO(entry_val ::= 0)
 		{
@@ -797,7 +824,7 @@ INCLUDE "../../parser/ids.rl"
 			local_id ::= p.payload_expect_p(:Identifier).Identifier.FileLocal;
 			dedup_id ::= local_to_decl_name(local_id);
 
-			main_entry ::= &out->Members.ensure(dedup_id)->Value;
+			main_entry ::= &alloc.Ms->ensure(dedup_id)->Value;
 			IF(main_entry->Type)
 				p.fail_pos(at, "duplicate enum constant");
 			main_entry->Type := :EnumConstant;
@@ -810,7 +837,7 @@ INCLUDE "../../parser/ids.rl"
 				alias_local_id ::= p.payload_expect_p(:Identifier).Identifier.FileLocal;
 				dedup_alias_id ::= local_to_decl_name(alias_local_id);
 
-				alias_entry ::= &out->Members.ensure(dedup_alias_id)->Value;
+				alias_entry ::= &alloc.Ms->ensure(dedup_alias_id)->Value;
 				IF(alias_entry->Type)
 					p.fail_pos(at, "duplicate enum constant");
 				alias_entry->Type := :EnumConstant;
@@ -821,7 +848,7 @@ INCLUDE "../../parser/ids.rl"
 
 		p.expect_s(:Punctuation(:braceClose));
 
-		shrink_members(&out->Members, NULL, NULL, save);
+		shrink_members(alloc.Ms, NULL, NULL, alloc.Save);
 	}
 
 	preparse_union(
@@ -837,7 +864,7 @@ INCLUDE "../../parser/ids.rl"
 		out->ValueOfField := -1;
 		out->TruthyFields := 0;
 
-		save ::= alloc_members(&out->Members, NULL, NULL, FALSE);
+		alloc ::= alloc_members(&out->Members, NULL, NULL, FALSE);
 
 		p.expect_s(:Punctuation(:braceOpen));
 
@@ -875,12 +902,12 @@ INCLUDE "../../parser/ids.rl"
 
 			decl_name ::= local_to_decl_name(local_name);
 
-			entry ::= out->Members.ensure(decl_name);
+			entry ::= alloc.Ms->ensure(decl_name);
 			entry->set_value(name, at, p, (:public, :UnionField(type_entry.(1))));
 		}
 		p.expect_s(:Punctuation(:braceClose));
 
-		shrink_members(&out->Members, NULL, NULL, save);
+		shrink_members(alloc.Ms, NULL, NULL, alloc.Save);
 	}
 
 	preparse_mask(p: parser::Parser &, out: parser::Mask \, name: Identifier) VOID
@@ -890,12 +917,12 @@ INCLUDE "../../parser/ids.rl"
 
 		p.expect_s(:Punctuation(:braceOpen));
 
-		save ::= alloc_members(&out->Members, &out->Ops, NULL, FALSE);
+		alloc ::= alloc_members(&out->Members, &out->Ops, NULL, FALSE);
 		vis: Visibility := :public;
 		WHILE(!p.consume_s(:Punctuation(:braceClose)))
-			preparse_member(p, &out->Members, NULL, &out->Ops, NULL, :none, &vis, FALSE,
+			preparse_member(p, alloc.Ms, NULL, &out->Ops, NULL, :none, &vis, FALSE,
 				Members::FLAGS(:Functions));
-		shrink_members(&out->Members, &out->Ops, NULL, save);
+		shrink_members(alloc.Ms, &out->Ops, NULL, alloc.Save);
 	}
 
 	preparse_function(
