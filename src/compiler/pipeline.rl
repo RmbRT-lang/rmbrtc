@@ -140,16 +140,26 @@
 	wait_launched() VOID --
 	{
 		tries: U4 := 0;
-		start ::= NOW;
+		start ::= CPU_COUNTER;
 		WHILE(Shared.Quit(:<))
-		{ IF!(++tries & 1023) { IF((NOW)-start > 100 * MEGA) DIE; } }
+		{
+			IF!(++tries & 1023) {
+				IF((CPU_COUNTER-start) / (CPU_TICK_RATE/KILO) > 100)
+					term::error(NULL, Job::name(), " thread is stuck!");
+			}
+		}
+	}
+
+	PRIVATE STATIC run_worker_fn(this: THIS *, thread_mask: U8) VOID --
+	{
+		this->worker_thread(thread_mask);
 	}
 
 	launch_worker(thread_mask: U8) VOID^
 	{
 		MasterLocal.Threaded := TRUE;
-		thread: VOID^(^worker_thread(thread_mask));
-		wait_launched();
+		thread: VOID^(^run_worker_fn(&THIS, thread_mask));
+		//wait_launched();
 		= &&thread;
 	}
 
@@ -192,13 +202,13 @@
 	{ // AS MASTER
 		IF!(MasterLocal.Threaded) RETURN;
 
-		start ::= NOW;
+		start ::= CPU_COUNTER;
 		attempt ::= 0;
 		WHILE(Shared.Quit(:<))
 		{
 			PAUSE;
 			IF!(++attempt & 1023)
-				IF((NOW) - start > 100 * MEGA)
+				IF((CPU_COUNTER - start) / (CPU_TICK_RATE / KILO) > 100)
 					term::error(at, Job::name(), " thread is stuck!");
 		}
 	}
@@ -339,7 +349,7 @@ PUBLIC:
 	launch_worker(thread_mask: U8) VOID {
 		worker ::= ->([Job]Pipeline).launch_worker(thread_mask);
 		Thread :=: worker;
-		->([Job]Pipeline).wait_launched();
+		//->([Job]Pipeline).wait_launched();
 	}
 
 	// ONLY MASTER

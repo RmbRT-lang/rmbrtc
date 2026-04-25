@@ -48,7 +48,7 @@ INCLUDE "type-processor.rl"
 
 	post_parse() VOID
 	{
-		prefetch ::= 3;
+		prefetch ::= 4;
 
 		// TODO: instead of pointers to namespaces & scopes, we can also just pass along their handles, since we do not use their addresses anyway here.
 		FOR(compiler::stage1::parse::Types.Buckets!) FOR(IT)
@@ -58,9 +58,6 @@ INCLUDE "type-processor.rl"
 
 			CurrentRequestNs := IT.Ns;
 			CurrentRequestMs := IT.Ms;
-
-			// This prefetch does nothing useful, but it still speeds up the code by 10%???
-			//PREFETCH_READ &rlc::compiler::stage1::parse::Namespaces[:ok(0)];//next->Ns)];
 
 			job(IT.Span,
 				NULL, //>IT.Ns, //::rlc::compiler::stage1::parse::Namespaces[:ok(IT.Ns)],
@@ -76,9 +73,6 @@ INCLUDE "type-processor.rl"
 
 			CurrentRequestNs := IT.Ns;
 			CurrentRequestMs := IT.Ms;
-
-			// This prefetch does nothing useful, but it still speeds up the code by 10%???
-			//PREFETCH_READ &::rlc::compiler::stage1::parse::Namespaces[:ok(0)];//next->Ns)];
 
 			p ::= parser(IT.Span);
 			IF!(IT.Span) CONTINUE;
@@ -96,9 +90,6 @@ INCLUDE "type-processor.rl"
 
 			CurrentRequestNs := IT.Core.Ns;
 			CurrentRequestMs := IT.Core.Ms;
-
-			// This prefetch does nothing useful, but it still speeds up the code by 10%???
-			//PREFETCH_READ &::rlc::compiler::stage1::parse::Namespaces[:ok(0)];//next->Core.Ns)];
 
 			job_sig(IT.Core.Span,
 				NULL, //>IT.Core.Ns, //::rlc::compiler::stage1::parse::Namespaces[:ok(IT.Core.Ns)],

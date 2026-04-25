@@ -77,6 +77,10 @@ INCLUDE "iddedupler.rl"
 			IdDedupler.launch_worker(threads.IdDedupler);
 			FOR(Tokenisers) IT.launch_worker(threads.Tokenisers[IOTA]);
 			Loader.launch_worker(threads.Loader);
+
+			IdDedupler.wait_launched();
+			FOR(Tokenisers) IT.wait_launched();
+			Loader.wait_launched();
 			end ::= NOW;
 			IF(Build->VERBOSE_TIMING)
 				term::info(NULL, "Phase 1: it took ",
