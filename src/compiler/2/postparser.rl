@@ -15,6 +15,8 @@ INCLUDE "type-processor.rl"
 	CurrentRequest: U4;
 	CurrentRequestStart: U4;
 	CurrentRequestLength: U2;
+	CurrentRequestNs: parser::NamespaceID;
+	CurrentRequestMs: parser::MemberScopeID;
 
 	FileTokens: tok::FileTokenView[#];
 
@@ -48,12 +50,22 @@ INCLUDE "type-processor.rl"
 	{
 		prefetch ::= 3;
 
+		// TODO: instead of pointers to namespaces & scopes, we can also just pass along their handles, since we do not use their addresses anyway here.
 		FOR(compiler::stage1::parse::Types.Buckets!) FOR(IT)
 		{
 			next ::= &(&IT)[##RANGE == IOTA+prefetch ?? 0 : prefetch];
 			prefetch_tokens(next->Span);
 
-			job(IT.Span, IT.Ns, IT.Ms, NULL);
+			CurrentRequestNs := IT.Ns;
+			CurrentRequestMs := IT.Ms;
+
+			// This prefetch does nothing useful, but it still speeds up the code by 10%???
+			//PREFETCH_READ &rlc::compiler::stage1::parse::Namespaces[:ok(0)];//next->Ns)];
+
+			job(IT.Span,
+				NULL, //>IT.Ns, //::rlc::compiler::stage1::parse::Namespaces[:ok(IT.Ns)],
+				NULL, //>IT.Ms, //::rlc::compiler::stage1::parse::MemberScopes[:ok(IT.Ms)],
+				NULL);
 		}
 
 		FOR(compiler::stage1::parse::Arguments.Buckets!) FOR(IT)
@@ -61,9 +73,19 @@ INCLUDE "type-processor.rl"
 			next ::= &(&IT)[##RANGE == IOTA+prefetch ?? 0 : prefetch];
 			prefetch_tokens(next->Span);
 
-			IF!(IT.Span) CONTINUE;
+
+			CurrentRequestNs := IT.Ns;
+			CurrentRequestMs := IT.Ms;
+
+			// This prefetch does nothing useful, but it still speeds up the code by 10%???
+			//PREFETCH_READ &::rlc::compiler::stage1::parse::Namespaces[:ok(0)];//next->Ns)];
+
 			p ::= parser(IT.Span);
-			post_parse_function_args(p, IT.Ns, IT.Ms, NULL);
+			IF!(IT.Span) CONTINUE;
+			post_parse_function_args(p,
+				NULL, //>IT.Ns, //::rlc::compiler::stage1::parse::Namespaces[:ok(IT.Ns)],
+				NULL, //>IT.Ms, //::rlc::compiler::stage1::parse::MemberScopes[:ok(IT.Ms)],
+				NULL);
 			p.expect_done();
 		}
 
@@ -72,7 +94,16 @@ INCLUDE "type-processor.rl"
 			next ::= &(&IT)[##RANGE == IOTA+prefetch ?? 0 : prefetch];
 			prefetch_tokens(next->Core.Span);
 
-			job_sig(IT.Core.Span, IT.Core.Ns, IT.Core.Ms, NULL);
+			CurrentRequestNs := IT.Core.Ns;
+			CurrentRequestMs := IT.Core.Ms;
+
+			// This prefetch does nothing useful, but it still speeds up the code by 10%???
+			//PREFETCH_READ &::rlc::compiler::stage1::parse::Namespaces[:ok(0)];//next->Core.Ns)];
+
+			job_sig(IT.Core.Span,
+				NULL, //>IT.Core.Ns, //::rlc::compiler::stage1::parse::Namespaces[:ok(IT.Core.Ns)],
+				NULL, //>IT.Core.Ms, //::rlc::compiler::stage1::parse::MemberScopes[:ok(IT.Core.Ms)],
+				NULL);
 		}
 	}
 
@@ -82,7 +113,7 @@ INCLUDE "type-processor.rl"
 		p: parser::Parser &,
 		ns: scoper::Namespace \,
 		ms: parser::Members *,
-		templateCtx: :TemplateCtx *) VOID
+		templateCtx: :TemplateCtx *) VOID --
 	{
 		IF!(p.match_s(0, :Punctuation(:parentheseClose)))
 		{
@@ -558,8 +589,8 @@ INCLUDE "type-processor.rl"
 
 	prefetch_tokens(s: parser::TokenSpan #&) VOID -- {
 		addr: UM := > &FileTokens[][s.File].Hots[s.Start];
+		PREFETCH_READ <VOID*>(addr + 30);
 		PREFETCH_READ <VOID*>(addr);
-		PREFETCH_READ <VOID*>(addr + CACHELINE);
 	}
 
 }

@@ -39,6 +39,7 @@ INCLUDE "2/stage.rl"
 		LegacyScoping: BOOL;
 		SINGLE_THREADED: BOOL;
 		TRACK_FILE_IDSETS: BOOL;
+		VERBOSE_TIMING: BOOL;
 
 		{type: BuildType} INLINE:
 			Type(type),
@@ -84,6 +85,7 @@ INCLUDE "2/stage.rl"
 			} FOR(len < ##incs; incs := incs[AFTER len])
 
 			SINGLE_THREADED := std::str::eq(std::str::c(detail::getenv("RLC_ST"!)[]), "1");
+			VERBOSE_TIMING := std::str::eq(std::str::c(detail::getenv("RLC_VT"!)[]), "1");
 			TRACK_FILE_IDSETS := std::str::eq(std::str::c(detail::getenv("RLC_IDS"!)[]), "1");
 
 			term::info(NULL,
@@ -105,6 +107,10 @@ INCLUDE "2/stage.rl"
 
 
 		~ 13.5 % of the budget, or 7.4M LOC/s
+		-> output stuff that we skip over.
+		~ 15 % of the budget, or 6.6M LOC/s... we want to get back to >7M.
+		-> central pool of namespaces and member scopes
+		~ 15 % of the budget, or 6.6M LOC/s...
 		[X] Phase 1: load all files, tokenise, assemble global scope as quickly as possible.
 		[X] load ---> [X] tokenise ---> [X] ident dedup ----> [X] preparse ------------>
 		                                                                   global scope
@@ -115,11 +121,22 @@ INCLUDE "2/stage.rl"
 		                                                            (Templated,
 		                                                         semi-type-checked)
 
+			~ 4.5 % of the budget, or 30M LOC/s
+			-> allocator reuse, etc.
 			~ 1.1 % of the budget, or 90M LOC/s
 			-> Rework to queues instead of AST walking.
 			~ 0.9 % of the budget, or 110M LOC/s
 			-> Prefetching
 			~ 0.82 % of the budget, or 120M LOC/s (33% speed increase)
+			-> Condensed queues
+			~ 0.9 % of the budget, or 110M LOC/s
+			-> Prefetching the queue (more complex lookup pattern confused the HW prefetcher)
+			~ 0.82% of the budget, or 120M LOC/s
+			-> Ignoring queue lookups (doing less work)
+			~ 0.9 % of the budget, or 110M LOC/s (????)
+			-> central pool of namespaces and member scopes (unrelated to this)
+			~ 0.76 % of the budget, or 130M LOC/s (????)
+
 			[/] preparse2:
 			           [X] type+code                 [ ] res.type+code
 			[X] types parser ----> [ ] type/symbol resolver ---> [ ] IR0 generator? (TRASM/??)

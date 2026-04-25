@@ -12,7 +12,7 @@ INCLUDE "postparser.rl"
 
 	run(stats: compiler::Stats) VOID
 	{
-		rootscope ::= &stage1::parse::RootScope;
+		rootscope ::= stage1::parse::namespace(0);
 		Parser.{rootscope, stage1::parse::FileTokens!};
 
 		start ::= NOW;

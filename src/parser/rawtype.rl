@@ -10,7 +10,7 @@ INCLUDE "members.rl"
 	Alignment: ExpressionID;
 
 	Ctors:   parser::Constructors;
-	Members: parser::Members;
+	Members: parser::MemberScopeID;
 	Ops:     parser::Operators;
 
 	{BARE};

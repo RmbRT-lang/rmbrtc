@@ -154,6 +154,9 @@ INCLUDE "../mempool.rl"
 
 	Templates: :TemplateCtx;
 	Fields: U2;
+	Id: parser::MemberScopeID;
+	Parent: parser::MemberScopeID;
+	NeedsInnerLUT: BOOL;
 
 	ensure(id: rlc::FileDeclIdentifier) LUTEntry-Handle {
 		IF(id.V < ##IdLut)
@@ -193,15 +196,23 @@ INCLUDE "../mempool.rl"
 		= entry->Type ?? entry : NULL;
 	}
 
-	post_process(outerLutV: VEntry#[], outerLutNV: NVEntry#[], cap: U2) VOID
+	post_process(cap: U2) VOID
 	{
 		// TODO PERFORMANCE: have one big pool of ##FileDeclIds * ##MemberScopes per file.
 		InnerLutV := mempool::[VEntry]alloc_unhashed_array(cap).(0);
 		InnerLutNV := mempool::[NVEntry]alloc_unhashed_array(cap).(0);
 
-		// Inherit access to all types.
-		IF(outerLutNV)
+		IF(Parent)
 		{
+			p ::= Parent.get_ok();
+			PREFETCH_READ p->InnerLutV;
+			PREFETCH_READ p->InnerLutNV;
+		}
+
+		// Inherit access to all types.
+		IF(Parent)
+		{
+			outerLutNV ::= ::rlc::compiler::stage1::parse::member_scope(Parent)->InnerLutNV;
 			FOR(cap) InnerLutNV[IOTA] := outerLutNV[IOTA];
 			FOR(Entries!)
 			{
@@ -224,8 +235,9 @@ INCLUDE "../mempool.rl"
 
 		// Only inherit access to static value members, as inner scopes do not have access to the THIS object of the outer class.
 		FOR(cap) InnerLutV[IOTA].{};
-		IF(outerLutV)
+		IF(Parent)
 		{
+			outerLutV ::= ::rlc::compiler::stage1::parse::member_scope(Parent)->InnerLutV;
 			// TODO PERFORMANCE: make this branchless.
 			FOR(cap)
 			{
@@ -237,32 +249,6 @@ INCLUDE "../mempool.rl"
 		{
 			entry ::= &IT.(1)->Value;
 			InnerLutV[IT.(0)] := *entry;
-		}
-
-		// Post-process children as well.
-		FOR(Entries!)
-		{
-			x ::= &IT.(1)->NonValue;
-			type ::= x->Type;
-			mem ::= x->Entry;
-
-			members: Members * (NOINIT);
-
-			STATIC member_offset: U4[TABLE ENUM NVMember](
-				:Nil(0),
-				:Class(<UM>(&<parser::Class *>(NULL)->Members)),
-				:Rawtype(<UM>(&<parser::Rawtype *>(NULL)->Members)),
-				:Typedef(0),
-				:Mask(<UM>(&<parser::Mask *>(NULL)->Members)),
-				:Union(<UM>(&<parser::Union *>(NULL)->Members)),
-				:Enum(<UM>(&<parser::Enum *>(NULL)->Members))
-			);
-
-			IF(1 << <U1>(type) & ~NVMember::FLAGS(:Nil, :Typedef))
-			{
-				members := >( <UM>(mem.Class.get()) + member_offset[type] );
-				members->post_process(InnerLutV, InnerLutNV, cap);
-			}
 		}
 	}
 }

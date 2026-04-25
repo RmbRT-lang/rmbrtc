@@ -34,8 +34,10 @@
 		Processed: @(CACHELINE) U4.;
 	}
 	SlaveLocalR {
+		FirstWait: U8;
 		Waiting: U8;
 		Processing: U8;
+		PostJobHook: U8;
 	}
 
 	SharedR {
@@ -80,7 +82,7 @@
 		Shared.Quit := :>(FALSE);
 
 			start_waiting ::= CPU_COUNTER;
-
+		first ::= TRUE;
 		FOR(;;)
 		{
 			quit ::= Shared.Quit(:<);
@@ -95,7 +97,12 @@
 
 				start_processing ::= CPU_COUNTER;
 				end_waiting ::= start_processing;
-				SlaveLocal.Waiting += end_waiting - start_waiting;
+				IF(first)
+				{
+					first := FALSE;
+					SlaveLocal.FirstWait := end_waiting - start_waiting;
+				} ELSE
+					SlaveLocal.Waiting += end_waiting - start_waiting;
 
 			hook: U8 := 0;
 			WHILE(processed != issued)
@@ -121,6 +128,7 @@
 				start_waiting := CPU_COUNTER;
 				end_processing ::= start_waiting;
 				SlaveLocal.Processing += (end_processing - start_processing) - hook;
+				SlaveLocal.PostJobHook += hook;
 
 			IF(Constant.IdleHook) Constant.IdleHook(Constant.HookCtx);
 		}
