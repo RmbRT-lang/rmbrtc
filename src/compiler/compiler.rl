@@ -105,6 +105,8 @@ INCLUDE "2/stage.rl"
 
 
 		~ 13.5 % of the budget, or 7.4M LOC/s
+		-> output stuff that we skip over.
+		~ 15 % of the budget, or 6.6M LOC/s... we want to get back to >7M.
 		[X] Phase 1: load all files, tokenise, assemble global scope as quickly as possible.
 		[X] load ---> [X] tokenise ---> [X] ident dedup ----> [X] preparse ------------>
 		                                                                   global scope
@@ -115,6 +117,8 @@ INCLUDE "2/stage.rl"
 		                                                            (Templated,
 		                                                         semi-type-checked)
 
+			~ 4.5 % of the budget, or 30M LOC/s
+			-> allocator reuse, etc.
 			~ 1.1 % of the budget, or 90M LOC/s
 			-> Rework to queues instead of AST walking.
 			~ 0.9 % of the budget, or 110M LOC/s

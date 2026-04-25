@@ -52,8 +52,8 @@ INCLUDE "../../parser/ids.rl"
 
 	Preparsed {
 		Span: parser::TokenSpan;
-		Ns: scoper::Namespace \;
-		Ms: parser::Members *;
+		Ns: U2;
+		Ms: U4;
 	}
 	PreparsedBody {
 		Core: Preparsed;
@@ -80,15 +80,23 @@ INCLUDE "../../parser/ids.rl"
 	Bodies:            PreparsedBody           -PostParseQueue;
 	SpecialCtorBodies: PreparsedSpecialCtorBody-PostParseQueue;
 
+	Namespaces: scoper::Namespace * -std::Vec;
+	MemberScopes: parser::Members * -std::Vec;
+
 	init() VOID {
 		RootScope.Entries.reserve(1<<16);
 		FileTokens.reserve(2048);
 
 		Types.init();
-		Expressions.init();
-		Bodies.init();
 		Arguments.init();
 		Returns.init();
+
+		Expressions.init();
+		Bodies.init();
+		SpecialCtorBodies.init();
+
+		Namespaces.reserve(2048);      Namespaces += NULL;
+		MemberScopes.reserve(16 * KI); MemberScopes += NULL;
 	}
 }
 ::rlc::compiler::stage1::parse CodeParser
@@ -111,9 +119,9 @@ INCLUDE "../../parser/ids.rl"
 	ShrunkMemberAlloc:      std::temp::Alloc;
 
 	// Gets reset after every file.
-	MemberScopes: {BOOL, parser::Members \} -std::Vec; // we might also want to be registering other things here, such as a list of all functions, or all return types or something. And we might want to have a union type that we can patch in the post-pass, so that we do not need to move data around.
+	FileOuterMemberScopes: parser::Members \ -std::Vec; // we might also want to be registering other things here, such as a list of all functions, or all return types or something. And we might want to have a union type that we can patch in the post-pass, so that we do not need to move data around.
 
-	{}: MemberScopes := :reserve(2048),
+	{}: FileOuterMemberScopes := :reserve(2048),
 		LocalDeclLut := :reserve(1<<16),
 		PessimisticMemberAlloc := :custom(128*KI, 128*KI),
 		ShrunkMemberAlloc := :custom(128*KI, 128*KI);
@@ -121,8 +129,8 @@ INCLUDE "../../parser/ids.rl"
 	STATIC name() CHAR#[#] -- := "code preparser";
 
 
-	Ns: scoper::Namespace *;
-	Ms: parser::Members *;
+	Ns: U2;
+	Ms: U4;
 
 	handle_job(in: Input &, out: Output *) VOID
 	{
@@ -140,6 +148,8 @@ INCLUDE "../../parser/ids.rl"
 		LocalDeclLut.clear_reuse();
 		LocalDeclLut.resize(in.LocalIds);
 
+		member_scopes_start ::= ##MemberScopes;
+
 		// 2. pre-parse global scope entries into the global scope tree. Populate global scope lookups. Function bodies, expressions, and type names are skipped via matching parentheses.
 		p: rlc::parser::Parser(FileTokens[:ok(in.File)], in.File);
 		WHILE(!p.eof())
@@ -147,9 +157,9 @@ INCLUDE "../../parser/ids.rl"
 
 		// 3. Post-process the member scopes in the file, giving them the ##LocalDeclIds capacity for their LUTs (i.e., no bounds checks needed), and create scope-relative lookup tables.
 		ids ::= LocalDecls;
-		FOR(MemberScopes!) finalise_members(IT.(1));
-		FOR(MemberScopes!) IF(IT.(0)) IT.(1)->post_process(NULL, NULL, ids);
-		MemberScopes.clear_reuse();
+		FOR(MemberScopes![FROM member_scopes_start]) finalise_members(IT);
+		FOR(FileOuterMemberScopes!) IT->post_process(NULL, NULL, ids);
+		FileOuterMemberScopes.clear_reuse();
 
 		ShrunkMemberAlloc.clear_and_optimise(4*KI);
 		PessimisticMemberAlloc.clear_and_optimise(4*KI);
@@ -215,7 +225,7 @@ INCLUDE "../../parser/ids.rl"
 		template: parser::TokenSpan) VOID
 	{
 		old_ns ::= Ns;
-		Ns := scope;
+		Ns := scope->Id;
 
 		// Namespace entries use the global identifier IDs. Never register a local ID in a namespace.
 		// All other scopes use file-local IDs for members, allowing for smaller LUTs and better cache coherence.
@@ -303,6 +313,7 @@ INCLUDE "../../parser/ids.rl"
 					ns_entry ::= mempool::[scoper::Namespace]alloc_unhashed_t();
 					child_ns := ns_entry.(0);
 					child_ns->{};
+					child_ns->Id := ##Namespaces; Namespaces += child_ns;
 					pentry->Type := :Namespace;
 					pentry->Mem := :Namespace(ns_entry.(1));
 					scope->Namespaces += (global_decl_name.V, ns_entry.(1));
@@ -547,6 +558,8 @@ INCLUDE "../../parser/ids.rl"
 		ctors: parser::Constructors *,
 		needs_inner_lut: BOOL) std::temp::Alloc::Checkpoint
 	{
+		m->Id := ##MemberScopes; MemberScopes += m;
+
 		s ::= PessimisticMemberAlloc.save();
 		max_cap ::= LocalIds;
 		m->IdLut := PessimisticMemberAlloc.[parser::Members::LUTEntry-Handle]alloc_raw_array(max_cap)[FOR 0];
@@ -555,7 +568,8 @@ INCLUDE "../../parser/ids.rl"
 		m->InnerLutV := NULL;
 		m->InnerLutNV := NULL;
 
-		MemberScopes += (!IsInMember && needs_inner_lut, m);
+		IF(!IsInMember && needs_inner_lut)
+			FileOuterMemberScopes += m;
 
 		IF(ops)
 		{
@@ -1066,7 +1080,7 @@ INCLUDE "../../parser/ids.rl"
 
 		++IsInMember;
 		old_ms ::= Ms;
-		Ms := scope;
+		Ms := scope->Id;
 
 		TRY SWITCH(p.type())
 		{

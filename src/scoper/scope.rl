@@ -82,6 +82,9 @@ INCLUDE "../mempool.rl"
 		// Full-size mapping for all identifiers. For relative lookups from inside the namespace. We have split this into two because we only want to look up one at a time. We could also use a fused entry like the other lookup table, though. We could also use duplicate Entries or something, and follow the same structure as Lut. However, the Lut only has that indirection because we want to save on pointer sizes due to the massive, sparse, 64K overallocation. These however are not overallocated, although still sparse. Ideally, we would also use a version of this for an OuterLut, and then simply throw away Lut. That way, we could also unify namespace and member scopes again, maybe? Although we have to differentiate anyway since members use a different identifier for their lookups.
 		InnerLutV: VEntry[];
 		InnerLutNV: NVEntry[];
+
+		Id: U2;
+
 		{}:
 			Lut := std::heap::alloc.[Entry-Handle]alloc_array(1<<16),
 			Exists := std::heap::alloc.[U1]alloc_array((1<<16) / 8),

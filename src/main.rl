@@ -19,6 +19,7 @@ INCLUDE "hashmap.rl"
 	mempool::init();
 	rlc::ident::init();
 	src::init::file_rl();
+	::rlc::compiler::stage1::parse::init();
 }
 
 main(args: CHAR[#][#]) INT

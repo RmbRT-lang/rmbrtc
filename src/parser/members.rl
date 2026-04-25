@@ -154,6 +154,7 @@ INCLUDE "../mempool.rl"
 
 	Templates: :TemplateCtx;
 	Fields: U2;
+	Id: U4;
 
 	ensure(id: rlc::FileDeclIdentifier) LUTEntry-Handle {
 		IF(id.V < ##IdLut)
