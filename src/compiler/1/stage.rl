@@ -73,9 +73,16 @@ INCLUDE "iddedupler.rl"
 
 			threads: ThreadMasks;
 
+			start ::= NOW;
 			IdDedupler.launch_worker(threads.IdDedupler);
 			FOR(Tokenisers) IT.launch_worker(threads.Tokenisers[IOTA]);
 			Loader.launch_worker(threads.Loader);
+			end ::= NOW;
+			IF(Build->VERBOSE_TIMING)
+				term::info(NULL, "Phase 1: it took ",
+					std::io::format::dec_x((end-start) / (CPU_TICK_RATE/MEGA), :Pad(5)),
+					"µs to start all threads");
+
 			//Parser.launch_worker(); // we run the parser pipe in the main thread, which saves us the sleep/notify and additional thread creation.
 		}
 	}
@@ -118,6 +125,51 @@ INCLUDE "iddedupler.rl"
 			budget_1 ::= (10000 * target) / lines_per_second_1;
 			budget_2 ::= (10000 * target) / lines_per_second_2;
 
+			IF(Build->VERBOSE_TIMING)
+			term::info(NULL, "Phase 1: ", std::io::format::dec(##src::fileNames), "F (", std::io::format::dec(lines), "L, ", std::io::format::dec(size), "B) in ",
+				std::io::format::dec(phase_1_time / 1000000), ".", std::io::format::dec_x((phase_1_time % 1000000) / 1000, 3),
+				"+", std::io::format::dec(post_time / 1000000), ".", std::io::format::dec_x((post_time % 1000000) / 1000, 3), "ms. ",
+				std::io::format::dec(##ident::strings), "|",
+				std::io::format::dec(ident::GlobalDeclCount), " ids"
+				", ",
+
+				std::io::format::dec_x(Loader.SlaveLocal.FirstWait / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(Loader.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(Loader.SlaveLocal.PostJobHook / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(Loader.SlaveLocal.Waiting / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs load, ",
+
+				std::io::format::dec_x(Tokenisers[0].SlaveLocal.FirstWait / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(Tokenisers[0].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(Tokenisers[0].SlaveLocal.PostJobHook / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(Tokenisers[0].SlaveLocal.Waiting / (CPU_TICK_RATE/MEGA), :Pad(5)),
+
+				"+",std::io::format::dec_x(Tokenisers[1].SlaveLocal.FirstWait / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(Tokenisers[1].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(Tokenisers[1].SlaveLocal.PostJobHook / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(Tokenisers[1].SlaveLocal.Waiting / (CPU_TICK_RATE/MEGA), :Pad(5)),
+
+				"+",std::io::format::dec_x(Tokenisers[2].SlaveLocal.FirstWait / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(Tokenisers[2].SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(Tokenisers[2].SlaveLocal.PostJobHook / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(Tokenisers[2].SlaveLocal.Waiting / (CPU_TICK_RATE/MEGA), :Pad(5)),
+				"µs tok, ",
+
+				std::io::format::dec_x(IdDedupler.SlaveLocal.FirstWait / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(IdDedupler.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(IdDedupler.SlaveLocal.PostJobHook / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(IdDedupler.SlaveLocal.Waiting / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs dedup, ",
+
+				std::io::format::dec_x(Parser.SlaveLocal.FirstWait / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(Parser.SlaveLocal.Processing / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(Parser.SlaveLocal.PostJobHook / (CPU_TICK_RATE/MEGA), :Pad(5)), "|",
+				std::io::format::dec_x(Parser.SlaveLocal.Waiting / (CPU_TICK_RATE/MEGA), :Pad(5)), "µs parse",
+				" // ",
+				std::io::format::dec((end_time - start_time) / size), ".", std::io::format::dec_x((((end_time - start_time) % size) * 100) / size, 2), "ns/B, ",
+				std::io::format::dec((lines_per_second + 500) / MEGA), ".", std::io::format::dec_x(((lines_per_second + 500) % MEGA) / 1000, 3), "ML/s, ",
+				std::io::format::dec(budget_1 / 100), ".", std::io::format::dec_x(budget_1 % 100, 2), "%+",
+				std::io::format::dec(budget_2 / 100), ".", std::io::format::dec_x(budget_2 % 100, 2), "% of budget"
+				);
+			ELSE
 			term::info(NULL, "Phase 1: ", std::io::format::dec(##src::fileNames), "F (", std::io::format::dec(lines), "L, ", std::io::format::dec(size), "B) in ",
 				std::io::format::dec(phase_1_time / 1000000), ".", std::io::format::dec_x((phase_1_time % 1000000) / 1000, 3),
 				"+", std::io::format::dec(post_time / 1000000), ".", std::io::format::dec_x((post_time % 1000000) / 1000, 3), "ms. ",

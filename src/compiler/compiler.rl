@@ -39,6 +39,7 @@ INCLUDE "2/stage.rl"
 		LegacyScoping: BOOL;
 		SINGLE_THREADED: BOOL;
 		TRACK_FILE_IDSETS: BOOL;
+		VERBOSE_TIMING: BOOL;
 
 		{type: BuildType} INLINE:
 			Type(type),
@@ -84,6 +85,7 @@ INCLUDE "2/stage.rl"
 			} FOR(len < ##incs; incs := incs[AFTER len])
 
 			SINGLE_THREADED := std::str::eq(std::str::c(detail::getenv("RLC_ST"!)[]), "1");
+			VERBOSE_TIMING := std::str::eq(std::str::c(detail::getenv("RLC_VT"!)[]), "1");
 			TRACK_FILE_IDSETS := std::str::eq(std::str::c(detail::getenv("RLC_IDS"!)[]), "1");
 
 			term::info(NULL,
