@@ -53,6 +53,9 @@ INCLUDE "type-processor.rl"
 			next ::= &(&IT)[##RANGE == IOTA+prefetch ?? 0 : prefetch];
 			prefetch_tokens(next->Span);
 
+			PREFETCH_READ &::rlc::compiler::stage1::parse::Namespaces[:ok(next->Ns)];
+			PREFETCH_READ &::rlc::compiler::stage1::parse::MemberScopes[:ok(next->Ms)];
+
 			job(IT.Span,
 				::rlc::compiler::stage1::parse::Namespaces[:ok(IT.Ns)],
 				::rlc::compiler::stage1::parse::MemberScopes[:ok(IT.Ms)],
@@ -63,6 +66,9 @@ INCLUDE "type-processor.rl"
 		{
 			next ::= &(&IT)[##RANGE == IOTA+prefetch ?? 0 : prefetch];
 			prefetch_tokens(next->Span);
+
+			PREFETCH_READ &::rlc::compiler::stage1::parse::Namespaces[:ok(next->Ns)];
+			PREFETCH_READ &::rlc::compiler::stage1::parse::MemberScopes[:ok(next->Ms)];
 
 			IF!(IT.Span) CONTINUE;
 			p ::= parser(IT.Span);
@@ -77,6 +83,9 @@ INCLUDE "type-processor.rl"
 		{
 			next ::= &(&IT)[##RANGE == IOTA+prefetch ?? 0 : prefetch];
 			prefetch_tokens(next->Core.Span);
+
+			PREFETCH_READ &::rlc::compiler::stage1::parse::Namespaces[:ok(next->Core.Ns)];
+			PREFETCH_READ &::rlc::compiler::stage1::parse::MemberScopes[:ok(next->Core.Ms)];
 
 			job_sig(IT.Core.Span,
 				::rlc::compiler::stage1::parse::Namespaces[:ok(IT.Core.Ns)],

@@ -124,6 +124,10 @@ INCLUDE "2/stage.rl"
 			~ 0.9 % of the budget, or 110M LOC/s
 			-> Prefetching
 			~ 0.82 % of the budget, or 120M LOC/s (33% speed increase)
+			-> Condensed queues
+			~ 0.9 % of the budget, or 110M LOC/s
+			-> Prefetching the queue (more complex lookup pattern confused the HW prefetcher)
+			~ 0.82% of the budget, or 120M LOC/s
 			[/] preparse2:
 			           [X] type+code                 [ ] res.type+code
 			[X] types parser ----> [ ] type/symbol resolver ---> [ ] IR0 generator? (TRASM/??)

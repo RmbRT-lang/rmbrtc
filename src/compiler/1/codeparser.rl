@@ -53,7 +53,7 @@ INCLUDE "../../parser/ids.rl"
 	Preparsed {
 		Span: parser::TokenSpan;
 		Ns: U2;
-		Ms: U4;
+		Ms: U2;
 	}
 	PreparsedBody {
 		Core: Preparsed;
@@ -130,7 +130,7 @@ INCLUDE "../../parser/ids.rl"
 
 
 	Ns: U2;
-	Ms: U4;
+	Ms: U2;
 
 	handle_job(in: Input &, out: Output *) VOID
 	{
