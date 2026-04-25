@@ -80,6 +80,7 @@ INCLUDE "../../parser/ids.rl"
 	Bodies:            PreparsedBody           -PostParseQueue;
 	SpecialCtorBodies: PreparsedSpecialCtorBody-PostParseQueue;
 
+	// TODO: instead of pointers, just store them here directly, so that we touch fewer cachelines when looking them up (fixed address calculation).
 	Namespaces: scoper::Namespace * -std::Vec;
 	MemberScopes: parser::Members * -std::Vec;
 
@@ -95,7 +96,7 @@ INCLUDE "../../parser/ids.rl"
 		Bodies.init();
 		SpecialCtorBodies.init();
 
-		Namespaces.reserve(2048);      Namespaces += NULL;
+		Namespaces.reserve(2048);      Namespaces += &RootScope;
 		MemberScopes.reserve(16 * KI); MemberScopes += NULL;
 	}
 }
