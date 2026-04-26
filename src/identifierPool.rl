@@ -55,9 +55,9 @@ Looking up a member in a local scope:
 	// Big global hashmap with 4Ki buckets (12 bit selector), and 10-way associative cache without indirection.
 	buckets: @(PAGE) HashBucket[2 * 2<<10] (NOINIT); // rely on .bss being 0-initialised.
 	// Overflow from buckets gets accumulated into more centralised, unordered sets. Ideally, none of these ever get used, but we still keep a few of them to limit the worst-case cost of vector reallocation and linear searches. We use unordered because we assume they will usually be small. You would probably need a gigantic codebase to trigger the pathological case, but then you should rather tweak the buckets instead or improve the hash function.
-	overflow: std::[OverflowItem]Vec[128];
+	overflow: std::[OverflowItem]Vec[128] (NOINIT);
 
-	alloc: std::temp::Alloc := :custom(65536, 65536);
+	name_alloc: std::temp::Alloc := :custom(65536, 65536);
 	strings: CHAR#[#]-std::Vec;
 	GlobalDeclCount: U4 := 1;
 	GlobalDeclsLut: U2[1<<16] (NOINIT);
@@ -65,6 +65,25 @@ Looking up a member in a local scope:
 	get(id: Identifier) CHAR#[#] -- := id.V < ##strings ?? strings[:ok(id.V)] : "<INVALID IDENT>"[#];
 
 	get_global_decl(id: Identifier) GlobalDeclIdentifier -- := GlobalDeclsLut[id.V];
+
+
+	GlobalToFileDeclAlloc: std::temp::Alloc := :custom(MI, MI);
+	LocalToFileDeclAlloc:  std::temp::Alloc := :custom(MI, MI);
+
+	GlobalToFileDeclLUTs: FileDeclIdentifier[#][2048] (NOINIT);
+	LocalToFileDeclLUTs: FileDeclIdentifier[][2048] (NOINIT);
+
+	get_file_decl_from_local(file: src::File, id: FileLocalIdentifier) FileDeclIdentifier --
+		:= LocalToFileDeclLUTs[file][id.V];
+	get_file_decl_from_global(file: src::File, id: Identifier) FileDeclIdentifier --
+	{
+		slice ::= GlobalToFileDeclLUTs[file];
+		slice_raw ::= slice[];
+
+		oor ::= (id.V >= ##slice);
+		idx: U2 := oor ?? 0 : id.V;
+		= slice_raw[idx];
+	}
 }
 
 ::rlc::ident init() VOID
@@ -143,7 +162,7 @@ Looking up a member in a local scope:
 				IF(IT == 0)
 				{
 					id ::= ##ident::strings;
-						copy ::= <CHAR *>(alloc.alloc_raw_unaligned(##preimage));
+						copy ::= <CHAR *>(name_alloc.alloc_raw_unaligned(##preimage));
 						std::mem::cpy(copy[], preimage[], ##preimage);
 						ident::strings += copy[FOR ##preimage];
 
@@ -184,7 +203,7 @@ Looking up a member in a local scope:
 
 		// insert into the overflow bucket.
 		id ::= ##ident::strings;
-			copy ::= <CHAR *>(alloc.alloc_raw_unaligned(##preimage));
+			copy ::= <CHAR *>(name_alloc.alloc_raw_unaligned(##preimage));
 			std::mem::cpy(copy[], preimage[], ##preimage);
 			ident::strings += copy[FOR ##preimage];
 

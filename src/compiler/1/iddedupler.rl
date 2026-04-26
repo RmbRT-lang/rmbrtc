@@ -15,11 +15,7 @@ INCLUDE "../../parser/parser.rl"
 		File: src::File;
 	}
 
-	// Parser stack and temporaries.
-	PRIVATE Alloc: std::temp::Alloc;
-
 	{}:
-		Alloc := :custom(MI, MI),
 		IdHashes := :reserve(1<<16),
 		Identifiers := :reserve(1<<16),
 		IdToks := :reserve(1<<16)

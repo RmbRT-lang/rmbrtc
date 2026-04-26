@@ -190,33 +190,6 @@ INCLUDE "types.rl"
 		}
 	}
 
-
-
-	// Requests[]
-	// Interpreters[]
-	//  -- Group by operation for homogeneous code paths
-
-	ByteCodeSpan {
-		Start: U4;
-		End: U4;
-	}
-
-
-
-	TYPE InterleavedByteCodes := TAGGED types::ByteCode[128];
-	MAX_REQUESTS: U4 # := ###InterleavedByteCodes;
-
-	RequestContext { Ns: scoper::Namespace \; Ms: parser::Members *; }
-
-	RequestBatch
-	{
-		Code: InterleavedByteCodes[#]; // Bytecode sequences of all requests, interleaved and concatenated.
-		Contexts: RequestContext[###InterleavedByteCodes];
-		Count: U2; // number of requests.
-		Positions: src::Position[#];
-		RequestsByStartingByteCode: ByteCodeSpan[#][TABLE ENUM types::ByteCode]; // Per starting bytecode: bucket of bytecode sequences.
-	}
-
 	// Ring buffer.
 	Bucket {
 		Start: U2; End: U2;
@@ -232,7 +205,7 @@ INCLUDE "types.rl"
 
 	// Many bytecode interpreters.
 	Processor {
-		Requests: RequestBatch;
+		Requests: types::RequestBatch;
 		Interpreters: Interpreter[1024];
 
 		Buckets: Bucket[TABLE ENUM types::ByteCode];

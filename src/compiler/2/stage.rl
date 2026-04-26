@@ -31,6 +31,12 @@ INCLUDE "postparser.rl"
 		term::info(NULL,
 			"Phase 2: ", std::io::format::dec(delta / MEGA), ".", std::io::format::dec_x((delta % MEGA) / 1000, 3), "ms",
 			", ", std::io::format::dec(Parser.CurrentRequest), " types parsed, ",
+			std::io::format::dec(##stage1::parse::Types), " types, ",
+			std::io::format::dec(##stage1::parse::Arguments), " signatures, ",
+			std::io::format::dec(##stage1::parse::Returns), " returns, ",
+			std::io::format::dec(##stage1::parse::Expressions), " exprs, ",
+			std::io::format::dec(##stage1::parse::Bodies), " bodies, ",
+			std::io::format::dec(##stage1::parse::SpecialCtorBodies), " special bodies, ",
 			std::io::format::dec((lines_per_second + 500) / MEGA), ".", std::io::format::dec_x(((lines_per_second + 500) % MEGA) / 1000, 3), "ML/s, ",
 			std::io::format::dec(budget / 100), ".", std::io::format::dec_x(budget % 100, 2), "% of budget");
 	}

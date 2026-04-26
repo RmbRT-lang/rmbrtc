@@ -1,4 +1,5 @@
 INCLUDE "types.rl"
+INCLUDE "values.rl"
 INCLUDE "type-processor.rl"
 
 ::rlc::compiler CodePostParser
@@ -9,9 +10,9 @@ INCLUDE "type-processor.rl"
 	// TODO PERFORMANCE: we want to be able to iterate over all fields of a class, and all functions, etc.. So we want the member scope to already have pre-grouped homogeneous arrays. We can have one global linear allocator for that, though nested classes would break that. OR, we do not even go over it per-class, but just emit a note when parsing. Then, the post-parser can iterate over homogeneous collections. ACTUALLY: we want to only have one huge collection of all types that need to be parsed. And maybe one collection of all arguments and signatures or something. And then we just blaze through those without having to walk any scope tree. That should not be much more work for the preparser. And then variables or functions would simply have a handle to the workload. We could then have a writeback phase maybe that lets us gather all related information for a function etc. in one spot? Idk.
 	// We can do the same for function bodies. We can set up a pointer to the namespace and member scope we are in, and a token span. Just jobs for later parsing. Then, we can also reuse the same system for when types depend on values, or when values depend on types. We just add more jobs. And then we can do one huge evaluation of everything, ideally interleaved. That should also solve most of our other problems. We could also do a similar thing for statements within a body, I guess. Though we also have a sequential dependency between things in a body, so we might have to go for interleaved but sequential execution here.
 
-	Code: type::InterleavedByteCodes-std::Vec;
-	Contexts: type::RequestContext[###type::InterleavedByteCodes];
-	Spans: type::ByteCodeSpan[###type::InterleavedByteCodes];
+	Code: types::InterleavedByteCodes-std::Vec;
+	Contexts: types::RequestContext[###types::InterleavedByteCodes];
+	Spans: types::ByteCodeSpan[###types::InterleavedByteCodes];
 	CurrentRequest: U4;
 	CurrentRequestStart: U4;
 	CurrentRequestLength: U2;
@@ -96,6 +97,17 @@ INCLUDE "type-processor.rl"
 				NULL, //>IT.Core.Ms, //::rlc::compiler::stage1::parse::MemberScopes[:ok(IT.Core.Ms)],
 				NULL);
 		}
+
+		FOR(compiler::stage1::parse::Expressions.Buckets!) FOR(IT)
+		{
+			next ::= &(&IT)[##RANGE == IOTA+prefetch ?? 0 : prefetch];
+			prefetch_tokens(next->Span);
+
+			CurrentRequestNs := IT.Ns;
+			CurrentRequestMs := IT.Ms;
+
+			job_exp(IT.Span);
+		}
 	}
 
 
@@ -155,30 +167,71 @@ INCLUDE "type-processor.rl"
 		p.expect_done();
 	}
 
+	job_exp(
+		exp: parser::TokenSpan &) VOID --
+	{
+		p ::= parser(exp);
+		PostParse ::= post_parse_expression(p);
+		p.expect_done();
+	}
+
+	// Expression plan: we differentiate between constant expressions that are available to the type system and those that aren't. Only global integer constant variables get evaluated at compile time. Global variables cannot have runtime initialisers, but other types (such as vectors) cannot be used as compile time constants for stuff like array bounds. Non-integer types will be evaluated at compile time AFTER all type checking is completed, and will have their initialised state baked into the .DATA/.CDATA section (such as lookup tables). We do not want to have to be able to run compile time functions in order to construct types. This means global constant variables cannot call functions as initialisers. Maybe we can later on declare some special kind of compile time functions. Actually, function calls are fine for global initialisers, as long as those functions can be run at compile time. But we do not allow any functions to be run before typing the global scope. So a global integer constant initialised by a function call will still get its initial value baked into .CDATA, but that value will not be available at type checking time.
+
+	(/ Sequence:
+
+		- Parse and resolve all types in global/static scopes, but keep expressions in the types (such as array sizes) as placeholders.
+		- For all global variables, do a check whether the type is a constant integer. These are flagged for evaluation during type-checking.
+		- Parse all initialisers of global integer constants, and all expressions in types, and try to evaluate these as integer constants. Global constant initialisers abort when they encounter something that is not a compile-time constant (like a function call for example), flagging that constant as deferred to after type-checking. Cyclical dependencies directly trigger a compilation error.
+			- Do we want all global constants evaluated before we start processing any bodies? This could be a good guarantee for a more efficient implementation.
+			- We might have to instantiate templated constants already, and also we need to be able to access type sizes already.
+			- Types cannot depend on deferred or cyclical constants.
+		- Parse bodies. Any constants encountered during parsing get inlined. We can also compute deferred constants at this time.
+			- Although, we also want to have the same restriction on expression-dependent types in functions, I think -- so, no deferred expressions in types in bodies?
+
+		NOTE: if we used a unified bytecode for types and values, and also had one unified interpreter, we could have "turing-complete" arbitrary compile time execution during type checking. Problems:
+			- this could be expensive, because it might be hard to batch-process or multi-thread. (contention, etc.)
+			- this could lead to, and encourage, ugly programs.
+			- this obfuscates what types and sizes we have from the programmer, and we want high clarity / readability of the code.
+	/)
+
+
+	// runtime expression
+	post_parse_expression(p: parser::Parser &) :? --
+	{
+		parse_expression(p);
+		= :?;
+	}
+	submit_expression_batch() VOID {}
+	end_expression_request() :? --
+	{ = :?; }
+	emit_valuecode(op: TAGGED values::ByteCode) VOID --
+	{
+	}
+
 
 	// Workflow: one thread (or multiple threads?) traverses the root scope, and one more thread receives requests to deduplicate types. We want to create entries for the instantiator, so that each type first gets deduplicated and then checked whether it already got instantiated.
 	// We pass requests in batches to reduce the synchronisation overhead.
 
-	submit_batch() VOID { }
-	end_request() :? --
+	submit_type_batch() VOID { }
+	end_type_request() :? --
 	{
-		Spans[CurrentRequest % ###type::InterleavedByteCodes] := (CurrentRequestStart, CurrentRequestLength + CurrentRequestLength);
+		Spans[CurrentRequest % ###types::InterleavedByteCodes] := (CurrentRequestStart, CurrentRequestLength + CurrentRequestLength);
 		CurrentRequestStart += CurrentRequestLength;
 		CurrentRequestLength := 0;
 
-		IF!(++CurrentRequest % ###type::InterleavedByteCodes) submit_batch();
+		IF!(++CurrentRequest % ###types::InterleavedByteCodes) submit_type_batch();
 
 		= :?;
 	}
 
-	emit_bytecode(op: TAGGED types::ByteCode) VOID --
+	emit_typecode(op: TAGGED types::ByteCode) VOID --
 	{
 		IF(##Code == CurrentRequestLength)
 		{
 			Code.prepare_pushback();
 			Code.set_size_ok(CurrentRequestLength+1);
 		}
-		Code[:ok(CurrentRequestLength++)][CurrentRequest % ###type::InterleavedByteCodes]
+		Code[:ok(CurrentRequestLength++)][CurrentRequest % ###types::InterleavedByteCodes]
 			:= op;
 	}
 
@@ -190,21 +243,21 @@ INCLUDE "type-processor.rl"
 			SWITCH(p.stype().AuxKeyword)
 			{
 			:this:
-			{ p.next(); emit_bytecode(:MakeThisType(p.consume_s(:PrefixOrPostfixOp(:exclamationMark)))); }
-			:void: { p.next(); emit_bytecode(:MakeVoid); }
-			:null: { p.next(); emit_bytecode(:MakeNullType); }
+			{ p.next(); emit_typecode(:MakeThisType(p.consume_s(:PrefixOrPostfixOp(:exclamationMark)))); }
+			:void: { p.next(); emit_typecode(:MakeVoid); }
+			:null: { p.next(); emit_typecode(:MakeNullType); }
 			}
 		:Declaration:
 			SWITCH(p.stype().Declaration)
 			{
 			:enum:
-			{ p.next(); emit_bytecode(:GetUnionTag); type_parse_symbol(p); }
+			{ p.next(); emit_typecode(:GetUnionTag); type_parse_symbol(p); }
 			:tagged:
-			{ p.next(); emit_bytecode(:MakeTaggedUnion); type_parse_symbol(p); }
+			{ p.next(); emit_typecode(:MakeTaggedUnion); type_parse_symbol(p); }
 			}
 		:BuiltinType:
 		{
-			emit_bytecode(:MakeBuiltinType(p.stype().BuiltinType));
+			emit_typecode(:MakeBuiltinType(p.stype().BuiltinType));
 			p.next();
 		}
 		:Identifier: { type_parse_symbol(p); }
@@ -217,10 +270,10 @@ INCLUDE "type-processor.rl"
 				IF[parse_symbol](id ::= p.consume_p(:Identifier))
 					IF(p.consume_s(:BinaryOp(:dot)))
 					{
-						emit_bytecode(:MakeTemplateSymbolType(id->Identifier));
+						emit_typecode(:MakeTemplateSymbolType(id->Identifier));
 						post_parse_type(p);
 					} ELSE
-						emit_bytecode(:MakeSymbolType(id->Identifier));
+						emit_typecode(:MakeSymbolType(id->Identifier));
 				ELSE
 				{
 					STATIC special_table: TAGGED tok::Type[TABLE types::SpecialSymbol](
@@ -234,7 +287,7 @@ INCLUDE "type-processor.rl"
 					FOR(special_table)
 						IF(p.consume_s(IT))
 						{
-							emit_bytecode(:MakeSpecialSymbolType(IOTA));
+							emit_typecode(:MakeSpecialSymbolType(IOTA));
 							BREAK [parse_symbol];
 						}
 					p.fail("expected special symbol ('?', '!', '<', '>', or '<>')");
@@ -254,7 +307,7 @@ INCLUDE "type-processor.rl"
 					FOR(; p.consume_s(:Punctuation(:comma)); elems++)
 						post_parse_type(p);
 					p.expect_s(:Punctuation(:braceClose));
-					emit_bytecode(:MakeTuple(elems));
+					emit_typecode(:MakeTuple(elems));
 				}
 			}
 			:parentheseOpen:
@@ -276,7 +329,7 @@ INCLUDE "type-processor.rl"
 
 				p.expect_s(:Punctuation(:parentheseClose));
 
-				emit_bytecode(:MakeFnSig(args));
+				emit_typecode(:MakeFnSig(args));
 			}
 			}
 		:PostfixOp:
@@ -284,7 +337,7 @@ INCLUDE "type-processor.rl"
 			{
 			:questionMark: {
 				p.next();
-				emit_bytecode(:MakeAutoType);
+				emit_typecode(:MakeAutoType);
 			}
 			}
 		} CATCH(err: CHAR#*) { p.fail("expected type:\n", std::str::c(err[])); }
@@ -305,9 +358,9 @@ INCLUDE "type-processor.rl"
 				{
 					p.next();
 					IF(p.consume_s(:Punctuation(:bracketClose))) // []
-						emit_bytecode(:MakeSlice);
+						emit_typecode(:MakeSlice);
 					ELSE IF(p.consume_ss(:Punctuation(:hash), :Punctuation(:bracketClose))) // [#]
-						emit_bytecode(:MakeSizedSlice);
+						emit_typecode(:MakeSizedSlice);
 					ELSE // [dimension]
 					{
 						p.skip_until_nesting_ends();
@@ -324,37 +377,37 @@ INCLUDE "type-processor.rl"
 						?? types::Constness::Const
 						:  types::Constness::MaybeConst);
 
-					emit_bytecode(:AddModifier(mod));
+					emit_typecode(:AddModifier(mod));
 				}
 				:tripleDot:
 				{
 					p.next();
-					emit_bytecode(:ExpandVariadicType);
+					emit_typecode(:ExpandVariadicType);
 				}
 				}
 			:PrefixOrBinaryOp:
 				SWITCH(p.stype().PrefixOrBinaryOp)
 				{
-				:asterisk: { p.next(); emit_bytecode(:MakePointer); }
+				:asterisk: { p.next(); emit_typecode(:MakePointer); }
 				// T-std::Vector  -> std::[T]Vector
 				// V-std::[K]Map  -> std::[K;V]Map
 				:minus:
 				{
 					p.next();
 					type_parse_symbol(p);
-					emit_bytecode(:AddTemplateArg);
+					emit_typecode(:AddTemplateArg);
 				}
 				:amp: {
 					p.next();
 					m: types::PackedModifier;
 					m.set0_region(:UnknownReference);
-					emit_bytecode(:AddModifier(m));
+					emit_typecode(:AddModifier(m));
 				}
 				:doubleAmp: {
 					p.next();
 					m: types::PackedModifier;
 					m.set0_region(:ExpiringReference);
-					emit_bytecode(:AddModifier(m));
+					emit_typecode(:AddModifier(m));
 				}
 				:plus: {
 					p.next(); // T::Type+ is a hack for C++ codegen.
@@ -363,7 +416,7 @@ INCLUDE "type-processor.rl"
 			:PrefixOp:
 				SWITCH(p.stype().PrefixOp)
 				{
-				:backslash: { p.next(); emit_bytecode(:MakeNonNullPointer); }
+				:backslash: { p.next(); emit_typecode(:MakeNonNullPointer); }
 				}
 			:BinaryOp:
 				SWITCH(p.stype().BinaryOp)
@@ -373,12 +426,12 @@ INCLUDE "type-processor.rl"
 					p.next();
 					m: types::PackedModifier;
 					m.set0_sharedness(:ThreadShared);
-					emit_bytecode(:AddModifier(m));
+					emit_typecode(:AddModifier(m));
 				}
 				:circumflex:
 				{
 					p.next();
-					emit_bytecode(:MakeProcessHandle);
+					emit_typecode(:MakeProcessHandle);
 				}
 				}
 			:PrefixOrPostfixOp:
@@ -390,7 +443,7 @@ INCLUDE "type-processor.rl"
 		} FOR(progress != p.progress(); progress := p.progress())
 		CATCH(err: CHAR#*) { p.fail("expected type:\n", std::str::c(err[])); }
 
-		= end_request();
+		= end_type_request();
 	}
 
 	// ::symbol
@@ -417,7 +470,7 @@ INCLUDE "type-processor.rl"
 		}
 
 		IF(p.consume_s(:PrefixOrPostfixOp(:exclamationMark)))
-			emit_bytecode(:MakeNoDecayType);
+			emit_typecode(:MakeNoDecayType);
 	}
 
 	// (RootScope)::rootSymbol    -> :RootScope, :LookupChild(rootSymbol)
@@ -448,12 +501,12 @@ INCLUDE "type-processor.rl"
 		IF(p.consume_s(:Punctuation(:doubleColon)))
 		{
 			// we want the child as a scope.
-			emit_bytecode(:LookRootScope(name));
+			emit_typecode(:LookRootScope(name));
 			type_parse_symbol_child(p);
 		} ELSE
 		{
 			// we want the child as a type.
-			emit_bytecode(:LookRootType(name));
+			emit_typecode(:LookRootType(name));
 		}
 	}
 
@@ -470,12 +523,12 @@ INCLUDE "type-processor.rl"
 		IF(p.consume_s(:Punctuation(:doubleColon)))
 		{
 			// we want the child as a scope.
-			emit_bytecode(:LookRelativeScope(name));
+			emit_typecode(:LookRelativeScope(name));
 			type_parse_symbol_child(p);
 		} ELSE
 		{
 			// we want the child as a type.
-			emit_bytecode(:LookRelativeType(name));
+			emit_typecode(:LookRelativeType(name));
 		}
 	}
 
@@ -494,7 +547,7 @@ INCLUDE "type-processor.rl"
 		WHILE(p.consume_s(:Punctuation(:doubleColon)))
 		{
 			// we want the child as a scope.
-			emit_bytecode(:LookChildScope(name));
+			emit_typecode(:LookChildScope(name));
 
 			// parse next child.
 			IF(p.match_s(0, :Punctuation(:bracketOpen)))
@@ -506,14 +559,23 @@ INCLUDE "type-processor.rl"
 		}
 
 		// we want the child as a type.
-		emit_bytecode(:LookChildType(name));
+		emit_typecode(:LookChildType(name));
 	}
+
+	token_span(start: U4, p: parser::Parser &) parser::TokenSpan --
+		:= (p.File, start, p.progress());
+
+	emit_expression_job(parser::TokenSpan) U4 -- := 0;
+	emit_storage(types::Storage) U2 -- := 0;
 
 	// TODO: do we even want to keep types and expressions separate anymore?
 	parse_expression(p: parser::Parser &) VOID
 	{
+		start ::= p.progress();
 		p.skip_until_nesting_ends_or(:comma, :semicolon);
-		emit_bytecode(:ExpressionDummy);
+		job ::= emit_expression_job(token_span(start, p));
+		slot ::= emit_storage(:ExpressionLink(job));
+		emit_typecode(:StorageLink(:ExpressionLink, slot));
 	}
 
 	type_parse_templates(p: parser::Parser &) VOID
@@ -536,14 +598,14 @@ INCLUDE "type-processor.rl"
 				{
 					post_parse_type(p);
 				}
-				emit_bytecode(:PushAsTemplate);
+				emit_typecode(:PushAsTemplate);
 				++pack_size;
 			} WHILE(p.consume_s(:Punctuation(:comma)))
-			emit_bytecode(:PushTemplatePack(pack_size));
+			emit_typecode(:PushTemplatePack(pack_size));
 			++pack_count;
 		} WHILE(p.consume_s(:Punctuation(:semicolon)))
 
-		emit_bytecode(:AddTemplatePacks(pack_count));
+		emit_typecode(:AddTemplatePacks(pack_count));
 		p.expect_s(:Punctuation(:bracketClose));
 	}
 
@@ -580,7 +642,7 @@ INCLUDE "type-processor.rl"
 
 	prefetch_tokens(s: parser::TokenSpan #&) VOID -- {
 		addr: UM := > &FileTokens[][s.File].Hots[s.Start];
-		PREFETCH_READ <VOID*>(addr + 30);
+		PREFETCH_READ <VOID*>(addr + SIZEOF(tok::TokenHot) * (s.End - s.Start) -1);
 		PREFETCH_READ <VOID*>(addr);
 	}
 

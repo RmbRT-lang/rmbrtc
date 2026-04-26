@@ -48,6 +48,8 @@ INCLUDE "../../parser/ids.rl"
 
 			= ++EntryCount;
 		}
+
+		# ## THIS U4 -- := EntryCount;
 	}
 
 	Preparsed {
@@ -72,8 +74,8 @@ INCLUDE "../../parser/ids.rl"
 	Types:             Preparsed               -PostParseQueue;
 	Arguments:         Preparsed               -PostParseQueue;
 	Returns:           PreparsedBody           -PostParseQueue;
-
 	Expressions:       Preparsed               -PostParseQueue;
+
 	Bodies:            PreparsedBody           -PostParseQueue;
 	SpecialCtorBodies: PreparsedSpecialCtorBody-PostParseQueue;
 
@@ -117,10 +119,14 @@ INCLUDE "../../parser/ids.rl"
 	Input {
 		Tokens: @(CACHELINE) tok::FileTokenView;
 		LocalIds: U2;
+		GlobalIds: U2; // Global ID count at time of this file.
 		File: src::File;
 	}
 
-	LocalDeclLut: U2-std::Vec;
+	// Local -> LocalDecl
+	LocalDeclLut: FileDeclIdentifier[];
+	// Global -> LocalDecl
+	GlobalToLocalDeclLut: FileDeclIdentifier[];
 	LocalIds: U2;
 	LocalDecls: U2;
 
@@ -129,7 +135,6 @@ INCLUDE "../../parser/ids.rl"
 	ShrunkMemberAlloc:      std::temp::Alloc; // Has a serious performance benefit (~20%).
 
 	{}:
-		LocalDeclLut := :reserve(1<<16),
 		PessimisticMemberAlloc := :custom(128*KI, 128*KI),
 		ShrunkMemberAlloc := :custom(128*KI, 128*KI);
 
@@ -152,8 +157,15 @@ INCLUDE "../../parser/ids.rl"
 		// Global/Local ID buffers
 		LocalIds := in.LocalIds;
 		LocalDecls := 0;
-		LocalDeclLut.clear_reuse();
-		LocalDeclLut.resize(in.LocalIds);
+		LocalDeclLut := ident::LocalToFileDeclAlloc.[FileDeclIdentifier]alloc_raw_array(in.LocalIds)[];
+		ident::LocalToFileDeclLUTs[in.File] := LocalDeclLut;
+
+		{
+			lut ::= ident::GlobalToFileDeclAlloc.[FileDeclIdentifier]alloc_raw_array(in.GlobalIds);
+			std::mem::set(lut, 0, ##lut * SIZEOF(FileDeclIdentifier));
+			GlobalToLocalDeclLut := lut[];
+			ident::GlobalToFileDeclLUTs[in.File] := lut;
+		}
 
 		member_scopes_start ::= ##MemberScopes;
 
@@ -169,6 +181,7 @@ INCLUDE "../../parser/ids.rl"
 			finalise_members(&IT);
 			IF(IT.NeedsInnerLUT) IT.post_process(ids);
 		}
+
 
 		ASSERT(Ns.ID == 0);
 		ASSERT(!Ms);
@@ -820,8 +833,9 @@ INCLUDE "../../parser/ids.rl"
 			IF(p.consume_s(:PostfixOp(:questionMark)))
 				out->TruthyFields |= 1 << entry_val;
 
+			global_name ::= p.stype().Identifier;
 			local_id ::= p.payload_expect_p(:Identifier).Identifier.FileLocal;
-			dedup_id ::= local_to_decl_name(local_id);
+			dedup_id ::= local_to_decl_name(local_id, global_name);
 
 			main_entry ::= &alloc.Ms->ensure(dedup_id)->Value;
 			IF(main_entry->Type)
@@ -833,8 +847,9 @@ INCLUDE "../../parser/ids.rl"
 			WHILE(p.consume_s(:Punctuation(:colonEqual)))
 			{
 				at ::= p.progress();
+				alias_global_name ::= p.stype().Identifier;
 				alias_local_id ::= p.payload_expect_p(:Identifier).Identifier.FileLocal;
-				dedup_alias_id ::= local_to_decl_name(alias_local_id);
+				dedup_alias_id ::= local_to_decl_name(alias_local_id, alias_global_name);
 
 				alias_entry ::= &alloc.Ms->ensure(dedup_alias_id)->Value;
 				IF(alias_entry->Type)
@@ -899,7 +914,7 @@ INCLUDE "../../parser/ids.rl"
 			*type_entry.(0) := :Preparse(type_token_span(type_start, p));
 			p.expect_s(:Punctuation(:semicolon));
 
-			decl_name ::= local_to_decl_name(local_name);
+			decl_name ::= local_to_decl_name(local_name, name);
 
 			entry ::= alloc.Ms->ensure(decl_name);
 			entry->set_value(name, at, p, (:public, :UnionField(type_entry.(1))));
@@ -961,9 +976,10 @@ INCLUDE "../../parser/ids.rl"
 		ret: parser::DefinitionSymbolConstant (NOINIT);
 
 		p.expect_s(:Punctuation(:colon));
+		global_name ::= p.stype().Identifier;
 		IF[name](pl ::= p.payload_consume_p(:Identifier))
 		{
-			ret.Name := :Identifier(local_to_decl_name(pl->Identifier.FileLocal));
+			ret.Name := :Identifier(local_to_decl_name(pl->Identifier.FileLocal, global_name));
 		} ELSE
 		{
 			STATIC specials: {TAGGED tok::Type, parser::SpecialName}#[?](
@@ -1076,10 +1092,13 @@ INCLUDE "../../parser/ids.rl"
 		= new;
 	}
 
-	local_to_decl_name(name_local: rlc::FileLocalIdentifier) rlc::FileDeclIdentifier --
+	local_to_decl_name(
+		name_local: rlc::FileLocalIdentifier,
+		name_global: rlc::Identifier) rlc::FileDeclIdentifier --
 	{
 		decl_count: U2 * := &LocalDecls;
-		dedup_id: U2 * := &LocalDeclLut[:ok(name_local.V)];
+		dedup_id: U2 * := &LocalDeclLut[name_local.V].V;
+
 		old ::= *dedup_id;
 		count ::= *decl_count;
 		fresh ::= old == 0;
@@ -1087,6 +1106,9 @@ INCLUDE "../../parser/ids.rl"
 		count += fresh;
 		*decl_count := count;
 		*dedup_id := new;
+
+		GlobalToLocalDeclLut[name_global.V] := new;
+
 		= new;
 	}
 
@@ -1115,7 +1137,7 @@ INCLUDE "../../parser/ids.rl"
 			at ::= p.progress();
 			name ::= p.stype().Identifier;
 			name_local ::= p.payload().Identifier.FileLocal;
-			name_local_decl ::= local_to_decl_name(name_local);
+			name_local_decl ::= local_to_decl_name(name_local, name);
 
 			p.next();
 
@@ -1272,7 +1294,7 @@ INCLUDE "../../parser/ids.rl"
 				rawtype ::= mempool::[parser::Rawtype]alloc_unhashed_t();
 				lname ::= preparse_rawtype(p, rawtype.(0), template);
 				gname ::= rawtype.(0)->Name;
-				entry ::= scope->ensure(local_to_decl_name(lname));
+				entry ::= scope->ensure(local_to_decl_name(lname, gname));
 				entry->set_nonvalue(gname, at, p, (*vis, :Rawtype(rawtype.(1))));
 			}
 			:bracketOpen: {
@@ -1397,7 +1419,7 @@ INCLUDE "../../parser/ids.rl"
 
 				local_name ::= p.payload().Identifier.FileLocal;
 				global_name ::= p.expect_p(:Identifier).Identifier;
-				decl_name ::= local_to_decl_name(local_name);
+				decl_name ::= local_to_decl_name(local_name, global_name);
 				entry ::= scope->ensure(decl_name);
 				def ::= mempool::[parser::Enum]alloc_unhashed_t();
 				entry->set_nonvalue(global_name, at, p, (*vis, :Enum(def.(1))));
@@ -1410,7 +1432,7 @@ INCLUDE "../../parser/ids.rl"
 
 				local_name ::= p.payload().Identifier.FileLocal;
 				global_name ::= p.expect_p(:Identifier).Identifier;
-				decl_name ::= local_to_decl_name(local_name);
+				decl_name ::= local_to_decl_name(local_name, global_name);
 				entry ::= scope->ensure(decl_name);
 				def ::= mempool::[parser::Mask]alloc_unhashed_t();
 				entry->set_nonvalue(global_name, at, p, (*vis, :Mask(def.(1))));
@@ -1423,7 +1445,7 @@ INCLUDE "../../parser/ids.rl"
 
 				local_name ::= p.payload().Identifier.FileLocal;
 				global_name ::= p.expect_p(:Identifier).Identifier;
-				decl_name ::= local_to_decl_name(local_name);
+				decl_name ::= local_to_decl_name(local_name, global_name);
 				entry ::= scope->ensure(decl_name);
 				def ::= mempool::[parser::Union]alloc_unhashed_t();
 				entry->set_nonvalue(global_name, at, p, (*vis, :Union(def.(1))));
@@ -1488,7 +1510,7 @@ INCLUDE "../../parser/ids.rl"
 				abst ::= extract_abstractness(p);
 				name_local ::= p.payload().Identifier.FileLocal;
 				name ::= p.expect_p(:Identifier).Identifier;
-				name_decl ::= local_to_decl_name(name_local);
+				name_decl ::= local_to_decl_name(name_local, name);
 
 				out ::= mempool::[parser::MemberFunction]alloc_unhashed_t();
 				fn ::= &out.(0)->Fn;
@@ -1518,7 +1540,7 @@ INCLUDE "../../parser/ids.rl"
 				at ::= p.progress(); p.next();
 				local_name ::= p.payload().Identifier.FileLocal;
 				global_name ::= p.expect_p(:Identifier).Identifier;
-				decl_name ::= local_to_decl_name(local_name);
+				decl_name ::= local_to_decl_name(local_name, global_name);
 
 				entry ::= scope->ensure(decl_name);
 				start ::= p.progress();

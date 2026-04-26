@@ -311,6 +311,7 @@ INCLUDE "iddedupler.rl"
 
 		next_input->File := out.File;
 		next_input->LocalIds := out.LocalIds;
+		next_input->GlobalIds := ##ident::strings;
 		next_input->Tokens := out.Tokens;
 
 		Parser.issue_flush_prepared();

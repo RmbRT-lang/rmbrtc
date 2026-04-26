@@ -14,6 +14,11 @@ INCLUDE "hashmap.rl"
 	repo: CHAR#[#] := "https://github.com/RmbRT-lang/rmbrtc";
 }
 
+// IDEA: add initialiser functions as a language construct. And then also add a special statement that can call all initialisers in a namespace (and its children). We can then maybe define one or more initialisers per namespace, which can then get batched (maybe also have an unbatchable version that ensures only one exists in that namespace). Then we can automate the trivial case where ordering doesn't matter, but we still have the ability to resolve ordering conflicts. And then we force the programmer to initialise global state in main() or something.
+// Syntax for calling could be: INIT ::rlc; or INIT(params) ::rlc;
+// Syntax for initialiser function could simply be INIT() {} or INIT {} or something. We could parameterise it, allowing us to configure global state dynamically based on program invocation. If it happens at runtime already anyway. Unique initialisers could be UNIQUE INIT {}? Multiple non-unique initialisers can just run in random order.
+// If an initialiser is never called for some namespace, maybe we don't want to allow access to it, or generate a warning.
+// IDEA: We can add a DEFER to global initialisers to mark them as part of an anonymous INIT function that gets auto-generated. Like:  X: INT-std::Vec := DEFER :reserve(1024);  or something.
 ::rlc init() VOID
 {
 	mempool::init();
@@ -24,7 +29,7 @@ INCLUDE "hashmap.rl"
 
 main(args: CHAR[#][#]) INT
 {
-	os::term::init();
+	os::term::init(); // INIT os::term;
 
 	rlc::init();
 	IF(##args == 1)
