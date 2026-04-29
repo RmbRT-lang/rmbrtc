@@ -32,10 +32,19 @@ INCLUDE "../../parser/ids.rl"
 			Buckets.clear_delete();
 		}
 
+		// Only intended for clearing up after the first dummy workload.
+		clear_reuse() VOID --
+		{
+			EntryCount := 0;
+			Buckets.clear_reuse();
+			EntryAlloc.Impl.clear_and_optimise(0);
+		}
+
 		// Add a new entry, return its ID.
 		THIS += (v: T) U4 --
 		{
-			IF(EntryAlloc.Impl.try_grow_last_allocation_by(SIZEOF(T)))
+			IF(EntryAlloc.Impl.LastChunk.Size // guard against reset.
+			&& EntryAlloc.Impl.try_grow_last_allocation_by(SIZEOF(T)))
 			{
 				bucket: T[#] & := Buckets[##Buckets-1];
 				bucket[][##bucket] := v;
@@ -65,6 +74,22 @@ INCLUDE "../../parser/ids.rl"
 	PreparsedSpecialCtorBody {
 		Core: Preparsed;
 		ArgName: FileLocalIdentifier;
+	}
+
+	clear_reuse() VOID
+	{
+		mempool::reset();
+		FileTokens.clear_reuse();
+		
+		Types.clear_reuse();
+		Arguments.clear_reuse();
+		Returns.clear_reuse();
+		Expressions.clear_reuse();
+		Bodies.clear_reuse();
+		SpecialCtorBodies.clear_reuse();
+
+		Namespaces.clear_reuse();
+		MemberScopes.clear_reuse();
 	}
 
 	// Caches the file contents of all code files.
@@ -121,6 +146,8 @@ INCLUDE "../../parser/ids.rl"
 		LocalIds: U2;
 		GlobalIds: U2; // Global ID count at time of this file.
 		File: src::File;
+
+		IsDummy: BOOL;
 	}
 
 	// Local -> LocalDecl
@@ -135,16 +162,15 @@ INCLUDE "../../parser/ids.rl"
 	ShrunkMemberAlloc:      std::temp::Alloc; // Has a serious performance benefit (~20%).
 
 	{}:
-		PessimisticMemberAlloc := :custom(128*KI, 128*KI),
-		ShrunkMemberAlloc := :custom(128*KI, 128*KI);
+		PessimisticMemberAlloc := :custom(512*KI, 512*KI),
+		ShrunkMemberAlloc := :custom(512*KI, 512*KI);
 
 	STATIC name() CHAR#[#] -- := "code preparser";
-
 
 	Ns: parser::NamespaceID;
 	Ms: parser::MemberScopeID;
 
-	handle_job(in: Input &, out: Output *) VOID
+	handle_job(in: Input &, out: Output *) BOOL
 	{
 		// Remember tokens for later.
 		IF!(in.File < ##FileTokens)
@@ -188,6 +214,17 @@ INCLUDE "../../parser/ids.rl"
 
 		ShrunkMemberAlloc.clear_and_optimise(4*KI);
 		PessimisticMemberAlloc.clear_and_optimise(4*KI);
+
+		IF(in.IsDummy)
+		{
+			stage1::parse::clear_reuse();
+			ident::GlobalToFileDeclAlloc.clear_and_optimise(0);
+			ident::LocalToFileDeclAlloc.clear_and_optimise(0);
+			std::mem::zero_array(ident::GlobalDeclsLut[FOR 1<<16]);
+			ident::GlobalDeclCount := 0;
+		}
+
+		= !in.IsDummy;
 	}
 
 	PRIVATE span_impl(start: U4, p: parser::Parser &) Preparsed --
@@ -345,7 +382,7 @@ INCLUDE "../../parser/ids.rl"
 					scope->Namespaces += (global_decl_name.V, ns_id);
 				} ELSE
 				{
-					p.fail("Symbol ", ident::strings[name.V] ," redefined as namespace, was ", std::str::enum(pentry->Type));
+					p.fail("Symbol ", ident::get(name) ," redefined as namespace, was ", std::str::enum(pentry->Type));
 				}
 
 				IF(p.consume_s(:Punctuation(:braceOpen)))

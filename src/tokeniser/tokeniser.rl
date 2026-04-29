@@ -273,7 +273,7 @@ INCLUDE "specials.rl"
 			Read++;
 		}
 
-		advance_nows_by(amount: U4) VOID --
+		PUBLIC advance_nows_by(amount: U4) VOID --
 		{
 			Read += amount;
 		}

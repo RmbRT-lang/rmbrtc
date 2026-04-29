@@ -66,6 +66,24 @@ INCLUDE "iddedupler.rl"
 	{
 		IF!(Build->SINGLE_THREADED)
 		{
+			IF(Build->VERBOSE_TIMING)
+			{
+				Loader.SlaveLocal.RecordTimings := TRUE;
+				Loader.SlaveLocal.Timings.reserve(2048);
+
+				FOR(Tokenisers)
+				{
+					IT.SlaveLocal.RecordTimings := TRUE;
+					IT.SlaveLocal.Timings.reserve(2048);
+				}
+
+				IdDedupler.SlaveLocal.RecordTimings := TRUE;
+				IdDedupler.SlaveLocal.Timings.reserve(2048);
+
+				Parser.SlaveLocal.RecordTimings := TRUE;
+				Parser.SlaveLocal.Timings.reserve(2048);
+			}
+
 			Parser.MasterLocal.Threaded := TRUE;
 			IdDedupler.MasterLocal.Threaded := TRUE;
 			FOR(Tokenisers) IT.MasterLocal.Threaded := TRUE;
@@ -73,22 +91,53 @@ INCLUDE "iddedupler.rl"
 
 			threads: ThreadMasks;
 
+			issue_dummy_workload();
+
 			start ::= NOW;
-			IdDedupler.launch_worker(threads.IdDedupler);
-			FOR(Tokenisers) IT.launch_worker(threads.Tokenisers[IOTA]);
 			Loader.launch_worker(threads.Loader);
+			FOR(Tokenisers) IT.launch_worker(threads.Tokenisers[IOTA]);
+			IdDedupler.launch_worker(threads.IdDedupler);
 
 			IdDedupler.wait_launched();
 			FOR(Tokenisers) IT.wait_launched();
 			Loader.wait_launched();
 			end ::= NOW;
+
 			IF(Build->VERBOSE_TIMING)
+			{
 				term::info(NULL, "Phase 1: it took ",
 					std::io::format::dec_x((end-start) / (CPU_TICK_RATE/MEGA), :Pad(5)),
 					"µs to start all threads");
+			}
 
 			//Parser.launch_worker(); // we run the parser pipe in the main thread, which saves us the sleep/notify and additional thread creation.
 		}
+	}
+
+	issue_dummy_workload() VOID
+	{
+		STATIC source ::=
+		"::test {\n"
+		"	f() INT := 5 * 23;\n"
+		"	Class { X: INT; #? THIS() U4 -- := X; }\n"
+		"	UNION U { !? Ok: Class; Err: INT; }\n"
+		"	::subnamespace function() VOID {}\n"
+		"}";
+		file ::= src::add_file_with_source("dummy workload", source);
+
+		input: CodeTokeniser::Input (BARE);
+		input.Tokeniser.{file, source};
+		input.Tokeniser.advance_nows_by(2); // ::
+		first_token: tok::Token (BARE);
+		first_token.Type := :Punctuation;
+		first_token.SType := :Punctuation(:doubleColon);
+		first_token.Length := 2;
+		first_token.Position := (file, 0);
+		input.First := first_token;
+		input.File := 0;
+		input.IsDummy := TRUE;
+
+		Tokenisers[0].issue_flush(HERE, input);
 	}
 
 	run(files: std::Str#[#]) Stats
@@ -193,6 +242,20 @@ INCLUDE "iddedupler.rl"
 				std::io::format::dec(budget_1 / 100), ".", std::io::format::dec_x(budget_1 % 100, 2), "%+",
 				std::io::format::dec(budget_2 / 100), ".", std::io::format::dec_x(budget_2 % 100, 2), "% of budget"
 				);
+
+			IF(Build->VERBOSE_TIMING)
+			{
+				Loader.print_timings();
+				os::term::PrintLine_v();
+				FOR(Tokenisers)
+				{
+					IT.print_timings();
+					os::term::PrintLine_v();
+				}
+				IdDedupler.print_timings();
+				os::term::PrintLine_v();
+				Parser.print_timings();
+			}
 		}
 
 		= stats;
@@ -260,7 +323,7 @@ INCLUDE "iddedupler.rl"
 			IF!(first_token) RETURN;
 
 			// Issue the rest of the file to a tokeniser thread.
-			Tokenisers[TokPipeNext++ % ##Tokenisers].issue_flush(HERE, &&tokeniser, *first_token, f);
+			Tokenisers[TokPipeNext++ % ##Tokenisers].issue_flush(HERE, &&tokeniser, *first_token, f, FALSE);
 		}
 
 	STATIC Tokenisers: @(CACHELINE)  [CodeTokeniser; #32]PipelineSetup[3];
@@ -299,6 +362,7 @@ INCLUDE "iddedupler.rl"
 		next_input ::= IdDedupler.next_input(HERE);
 		next_input->Tokens := out.Tokens;
 		next_input->File := out.File;
+		next_input->IsDummy := out.IsDummy;
 		IdDedupler.issue_flush_prepared();
 
 		DeduplerMutex := :>(FALSE);
@@ -313,6 +377,7 @@ INCLUDE "iddedupler.rl"
 		next_input->LocalIds := out.LocalIds;
 		next_input->GlobalIds := ##ident::strings;
 		next_input->Tokens := out.Tokens;
+		next_input->IsDummy := out.IsDummy;
 
 		Parser.issue_flush_prepared();
 	}

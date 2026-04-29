@@ -13,7 +13,20 @@ INCLUDE 'std/heap'
 	progress: U4 := 1;
 	progressMem: U2 * := &chunk0[1];
 
-	init() VOID { chunksN[0] := &chunk0; }
+	init() VOID {
+		chunksN[0] := &chunk0;
+
+		FOR(i ::= 0; i < 1 * MI; i += PAGE)
+			chunk0[i/2] := 0;
+	}
+
+	// Clear the mempool. This is only intended for clearing up after the first warmup/dummy workload.
+	reset() VOID
+	{
+		std::mem::zero_array(chunk0[FOR progress]);
+		progress := 1;
+		progressMem := &chunk0[1];
+	}
 
 	get_memory(addr: U4) VOID * --
 	{

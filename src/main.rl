@@ -23,12 +23,29 @@ INCLUDE "hashmap.rl"
 {
 	mempool::init();
 	rlc::ident::init();
-	src::init::file_rl();
 	::rlc::compiler::stage1::parse::init();
+}
+
+::elf {
+	EXTERN [__executable_start] code_start() VOID;
+	EXTERN [__etext] code_end() VOID;
+}
+
+no_alloc(U8, VOID *) VOID * := NULL;
+init_fopen() VOID {
+	IF(f ::= os::fs::ReadFile(>"a.out", NULL))
+		std::heap::alloc.free_raw_region(f->Data, f->Size, 1);
+
+
+	rlc::src::init::file_rl();
+	rlc::src::fileContentsAlloc.force_allocation();
+	rlc::src::fileNamesAlloc.force_allocation();
 }
 
 main(args: CHAR[#][#]) INT
 {
+	__init_thread ::= ^init_fopen();
+
 	os::term::init(); // INIT os::term;
 
 	rlc::init();
@@ -114,6 +131,8 @@ main(args: CHAR[#][#]) INT
 			:style(:normal, :cyan), "run ", :style(:bold, :same), args[0], " help", :style(:normal, :same), " for help.\n");
 		= 1;
 	}
+
+	__init_thread();
 
 	rlc::tok::Tokeniser::init();
 

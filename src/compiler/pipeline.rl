@@ -33,11 +33,14 @@
 		// caller reads, worker writes.
 		Processed: @(CACHELINE) U4.;
 	}
+
 	SlaveLocalR {
 		FirstWait: U8;
 		Waiting: U8;
 		Processing: U8;
 		PostJobHook: U8;
+		RecordTimings: BOOL;
+		Timings: {U8,U8,U8}-std::Vec;
 	}
 
 	SharedR {
@@ -108,27 +111,33 @@
 			WHILE(processed != issued)
 			{
 				output ::= &Constant.Outputs[processed % ##Constant.Outputs];
-				Constant.State->handle_job(
+				was_real_job ::= Constant.State->handle_job(
 					Constant.Inputs[processed % ##Constant.Inputs],
 					output);
 				++processed;
-
+				end_processing ::= CPU_COUNTER;
+				start_waiting := end_processing;
+				SlaveLocal.Processing += end_processing - start_processing;
 
 				// TODO CAUTION: make sure we still have access to the output during the post job hook.
 				IF(Constant.PostJobHook)
 				{
-					hook_start ::= CPU_COUNTER;
+					hook_start ::= end_processing;
 					Constant.PostJobHook(Constant.HookCtx, *output);
-					hook += CPU_COUNTER - hook_start;
+					hook_end ::= CPU_COUNTER;
+					start_waiting := hook_end;
+					SlaveLocal.PostJobHook += hook_end - hook_start;
 				}
 
 				Slave.Processed := :>(processed);
-			}
 
-				start_waiting := CPU_COUNTER;
-				end_processing ::= start_waiting;
-				SlaveLocal.Processing += (end_processing - start_processing) - hook;
-				SlaveLocal.PostJobHook += hook;
+				IF(SlaveLocal.RecordTimings && was_real_job)
+					SlaveLocal.Timings += (
+						start_processing,
+						end_processing,
+						start_waiting);
+				start_processing := start_waiting;
+			}
 
 			IF(Constant.IdleHook) Constant.IdleHook(Constant.HookCtx);
 		}
@@ -210,6 +219,20 @@
 			IF!(++attempt & 1023)
 				IF((CPU_COUNTER - start) / (CPU_TICK_RATE / KILO) > 100)
 					term::error(at, Job::name(), " thread is stuck!");
+		}
+	}
+
+	print_timings() VOID
+	{
+		IF(SlaveLocal.RecordTimings)
+		{
+			FOR(SlaveLocal.Timings!)
+				os::term::PrintLine_v(
+					Job::name(), ",",
+					std::io::format::dec(IOTA),",",
+					std::io::format::dec(IT.(0)),",",
+					std::io::format::dec(IT.(1)),",",
+					std::io::format::dec(IT.(2)));
 		}
 	}
 

@@ -11,6 +11,7 @@ INCLUDE 'std/hash'
 		Tokeniser: @(CACHELINE) tok::Tokeniser;
 		First:                  tok::Token;
 		File:                   src::File;
+		IsDummy:                BOOL;
 
 		{...};
 	}
@@ -18,6 +19,7 @@ INCLUDE 'std/hash'
 		Tokens: @(CACHELINE) tok::FileTokenView;
 		File:                src::File;
 		IdToks: {U4, U4}-std::Vec;
+		IsDummy: BOOL;
 
 		{...};
 	}
@@ -57,9 +59,10 @@ INCLUDE 'std/hash'
 	handle_job(
 		input: Input &,
 		output: Output *
-	) VOID
+	) BOOL
 	{
 		output->File := input.File;
+		output->IsDummy := input.IsDummy;
 
 		// This should ensure we do not have a relocation in a file.
 		capacity ::= 256 * KI;
@@ -89,5 +92,7 @@ INCLUDE 'std/hash'
 		HotsAlloc.shrink_last_allocation_by(overshoot * SIZEOF(tok::TokenHot));
 		PayloadsAlloc.shrink_last_allocation_by(overshoot * SIZEOF(tok::Payload));
 		PositionsAlloc.shrink_last_allocation_by(overshoot * SIZEOF(tok::Position));
+
+		= !input.IsDummy;
 	}
 }

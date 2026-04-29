@@ -8,11 +8,13 @@ INCLUDE "../../parser/parser.rl"
 		LocalIds: U2;
 		File: src::File;
 		// TODO: Do we want to pass the lookup of local to global IDs / global to local? Actually, we would want this at a later stage, probably.
+		IsDummy: BOOL;
 	}
 
 	Input {
 		Tokens: @(CACHELINE) tok::FileTokenView;
 		File: src::File;
+		IsDummy: BOOL;
 	}
 
 	{}:
@@ -22,7 +24,7 @@ INCLUDE "../../parser/parser.rl"
 	{
 	}
 
-	STATIC name() CHAR#[#] -- := "code preparser";
+	STATIC name() CHAR#[#] -- := "id dedupler";
 
 	GlobalIds: U2-std::Vec;
 	LocalIds: U2-std::Vec;
@@ -32,7 +34,7 @@ INCLUDE "../../parser/parser.rl"
 	
 	IdToks: U4-std::Vec;
 
-	handle_job(in: Input &, out: Output *) VOID
+	handle_job(in: Input &, out: Output *) BOOL
 	{
 		Identifiers.clear_reuse();
 		IdHashes.clear_reuse();
@@ -130,5 +132,8 @@ INCLUDE "../../parser/parser.rl"
 
 		out->File := in.File;
 		out->Tokens := in.Tokens;
+		out->IsDummy := in.IsDummy;
+
+		= !in.IsDummy;
 	}
 }
