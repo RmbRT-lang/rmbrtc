@@ -30,10 +30,10 @@ INCLUDE "iddedupler.rl"
 	{#&} (BARE) { DIE; }
 
 	ThreadMasks {
-		Parser: U8;
-		IdDedupler: U8;
-		Loader: U8;
-		Tokenisers: U8[3];
+		Parser: U2;
+		IdDedupler: U2;
+		Loader: U2;
+		Tokenisers: U2[3];
 
 		{} {
 			// Assuming 8 cores, and 2 threads per core. Ideally, we could also get rid of the two tokeniser threads.
@@ -95,7 +95,10 @@ INCLUDE "iddedupler.rl"
 
 			start ::= NOW;
 			Loader.launch_worker(threads.Loader);
-			FOR(Tokenisers) IT.launch_worker(threads.Tokenisers[IOTA]);
+			Tokenisers[0].launch_worker(threads.Tokenisers[0]);
+			FOR(Tokenisers[FROM 1]) IT.launch_worker_x(
+				threads.Tokenisers[1+IOTA],
+				&execute_dummy_job, NULL);
 			IdDedupler.launch_worker(threads.IdDedupler);
 
 			IdDedupler.wait_launched();
@@ -138,6 +141,28 @@ INCLUDE "iddedupler.rl"
 		input.IsDummy := TRUE;
 
 		Tokenisers[0].issue_flush(HERE, input);
+	}
+
+	STATIC execute_dummy_job(tok: CodeTokeniser *, VOID *) VOID
+	{
+		source ::= *src::fileContents.data();
+		file ::= 0;
+
+		input: CodeTokeniser::Input (BARE);
+		input.Tokeniser.{file, source};
+		input.Tokeniser.advance_nows_by(2); // ::
+		first_token: tok::Token (BARE);
+		first_token.Type := :Punctuation;
+		first_token.SType := :Punctuation(:doubleColon);
+		first_token.Length := 2;
+		first_token.Position := (file, 0);
+		input.First := first_token;
+		input.File := 0;
+		input.IsDummy := TRUE;
+
+		output: CodeTokeniser::Output+ (BARE);
+
+		tok->handle_job(input, &output);
 	}
 
 	run(files: std::Str#[#]) Stats
@@ -289,10 +314,6 @@ INCLUDE "iddedupler.rl"
 
 			IF!(result) RETURN;
 
-			//term::info(NULL, "Loaded file ", std::io::format::dec(result!.File), " ", result!.Name);
-
-			STATIC includes: tok::Token -std::Vec := :reserve(2048);
-			STATIC fileNames: std::temp::Alloc := :custom(1<<16, 1 << 12);
 			includes.clear_reuse();
 			fileNames.clear_and_optimise(1024);
 
@@ -450,9 +471,9 @@ INCLUDE "iddedupler.rl"
 		includes: rlc::tok::Token - std::Vec &,
 		tokeniser: tok::Tokeniser &) tok::Token-std::Opt
 	{
-		STATIC tokens: tok::FileTokens;
-		tokens.clear_reuse();
-		tokens.reserve(2);
+		STATIC tokens: tok::TwoTokens;
+		//tokens.clear_reuse();
+		//tokens.reserve(2);
 
 		view ::= tokens.view();
 		IF!(tokeniser.parse_next(&view))

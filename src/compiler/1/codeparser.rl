@@ -220,8 +220,8 @@ INCLUDE "../../parser/ids.rl"
 			stage1::parse::clear_reuse();
 			ident::GlobalToFileDeclAlloc.clear_and_optimise(0);
 			ident::LocalToFileDeclAlloc.clear_and_optimise(0);
-			std::mem::zero_array(ident::GlobalDeclsLut[FOR 1<<16]);
-			ident::GlobalDeclCount := 0;
+			std::mem::zero_array(ident::GlobalDeclsLut[#]);
+			ident::GlobalDeclCount := 1;
 		}
 
 		= !in.IsDummy;

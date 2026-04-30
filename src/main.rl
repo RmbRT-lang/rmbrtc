@@ -24,27 +24,28 @@ INCLUDE "hashmap.rl"
 	mempool::init();
 	rlc::ident::init();
 	::rlc::compiler::stage1::parse::init();
-}
-
-::elf {
-	EXTERN [__executable_start] code_start() VOID;
-	EXTERN [__etext] code_end() VOID;
-}
-
-no_alloc(U8, VOID *) VOID * := NULL;
-init_fopen() VOID {
-	IF(f ::= os::fs::ReadFile(>"a.out", NULL))
-		std::heap::alloc.free_raw_region(f->Data, f->Size, 1);
-
 
 	rlc::src::init::file_rl();
 	rlc::src::fileContentsAlloc.force_allocation();
 	rlc::src::fileNamesAlloc.force_allocation();
+
+	rlc::tok::Tokeniser::init();
+}
+
+no_alloc(U8, VOID *) VOID * := NULL;
+init_thread_done: BOOL. (FALSE);
+init_fopen() VOID {
+	IF(f ::= os::fs::ReadFile(>"/dev/null", NULL))
+		std::heap::alloc.free_raw_region(f->Data, f->Size, 1);
+
+	PREFETCH_CODE >rlc::compiler::stage1::Stage1::on_file_loaded;
+	rlc::compiler::stage1::Stage1::fileNames.force_allocation();
+	init_thread_done := :>(TRUE);
 }
 
 main(args: CHAR[#][#]) INT
 {
-	__init_thread ::= ^init_fopen();
+	STATIC __init_thread ::= ^init_fopen();
 
 	os::term::init(); // INIT os::term;
 
@@ -132,9 +133,8 @@ main(args: CHAR[#][#]) INT
 		= 1;
 	}
 
-	__init_thread();
-
-	rlc::tok::Tokeniser::init();
+	//__init_thread();
+	WHILE(!init_thread_done(:<)) PAUSE;
 
 	//compiler: rlc::compiler::CCompiler (&cli::main);
 	TRY
@@ -152,6 +152,7 @@ main(args: CHAR[#][#]) INT
 
 		compiler: rlc::compiler::Compiler;
 		compiler.compile(files!, &&build);
+		_Exit(0);
 		= 0;
 	}
 	CATCH(e: {WHERE, CHAR#[#]})
@@ -162,6 +163,7 @@ main(args: CHAR[#][#]) INT
 		term::error(NULL, std::str::c(e.(0)[]), " (", std::str::c(e.(1)[]), ")");
 	FINALLY{}
 
+	_Exit(1);
 	= 1;
 }
 

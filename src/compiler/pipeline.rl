@@ -69,17 +69,18 @@
 
 	PUBLIC run_worker(thread_mask: U8) VOID {
 		MasterLocal.Threaded := TRUE;
-		worker_thread(thread_mask);
+		__rl::set_thread_affinity(thread_mask);
+		TRY worker_thread();
+		CATCH(err: CHAR#*) term::error(NULL, Job::name(), " THREAD DIED:\n", std::str::c(err[]));
 	}
 
-	PRIVATE worker_thread(thread_mask: U8) VOID
+	PRIVATE worker_thread() VOID
 	{
 		Master: MasterR # & := THIS.Master;
 		Constant: ConstantR #& := THIS.Constant;
 		Slave: SlaveR & := THIS.Slave;
 		Shared: SharedR & := THIS.Shared;
 
-		__rl::set_thread_affinity(thread_mask);
 
 		processed ::= Slave.Processed(:<);
 		Shared.Quit := :>(FALSE);
@@ -117,7 +118,8 @@
 				++processed;
 				end_processing ::= CPU_COUNTER;
 				start_waiting := end_processing;
-				SlaveLocal.Processing += end_processing - start_processing;
+				IF(was_real_job)
+					SlaveLocal.Processing += end_processing - start_processing;
 
 				// TODO CAUTION: make sure we still have access to the output during the post job hook.
 				IF(Constant.PostJobHook)
@@ -159,15 +161,22 @@
 		}
 	}
 
-	PRIVATE STATIC run_worker_fn(this: THIS *, thread_mask: U8) VOID --
+	PRIVATE STATIC run_worker_fn(
+		this: THIS *,
+		thread_mask: U8,
+		init: ((Job *, VOID *) VOID) *,
+		ctx: VOID *) VOID --
 	{
-		this->worker_thread(thread_mask);
+		__rl::set_thread_affinity(thread_mask);
+		IF(init) init(this->Constant.State, ctx);
+		this->worker_thread();
 	}
 
-	launch_worker(thread_mask: U8) VOID^
+	launch_worker(thread_mask: U8) VOID^ -- := launch_worker_x(thread_mask, NULL, NULL);
+	launch_worker_x(thread_mask: U8, init: ((Job *, VOID *) VOID) *, ctx: VOID *) VOID^
 	{
 		MasterLocal.Threaded := TRUE;
-		thread: VOID^(^run_worker_fn(&THIS, thread_mask));
+		thread: VOID^(^run_worker_fn(&THIS, thread_mask, init, ctx));
 		//wait_launched();
 		= &&thread;
 	}
@@ -369,10 +378,10 @@ PUBLIC:
 		Inputs(BARE),
 		Outputs(BARE);
 
-	launch_worker(thread_mask: U8) VOID {
-		worker ::= ->([Job]Pipeline).launch_worker(thread_mask);
+	launch_worker(thread_mask: U8) VOID -- { launch_worker_x(thread_mask, NULL, NULL); }
+	launch_worker_x(thread_mask: U8, init: ((Job *, VOID *) VOID) *, ctx: VOID *) VOID {
+		worker ::= ->([Job]Pipeline).launch_worker_x(thread_mask, init, ctx);
 		Thread :=: worker;
-		//->([Job]Pipeline).wait_launched();
 	}
 
 	// ONLY MASTER

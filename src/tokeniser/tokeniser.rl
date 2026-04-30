@@ -78,6 +78,14 @@ INCLUDE "specials.rl"
 		# ## THIS U4 -- := TokenCount;
 	}
 
+	TwoTokens {
+		Hots: TokenHot[2];
+		Payloads: tok::Payload[2];
+		Positions: Position[2];
+
+		view() FileTokenView := (0, Hots[], Payloads[], Positions[]);
+	}
+
 	(/ currently mandatory latency per token:
 
 		load+classify+switch jump/branch miss, + final branch miss
