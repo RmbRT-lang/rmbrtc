@@ -1208,8 +1208,8 @@ INCLUDE "../../parser/ids.rl"
 					IF(attr) p.fail_pos(at, "must not have an attribute");
 
 					class ::= mempool::[parser::Class]alloc_unhashed_t();
-					entry->set_nonvalue(name, at, p, (*vis, :Class(class.(1))));
 					preparse_class(p, class.(0), name, template);
+					entry->set_nonvalue(name, at, p, (*vis, :Class(class.(1)), class.(0)->Members));
 				}
 				:colon: {
 					IF(attr == :maybeIsolated) p.fail("must not have #? attribute");
@@ -1302,8 +1302,8 @@ INCLUDE "../../parser/ids.rl"
 					IF(attr) p.fail("must not have an attribute");
 
 					class ::= mempool::[parser::Class]alloc_unhashed_t();
-					entry->set_nonvalue(name, at, p, (*vis, :Class(class.(1))));
 					preparse_class(p, class.(0), name, template);
+					entry->set_nonvalue(name, at, p, (*vis, :Class(class.(1)), class.(0)->Members));
 				}
 				}
 			:BinaryOp:
@@ -1314,8 +1314,8 @@ INCLUDE "../../parser/ids.rl"
 					IF(attr) p.fail("must not have an attribute");
 
 					class ::= mempool::[parser::Class]alloc_unhashed_t();
-					entry->set_nonvalue(name, at, p, (*vis, :Class(class.(1))));
 					preparse_class(p, class.(0), name, template);
+					entry->set_nonvalue(name, at, p, (*vis, :Class(class.(1)), class.(0)->Members));
 				}
 				}
 			}
@@ -1332,7 +1332,7 @@ INCLUDE "../../parser/ids.rl"
 				lname ::= preparse_rawtype(p, rawtype.(0), template);
 				gname ::= rawtype.(0)->Name;
 				entry ::= scope->ensure(local_to_decl_name(lname, gname));
-				entry->set_nonvalue(gname, at, p, (*vis, :Rawtype(rawtype.(1))));
+				entry->set_nonvalue(gname, at, p, (*vis, :Rawtype(rawtype.(1)), rawtype.(0)->Members));
 			}
 			:bracketOpen: {
 				IF(template) p.fail("already had a template declaration");
@@ -1459,7 +1459,7 @@ INCLUDE "../../parser/ids.rl"
 				decl_name ::= local_to_decl_name(local_name, global_name);
 				entry ::= scope->ensure(decl_name);
 				def ::= mempool::[parser::Enum]alloc_unhashed_t();
-				entry->set_nonvalue(global_name, at, p, (*vis, :Enum(def.(1))));
+				entry->set_nonvalue(global_name, at, p, (*vis, :Enum(def.(1)), def.(0)->Members));
 				preparse_enum(p, def.(0), global_name);
 			}
 			:mask: {
@@ -1472,7 +1472,7 @@ INCLUDE "../../parser/ids.rl"
 				decl_name ::= local_to_decl_name(local_name, global_name);
 				entry ::= scope->ensure(decl_name);
 				def ::= mempool::[parser::Mask]alloc_unhashed_t();
-				entry->set_nonvalue(global_name, at, p, (*vis, :Mask(def.(1))));
+				entry->set_nonvalue(global_name, at, p, (*vis, :Mask(def.(1)), def.(0)->Members));
 				preparse_mask(p, def.(0), global_name);
 			}
 			:union: {
@@ -1485,7 +1485,7 @@ INCLUDE "../../parser/ids.rl"
 				decl_name ::= local_to_decl_name(local_name, global_name);
 				entry ::= scope->ensure(decl_name);
 				def ::= mempool::[parser::Union]alloc_unhashed_t();
-				entry->set_nonvalue(global_name, at, p, (*vis, :Union(def.(1))));
+				entry->set_nonvalue(global_name, at, p, (*vis, :Union(def.(1)), def.(0)->Members));
 				preparse_union(p, def.(0), global_name, template);
 			}
 			:destructor: {
@@ -1586,7 +1586,7 @@ INCLUDE "../../parser/ids.rl"
 				def_p ::= def.(0);
 
 				preparse_typedef(p, def_p, global_name, template);
-				entry->set_nonvalue(global_name, at, p, (*vis, :Typedef(def.(1))));
+				entry->set_nonvalue(global_name, at, p, (*vis, :Typedef(def.(1)), NULL));
 			}
 			:this: {
 				IF!(ops) p.fail("it is illegal to define operators here");

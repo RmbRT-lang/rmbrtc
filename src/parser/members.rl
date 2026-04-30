@@ -18,7 +18,7 @@ INCLUDE "../mempool.rl"
 ::rlc::parser
 {
 	UNION NVMember {
-	*	Nil;
+	*	Nil:     MemID;
 	?	Class:   parser::Class   -Handle;
 	?	Rawtype: parser::Rawtype -Handle;
 	?	Typedef: parser::Typedef -Handle;
@@ -109,13 +109,25 @@ INCLUDE "../mempool.rl"
 		Type: ENUM NVMember;
 		Visibility: rlc::Visibility;
 		Entry: NVMember;
+		MemberScope: MemberScopeID;
 
-		{}: Type := :Nil, Visibility(BARE), Entry(NOINIT);
-		{vis: rlc::Visibility, m: TAGGED NVMember} --:
+		{}: Type := :Nil, Visibility(BARE), Entry(NOINIT), MemberScope(NULL);
+		{vis: rlc::Visibility, m: TAGGED NVMember, ms_id: MemberScopeID} --:
 			Type(m.(0)),
 			Visibility(vis),
-			Entry(m.(1));
+			Entry(m.(1)),
+			MemberScope(ms_id);
 	}
+
+	STATIC member_offset: U4[TABLE ENUM NVMember](
+		:Nil(~0),
+		:Class(<UM>(&<parser::Class *>(NULL)->Members)),
+		:Rawtype(<UM>(&<parser::Rawtype *>(NULL)->Members)),
+		:Typedef(~0),
+		:Mask(<UM>(&<parser::Mask *>(NULL)->Members)),
+		:Union(<UM>(&<parser::Union *>(NULL)->Members)),
+		:Enum(<UM>(&<parser::Enum *>(NULL)->Members))
+	);
 
 	LUTEntry {
 		NonValue: NVEntry;
@@ -187,9 +199,8 @@ INCLUDE "../mempool.rl"
 		entry ::= &InnerLutNV[id.V];
 		= entry->Type ?? entry : NULL;
 	}
-	# lookup_inner_s(id: rlc::FileDeclIdentifier) NVEntry * -- {
-		entry ::= &InnerLutNV[id.V];
-		= entry->Type ?? entry : NULL;
+	# lookup_inner_s(id: rlc::FileDeclIdentifier) MemberScopeID -- {
+		= InnerLutNV[id.V].MemberScope;
 	}
 	# lookup_inner_v(id: rlc::FileDeclIdentifier) VEntry * -- {
 		entry ::= &InnerLutV[id.V];
