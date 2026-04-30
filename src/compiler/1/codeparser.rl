@@ -183,12 +183,15 @@ INCLUDE "../../parser/ids.rl"
 		// Global/Local ID buffers
 		LocalIds := in.LocalIds;
 		LocalDecls := 0;
-		LocalDeclLut := ident::LocalToFileDeclAlloc.[FileDeclIdentifier]alloc_raw_array(in.LocalIds)[];
+		LocalDeclLut := ident::LocalToFileDeclAlloc.[FileDeclIdentifier]alloc_raw_array(in.LocalIds+1)[];
+
+		std::mem::zero_array(LocalDeclLut[FOR LocalIds+1]); // 0-init.
+
 		ident::LocalToFileDeclLUTs[in.File] := LocalDeclLut;
 
 		{
 			lut ::= ident::GlobalToFileDeclAlloc.[FileDeclIdentifier]alloc_raw_array(in.GlobalIds);
-			std::mem::set(lut, 0, ##lut * SIZEOF(FileDeclIdentifier));
+			std::mem::zero_array(lut);
 			GlobalToLocalDeclLut := lut[];
 			ident::GlobalToFileDeclLUTs[in.File] := lut;
 		}
