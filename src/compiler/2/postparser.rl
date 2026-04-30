@@ -54,7 +54,7 @@ INCLUDE "type-processor.rl"
 		// TODO: instead of pointers to namespaces & scopes, we can also just pass along their handles, since we do not use their addresses anyway here.
 		FOR(compiler::stage1::parse::Types.Buckets!) FOR(IT)
 		{
-			next ::= &(&IT)[##RANGE == IOTA+prefetch ?? 0 : prefetch];
+			next ::= &(&IT)[##RANGE <= IOTA+prefetch ?? 0 : prefetch];
 			prefetch_tokens(next->Span);
 
 			CurrentRequestNs := IT.Ns;
@@ -68,7 +68,7 @@ INCLUDE "type-processor.rl"
 
 		FOR(compiler::stage1::parse::Arguments.Buckets!) FOR(IT)
 		{
-			next ::= &(&IT)[##RANGE == IOTA+prefetch ?? 0 : prefetch];
+			next ::= &(&IT)[##RANGE <= IOTA+prefetch ?? 0 : prefetch];
 			prefetch_tokens(next->Span);
 
 
@@ -86,7 +86,7 @@ INCLUDE "type-processor.rl"
 
 		FOR(compiler::stage1::parse::Returns.Buckets!) FOR(IT)
 		{
-			next ::= &(&IT)[##RANGE == IOTA+prefetch ?? 0 : prefetch];
+			next ::= &(&IT)[##RANGE <= IOTA+prefetch ?? 0 : prefetch];
 			prefetch_tokens(next->Core.Span);
 
 			CurrentRequestNs := IT.Core.Ns;
@@ -100,7 +100,7 @@ INCLUDE "type-processor.rl"
 
 		FOR(compiler::stage1::parse::Expressions.Buckets!) FOR(IT)
 		{
-			next ::= &(&IT)[##RANGE == IOTA+prefetch ?? 0 : prefetch];
+			next ::= &(&IT)[##RANGE <= IOTA+prefetch ?? 0 : prefetch];
 			prefetch_tokens(next->Span);
 
 			CurrentRequestNs := IT.Ns;
