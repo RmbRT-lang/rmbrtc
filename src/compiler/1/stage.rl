@@ -303,6 +303,8 @@ INCLUDE "iddedupler.rl"
 		{
 			<THIS *>(ctx)->on_file_loaded_impl(result);
 		}
+		STATIC includes: tok::Token -std::Vec := :reserve(2048);
+		STATIC fileNames: std::temp::Alloc := :custom(1<<16, 1 << 12);
 		on_file_loaded_impl(result: SrcLoader::Output &) VOID --
 		{
 			// Problem: each job produces more jobs, but we have only a finite job queue. The number of jobs can temporarily peak excessively. We could change the file loader to a custom solution to fix this.
@@ -311,6 +313,7 @@ INCLUDE "iddedupler.rl"
 
 			includes.clear_reuse();
 			fileNames.clear_and_optimise(1024);
+			//term::info(NULL, "Loaded file ", std::io::format::dec(result!.File), " ", result!.Name);
 
 			f ::= result!.File;
 			contents ::= result!.Content;
