@@ -29,7 +29,7 @@ echo RL_LINK_LIBRARIES="$RL_LINK_LIBRARIES" rmbrtbc --run src/main.rl $RLOS_RL
 PWD_SAVE=`realpath $PWD`
 mkdir -p /tmp/.rlc-exe/$PWD_SAVE
 if [ ! -L a.out ]; then
-	ln -s /tmp/.rlc-exe/$PWD_SAVE/a.out a.out
+	ln -s "/tmp/.rlc-exe/$PWD_SAVE/a.out" a.out
 fi
 cd /tmp/.rlc-exe/$PWD_SAVE
 RL_LINK_LIBRARIES="$RL_LINK_LIBRARIES" rmbrtbc $PWD_SAVE/src/main.rl $RLOS_RL && cd $PWD_SAVE && RLC_ST=0 ./a.out src/main.rl $RLOS_RL : out
