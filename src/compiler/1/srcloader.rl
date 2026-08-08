@@ -27,7 +27,7 @@ INCLUDE "../pipeline.rl"
 
 	STATIC name() CHAR#[#] -- := "source code loader";
 
-	handle_job(inc: include::Include #&, out: TAGGED Result *) BOOL
+	handle_job(inc: include::Include #&, out: TAGGED Result *, U4) {BOOL, U4}
 	{
 		SWITCH!(inc.Type)
 		{
@@ -45,7 +45,7 @@ INCLUDE "../pipeline.rl"
 					CONTINUE;
 
 				IF:!(unique ::= try_load_file(inc.From, *rel, out))
-					= FALSE;
+					= (FALSE, 0);
 
 				IF!(status ::= *unique)
 				{
@@ -57,7 +57,7 @@ INCLUDE "../pipeline.rl"
 						"Could not open ", file, ": ", std::str::enum(status));
 				}
 
-				= TRUE;
+				= (TRUE, ##src::fileNameHashes-1);
 			}
 
 			file ::= resolve_buffer[FOR inc.Path.to_c_path(resolve_buffer)];
@@ -69,7 +69,7 @@ INCLUDE "../pipeline.rl"
 				term::error(inc.From, "Invalid relative path");
 
 			IF:!(unique ::= try_load_file(inc.From, *rel, out))
-				= FALSE;
+				= (FALSE, 0);
 
 			IF!(status ::= *unique)
 			{
@@ -79,7 +79,7 @@ INCLUDE "../pipeline.rl"
 			}
 		}
 		}
-		= TRUE;
+		= (TRUE, ##src::fileNameHashes-1);
 	}
 
 	PRIVATE try_load_file(

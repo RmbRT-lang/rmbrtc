@@ -58,8 +58,9 @@ INCLUDE 'std/hash'
 
 	handle_job(
 		input: Input &,
-		output: Output *
-	) BOOL
+		output: Output *,
+		U4
+	) {BOOL, U4}
 	{
 		output->File := input.File;
 		output->IsDummy := input.IsDummy;
@@ -93,6 +94,6 @@ INCLUDE 'std/hash'
 		PayloadsAlloc.shrink_last_allocation_by(overshoot * SIZEOF(tok::Payload));
 		PositionsAlloc.shrink_last_allocation_by(overshoot * SIZEOF(tok::Position));
 
-		= !input.IsDummy;
+		= (!input.IsDummy, input.File);
 	}
 }

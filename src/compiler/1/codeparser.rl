@@ -170,7 +170,7 @@ INCLUDE "../../parser/ids.rl"
 	Ns: parser::NamespaceID;
 	Ms: parser::MemberScopeID;
 
-	handle_job(in: Input &, out: Output *) BOOL
+	handle_job(in: Input &, out: Output *, U4) {BOOL, U4}
 	{
 		// Remember tokens for later.
 		IF!(in.File < ##FileTokens)
@@ -227,7 +227,7 @@ INCLUDE "../../parser/ids.rl"
 			ident::GlobalDeclCount := 1;
 		}
 
-		= !in.IsDummy;
+		= (!in.IsDummy, in.File);
 	}
 
 	PRIVATE span_impl(start: U4, p: parser::Parser &) Preparsed --

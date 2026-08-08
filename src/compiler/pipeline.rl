@@ -40,7 +40,7 @@
 		Processing: U8;
 		PostJobHook: U8;
 		RecordTimings: BOOL;
-		Timings: {U8,U8,U8}-std::Vec;
+		Timings: {U8,U8,U8,U4}-std::Vec;
 	}
 
 	SharedR {
@@ -112,9 +112,12 @@
 			WHILE(processed != issued)
 			{
 				output ::= &Constant.Outputs[processed % ##Constant.Outputs];
-				was_real_job ::= Constant.State->handle_job(
+				was_real_job: BOOL (NOINIT);
+				job_id: U4 (NOINIT);
+				(was_real_job, job_id) := Constant.State->handle_job(
 					Constant.Inputs[processed % ##Constant.Inputs],
-					output);
+					output,
+					processed);
 				++processed;
 				end_processing ::= CPU_COUNTER;
 				start_waiting := end_processing;
@@ -137,7 +140,8 @@
 					SlaveLocal.Timings += (
 						start_processing,
 						end_processing,
-						start_waiting);
+						start_waiting,
+						job_id);
 				start_processing := start_waiting;
 			}
 
@@ -235,13 +239,14 @@
 	{
 		IF(SlaveLocal.RecordTimings)
 		{
+			os::term::PrintLine(Job::name());
 			FOR(SlaveLocal.Timings!)
 				os::term::PrintLine_v(
-					Job::name(), ",",
-					std::io::format::dec(IOTA),",",
 					std::io::format::dec(IT.(0)),",",
 					std::io::format::dec(IT.(1)),",",
-					std::io::format::dec(IT.(2)));
+					std::io::format::dec(IT.(2)),",",
+					std::io::format::dec(IT.(3)));
+			os::term::PrintLine_v();
 		}
 	}
 
@@ -263,7 +268,8 @@
 		FOR(i ::= oldFlushed; i < end; i++)
 			Constant.State->handle_job(
 				Constant.Inputs[i % ##Constant.Inputs],
-				&Constant.Outputs[i % ##Constant.Outputs]);
+				&Constant.Outputs[i % ##Constant.Outputs],
+				i);
 		SlaveLocal.Processing += CPU_COUNTER - start_cycle;
 		Slave.Processed := :>(end);
 

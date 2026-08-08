@@ -162,7 +162,7 @@ INCLUDE "iddedupler.rl"
 
 		output: CodeTokeniser::Output+ (BARE);
 
-		tok->handle_job(input, &output);
+		tok->handle_job(input, &output, 0);
 	}
 
 	run(files: std::Str#[#]) Stats

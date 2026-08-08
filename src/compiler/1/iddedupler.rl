@@ -34,7 +34,7 @@ INCLUDE "../../parser/parser.rl"
 	
 	IdToks: U4-std::Vec;
 
-	handle_job(in: Input &, out: Output *) BOOL
+	handle_job(in: Input &, out: Output *, U4) {BOOL, U4}
 	{
 		Identifiers.clear_reuse();
 		IdHashes.clear_reuse();
@@ -134,6 +134,6 @@ INCLUDE "../../parser/parser.rl"
 		out->Tokens := in.Tokens;
 		out->IsDummy := in.IsDummy;
 
-		= !in.IsDummy;
+		= (!in.IsDummy, in.File);
 	}
 }
