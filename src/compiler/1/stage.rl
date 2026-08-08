@@ -268,17 +268,12 @@ INCLUDE "iddedupler.rl"
 				std::io::format::dec(budget_2 / 100), ".", std::io::format::dec_x(budget_2 % 100, 2), "% of budget"
 				);
 
-			IF(Build->VERBOSE_TIMING)
+			IF(Build->VERBOSE_TIMING && lines_per_second > 6500000)
 			{
+				os::term::PrintLine_v("Phase 1,", std::io::format::dec(CPU_TICK_RATE / MEGA));
 				Loader.print_timings();
-				os::term::PrintLine_v();
-				FOR(Tokenisers)
-				{
-					IT.print_timings();
-					os::term::PrintLine_v();
-				}
+				FOR(Tokenisers) IT.print_timings();
 				IdDedupler.print_timings();
-				os::term::PrintLine_v();
 				Parser.print_timings();
 			}
 		}
