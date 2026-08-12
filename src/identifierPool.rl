@@ -53,7 +53,8 @@ Looking up a member in a local scope:
 {
 
 	// Big global hashmap with 4Ki buckets (12 bit selector), and 10-way associative cache without indirection.
-	buckets: @(PAGE) HashBucket[2 * 2<<10] (NOINIT); // rely on .bss being 0-initialised.
+	// TODO PERFORMANCE: Just use a U2 array directly, allowing for simpler lookups and more density, or smaller overall footprint (to keep everything in L1).
+	buckets: @(PAGE) HashBucket[1<<13] (NOINIT); // rely on .bss being 0-initialised.
 	// Overflow from buckets gets accumulated into more centralised, unordered sets. Ideally, none of these ever get used, but we still keep a few of them to limit the worst-case cost of vector reallocation and linear searches. We use unordered because we assume they will usually be small. You would probably need a gigantic codebase to trigger the pathological case, but then you should rather tweak the buckets instead or improve the hash function.
 	overflow: std::[OverflowItem]Vec[128] (NOINIT);
 
@@ -97,16 +98,20 @@ Looking up a member in a local scope:
 		bucket_ptr[offset] := 0;
 }
 
+// Half-cacheline aligned because we do not want large loops in a bucket. This way, we get one more bit of hash selector, and get 5 entries per bucket, and 2 buckets per cacheline.
 ::rlc::ident HashBucket
 {
-	Fingerprints: @(CACHELINE) U4[(CACHELINE / 2)/6];
-	Items:                     U2[(CACHELINE / 2)/6];
+	//Fingerprints: @(8) U4[1];
+	Items:                     U2[1];
 
 	# full() BOOL -- := Items[##Items -1] != 0;
 }
 
 ::rlc::ident OverflowItem { Fingerprint: U4; Item: U2; } // For overflow.
 
+
+::rlc::ident collisions: U4 := 0;
+::rlc::ident collisions2: U4 := 0;
 // Keep parallelism at number of parallel cache misses per core, or less. Prior outstanding cache misses might cause friction otherwise.
 // Look up and/or insert.
 ::rlc::ident [#kN] multi_dedup(
@@ -129,8 +134,9 @@ Looking up a member in a local scope:
 		hash ::= <U4>(hashes[IOTA] / ##ident::buckets);
 		preimage ::= preimages[IOTA];
 
-		FOR(IT->Fingerprints)
-			IF(IT == hash)
+		//FOR(IT->Fingerprints)
+			//IF(IT == hash)
+		FOR(IT->Items)
 				PREFETCH_READ mempool::get_memory(bucket->Items[IOTA]);
 	}
 
@@ -142,8 +148,10 @@ Looking up a member in a local scope:
 		hash ::= <U4>(hashes[IOTA] / ##ident::buckets);
 		preimage ::= preimages[IOTA];
 
-		FOR(IT->Fingerprints)
-			IF(IT == hash)
+		FOR(IT->Items)
+		//FOR(IT->Fingerprints)
+			//IF(IT == hash)
+			IF(IT)
 			{
 				item ::= bucket->Items[IOTA];
 				str ::= ident::strings[item];
@@ -172,7 +180,7 @@ Looking up a member in a local scope:
 					not_found ^= 1 << workload;
 					ids[workload] := id;
 					bucket->Items[IOTA] := id;
-					bucket->Fingerprints[IOTA] := hash;
+					//bucket->Fingerprints[IOTA] := hash;
 
 					BREAK;
 				}
@@ -206,6 +214,8 @@ Looking up a member in a local scope:
 			copy ::= <CHAR *>(name_alloc.alloc_raw_unaligned(##preimage));
 			std::mem::cpy(copy[], preimage[], ##preimage);
 			ident::strings += copy[FOR ##preimage];
+
+		collisions ++;
 
 		IF(id > 0xffff)
 			term::error(NULL, "Too many distinct identifiers (max: 65535)");
