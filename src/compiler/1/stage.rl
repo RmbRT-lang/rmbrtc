@@ -3,7 +3,14 @@ INCLUDE "../includes.rl"
 INCLUDE "codetoker.rl"
 INCLUDE "codeparser.rl"
 INCLUDE "iddedupler.rl"
+INCLUDE "../../tokeniser/minitokeniser.rl"
 
+
+::rlc::compiler::stage1 Include {
+	At: src::Position;
+	Str: TAGGED tok::MiniTokeniser::MiniToken;
+	{...};
+}
 
 ::rlc::compiler::stage1 Stage1
 {
@@ -95,6 +102,7 @@ INCLUDE "iddedupler.rl"
 
 			start ::= NOW;
 			Loader.launch_worker(threads.Loader);
+			//FOR(Tokenisers) IT.launch_worker(threads.Tokenisers[IOTA]);
 			Tokenisers[0].launch_worker(threads.Tokenisers[0]);
 			FOR(Tokenisers[FROM 1]) IT.launch_worker_x(
 				threads.Tokenisers[1+IOTA],
@@ -119,6 +127,7 @@ INCLUDE "iddedupler.rl"
 
 	issue_dummy_workload() VOID
 	{
+		STATIC source_buf: CHAR[256] (NOINIT);
 		STATIC source ::=
 		"::test {\n"
 		"	f() INT := 5 * 23;\n"
@@ -126,18 +135,16 @@ INCLUDE "iddedupler.rl"
 		"	UNION U { !? Ok: Class; Err: INT; }\n"
 		"	::subnamespace function() VOID {}\n"
 		"}";
-		file ::= src::add_file_with_source("dummy workload", source);
+
+		std::mem::cpy(source_buf[], source[], ##source);
+		file ::= src::add_file_with_source("dummy workload", source_buf[FOR ##source]);
+		ASSERT(file);
+		ASSERT(!*file);
 
 		input: CodeTokeniser::Input (BARE);
-		input.Tokeniser.{file, source};
-		input.Tokeniser.advance_nows_by(2); // ::
-		first_token: tok::Token (BARE);
-		first_token.Type := :Punctuation;
-		first_token.SType := :Punctuation(:doubleColon);
-		first_token.Length := 2;
-		first_token.Position := (file, 0);
-		input.First := first_token;
-		input.File := 0;
+		input.Contents := source;
+		input.StartOffset := 0;
+		input.File := file!;
 		input.IsDummy := TRUE;
 
 		Tokenisers[0].issue_flush(HERE, input);
@@ -149,14 +156,9 @@ INCLUDE "iddedupler.rl"
 		file ::= 0;
 
 		input: CodeTokeniser::Input (BARE);
-		input.Tokeniser.{file, source};
-		input.Tokeniser.advance_nows_by(2); // ::
-		first_token: tok::Token (BARE);
-		first_token.Type := :Punctuation;
-		first_token.SType := :Punctuation(:doubleColon);
-		first_token.Length := 2;
-		first_token.Position := (file, 0);
-		input.First := first_token;
+		input.Contents := source;
+		input.File := file;
+		input.StartOffset := 0;
 		input.File := 0;
 		input.IsDummy := TRUE;
 
@@ -246,6 +248,7 @@ INCLUDE "iddedupler.rl"
 				std::io::format::dec((lines_per_second + 500) / MEGA), ".", std::io::format::dec_x(((lines_per_second + 500) % MEGA) / 1000, 3), "ML/s, ",
 				std::io::format::dec(budget_1 / 100), ".", std::io::format::dec_x(budget_1 % 100, 2), "%+",
 				std::io::format::dec(budget_2 / 100), ".", std::io::format::dec_x(budget_2 % 100, 2), "% of budget"
+				", ", std::io::format::dec(ident::collisions), "+", std::io::format::dec(ident::collisions2)
 				);
 			ELSE
 			term::info(NULL, "Phase 1: ", std::io::format::dec(##src::fileNames), "F (", std::io::format::dec(lines), "L, ", std::io::format::dec(size), "B) in ",
@@ -266,9 +269,10 @@ INCLUDE "iddedupler.rl"
 				std::io::format::dec((lines_per_second + 500) / MEGA), ".", std::io::format::dec_x(((lines_per_second + 500) % MEGA) / 1000, 3), "ML/s, ",
 				std::io::format::dec(budget_1 / 100), ".", std::io::format::dec_x(budget_1 % 100, 2), "%+",
 				std::io::format::dec(budget_2 / 100), ".", std::io::format::dec_x(budget_2 % 100, 2), "% of budget"
+				", ", std::io::format::dec(ident::collisions), "+", std::io::format::dec(ident::collisions2)
 				);
 
-			IF(Build->VERBOSE_TIMING && lines_per_second > 6500000)
+			IF(Build->VERBOSE_TIMING && lines_per_second > 7500000)
 			{
 				os::term::PrintLine_v("Phase 1,", std::io::format::dec(CPU_TICK_RATE / MEGA));
 				Loader.print_timings();
@@ -303,7 +307,7 @@ INCLUDE "iddedupler.rl"
 		{
 			<THIS *>(ctx)->on_file_loaded_impl(result);
 		}
-		STATIC includes: tok::Token -std::Vec := :reserve(2048);
+		STATIC includes: Include -std::Vec := :reserve(2048);
 		STATIC fileNames: std::temp::Alloc := :custom(1<<16, 1 << 12);
 		on_file_loaded_impl(result: SrcLoader::Output &) VOID --
 		{
@@ -312,15 +316,15 @@ INCLUDE "iddedupler.rl"
 			IF!(result) RETURN;
 
 			includes.clear_reuse();
-			fileNames.clear_and_optimise(1024);
+			//fileNames.clear_and_optimise(1024);
 			//term::info(NULL, "Loaded file ", std::io::format::dec(result!.File), " ", result!.Name);
 
 			f ::= result!.File;
 			contents ::= result!.Content;
 
 			// Parse includes.
-			tokeniser: rlc::tok::Tokeniser(f, contents);
-			first_token ::= parse_includes(includes, tokeniser);
+			after_last_token ::= parse_includes(includes, contents, f);
+			file_body ::= contents[FROM after_last_token];
 
 			basefile: os::fs::FilePath := result!.Name;
 
@@ -330,19 +334,21 @@ INCLUDE "iddedupler.rl"
 				// Queue all includes for the loader.
 				FOR(includes!)
 				{
-					ASSERT(IT.Type == :String);
+					ASSERT(IT.Str.(0));
+					ASSERT(IT.At.file() == f);
 					Loader.issue(HERE,
-						IT.SType.String == :StringQuote
+						IT.Str.(0) == :stringQuote
 						?? include::IncludeType::relative
 						: include::IncludeType::global,
-						basefile.Directory, parse_string(IT, fileNames), IT.at());
+						basefile.Directory,
+						parse_string(IT.At, IT.Str, fileNames), IT.At.at());
 				}
 			}
 
-			IF!(first_token) RETURN;
+			IF!(##file_body) RETURN;
 
 			// Issue the rest of the file to a tokeniser thread.
-			Tokenisers[TokPipeNext++ % ##Tokenisers].issue_flush(HERE, &&tokeniser, *first_token, f, FALSE);
+			Tokenisers[TokPipeNext++ % ##Tokenisers].issue_flush(HERE, contents, after_last_token, f, FALSE);
 		}
 
 	STATIC Tokenisers: @(CACHELINE)  [CodeTokeniser; #32]PipelineSetup[3];
@@ -401,17 +407,14 @@ INCLUDE "iddedupler.rl"
 		Parser.issue_flush_prepared();
 	}
 
-	STATIC parse_string(str: tok::Token #&, alloc: std::temp::Alloc &) CHAR#[#]
+	STATIC parse_string(
+		at: src::Position,
+		str: TAGGED tok::MiniTokeniser::MiniToken #&,
+		alloc: std::temp::Alloc &) CHAR#[#]
 	{
-		ASSERT(str.Type == :String);
-		contents ::= str.contents();
-		SWITCH(t ::= str.SType.String)
-		{
-		:StringQuote, :StringApostrophe:
-			contents := contents[FROM 1 UNTIL ##contents-1];
-		DEFAULT:
-			term::error(HERE, "unhandled string type: ", std::str::enum(t));
-		}
+		ASSERT(str);
+		contents ::= str.(1).stringApostrophe;
+		contents := contents[FROM 1 UNTIL ##contents-1];
 
 		buffer ::= <CHAR *>(std::heap::alloc.alloc_raw_region(##contents, 16))[];
 
@@ -428,7 +431,7 @@ INCLUDE "iddedupler.rl"
 			{
 			'\\': buffer[o++] := '\\';
 			'x', 'X': {
-				IF(##contents <= i+2) term::error(str.at(), "Contains unfinished hex sequence");
+				IF(##contents <= i+2) term::error(at.at(), "Contains unfinished hex sequence");
 
 				high ::= contents[++i];
 				low ::= contents[++i];
@@ -439,7 +442,7 @@ INCLUDE "iddedupler.rl"
 					high := high - 'a' + 0xa;
 				ELSE IF(high >= 'A' && high <= 'F')
 					high := high - 'A' + 0xa;
-				ELSE term::error(str.at(), "invalid hex sequence");
+				ELSE term::error(at.at(), "invalid hex sequence");
 
 				IF(low >= '0' && low <= '9')
 					low := low - '0';
@@ -447,7 +450,7 @@ INCLUDE "iddedupler.rl"
 					low := low - 'a' + 0xa;
 				ELSE IF(low >= 'A' && low <= 'F')
 					low := low - 'A' + 0xa;
-				ELSE term::error(str.at(), "invalid hex sequence");
+				ELSE term::error(at.at(), "invalid hex sequence");
 
 				buffer[o++] := high << 4 | low;
 			}
@@ -458,7 +461,7 @@ INCLUDE "iddedupler.rl"
 			'\'': buffer[o++] := '\\';
 			'`': buffer[o++] := '`';
 			DEFAULT:
-				term::error(str.at(), "invalid escape sequence: \\", (&ch)[FOR 1]);
+				term::error(at.at(), "invalid escape sequence: \\", (&ch)[FOR 1]);
 			}
 		}
 
@@ -466,53 +469,32 @@ INCLUDE "iddedupler.rl"
 	}
 
 	STATIC parse_includes(
-		includes: rlc::tok::Token - std::Vec &,
-		tokeniser: tok::Tokeniser &) tok::Token-std::Opt
+		includes: Include - std::Vec &,
+		source: CHAR#[],
+		file: src::File) U4
 	{
-		STATIC tokens: tok::TwoTokens;
-		//tokens.clear_reuse();
-		//tokens.reserve(2);
+		tokeniser: tok::MiniTokeniser(<CHAR#*>(source));
 
-		view ::= tokens.view();
-		IF!(tokeniser.parse_next(&view))
-			= NULL;
+		token ::= tokeniser.get_token();
+		IF(token.(0) != :include) = 0;
 
-		hots ::= tokens.Hots![];
-		payloads ::= tokens.Payloads![];
-		positions ::= tokens.Positions![];
+		pos: src::Position := (file, tokeniser.Content - <CHAR #*>(source));
+		// TODO: write a mini-tokeniser that can only parse includes: whitespace, 'INCLUDE', strings, comments. No need to be smart about it, and that way, we do not need to prepare the file's classifier, which is mostly needed for other stuff anyway.
+		token := tokeniser.get_token();
+		IF!(token.(0)) term::error(NULL, "expected string after INCLUDE");
 
-		WHILE(hots->Type == :AuxKeyword
-			&& hots->SType.AuxKeyword == :include)
+		includes += (pos, token);
+		afterInclude: CHAR#* := tokeniser.Content;
+		WHILE(tokeniser.get_token().(0) == :include)
 		{
-			IF(!tokeniser.parse_next(&view))
-				term::error(tokeniser.at(), "expected path after INCLUDE.");
+			pos := (file, tokeniser.Content - <CHAR #*>(source));
+			IF!(token := tokeniser.get_token())
+				term::error(pos.at(), "expected path after INCLUDE.");
 
-			path: tok::Token (BARE);
-			path.Type := hots[1].Type;
-			path.SType.{ hots[1].SType };
-			path.Payload.{payloads[1]};
-			path.Position := positions[1].Pos;
-			path.Length := positions[1].Length;
-
-			IF(hots[1].Type != :String)
-				term::error(path.at(), "unexpected token after include ", std::str::c(<CHAR #*>(path.Type)[]));
-			IF(hots[1].SType.String != :StringApostrophe && hots[1].SType.String != :StringQuote)
-				term::error(path.at(), "invalid string type for includes");
-
-
-			added: ?& := (includes += path);
-			view := tokens.view();
-
-			IF!(tokeniser.parse_next(&view))
-				= NULL;
+			includes += (pos, token);
+			afterInclude := tokeniser.Content;
 		}
 
-		first_token: tok::Token (BARE);
-		first_token.Type := hots->Type;
-		first_token.SType.{ hots->SType };
-		first_token.Payload.{*payloads};
-		first_token.Position := positions->Pos;
-		first_token.Length := positions->Length;
-		= :a(first_token);
+		= afterInclude - <CHAR #*>(source);
 	}
 }

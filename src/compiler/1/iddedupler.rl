@@ -74,7 +74,7 @@ INCLUDE "../../parser/parser.rl"
 				str ::= <src::Span>(tokPos.byte(), tokLen).contents(f);
 				Identifiers![][IOTA] := str;
 
-				hash ::= std::hash_str(str);
+				hash ::= (0) ?? std::hash_str_reference(str) : (1) ?? std::hash_str_weak(str) : std::hash_str(str);
 				IdHashes![][IOTA] := hash;
 			}
 			Identifiers.set_size_ok(##IdToks);
@@ -91,9 +91,9 @@ INCLUDE "../../parser/parser.rl"
 		GlobalIds.resize_bare(##Identifiers);
 		{
 			// deduplicate all identifiers.
-			count ::= ##Identifiers & ~3;
-			FOR(i ::= 0; i < count; i += 4)
-				rlc::ident::[#4]multi_dedup(
+			count ::= ##Identifiers & ~7;
+			FOR(i ::= 0; i < count; i += 8)
+				rlc::ident::[#8]multi_dedup(
 					IdHashes![][FROM i],
 					Identifiers![][FROM i],
 					GlobalIds![][FROM i]);

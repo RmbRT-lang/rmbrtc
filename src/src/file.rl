@@ -27,12 +27,12 @@ INCLUDE 'std/io/format'
 			last_nl: U4;
 			line: U4 := 1;
 
-			FOR(fileContents[file()]![FOR byte()])
+			FOR(fileContents[file()]![TO byte()])
 			{
 				line += IT == '\n';
 				last_nl := IT == '\n' ?? IOTA : last_nl;
 			}
-			= <WHERE>(fileNames[file()]![], line, byte() - last_nl);
+			= <WHERE>(fileNames[file()]![], line, byte() - (last_nl ?? last_nl+1 : last_nl));
 		}
 	}
 

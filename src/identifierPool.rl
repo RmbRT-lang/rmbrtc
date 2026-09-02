@@ -56,7 +56,7 @@ Looking up a member in a local scope:
 	// TODO PERFORMANCE: Just use a U2 array directly, allowing for simpler lookups and more density, or smaller overall footprint (to keep everything in L1).
 	buckets: @(PAGE) HashBucket[1<<13] (NOINIT); // rely on .bss being 0-initialised.
 	// Overflow from buckets gets accumulated into more centralised, unordered sets. Ideally, none of these ever get used, but we still keep a few of them to limit the worst-case cost of vector reallocation and linear searches. We use unordered because we assume they will usually be small. You would probably need a gigantic codebase to trigger the pathological case, but then you should rather tweak the buckets instead or improve the hash function.
-	overflow: std::[OverflowItem]Vec[128] (NOINIT);
+	overflow: std::[OverflowItem]Vec[2] (NOINIT);
 
 	name_alloc: std::temp::Alloc := :custom(65536, 65536);
 	strings: CHAR#[#]-std::Vec;
@@ -101,10 +101,9 @@ Looking up a member in a local scope:
 // Half-cacheline aligned because we do not want large loops in a bucket. This way, we get one more bit of hash selector, and get 5 entries per bucket, and 2 buckets per cacheline.
 ::rlc::ident HashBucket
 {
-	//Fingerprints: @(8) U4[1];
-	Items:                     U2[1];
+	Item: U2;
 
-	# full() BOOL -- := Items[##Items -1] != 0;
+	# full() BOOL -- := Item != 0;
 }
 
 ::rlc::ident OverflowItem { Fingerprint: U4; Item: U2; } // For overflow.
@@ -119,71 +118,81 @@ Looking up a member in a local scope:
 	preimages: CHAR#[#] #[],
 	ids: U2 []) VOID
 {
-	buckets: HashBucket * [kN] (NOINIT);
+	buckets: U8 [kN] (NOINIT);
 
 	// Calculate and prefetch all bucket addresses.
-	|||{buckets} IT := &ident::buckets[hashes[IOTA] % ##ident::buckets];
-	FOR(buckets) PREFETCH_READ IT;
-
-	not_found ::= 1<<kN -1;
-
-	// Prefetch all potentially matching elements in all buckets.
-	FOR(buckets)
+	|||{buckets}
 	{
-		bucket ::= IT;
-		hash ::= <U4>(hashes[IOTA] / ##ident::buckets);
-		preimage ::= preimages[IOTA];
+		hash ::= hashes[IOTA];
+		bucket1: U8 := hash % ##ident::buckets;
+		bucket2: U8 := (hash / ##ident::buckets) % ##ident::buckets;
+		IT := bucket1 | (bucket2 << 32);
 
-		//FOR(IT->Fingerprints)
-			//IF(IT == hash)
-		FOR(IT->Items)
-				PREFETCH_READ mempool::get_memory(bucket->Items[IOTA]);
+		// Force-fetch the buckets, and prefetch the string contents they point at.
+		PREFETCH_READ ident::strings[ident::buckets[bucket1].Item][];
+		PREFETCH_READ ident::strings[ident::buckets[bucket2].Item][];
 	}
+
+	not_found ::= 0;
 
 	// Try to find the elements within the buckets, or insert if not found.
 	FOR[find](buckets)
 	{
-		bucket ::= IT;
+		bucket1 ::= &ident::buckets[<U4>(IT)];
+		bucket2 ::= &ident::buckets[<U4>(IT >> 32)];
+
 		workload ::= IOTA;
 		hash ::= <U4>(hashes[IOTA] / ##ident::buckets);
 		preimage ::= preimages[IOTA];
 
-		FOR(IT->Items)
-		//FOR(IT->Fingerprints)
-			//IF(IT == hash)
-			IF(IT)
+		fill: HashBucket *;
+
+		IF(bucket1->full())
+		{
+			item1 ::= bucket1->Item;
+			item2 ::= bucket2->Item;
+			str1 ::= ident::strings[item1];
+			str2 ::= ident::strings[item2];
+
+			IF(std::str::eq(preimage, str1))
 			{
-				item ::= bucket->Items[IOTA];
-				str ::= ident::strings[item];
-
-				IF(std::str::eq(preimage, str))
-				{
-					ids[workload] := item;
-					not_found ^= 1 << workload;
-					CONTINUE [find];
-				}
+				ids[workload] := item1;
+				CONTINUE [find];
+			} ELSE IF!(bucket2->full())
+			{
+				collisions++;
+				fill := bucket2;
+				// GOTO [insert];
+			} ELSE IF(std::str::eq(preimage, str2))
+			{
+				ids[workload] := item2;
+				CONTINUE [find];
+			} ELSE
+			{
+				not_found ^= 1 << workload;
+				CONTINUE [find];
 			}
+		} ELSE
+		{
+			fill := bucket1;
+			// GOTO [insert];
+		}
 
+		// [insert]
 		// If bucket not full, and we did not find the element, insert it.
-		IF(!IT->full())
-			FOR(IT->Items)
-				IF(IT == 0)
-				{
-					id ::= ##ident::strings;
-						copy ::= <CHAR *>(name_alloc.alloc_raw_unaligned(##preimage));
-						std::mem::cpy(copy[], preimage[], ##preimage);
-						ident::strings += copy[FOR ##preimage];
+		{
+			ASSERT(fill);
+			id ::= ##ident::strings;
+				copy ::= <CHAR *>(name_alloc.alloc_raw_unaligned(##preimage));
+				std::mem::cpy(copy[], preimage[], ##preimage);
+				ident::strings += copy[FOR ##preimage];
 
-					IF(id > 0xffff)
-						term::error(NULL, "Too many distinct identifiers (max: 65535)");
+			IF(id > 0xffff)
+				term::error(NULL, "Too many distinct identifiers (max: 65535)");
 
-					not_found ^= 1 << workload;
-					ids[workload] := id;
-					bucket->Items[IOTA] := id;
-					//bucket->Fingerprints[IOTA] := hash;
-
-					BREAK;
-				}
+			ids[workload] := id;
+			fill->Item := id;
+		}
 	}
 
 	// If any elements have neither been found nor could be inserted in the buckets, look in the overflow buckets.
@@ -215,7 +224,7 @@ Looking up a member in a local scope:
 			std::mem::cpy(copy[], preimage[], ##preimage);
 			ident::strings += copy[FOR ##preimage];
 
-		collisions ++;
+		collisions2++;
 
 		IF(id > 0xffff)
 			term::error(NULL, "Too many distinct identifiers (max: 65535)");

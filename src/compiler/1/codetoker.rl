@@ -8,10 +8,10 @@ INCLUDE 'std/hash'
 
 	Input
 	{
-		Tokeniser: @(CACHELINE) tok::Tokeniser;
-		First:                  tok::Token;
-		File:                   src::File;
-		IsDummy:                BOOL;
+		Contents:    CHAR#[#];
+		StartOffset: U4;
+		File:        src::File;
+		IsDummy:     BOOL;
 
 		{...};
 	}
@@ -28,10 +28,14 @@ INCLUDE 'std/hash'
 	PayloadsAlloc: std::temp::Alloc;
 	PositionsAlloc: std::temp::Alloc;
 
+	// over-allocated, but should not be a problem.
+	fileClassificationBuffer: U1[#];
+
 	{}:
 		HotsAlloc      := :custom(SIZEOF(tok::TokenHot) * MI, SIZEOF(tok::TokenHot) * MI),
 		PayloadsAlloc  := :custom(SIZEOF(tok::Payload)  * MI, SIZEOF(tok::Payload)  * MI),
-		PositionsAlloc := :custom(SIZEOF(tok::Position) * MI, SIZEOF(tok::Position) * MI);
+		PositionsAlloc := :custom(SIZEOF(tok::Position) * MI, SIZEOF(tok::Position) * MI),
+		fileClassificationBuffer := std::heap::alloc.[U1]alloc_array(1 * MI);
 
 	[T]
 	STATIC grow_array(alloc: std::temp::Alloc &, old_array: T![] &, old: U4, new_array_size: U4) VOID
@@ -72,12 +76,21 @@ INCLUDE 'std/hash'
 		alloc_array(PositionsAlloc, output->Tokens.Positions, capacity);
 
 		output->Tokens.TokenCount := 0;
-		output->Tokens += input.First;
+
+		ASSERT(##input.Contents < ##fileClassificationBuffer);
+
+		FOR(input.Contents)
+			fileClassificationBuffer[][IOTA] := tok::Tokeniser::classifier_lut[<U1>(IT)];
+		FOR(fileClassificationBuffer[FROM ##input.Contents FOR 64])
+			IT := tok::Tokeniser::classifier_lut['\000'];
+
+		tokeniser: tok::Tokeniser(input.File, input.Contents, input.StartOffset);
+		tokeniser.Classifiers := fileClassificationBuffer[];
 
 		// Job 1: tokenise the file. -- this needs to be twice as fast to sustain the speed at which the SSD can read files. Having this disabled has 1.0ms+ for loading 50 files. Having it enabled has 2.0ms+ for loading 50 files (1 thread), and more like 3-4ms.
 
 		// Continue tokenising the files.
-		WHILE(input.Tokeniser.parse_all(&output->Tokens, capacity))
+		WHILE(tokeniser.parse_all(&output->Tokens, capacity))
 		{
 			old ::= capacity;
 			capacity *= 2;

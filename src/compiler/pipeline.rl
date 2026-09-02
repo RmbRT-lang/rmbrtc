@@ -159,7 +159,7 @@
 		WHILE(Shared.Quit(:<))
 		{
 			IF!(++tries & 1023) {
-				IF((CPU_COUNTER-start) / (CPU_TICK_RATE/KILO) > 100)
+				IF((CPU_COUNTER-start) / (CPU_TICK_RATE/KILO) > 1000)
 					term::error(NULL, Job::name(), " thread is stuck!");
 			}
 		}
@@ -230,7 +230,7 @@
 		{
 			PAUSE;
 			IF!(++attempt & 1023)
-				IF((CPU_COUNTER - start) / (CPU_TICK_RATE / KILO) > 100)
+				IF((CPU_COUNTER - start) / (CPU_TICK_RATE / KILO) > 1000)
 					term::error(at, Job::name(), " thread is stuck!");
 		}
 	}

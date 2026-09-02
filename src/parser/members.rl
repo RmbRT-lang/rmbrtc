@@ -164,6 +164,8 @@ INCLUDE "../mempool.rl"
 	InnerLutV: VEntry[];
 	InnerLutNV: NVEntry[];
 
+	File: src::File;
+
 	Templates: :TemplateCtx;
 	Fields: U2;
 	Id: parser::MemberScopeID;

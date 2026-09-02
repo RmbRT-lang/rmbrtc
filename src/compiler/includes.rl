@@ -18,6 +18,7 @@
 	::detail no_alloc(U8, VOID *) VOID * := NULL;
 
 	/// Finds a file belonging to a global include path.
+	// NOTE DEAD
 	find_global(
 		path: os::fs::FilePath #&,
 		globals: os::fs::DirectoryPath[#]) TAGGED os::fs::ResolveResult
@@ -35,11 +36,12 @@
 			file ::= file_buf[FOR len];
 
 			a: os::fs::UserAlloc (detail::no_alloc, NULL);
-			IF:!(result ::= os::fs::ReadFile(>file, &a))
-				CONTINUE;
-
-			IF(result.(0) == :Memory)
+			SWITCH(os::fs::ReadFile(>file, &a))
+			{
+			:NotFound, :IsDirectory: CONTINUE;
+			:Memory:
 				= rel;
+			}
 		}
 
 		= :Error;

@@ -111,17 +111,19 @@ INCLUDE "specials.rl"
 	{
 		{
 			file: src::File,
-			contents: CHAR#[#]
+			contents: CHAR#[#],
+			offset: U4
 		}:
 			File := file,
 			Contents := contents,
-			Read := 0,
-			Start := 0;
+			Read := offset,
+			Start := offset;
 
 		# eof() BOOL := Read >= ##Contents;
 		# past_eof() BOOL := Read > ##Contents;
 
-		ENUM Case {
+		// Classifying the first character of a token.
+		ENUM FirstCase {
 			eof,
 			string_quote, // Strings must have same order as token types
 			string_apostrophe,
@@ -137,12 +139,51 @@ INCLUDE "specials.rl"
 			forwardSlash, // for // comments.
 			other
 		}
-		STATIC token_lut: @(CACHELINE) Tokeniser::Case[256] (NOINIT);
+
+		// [on_zero().A] requires this order to be exactly as it is.
+		ENUM DigitCase {
+			binary,
+			octal,
+			decimal,
+			hex
+		}
+
+		// For numbers starting with 0.
+		ENUM NumberCase {
+			hex,
+			raw, // How to define a raw literal's semantics? Is it just a memory-ordered sequence of big-endian hex bytes?
+			binary,
+			octal
+		}
+
+		ENUM StringSpecial {
+			backspace,
+			quote,
+			apostrophe
+		}
+
+		// Classifying all characters within a token. Stored as flag bits, so that we can do mask & popcnt to quickly count sequences matching a case.
+		// Specials (operators, etc.) remain uncategorised. EOF is not represented.
+		ENUM FollowCase {
+			sig0, // lowest two bits are an enum.
+			sig1,
+			// Cases that use the enum (mutually exclusive with each other):
+			numberCaseSig,
+			stringSpecialSig, // enum: \, ", '
+			digitCaseSig, // CAUTION [FollowCase.A]: comes late in the enum so that the word mask will cover the first 4 bits (so that hexadecimal digits can be masked properly). SEE [on_zero().B].
+			whitespaceSig, // sig0: whether it is a newline.
+			// Cases that do not use the enum (not exclusive with other cases):
+			idfollow, // mixedcase, numbers, underscores. Cannot use enum.
+			keywordcase // uppercase and/or number and/or underscore. Cannot use enum. IMPORTANT: must come after idfollow, SEE [keyword().KW].
+		}
+
+		STATIC token_lut: @(CACHELINE) Tokeniser::FirstCase[256] (NOINIT);
+		STATIC classifier_lut: @(CACHELINE) U1[256] (NOINIT);
 
 		STATIC init() VOID
 		{
 			Tokeniser::init_token_lut();
-			Tokeniser::init_hex_digits();
+			Tokeniser::init_classifier_lut();
 			tok::init_keyword_lut();
 			tok::init_specials_lut();
 		}
@@ -154,8 +195,8 @@ INCLUDE "specials.rl"
 				c: CHAR := IOTA;
 				IF(is_digit(c)) IT := :nonzero;
 				ELSE IF(is_idfc(c)) IT := (c >= 'A' && c <= 'Z')
-					?? Case::uppercase
-					: Case::identifier;
+					?? FirstCase::uppercase
+					: FirstCase::identifier;
 				ELSE IT := :other;
 			}
 
@@ -174,6 +215,61 @@ INCLUDE "specials.rl"
 			token_lut[0] := :eof;
 		}
 
+		STATIC init_classifier_lut() VOID
+		{
+			FOR(classifier_lut) IT := 0;
+
+
+			FOR("abcdefghijklmnopqrstuvwxyz_$0124356789")
+				classifier_lut[<U1>(IT)] |= FollowCase::FLAGS(:idfollow);
+			FOR("ABCDEFGHIJKLMNOPQRSTUVWXYZ_$0124356789")
+				classifier_lut[<U1>(IT)] |= FollowCase::FLAGS(:idfollow, :keywordcase);
+
+			classifier_lut[' ']  := 0 | FollowCase::FLAGS(:whitespaceSig);
+			classifier_lut['\t'] := 0 | FollowCase::FLAGS(:whitespaceSig);
+			classifier_lut['\n'] := 1 | FollowCase::FLAGS(:whitespaceSig);
+
+			FOR("xX")
+				classifier_lut[<U1>(IT)] |=
+					<U1>(NumberCase::hex) | FollowCase::FLAGS(:numberCaseSig);
+			FOR("rR")
+				classifier_lut[<U1>(IT)] |=
+					<U1>(NumberCase::raw) | FollowCase::FLAGS(:numberCaseSig);
+			FOR("bB")
+				classifier_lut[<U1>(IT)] |=
+					<U1>(NumberCase::binary) | FollowCase::FLAGS(:numberCaseSig);
+
+			FOR("abcdefABCDEF")
+				classifier_lut[<U1>(IT)] |=
+					<U1>(DigitCase::hex) | FollowCase::FLAGS(:digitCaseSig);
+			FOR("89")
+				classifier_lut[<U1>(IT)] |=
+					<U1>(DigitCase::decimal) | FollowCase::FLAGS(:digitCaseSig);
+			FOR("234567")
+				classifier_lut[<U1>(IT)] |=
+					<U1>(DigitCase::octal) | FollowCase::FLAGS(:digitCaseSig);
+			FOR("01")
+				classifier_lut[<U1>(IT)] |=
+					<U1>(DigitCase::binary) | FollowCase::FLAGS(:digitCaseSig);
+		}
+
+		prepare_file(contents: CHAR# \, classification: U1\, size: U4) VOID
+		{
+			contentsU2 ::= <U2# \>(contents)[];
+			classificationU2 ::= <U2 \>(classification)[];
+
+			size := (size +1) >> 1;
+			FOR(i ::= 0; i < size; i++)
+			{
+				word ::= contentsU2[i];
+
+				c1 ::= classifier_lut[<U1>(word)];
+				c2 ::= classifier_lut[<U1>(word >> 8)];
+
+				classificationU2[i] := c1 | (c2 << 8);
+			}
+		}
+
 		parse_next(out: FileTokenView \) BOOL --
 			:= parse_all(out, ##*out + 1);
 
@@ -187,8 +283,7 @@ INCLUDE "specials.rl"
 				case ::= token_lut![<U1>(next)];
 				SWITCH!(case)
 				{
-				:newline: { space_multi(); CONTINUE; }
-				:space: { space_multi(); CONTINUE; }
+				:newline, :space: { space_multi(); CONTINUE; }
 				:zero: on_zero(out);
 				:nonzero: number_literal(out, next);
 				:string_apostrophe, :string_quote, :string_backtick:
@@ -197,7 +292,7 @@ INCLUDE "specials.rl"
 					out->Hots[##*out] := <TokenHot>(:String, :String(>
 							<U1>(<U1>(case) + <S1>(
 								<U1>(tok::StringType::StringQuote) -
-								<U1>(Case::string_quote)))
+								<U1>(FirstCase::string_quote)))
 						));
 					out->Payloads[##*out].{ :String(Start, Read - Start) };
 				}
@@ -232,6 +327,7 @@ INCLUDE "specials.rl"
 			}
 		}
 
+		Classifiers: U1 #[];
 	PROTECTED:
 		Contents: CHAR #[#];
 		Read: src::Index; // The current reading position in the file.
@@ -241,7 +337,8 @@ INCLUDE "specials.rl"
 		STATIC is_idfc(c: CHAR) BOOL :=
 			(c >='a' && c <= 'z')
 			|| (c >= 'A' && c <= 'Z')
-			|| (c == '_');
+			|| (c == '_')
+			|| (c == '$');
 		STATIC is_digit(c: CHAR) BOOL -- :=
 			(c >= '0' && c <= '9');
 		STATIC is_alnum(c: CHAR) BOOL :=
@@ -272,6 +369,8 @@ INCLUDE "specials.rl"
 		# look2() U2 -- := *<U2 #*>(<UM>(<CHAR #*>(Contents[])) + Read);
 		# look4() U4 -- := *<U4 #*>(<UM>(<CHAR #*>(Contents[])) + Read);
 		# look8() U8 -- := *<U8 #*>(<UM>(<CHAR #*>(Contents[])) + Read);
+		# look_class() U1 -- := Classifiers[Read];
+		# look8_class() U8 -- := *<U8 #*>(<UM>(<VOID #*>(Classifiers)) + Read);
 		# char2(v: CHAR[2] #&) U2 -- := *<U2 #*>(<UM>(&v));
 
 		getc() CHAR -- := Contents[][Read++];
@@ -386,7 +485,6 @@ INCLUDE "specials.rl"
 				FOR(nest ::= 1; nest;)
 				{
 					next2 ::= look2();
-					next1 ::= <U1>(next2);
 					enter ::= next2 == char2("(/");
 					leave ::= next2 == char2("/)");
 
@@ -418,14 +516,26 @@ INCLUDE "specials.rl"
 		keyword(out: FileTokenView \, first: CHAR) VOID --
 		{
 			uppercase ::= TRUE;
-			FOR(c ::= look(); is_alnum(c); c := look())
-			{
-				// all non-lowercase identifier characters are before the lowercase characters.
-				uppercase &= c < 'a';
-				advance_nows();
-			}
 
-			IF(uppercase)
+			idfollow_mask: U8# := FollowCase::FLAGS(:idfollow) * 0x0101010101010101;
+			kwcase_mask: U8# := FollowCase::FLAGS(:keywordcase) * 0x0101010101010101;
+
+			nonKWCase ::= FALSE;
+			c8: U8 (NOINIT);
+			cl8: U8 (NOINIT);
+
+			DO()
+			{
+				c8 := look8_class();
+				cl8 := c8 & idfollow_mask;
+			} FOR(cl8 == idfollow_mask; (Read += 8, nonKWCase |= kwcase_mask &~ c8))
+
+			// [keyword().KW]: partial_mask is all 1-bits until before the first idfollow_mask bit that was not met by cl8. To make this mask valid for keywordcase as well, the idfollow_mask bit must come BEFORE the keywordcase bit, so that both bits have the same value.
+			partial_mask ::= FIRST1BIT(idfollow_mask &~ cl8) - 1;
+			nonKWCase |= (kwcase_mask &~ c8) & partial_mask;
+			Read += POPCNT ( cl8 & partial_mask );
+
+			IF!(nonKWCase)
 			{
 				kw ::= tok::lookup_keyword(tok_str());
 				out->Hots[##*out] := <TokenHot>(kw.(0), :EOF(kw.(1)));
@@ -436,161 +546,109 @@ INCLUDE "specials.rl"
 
 		identifier(out: FileTokenView \) VOID --
 		{
-			allowed_mask: U4# := Case::FLAGS(:zero, :nonzero, :identifier, :uppercase);
+			allowed_mask: U4# := FirstCase::FLAGS(:zero, :nonzero, :identifier, :uppercase);
 
-			cl8: U4 (NOINIT);
+			follow_mask: U8# := FollowCase::FLAGS(:idfollow) * 0x0101010101010101;
+
+			cl8: U8 (NOINIT);
 			DO()
 			{
-				c8 ::= look8();
-				cl0 ::=   1 &   ((1*allowed_mask) >> <U1>(token_lut![<U1>(c8)]));
-				cl1 ::=   2 &   ((2*allowed_mask) >> <U1>(token_lut![<U1>(c8>>8)]));
-				cl2 ::=   4 &   ((4*allowed_mask) >> <U1>(token_lut![<U1>(c8>>16)]));
-				cl3 ::=   8 &   ((8*allowed_mask) >> <U1>(token_lut![<U1>(c8>>24)]));
-				cl4 ::=  16 &  ((16*allowed_mask) >> <U1>(token_lut![<U1>(c8>>32)]));
-				cl5 ::=  32 &  ((32*allowed_mask) >> <U1>(token_lut![<U1>(c8>>40)]));
-				cl6 ::=  64 &  ((64*allowed_mask) >> <U1>(token_lut![<U1>(c8>>48)]));
-				cl7 ::= 128 & ((128*allowed_mask) >> <U1>(token_lut![<U1>(c8>>56)]));
-
-				cl8 := ((cl0 | cl1) | (cl2 | cl3)) | ((cl4 | cl5) | (cl6 | cl7));
-			} FOR(cl8 == 255; Read += 8)
-			Read += FIRST0POS cl8;
+				c8 ::= look8_class();
+				cl8 := c8 & follow_mask;
+			} FOR(cl8 == follow_mask; Read += 8)
+			Read += POPCNT ( cl8 & (FIRST1BIT(follow_mask &~ cl8) - 1) );
 			out->Hots[##*out] := <TokenHot>(:Identifier, :EOF(0));
 		}
 
-		STATIC hex_digit: @(CACHELINE) U1[256] (NOINIT);
-		STATIC init_hex_digits() VOID
-		{
-			hex_digit.{255};
-			FOR("0123456789")
-				hex_digit[IT] := IOTA;
-			FOR("ABCDEF")
-				hex_digit[IT] := IOTA + 10;
-			FOR("abcdef")
-				hex_digit[IT] := IOTA + 10;
+		// For non-decimal numbers.
+		DigitTableEntry {
+			forbidden_digits_mask: U8;
+			digit_shift_amounts: U8;
 		}
+
 
 		on_zero(out: FileTokenView \) VOID --
 		{
-			c ::= look();
-			classify ::= token_lut[c];
-			SWITCH(c)
+			STATIC k_non_decimal_digit_table: DigitTableEntry[TABLE NumberCase]#(
+				// raw literals to have the bytes be in order of the bytes in memory.
+				:hex    (0x0000000000000000, 0r1c1814100c080400),
+				:raw    (0x0000000000000000, 0r04000c0814101d18),
+				:binary (0x0303030303030303, 0r0706050403020100),
+				:octal  (0x0202020202020202, 0r15120f0c09060300));
+
+			first ::= look_class();
+
+			number_case: NumberCase := :octal;
+			is_special: BOOL := first & FollowCase::FLAGS(:numberCaseSig);
+
+			// [on_zero().A]: depends on order of DigitCase and NumberCase.
+			// hex, raw: 0; binary: (3) octal, decimal, hex; octal: (2) decimal, hex
+			digit_mask # ::= <U8>(0x0101010101010101) * FollowCase::FLAGS(:digitCaseSig);
+			Read += is_special;
+			number_case := is_special ?? <NumberCase>(first & 3) : number_case;
+
+			forbidden_digits_mask # ::=
+				k_non_decimal_digit_table[number_case].forbidden_digits_mask;
+			digit_shift_amounts # ::=
+				k_non_decimal_digit_table[number_case].digit_shift_amounts;
+
+			start ::= Read;
+
+			number: U8 (0);
+
+			has_forbidden_digits: U8 := 0;
+			forbidden_digits: U8 (NOINIT);
+			cl8: U8 (NOINIT);
+			txt8: U8 (NOINIT);
+			DO()
 			{
-			'x', 'X':
-			{
-				advance_nows();
-				payload: U8 := 0;
-				c ::= hex_digit[<U1>(look())];
-				i ::= 0;
-				FOR(;; i++)
-				{
-					nextc ::= hex_digit[<U1>(look_ahead(i+1))];
-					IF(<U1>(~c))
-					{
-						payload <<= 4;
-						payload |= c;
-						c := nextc;
+				// normalise text to have each byte store the digit value instead of text.
+				txt8 := look8();
 
-					} ELSE {
-						IF(!i)
-							err::msg(at(), "expected digits");
-						BREAK;
-					}
-				}
-				Read += i;
-				out->Payloads[##*out].{ :Number(payload) };
-				out->Hots[##*out] := <TokenHot>(:Number, :Number(:Normal));
-			}
-			'r', 'R':
-			{
-				advance_nows();
-				number: U8 := 0;
-				i ::= 0;
-				FOR(;; i++)
-				{	// little endian bytes, big-endian nibbles, 1/2/4/8 bytes.
-					hn ::= hex_digit[look_ahead(0)];
-					ln ::= hex_digit[look_ahead(1)];
+				// Efficiently normalise all digits (incl. hex) to their numerical values.
+				// detect all hexademicals.       Turn everything lowercase. Digits unaffected.
+				a ::= txt8 & 0x4040404040404040;  txt8 |= 0x2020202020202020;
+				// 0x01 for letters, 0x00 for digits.   Normalise digits.
+				a >>= 6;                          txt8 -= <U8>('0') * <U8>(0x0101010101010101);
+				// 0x80 / 0x7f mask.
+				a := <U8>(0x8080808080808080) - a;
+				// Mask the adjustment value.
+				a &= <U8>(0x0101010101010101) * <U8>('a'-('9'+ 1));
+				txt8 -= a; // adjust hexadecimals to 10-15.
 
-					b ::= (hn << 4) | ln;
-					IF!(<U1>(~hn)) BREAK;
-					IF!(<U1>(~ln)) tok::err::msg(at(), "odd number of digits");
+				c8 ::= look8_class();
+				digit_types ::= c8 & 0x0303030303030303;
 
-					Read += 2; 
+				cl8 := c8 & digit_mask;
 
-					number |= <U8>(b) << (8*i);
+				partial_mask ::= FIRST1BIT(digit_mask &~ cl8) - 1;
+				txt8 &= partial_mask; // NOTE [on_zero().B]: SEE [FollowCase.A].
+				forbidden_digits := digit_types & forbidden_digits_mask;
+				has_forbidden_digits |= forbidden_digits & partial_mask;
+				Read += POPCNT ( cl8 & partial_mask );
+				
+				shamt ::= digit_shift_amounts; word: U4 := 0;
 
-					advance_nows_by(2);
-				}
+				word |= <U4>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
+				word |= <U4>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
+				word |= <U4>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
+				word |= <U4>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
+				word |= <U4>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
+				word |= <U4>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
+				word |= <U4>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
+				word |= <U4>(<U1>(txt8)) << <U1>(shamt);
 
-				IF(!i || i > 8)
-					tok::err::msg(at(), "raw hex literal exceeds register size: ", std::io::format::dec(i), " bytes > 8");
+				lo ::= number_case == :raw ?? number : word;
+				hi ::= number_case == :raw ?? word : number;
+				word_bits: U1 := 0x04082020 >> (8*<U1>(number_case));
+				number := (hi << word_bits) | lo;
+			} WHILE(cl8 == digit_mask)
 
-				STATIC types: tok::NumberType[8](
-					:RawLiteral_1,
-					:RawLiteral_2,
-					BARE, // we might add those later for RISA.
-					:RawLiteral_4,
-					BARE, // we might add those later for RISA.
-					BARE, // ?
-					BARE, // ?
-					:RawLiteral_8
-				);
-				out->Hots[##*out] := <TokenHot>(:Number, :Number(types[i-1]));
-				out->Payloads[##*out].{ :Number(number) };
+			IF(FirstCase::FLAGS(:zero, :nonzero, :identifier, :uppercase) >> look_class() & 1)
+				term::error(at(), "invalid follow-up character after number");
 
-				IF(POPCNT i != 1)
-					tok::err::msg(at(), "raw hex literal must have 1/2/4/8 bytes size");
-			}
-			'b', 'B':
-			{
-				advance_nows();
-				payload: U8 := 0;
-				c := look();
-				FOR(i ::= 0;; i++)
-				{
-					nextc ::= look_ahead(1);
-					digit: U1 := c - '0';
-					IF(digit <= 1)
-					{
-						advance_nows();
-						payload <<= 1;
-						payload |= digit;
-						c := nextc;
-					} ELSE {
-						IF(!i)
-							err::msg(at(), "expected digits");
-						BREAK;
-					}
-				}
-				advance_nows();
-				out->Payloads[##*out].{ :Number(payload) };
-				out->Hots[##*out] := <TokenHot>(:Number, :Number(:Normal));
-			}
-			'1', '2', '3', '4', '5', '6', '7', '8', '9':
-			{
-				num: U8 := look() - '0';
-				advance_nows();
-				FOR(c ::= look(); is_digit(c); c := getc())
-				{
-					num := (num << 3) | (c - '0');
-					advance_nows();
-				}
-				out->Hots[##*out] := <TokenHot>(:Number, :Number(:Normal));
-				out->Payloads[##*out].{ :Number(num) };
-			}
-			DEFAULT:
-			{
-				forbidden_follow: U4# :=
-					<U4>(1) << <U1>(Case::zero) |
-					<U4>(1) << <U1>(Case::identifier) |
-					<U4>(1) << <U1>(Case::uppercase);
-
-				IF(<U4>(1) << <U1>(classify) & forbidden_follow)
-					term::error(at(), "invalid follow-up character after 0: '", (&c)[FOR 1], "'");
-
-				out->Hots[##*out] := <TokenHot>(:Number, :Number(:Normal));
-				out->Payloads[##*out].{ :Number(0) };
-			}
-			}
+			out->Hots[##*out] := <TokenHot>(:Number, :Number(:Normal));
+			out->Payloads[##*out].{ :Number(number) };
 		}
 
 		number_literal(out: FileTokenView \, last: CHAR) VOID --
@@ -600,19 +658,6 @@ INCLUDE "specials.rl"
 
 			read ::= Read;
 			chars # ::= Contents[][FROM read];
-
-			i ::= 0;
-			last := (-'0') + chars[0];
-			WHILE(<U1>(last) < 10)
-			{
-				number := next_number + last;
-				next_number := number * 10;
-				last := (-'0') + chars[++i];
-			}
-
-			forbidden_follow: U4# :=
-				<U4>(1) << <U1>(Case::identifier) |
-				<U4>(1) << <U1>(Case::uppercase);
 
 			STATIC digits: U8#[?](
 				<U8>(1),
@@ -636,6 +681,20 @@ INCLUDE "specials.rl"
 				<U8>(1000000000000000000),
 				<U8>(10000000000000000000)
 			);
+
+			i ::= 0;
+			last := (-'0') + chars[0];
+			WHILE(<U1>(last) < 10)
+			{
+				number := next_number + last;
+				next_number := number * 10;
+				last := (-'0') + chars[++i];
+			}
+
+			forbidden_follow: U4# :=
+				<U4>(1) << <U1>(FirstCase::identifier) |
+				<U4>(1) << <U1>(FirstCase::uppercase);
+
 
 			IF(i >= ##digits || number < digits![i])
 				term::error(at(), "overflowed integer constant");

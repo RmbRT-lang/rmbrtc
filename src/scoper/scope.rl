@@ -226,8 +226,10 @@ INCLUDE "../parser/ids.rl"
 				}
 			} ELSE IF(1) // NOTE PERFORMANCE: not really measurable since this is only 1/50th of the cases (only the root scope).
 			{
-				FOR(cap) innerLutV[IOTA].{};
-				FOR(cap) innerLutNV[IOTA].{};
+				std::mem::zero_array(innerLutV[FOR cap]);
+				std::mem::zero_array(innerLutNV[FOR cap]);
+				//FOR(cap) innerLutV[IOTA].{};
+				//FOR(cap) innerLutNV[IOTA].{};
 			}
 
 			// TODO PERFORMANCE: We could also make it so that we first create all the scopes, rely on 0-init, and then do a sparse fill for all^^ transitive children, instead of brute-forcing the work we do by fully writing the sparse sets.
