@@ -283,7 +283,8 @@ INCLUDE "specials.rl"
 				case ::= token_lut![<U1>(next)];
 				SWITCH!(case)
 				{
-				:newline, :space: { space_multi(); CONTINUE; }
+				//:space: { space(); CONTINUE; }
+				:space, :newline: { space_multi(); CONTINUE; }
 				:zero: on_zero(out);
 				:nonzero: number_literal(out, next);
 				:string_apostrophe, :string_quote, :string_backtick:
@@ -387,42 +388,36 @@ INCLUDE "specials.rl"
 
 		space() VOID --
 		{
-			space_mask: U8# :=
-				<U8>(1) << <U1>(' ')  |
-				<U8>(1) << <U1>('\t') |
-				<U8>(1) << <U1>('\r') |
-				<U8>(1) << <U1>('\n');
+			whitespace_mask: U8# := FollowCase::FLAGS(:whitespaceSig) * 0x0101010101010101;
 
-			read ::= Read;
-			chars # ::= Contents[];
-			is_space: BOOL (NOINIT);
-			c ::= chars[read];
-			WHILE((space_mask >> c) & (c < 64))
-				c := chars[++read];
-			Read := read;
+			c8: U8 (NOINIT);
+			cl8: U8 (NOINIT);
+
+			//DO()
+			{
+				c8 := look8_class();
+				cl8 := c8 & whitespace_mask;
+			}// FOR(cl8 == whitespace_mask; Read += 8)
+
+			partial_mask ::= FIRST1BIT(whitespace_mask &~ c8) -1;
+			Read += POPCNT (cl8 & partial_mask);
 		}
 
 		space_multi() VOID --
 		{
-			space_mask: U8# :=
-				<U8>(1) << <U1>(' ')  |
-				<U8>(1) << <U1>('\t') |
-				<U8>(1) << <U1>('\r') |
-				<U8>(1) << <U1>('\n');
+			whitespace_mask: U8# := FollowCase::FLAGS(:whitespaceSig) * 0x0101010101010101;
 
-			read ::= Read;
-			chars ::= Contents[][FROM read];
-			is_space: BOOL (NOINIT);
-			DO(c ::= chars[0])
+			c8: U8 (NOINIT);
+			cl8: U8 (NOINIT);
+
+			DO()
 			{
-				next ::= chars[1];
-				is_space := (space_mask >> c) & (c < 64);
-				chars += is_space;
-				read += is_space;
-				c := next;
-			} WHILE(is_space)
+				c8 := look8_class();
+				cl8 := c8 & whitespace_mask;
+			} FOR(cl8 == whitespace_mask; Read += 8)
 
-			Read := read;
+			partial_mask ::= FIRST1BIT(whitespace_mask &~ c8) -1;
+			Read += POPCNT (cl8 & partial_mask);
 		}
 
 		eat2(v: CHAR[2] #&) BOOL -- {
