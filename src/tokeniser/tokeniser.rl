@@ -532,7 +532,7 @@ INCLUDE "specials.rl"
 
 			IF!(nonKWCase)
 			{
-				kw ::= tok::lookup_keyword(tok_str());
+				kw ::= tok::lookup_keyword(tok_str(), partial_mask);
 				out->Hots[##*out] := <TokenHot>(kw.(0), :EOF(kw.(1)));
 			}
 			ELSE

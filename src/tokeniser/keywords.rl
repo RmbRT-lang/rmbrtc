@@ -79,24 +79,36 @@
 		[tok::IntrinsicOperatorKeyword]fill_letters(letter_keywords_total, :IntrinsicOp);
 	}
 
-	lookup_keyword(text: CHAR#[#]) {ENUM tok::Type, U2} -- {
+	lookup_keyword(text: CHAR#[#], last_word_mask: U8) {ENUM tok::Type, U2} -- {
+		// TODO PERFORMANCE: beide worte reingeben, und die partial maske.
+		// TODO PERFORMANCE: keyword_lut aufspalten? hash? Man könnte basierend auf anfangsbuchstabe und länge das machen.
+		// TODO PERFORMANCE: copy loop rausschmeißen.
+		// Theoretisch können wir auch hier zwei Funktionen benutzen, eine für <=8 länge, eine für >8, mit separaten tabellen.
 		IF(##text > SIZEOF(KeywordStorage))
 			= (:Identifier, 0);
 
-		kw: KeywordStorage := :Words(>0,>0);
-		FOR(text) kw.Chars[IOTA] := IT;
-		a ::= kw.Words[0];
-		b ::= kw.Words[1];
+		last_word_mask := (last_word_mask & 0x0101010101010101) * 255;
+		mask0: U8 := last_word_mask;
+		mask1: U8 := last_word_mask;
+		mask0 |= MASK(##text > 8);
+		mask1 &= MASK(##text > 8);
+
+		text_as_words: U8# * := <U8 #*>(<VOID #*>(text[]));
+
+		a: U8 := text_as_words[0] & mask0;
+		b: U8 := text_as_words[1] & mask1;
 
 		type: ENUM tok::Type := :Identifier;
 		payload: U2;
-		FOR(keyword_lut[text[0] - 'A'])
+		FOR(keyword_lut[<U1>(a) - 'A'])
 		{
-			match: BOOL := (a == IT.(0).Words[0]) & (b == IT.(0).Words[1]);
-			type := match ?? IT.(1) : type;
-			payload := match ?? IT.(2) : payload;
+			mismatch: BOOL := (a ^ IT.(0).Words[0]) | (b ^ IT.(0).Words[1]);
+			IF!(mismatch)
+			{
+				= (IT.(1), IT.(2));
+			}
 		}
 
-		= (type, payload);
+		= (:Identifier, 0);
 	}
 }
