@@ -357,8 +357,8 @@ INCLUDE "specials.rl"
 						now ::= CPU_COUNTER;
 						Timings.add(case, now-_start_time);
 						_start_time := now;
-						CONTINUE;
 					}
+					CONTINUE;
 				}
 				:zero:
 				//'0':
