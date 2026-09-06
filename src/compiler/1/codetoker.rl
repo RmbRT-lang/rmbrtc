@@ -60,6 +60,8 @@ INCLUDE 'std/hash'
 		array := <T *>(alloc.alloc_raw(size * SIZEOF(T), align))[];
 	}
 
+	Timings: tok::Tokeniser::TimingTracker;
+
 	handle_job(
 		input: Input &,
 		output: Output *,
@@ -86,6 +88,7 @@ INCLUDE 'std/hash'
 
 		tokeniser: tok::Tokeniser(input.File, input.Contents, input.StartOffset);
 		tokeniser.Classifiers := fileClassificationBuffer[];
+		tokeniser.Timings := Timings;
 
 		// Job 1: tokenise the file. -- this needs to be twice as fast to sustain the speed at which the SSD can read files. Having this disabled has 1.0ms+ for loading 50 files. Having it enabled has 2.0ms+ for loading 50 files (1 thread), and more like 3-4ms.
 
@@ -100,6 +103,9 @@ INCLUDE 'std/hash'
 			grow_array(PositionsAlloc, output->Tokens.Positions, old, capacity);
 		}
 		output->Tokens += <tok::Token>(:EOF);
+
+		IF!(input.IsDummy)
+			Timings := tokeniser.Timings;
 
 		// Reset allocator to the actual allocation size.
 		overshoot ::= capacity - ##output->Tokens;

@@ -79,7 +79,7 @@ INCLUDE "2/stage.rl"
 
 				IF(len)
 				{
-					term::info(NULL, "Include dir: ", incs[UNTIL len]);
+					//term::info(NULL, "Include dir: ", incs[UNTIL len]);
 					IncludePaths += :dir(incs[UNTIL len]);
 				}
 			} FOR(len < ##incs; incs := incs[AFTER len])
@@ -88,8 +88,8 @@ INCLUDE "2/stage.rl"
 			VERBOSE_TIMING := std::str::eq(std::str::c(detail::getenv("RLC_VT"!)[]), "1");
 			TRACK_FILE_IDSETS := std::str::eq(std::str::c(detail::getenv("RLC_IDS"!)[]), "1");
 
-			term::info(NULL,
-				"SINGLE_THREADED: ", SINGLE_THREADED ?? "TRUE"[#] : "FALSE"[#]);
+			(/term::info(NULL,
+				"SINGLE_THREADED: ", SINGLE_THREADED ?? "TRUE"[#] : "FALSE"[#]);/)
 		}
 	}
 

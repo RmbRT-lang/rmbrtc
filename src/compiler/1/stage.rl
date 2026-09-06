@@ -114,7 +114,7 @@ INCLUDE "../../tokeniser/minitokeniser.rl"
 			Loader.wait_launched();
 			end ::= NOW;
 
-			IF(Build->VERBOSE_TIMING)
+			IF(0 && Build->VERBOSE_TIMING)
 			{
 				term::info(NULL, "Phase 1: it took ",
 					std::io::format::dec_x((end-start) / (CPU_TICK_RATE/MEGA), :Pad(5)),
@@ -130,10 +130,10 @@ INCLUDE "../../tokeniser/minitokeniser.rl"
 		STATIC source_buf: CHAR[256] (NOINIT);
 		STATIC source ::=
 		"::test {\n"
-		"	f() INT := 5 * 23;\n"
+		"	f() INT := 5 * 23 + 0;\n"
 		"	Class { X: INT; #? THIS() U4 -- := X; }\n"
 		"	UNION U { !? Ok: Class; Err: INT; }\n"
-		"	::subnamespace function() VOID {}\n"
+		"	::subnamespace function() VOID { ""; }\n"
 		"}";
 
 		std::mem::cpy(source_buf[], source[], ##source);
@@ -205,7 +205,8 @@ INCLUDE "../../tokeniser/minitokeniser.rl"
 			budget_1 ::= (10000 * target) / lines_per_second_1;
 			budget_2 ::= (10000 * target) / lines_per_second_2;
 
-			IF(Build->VERBOSE_TIMING)
+			IF(Build->VERBOSE_TIMING && lines_per_second > (<tok::Tokeniser::Cfg>(:track_time) ?? 4200000 : 8100000))
+			{
 			term::info(NULL, "Phase 1: ", std::io::format::dec(##src::fileNames), "F (", std::io::format::dec(lines), "L, ", std::io::format::dec(size), "B) in ",
 				std::io::format::dec(phase_1_time / 1000000), ".", std::io::format::dec_x((phase_1_time % 1000000) / 1000, 3),
 				"+", std::io::format::dec(post_time / 1000000), ".", std::io::format::dec_x((post_time % 1000000) / 1000, 3), "ms. ",
@@ -250,7 +251,22 @@ INCLUDE "../../tokeniser/minitokeniser.rl"
 				std::io::format::dec(budget_2 / 100), ".", std::io::format::dec_x(budget_2 % 100, 2), "% of budget"
 				", ", std::io::format::dec(ident::collisions), "+", std::io::format::dec(ident::collisions2)
 				);
-			ELSE
+
+				IF#(<tok::Tokeniser::Cfg>(:track_time))
+				{
+					timings: tok::Tokeniser::TimingTracker;
+					FOR(Tokenisers)
+					{
+						FOR(IT.Worker.Timings.Counts)
+							timings.Counts[IOTA] += IT;
+						FOR(IT.Worker.Timings.Totals)
+							timings.Totals[IOTA] += IT;
+					}
+					term::warning(NULL, "Tokeniser timings");
+					timings.print();
+				}
+			}
+			ELSE IF(!Build->VERBOSE_TIMING)
 			term::info(NULL, "Phase 1: ", std::io::format::dec(##src::fileNames), "F (", std::io::format::dec(lines), "L, ", std::io::format::dec(size), "B) in ",
 				std::io::format::dec(phase_1_time / 1000000), ".", std::io::format::dec_x((phase_1_time % 1000000) / 1000, 3),
 				"+", std::io::format::dec(post_time / 1000000), ".", std::io::format::dec_x((post_time % 1000000) / 1000, 3), "ms. ",
@@ -272,7 +288,7 @@ INCLUDE "../../tokeniser/minitokeniser.rl"
 				", ", std::io::format::dec(ident::collisions), "+", std::io::format::dec(ident::collisions2)
 				);
 
-			IF(Build->VERBOSE_TIMING && lines_per_second > 7500000)
+			IF(Build->VERBOSE_TIMING && lines_per_second > 8100000)
 			{
 				os::term::PrintLine_v("Phase 1,", std::io::format::dec(CPU_TICK_RATE / MEGA));
 				Loader.print_timings();

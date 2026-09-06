@@ -76,11 +76,11 @@
 		(":", :Punctuation(:colon)),
 
 		("@", :Punctuation(:at)),
-		
+
 		("...", :Punctuation(:tripleDot)),
 		(".*", :BinaryOp(:dotAsterisk)),
 		(".", :BinaryOp(:dot)),
-		
+
 		(",", :Punctuation(:comma)),
 		
 		(";", :Punctuation(:semicolon)),

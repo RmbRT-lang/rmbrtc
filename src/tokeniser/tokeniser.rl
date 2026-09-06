@@ -122,6 +122,11 @@ INCLUDE "specials.rl"
 		# eof() BOOL := Read >= ##Contents;
 		# past_eof() BOOL := Read > ##Contents;
 
+		ENUM Cfg {
+		?	dummy,
+			track_time
+		}
+
 		// Classifying the first character of a token.
 		ENUM FirstCase {
 			eof,
@@ -270,45 +275,132 @@ INCLUDE "specials.rl"
 			}
 		}
 
+		TimingTracker {
+			Totals: U8[TABLE FirstCase];
+			Counts: U4[TABLE FirstCase];
+
+			add(case: FirstCase, time: U8) VOID --
+			{
+				IF(time > 2500) RETURN;
+				Counts[case]++;
+				Totals[case] += time;
+			}
+
+			# print() VOID {
+				total: U8; FOR(Totals) total += IT;
+				total_toks: U8; FOR(Counts) total_toks += IT;
+
+				FOR(Totals)
+				{
+					dus_time ::= (10*IT) / (CPU_TICK_RATE / MEGA);
+					pm_time ::= (1000 * IT) / (total ?? total : 1);
+					pm_count ::= (1000 * Counts[IOTA]) / (total_toks ?? total_toks : 1);
+					c_per_op ::= (100 * IT) / (Counts[IOTA] ?? Counts[IOTA] : 1);
+
+					pmm_price ::= (MEGA * pm_time) / (pm_count ?? pm_count : 1);
+
+					term::info(NULL,
+						std::str::enum(IOTA), ": ", "                   "[FOR 17 - ##std::str::enum(IOTA)],
+						std::io::format::dec_x(dus_time / 10, :Pad(4)), ".",
+							std::io::format::dec(dus_time % 10), "µs, ",
+						std::io::format::dec_x(pm_time / 10, :Pad(3)), ".",
+							std::io::format::dec(pm_time % 10), "% time, ",
+						std::io::format::dec_x(Counts[IOTA], :Pad(6)), "x, ",
+						std::io::format::dec_x(pm_count / 10, :Pad(3)), ".",
+							std::io::format::dec(pm_count % 10), "% toks, ",
+						std::io::format::dec_x(c_per_op / 100, :Pad(4)), ".",
+							std::io::format::dec_x(c_per_op % 100, 2), " ticks/op, ",
+						std::io::format::dec_x(pmm_price / 10000, :Pad(3)), ".",
+							std::io::format::dec_x((pmm_price % 10000) / 100, 2), "% price");
+				}
+			}
+		}
+
 		parse_next(out: FileTokenView \) BOOL --
 			:= parse_all(out, ##*out + 1);
 
+		Timings: TimingTracker;
+
 		parse_all(out: FileTokenView \, capacity: U4) BOOL
 		{
+			_start_time ::= <Cfg>(Cfg::track_time) ?? CPU_COUNTER : 0;
 			FOR(;;)
 			{
-				Start := Read;
-				next ::= look4();
-				Read++;
+				next ::= look8();
+
+				// skip a single whitespace if there is one.
+				// Around 15% of loop iterations are :space, and almost all of them get eliminated through this trick, which should only cost around 2-3 cycles per token.
+				{
+				r ::= Read;
+				IF#(1){
+					skip: BOOL := <U1>(next) == ' ';
+					next := skip ?? next >> 8 : next;
+					r += skip;
+				}
+
+				Start := r;
+				Read := ++r;
+				}
+
 				case ::= token_lut![<U1>(next)];
+
+				//_start_time ::= <Cfg>(Cfg::track_time) ?? CPU_COUNTER : 0;
 				SWITCH!(case)
 				{
-				//:space: { space(); CONTINUE; }
-				:space, :newline: { space_multi(); CONTINUE; }
-				:zero: on_zero(out);
-				:nonzero: number_literal(out, next);
+				//:space: { space(); Timings.add(case, CPU_COUNTER-_start_time); CONTINUE; }
+				:space, :newline:
+				//' ', '\t', '\n', '\r':
+				{
+					space_multi();
+					IF#(<Cfg>(:track_time))
+					{
+						now ::= CPU_COUNTER;
+						Timings.add(case, now-_start_time);
+						_start_time := now;
+						CONTINUE;
+					}
+				}
+				:zero:
+				//'0':
+					on_zero(out);
+				:nonzero:
+				//'1','2','3','4','5','6','7','8','9':
+					number_literal(out, next);
 				:string_apostrophe, :string_quote, :string_backtick:
+				//'\'', '"', '`':
 				{
 					string(next);
-					out->Hots[##*out] := <TokenHot>(:String, :String(>
+					out->Hots[][##*out] := <TokenHot>(:String, :String(>
 							<U1>(<U1>(case) + <S1>(
 								<U1>(tok::StringType::StringQuote) -
 								<U1>(FirstCase::string_quote)))
 						));
-					out->Payloads[##*out].{ :String(Start, Read - Start) };
+					out->Payloads[][##*out].{ :String(Start, Read - Start) };
 				}
-				:special: { special(out, next); }
-				:uppercase: { keyword(out, next); }
-				:identifier: { identifier(out); }
+				:special:
+				(/'+','-','*','\\','%','!','^','~','&','|','?',':','@','.',',',';','=',
+				'[','{',')','}',']',
+				'<','>','$','#':/)
+				{ special(out, next); }
+				:uppercase:
+				//'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z':
+				{ keyword(out, next); }
+				:identifier:
+				//'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','_':
+				{ identifier(out); }
 				:parentheseOpen:
+				//'(':
 					{ IF!(on_parenthese_open(out)) CONTINUE; }
-				:forwardSlash: { IF!(on_slash(out)) CONTINUE; }
+				:forwardSlash:
+				//'/':
+				{ IF!(on_slash(out)) CONTINUE; }
 				:other:
+				//DEFAULT:
 				{
 					IF(eat2("´"))
 					{
 						forward_tick_string(out);
-						out->Payloads[##*out].{ :String(Start, Read - Start) };
+						out->Payloads[][##*out].{ :String(Start, Read - Start) };
 					}
 					ELSE
 					{
@@ -316,8 +408,17 @@ INCLUDE "specials.rl"
 						error();
 					}
 				}
-				:eof: { = FALSE; }
+				:eof:
+				//0:
+					{ = FALSE; }
 				}
+				IF#(<Cfg>(:track_time))
+				{
+					now ::= CPU_COUNTER;
+					Timings.add(case, now - _start_time);
+					_start_time := now;
+				}
+
 
 				out->Positions[##*out].Pos := (File, Start);
 				out->Positions[##*out].Length := Read - Start;
@@ -496,10 +597,10 @@ INCLUDE "specials.rl"
 
 		special(out: FileTokenView \, next4: U4) VOID --
 		{
-			FOR(specials_lut[<U1>(next4)])
+			FOR(specials_lut[][<U1>(next4)])
 				IF(next4 & IT.(1) == IT.(0))
 				{
-					out->Hots[##*out] := <TokenHot>(IT.(2), :EOF(IT.(3)));
+					out->Hots[][##*out] := <TokenHot>(IT.(2), :EOF(IT.(3)));
 					Read += (POPCNT(IT.(1)) >> 3) -1;
 					RETURN;
 				}
@@ -552,7 +653,7 @@ INCLUDE "specials.rl"
 				cl8 := c8 & follow_mask;
 			} FOR(cl8 == follow_mask; Read += 8)
 			Read += POPCNT ( cl8 & (FIRST1BIT(follow_mask &~ cl8) - 1) );
-			out->Hots[##*out] := <TokenHot>(:Identifier, :EOF(0));
+			out->Hots[][##*out] := <TokenHot>(:Identifier, :EOF(0));
 		}
 
 		// For non-decimal numbers.
