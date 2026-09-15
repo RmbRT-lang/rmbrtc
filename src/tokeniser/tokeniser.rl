@@ -471,8 +471,14 @@ INCLUDE "specials.rl"
 		# look2() U2 -- := *<U2 #*>(<UM>(<CHAR #*>(Contents[])) + Read);
 		# look4() U4 -- := *<U4 #*>(<UM>(<CHAR #*>(Contents[])) + Read);
 		# look8() U8 -- := *<U8 #*>(<UM>(<CHAR #*>(Contents[])) + Read);
+		# look8_2() {U8, U8} -- := (
+			*<U8 #*>(<UM>(<CHAR #*>(Contents[])) + Read),
+			*<U8 #*>(<UM>(<CHAR #*>(Contents[])) + Read));
 		# look_class() U1 -- := Classifiers[Read];
 		# look8_class() U8 -- := *<U8 #*>(<UM>(<VOID #*>(Classifiers)) + Read);
+		# look8_class_2() {U8,U8} -- := (
+			*<U8 #*>(<UM>(<VOID #*>(Classifiers)) + Read),
+			*<U8 #*>(<UM>(<VOID #*>(Classifiers)) + Read + 1));
 		# char2(v: CHAR[2] #&) U2 -- := *<U2 #*>(<UM>(&v));
 
 		getc() CHAR -- := Contents[][Read++];
@@ -672,15 +678,22 @@ INCLUDE "specials.rl"
 				:binary (0x0303030303030303, 0r0706050403020100),
 				:octal  (0x0202020202020202, 0r15120f0c09060300));
 
-			first ::= look_class();
+			// load the first 8 bytes, also with one skipped.
+			cl8_2 ::= look8_class_2();  txt8_2 ::= look8_2();
+			first ::= cl8_2.(0);
 
 			number_case: NumberCase := :octal;
 			is_special: BOOL := first & FollowCase::FLAGS(:numberCaseSig);
+			// Branchlessly select whether to skip the first byte or not, so we do not have two chained loads.
+			cl8: U8 := is_special ?? cl8_2.(1) : cl8_2.(0);
+			txt8: U8 := is_special ?? txt8_2.(1) : txt8_2.(0);
+			Read += is_special;
 
 			// [on_zero().A]: depends on order of DigitCase and NumberCase.
 			// hex, raw: 0; binary: (3) octal, decimal, hex; octal: (2) decimal, hex
 			digit_mask # ::= <U8>(0x0101010101010101) * FollowCase::FLAGS(:digitCaseSig);
-			Read += is_special;
+
+
 			number_case := is_special ?? <NumberCase>(first & 3) : number_case;
 
 			forbidden_digits_mask # ::=
@@ -694,13 +707,10 @@ INCLUDE "specials.rl"
 
 			has_forbidden_digits: U8 := 0;
 			forbidden_digits: U8 (NOINIT);
-			cl8: U8 (NOINIT);
-			txt8: U8 (NOINIT);
-			DO()
+			DO(cl8_: U8 (NOINIT))
 			{
 				// normalise text to have each byte store the digit value instead of text.
-				txt8 := look8();
-
+				{
 				// Efficiently normalise all digits (incl. hex) to their numerical values.
 				// detect all hexademicals.       Turn everything lowercase. Digits unaffected.
 				a ::= txt8 & 0x4040404040404040;  txt8 |= 0x2020202020202020;
@@ -711,17 +721,20 @@ INCLUDE "specials.rl"
 				// Mask the adjustment value.
 				a &= <U8>(0x0101010101010101) * <U8>('a'-('9'+ 1));
 				txt8 -= a; // adjust hexadecimals to 10-15.
+				}
 
-				c8 ::= look8_class();
-				digit_types ::= c8 & 0x0303030303030303;
-
-				cl8 := c8 & digit_mask;
+				digit_types ::= cl8 & 0x0303030303030303;
+				cl8 &= digit_mask;
 
 				partial_mask ::= FIRST1BIT(digit_mask &~ cl8) - 1;
 				txt8 &= partial_mask; // NOTE [on_zero().B]: SEE [FollowCase.A].
 				forbidden_digits := digit_types & forbidden_digits_mask;
 				has_forbidden_digits |= forbidden_digits & partial_mask;
 				Read += POPCNT ( cl8 & partial_mask );
+
+				// Load next word. That way, the next loop iteration has less of a problem.
+				txt8 := look8();
+				cl8_ := cl8; cl8 := look8_class(); 
 				
 				shamt ::= digit_shift_amounts; word: U4 := 0;
 
@@ -736,9 +749,9 @@ INCLUDE "specials.rl"
 
 				lo ::= number_case == :raw ?? number : word;
 				hi ::= number_case == :raw ?? word : number;
-				word_bits: U1 := 0x04082020 >> (8*<U1>(number_case));
+				word_bits: U1 := 0x18082020 >> (8*<U1>(number_case));
 				number := (hi << word_bits) | lo;
-			} WHILE(cl8 == digit_mask)
+			} WHILE(cl8_ == digit_mask)
 
 			IF(FirstCase::FLAGS(:zero, :nonzero, :identifier, :uppercase) >> look_class() & 1)
 				term::error(at(), "invalid follow-up character after number");
