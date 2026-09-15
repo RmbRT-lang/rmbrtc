@@ -345,11 +345,11 @@ INCLUDE "specials.rl"
 				case ::= token_lut![<U1>(next)];
 
 				//_start_time ::= <Cfg>(Cfg::track_time) ?? CPU_COUNTER : 0;
-				SWITCH!(case)
+				SWITCH!(<U1>(next))
 				{
 				//:space: { space(); Timings.add(case, CPU_COUNTER-_start_time); CONTINUE; }
-				:space, :newline:
-				//' ', '\t', '\n', '\r':
+				//:space, :newline:
+				' ', '\t', '\n', '\r':
 				{
 					space_multi();
 					IF#(<Cfg>(:track_time))
@@ -360,14 +360,14 @@ INCLUDE "specials.rl"
 					}
 					CONTINUE;
 				}
-				:zero:
-				//'0':
+				//:zero:
+				'0':
 					on_zero(out);
-				:nonzero:
-				//'1','2','3','4','5','6','7','8','9':
+				//:nonzero:
+				'1','2','3','4','5','6','7','8','9':
 					number_literal(out, next);
-				:string_apostrophe, :string_quote, :string_backtick:
-				//'\'', '"', '`':
+				//:string_apostrophe, :string_quote, :string_backtick:
+				'\'', '"', '`':
 				{
 					string(next);
 					out->Hots[][##*out] := <TokenHot>(:String, :String(>
@@ -377,25 +377,25 @@ INCLUDE "specials.rl"
 						));
 					out->Payloads[][##*out].{ :String(Start, Read - Start) };
 				}
-				:special:
-				(/'+','-','*','\\','%','!','^','~','&','|','?',':','@','.',',',';','=',
+				//:special:
+				'+','-','*','\\','%','!','^','~','&','|','?',':','@','.',',',';','=',
 				'[','{',')','}',']',
-				'<','>','$','#':/)
+				'<','>','$','#':
 				{ special(out, next); }
-				:uppercase:
-				//'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z':
+				//:uppercase:
+				'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z':
 				{ keyword(out, next); }
-				:identifier:
-				//'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','_':
+				//:identifier:
+				'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','_':
 				{ identifier(out); }
-				:parentheseOpen:
-				//'(':
+				//:parentheseOpen:
+				'(':
 					{ IF!(on_parenthese_open(out)) CONTINUE; }
-				:forwardSlash:
-				//'/':
+				//:forwardSlash:
+				'/':
 				{ IF!(on_slash(out)) CONTINUE; }
-				:other:
-				//DEFAULT:
+				//:other:
+				DEFAULT:
 				{
 					IF(eat2("´"))
 					{
@@ -408,8 +408,8 @@ INCLUDE "specials.rl"
 						error();
 					}
 				}
-				:eof:
-				//0:
+				//:eof:
+				0:
 					{ = FALSE; }
 				}
 				IF#(<Cfg>(:track_time))
