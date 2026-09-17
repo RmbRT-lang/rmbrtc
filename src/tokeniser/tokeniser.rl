@@ -429,7 +429,7 @@ INCLUDE "specials.rl"
 			}
 		}
 
-		Classifiers: U1 #[];
+		Classifiers: U1 #[]; // FollowCase::FLAGS
 	PROTECTED:
 		Contents: CHAR #[#];
 		Read: src::Index; // The current reading position in the file.
@@ -667,14 +667,14 @@ INCLUDE "specials.rl"
 			forbidden_digits_mask: U8;
 			digit_shift_amounts: U8;
 		}
-
-
 		on_zero(out: FileTokenView \) VOID --
 		{
 			STATIC k_non_decimal_digit_table: DigitTableEntry[TABLE NumberCase]#(
 				// raw literals to have the bytes be in order of the bytes in memory.
+				// We deposit digit bits into the highest possible place they can occupy.
+				// Then, we shift down to adjust for number of actual digits (except raw).
 				:hex    (0x0000000000000000, 0r1c1814100c080400),
-				:raw    (0x0000000000000000, 0r04000c0814101d18),
+				:raw    (0x0000000000000000, 0r04000c0814101c18),
 				:binary (0x0303030303030303, 0r0706050403020100),
 				:octal  (0x0202020202020202, 0r15120f0c09060300));
 
@@ -698,7 +698,7 @@ INCLUDE "specials.rl"
 
 			forbidden_digits_mask # ::=
 				k_non_decimal_digit_table[number_case].forbidden_digits_mask;
-			digit_shift_amounts # ::=
+			digit_shift_amounts ::=
 				k_non_decimal_digit_table[number_case].digit_shift_amounts;
 
 			start ::= Read;
@@ -730,30 +730,49 @@ INCLUDE "specials.rl"
 				txt8 &= partial_mask; // NOTE [on_zero().B]: SEE [FollowCase.A].
 				forbidden_digits := digit_types & forbidden_digits_mask;
 				has_forbidden_digits |= forbidden_digits & partial_mask;
-				Read += POPCNT ( cl8 & partial_mask );
+
+				digit_count ::= POPCNT ( cl8 & partial_mask );
+				Read += digit_count;
 
 				// Load next word. That way, the next loop iteration has less of a problem.
 				txt8 := look8();
-				cl8_ := cl8; cl8 := look8_class(); 
+				cl8_ := cl8; cl8 := look8_class();
 				
-				shamt ::= digit_shift_amounts; word: U4 := 0;
+				shamt ::= digit_shift_amounts; word: U8 (NOINIT);
 
-				word |= <U4>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
-				word |= <U4>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
-				word |= <U4>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
-				word |= <U4>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
-				word |= <U4>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
-				word |= <U4>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
-				word |= <U4>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
-				word |= <U4>(<U1>(txt8)) << <U1>(shamt);
+				word := <U8>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
+				word |= <U8>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
+				word |= <U8>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
+				word |= <U8>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
+				word |= <U8>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
+				word |= <U8>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
+				word |= <U8>(<U1>(txt8)) << <U1>(shamt); shamt >>= 8; txt8 >>= 8;
+				word |= <U8>(<U1>(txt8)) << <U1>(shamt);
 
-				lo ::= number_case == :raw ?? number : word;
-				hi ::= number_case == :raw ?? word : number;
-				word_bits: U1 := 0x18082020 >> (8*<U1>(number_case));
-				number := (hi << word_bits) | lo;
+				// If not raw: big endian, shift previous word up by number of bits we added (digits * bits_per_digit), and shift the added digits down to ones.
+				// If raw: append word to previous bits. OR: we do a BSWAP at the end and keep the bits as they are. Then, we do not have to do any special logic? So we assemble the words in big-endian. Then we row them together, and then we BSWAP. Unlike hex, we shift by full bit width.
+
+				digit_bits: U1 := 0r04000103 >> (8*<U1>(number_case));
+				// NOTE: These shifts are nops for raw literals.
+				// shift down the parsed word to its actual worth.
+				word >>= (8-digit_count) * digit_bits;
+				// shift up the previous contents by the number of bits we added.
+				number <<= digit_count * digit_bits;
+				// add the parsed word.
+				number |= word;
+
+				// If raw literal, the next word simply starts 32 bits higher.
+				digit_shift_amounts += (number_case == :raw) * 0x2020202020202020;
 			} WHILE(cl8_ == digit_mask)
 
-			IF(FirstCase::FLAGS(:zero, :nonzero, :identifier, :uppercase) >> look_class() & 1)
+			// Check number size.
+			IF((Read - start) * <U1>(0r04040103 >> (8*<U1>(number_case))) > 64)
+				term::error(at(), "number literal exceeds 64 bits");
+			IF(number_case == :raw && ((Read-start) & 1))
+				term::error(at(), "raw literals must have even digit count");
+
+			// Check for delimeters after the number.
+			IF(FollowCase::FLAGS(:idfollow) & <U1>(cl8))
 				term::error(at(), "invalid follow-up character after number");
 
 			out->Hots[##*out] := <TokenHot>(:Number, :Number(:Normal));
@@ -762,6 +781,8 @@ INCLUDE "specials.rl"
 
 		number_literal(out: FileTokenView \, last: CHAR) VOID --
 		{
+			// TODO: parse in groups of 8, SWAR style, avoiding the loop for almost all instances.
+
 			number: U8 := last - '0';
 			next_number ::= number * 10;
 
@@ -805,8 +826,9 @@ INCLUDE "specials.rl"
 				<U4>(1) << <U1>(FirstCase::uppercase);
 
 
-			IF(i >= ##digits || number < digits![i])
-				term::error(at(), "overflowed integer constant");
+			IF(i >= 20)
+				IF(i > 20 || *chars > '1' || number < <U8>(10000000000000000000))
+					term::error(at(), "overflowed integer constant");
 			IF(<U4>(1) << <U1>(token_lut![<U1>(last+'0')]) & forbidden_follow)
 				term::error(at(), "invalid follow-up character after number");
 
