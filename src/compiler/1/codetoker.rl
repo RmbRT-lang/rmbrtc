@@ -55,7 +55,7 @@ INCLUDE 'std/hash'
 	STATIC alloc_array(alloc: std::temp::Alloc &, array: T![] &, size: U4) VOID --
 	{
 		align ::= ALIGNOF(T);
-		IF(align<CACHELINE)
+		IF#(align<CACHELINE)
 			align := CACHELINE;
 		array := <T *>(alloc.alloc_raw(size * SIZEOF(T), align))[];
 	}
